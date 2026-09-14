@@ -37,6 +37,12 @@ const currentUserQuery = queryOptions({
   queryFn: () => fetchCurrentUser(),
 })
 
+// Event dari browser yang dipakai buat menampilkan prompt install PWA.
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
+}
+
 export const Route = createFileRoute('/_app/profil/')({
   loader: ({ context }) =>
     context.queryClient.ensureQueryData(currentUserQuery),
@@ -92,6 +98,32 @@ function ProfilPage() {
   const [showBankModal, setShowBankModal] = useState(false)
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [showTemplateModal, setShowTemplateModal] = useState(false)
+  const [deferredPrompt, setDeferredPrompt] =
+    useState<BeforeInstallPromptEvent | null>(null)
+  const [isInstalled, setIsInstalled] = useState(false)
+
+  useEffect(() => {
+    function onBeforeInstallPrompt(e: Event) {
+      e.preventDefault()
+      setDeferredPrompt(e as unknown as BeforeInstallPromptEvent)
+    }
+    window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt)
+    return () =>
+      window.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt)
+  }, [])
+
+  useEffect(() => {
+    function computeInstalled() {
+      const standalone =
+        window.matchMedia('(display-mode: standalone)').matches ||
+        (navigator as { standalone?: boolean }).standalone === true
+      setIsInstalled(standalone)
+    }
+    computeInstalled()
+    const media = window.matchMedia('(display-mode: standalone)')
+    media.addEventListener('change', computeInstalled)
+    return () => media.removeEventListener('change', computeInstalled)
+  }, [])
 
   async function handleLogout() {
     await logoutUser()
@@ -131,6 +163,19 @@ function ProfilPage() {
     await updateMessageTemplate({ data: { template } })
     await queryClient.invalidateQueries({ queryKey: ['current-user'] })
     setShowTemplateModal(false)
+  }
+
+  async function handleInstallClick() {
+    if (isInstalled) return
+    if (!deferredPrompt) {
+      window.alert(
+        'Browser ini tidak menampilkan tombol install otomatis. Di iPhone gunakan menu Share lalu "Tambahkan ke layar utama", di Chrome desktop klik ikon Install di address bar.',
+      )
+      return
+    }
+    await deferredPrompt.prompt()
+    await deferredPrompt.userChoice
+    setDeferredPrompt(null)
   }
 
   return (
@@ -262,7 +307,10 @@ function ProfilPage() {
             type="button"
             onClick={() => setShowTemplateModal(true)}
             className="flex w-full items-center gap-3 border-b px-4 py-3 text-left no-underline"
-            style={{ borderColor: 'var(--app-border)', color: 'var(--app-text)' }}
+            style={{
+              borderColor: 'var(--app-border)',
+              color: 'var(--app-text)',
+            }}
           >
             <span style={{ color: 'var(--app-text-soft)' }}>
               <MessageSquareText size={18} />
@@ -290,18 +338,23 @@ function ProfilPage() {
               label="Notifikasi"
             />
           </div>
-          <Link
-            to="/profil"
-            className="flex items-center gap-3 px-4 py-3 no-underline"
+          <button
+            type="button"
+            onClick={handleInstallClick}
+            className="flex items-center gap-3 px-4 py-3 text-left no-underline"
           >
             <Download size={18} style={{ color: 'var(--app-accent)' }} />
             <span
               className="flex-1 font-medium"
               style={{ color: 'var(--app-accent)' }}
             >
-              Tambahkan ke layar utama
+              {isInstalled
+                ? 'Terpasang di perangkat'
+                : deferredPrompt
+                  ? 'Install aplikasi sekarang'
+                  : 'Tambahkan ke layar utama'}
             </span>
-          </Link>
+          </button>
         </div>
       </section>
 

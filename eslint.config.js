@@ -15,6 +15,15 @@ export default [
     },
   },
   {
-    ignores: ['eslint.config.js', 'prettier.config.js'],
+    // `scripts/*` berisi utilitas build plain JS (workbox-build) di luar proyek
+    // TypeScript; `dev-dist/` output SW dev dari vite-plugin-pwa. Keduanya
+    // dilewati lint proyek.
+    ignores: [
+      'eslint.config.js',
+      'prettier.config.js',
+      'scripts/**',
+      'dev-dist/**',
+      'dist/**',
+    ],
   },
 ]
