@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { queryOptions, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { ArrowLeft, Pencil, Phone, Plus, Trash2, User } from 'lucide-react'
+import { ArrowLeft, Pencil, Phone, Plus, Search, Trash2, User } from 'lucide-react'
 import { formatPhoneNumber } from '../../../../lib/format.ts'
 import CustomerFormModal from '../../../../components/CustomerFormModal'
 import ConfirmModal from '../../../../components/ui/ConfirmModal'
@@ -26,6 +26,7 @@ function CustomersPage() {
   const { data: customers } = useSuspenseQuery(customersQuery)
   const queryClient = useQueryClient()
 
+  const [search, setSearch] = useState('')
   const [modalMode, setModalMode] = useState<
     | { type: 'create' }
     | { type: 'edit'; id: string; name: string; phone: string }
@@ -33,6 +34,17 @@ function CustomersPage() {
   >(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+
+  const filteredCustomers = customers.filter((c) => {
+    const query = search.trim().toLowerCase()
+    if (!query) return true
+    const digitsQuery = query.replace(/\D/g, '')
+    const nameMatch = c.name.toLowerCase().includes(query)
+    const phoneMatch =
+      digitsQuery.length > 0 &&
+      (c.phone ?? '').replace(/\D/g, '').includes(digitsQuery)
+    return nameMatch || phoneMatch
+  })
 
   async function refresh() {
     await queryClient.invalidateQueries({ queryKey: ['customers'] })
@@ -61,13 +73,28 @@ function CustomersPage() {
   }
 
   return (
-    <main className="mx-auto max-w-lg px-4 pb-8 pt-6">
-      <header className="mb-6 flex items-center gap-3">
+    <main className="mx-auto max-w-lg px-4 pb-16 pt-6">
+      <header className="mb-4 flex items-center gap-3">
         <Link to="/profil" style={{ color: 'var(--app-text)' }}>
           <ArrowLeft size={22} />
         </Link>
         <h1 className="text-xl font-bold">Customer</h1>
       </header>
+
+      <div className="relative mb-4">
+        <span
+          className="pointer-events-none absolute inset-y-0 left-3 flex items-center"
+          style={{ color: 'var(--app-text-mute)' }}
+        >
+          <Search size={16} />
+        </span>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Cari nama atau no. HP customer"
+          className="app-input pl-9"
+        />
+      </div>
 
       <div className="mb-4 flex flex-col gap-3">
         {customers.length === 0 && (
@@ -76,7 +103,12 @@ function CustomersPage() {
             nama pelanggan.
           </p>
         )}
-        {customers.map((customer) => (
+        {customers.length > 0 && filteredCustomers.length === 0 && (
+          <p className="py-6 text-center text-sm" style={{ color: 'var(--app-text-soft)' }}>
+            Tidak ada customer yang cocok dengan pencarian.
+          </p>
+        )}
+        {filteredCustomers.map((customer) => (
           <div key={customer.id} className="app-card flex items-center gap-3 p-4">
             <span className="app-icon-tile h-10 w-10 flex-shrink-0">
               <User size={18} />
@@ -122,14 +154,23 @@ function CustomersPage() {
         ))}
       </div>
 
-      <button
-        type="button"
-        onClick={() => setModalMode({ type: 'create' })}
-        className="app-btn-primary w-full"
+      <div
+        className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-lg border-t px-4 pt-3"
+        style={{
+          borderColor: 'var(--app-border)',
+          background: 'var(--app-card)',
+          paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))',
+        }}
       >
-        <Plus size={18} />
-        Tambah customer
-      </button>
+        <button
+          type="button"
+          onClick={() => setModalMode({ type: 'create' })}
+          className="app-btn-primary w-full"
+        >
+          <Plus size={18} />
+          Tambah customer
+        </button>
+      </div>
 
       {modalMode && (
         <CustomerFormModal

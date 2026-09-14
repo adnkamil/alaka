@@ -18,7 +18,12 @@ const TABS: Array<TabDef> = [
 ]
 
 // Detail pages hide the bottom nav; match on path prefix instead of exact route.
-const DETAIL_PATH_PREFIXES = ['/events/', '/profil/fee-rules', '/invoice/']
+const DETAIL_PATH_PREFIXES = [
+  '/events/',
+  '/profil/fee-rules',
+  '/profil/customers',
+  '/invoice/',
+]
 
 export function useShowBottomNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
