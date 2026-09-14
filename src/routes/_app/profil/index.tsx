@@ -15,18 +15,22 @@ import {
   Info,
   Landmark,
   LogOut,
+  MessageSquareText,
   Moon,
   SlidersHorizontal,
   Tag,
 } from 'lucide-react'
 import BankAccountModal from '../../../components/BankAccountModal'
 import EditProfileModal from '../../../components/EditProfileModal'
+import MessageTemplateModal from '../../../components/MessageTemplateModal'
 import Switch from '../../../components/ui/Switch'
 import {
   fetchCurrentUser,
   logoutUser,
   updateProfile,
 } from '../../../lib/auth-functions'
+import { updateMessageTemplate } from '../../../lib/message-template-functions'
+import { DEFAULT_WA_MESSAGE_TEMPLATE } from '../../../lib/message-template'
 
 const currentUserQuery = queryOptions({
   queryKey: ['current-user'],
@@ -87,6 +91,7 @@ function ProfilPage() {
   const [isDark, toggleDark] = useDarkModePreference()
   const [showBankModal, setShowBankModal] = useState(false)
   const [showProfileModal, setShowProfileModal] = useState(false)
+  const [showTemplateModal, setShowTemplateModal] = useState(false)
 
   async function handleLogout() {
     await logoutUser()
@@ -120,6 +125,12 @@ function ProfilPage() {
     })
     await queryClient.invalidateQueries({ queryKey: ['current-user'] })
     setShowBankModal(false)
+  }
+
+  async function handleSaveTemplate(template: string) {
+    await updateMessageTemplate({ data: { template } })
+    await queryClient.invalidateQueries({ queryKey: ['current-user'] })
+    setShowTemplateModal(false)
   }
 
   return (
@@ -247,6 +258,28 @@ function ProfilPage() {
             <span className="flex-1">Mode gelap</span>
             <Switch checked={isDark} onChange={toggleDark} label="Mode gelap" />
           </div>
+          <button
+            type="button"
+            onClick={() => setShowTemplateModal(true)}
+            className="flex w-full items-center gap-3 border-b px-4 py-3 text-left no-underline"
+            style={{ borderColor: 'var(--app-border)', color: 'var(--app-text)' }}
+          >
+            <span style={{ color: 'var(--app-text-soft)' }}>
+              <MessageSquareText size={18} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block">Template Chat WA</span>
+              <span
+                className="block truncate text-xs font-normal"
+                style={{ color: 'var(--app-text-soft)' }}
+              >
+                {user?.waMessageTemplate
+                  ? 'Template kustom — pesan invoice lewat WhatsApp'
+                  : 'Template default — pesan invoice lewat WhatsApp'}
+              </span>
+            </span>
+            <ChevronRight size={18} style={{ color: 'var(--app-text-mute)' }} />
+          </button>
           <div
             className="border-b"
             style={{ borderColor: 'var(--app-border)' }}
@@ -338,6 +371,16 @@ function ProfilPage() {
           }}
           onClose={() => setShowProfileModal(false)}
           onSubmit={handleSaveProfile}
+        />
+      )}
+
+      {showTemplateModal && (
+        <MessageTemplateModal
+          title="Template Chat WA"
+          submitLabel="Simpan"
+          initialValue={user?.waMessageTemplate ?? DEFAULT_WA_MESSAGE_TEMPLATE}
+          onClose={() => setShowTemplateModal(false)}
+          onSubmit={handleSaveTemplate}
         />
       )}
     </main>

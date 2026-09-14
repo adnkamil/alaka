@@ -109,6 +109,7 @@ export const fetchCurrentUser = createServerFn({ method: 'GET' }).handler(
       brandName: user.brandName,
       bankName: user.bankName,
       bankAccountNumber: user.bankAccountNumber,
+      waMessageTemplate: user.waMessageTemplate,
     }
   },
 )

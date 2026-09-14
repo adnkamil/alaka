@@ -255,6 +255,7 @@ export const getOrderInvoice = createServerFn({ method: 'GET' })
         brandName: user.brandName,
         bankName: user.bankName,
         bankAccountNumber: user.bankAccountNumber,
+        waMessageTemplate: user.waMessageTemplate,
       },
     }
   })

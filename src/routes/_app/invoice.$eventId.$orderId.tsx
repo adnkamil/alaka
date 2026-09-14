@@ -13,6 +13,7 @@ import {
   Landmark,
   MessageCircle,
   Printer,
+  SquarePen,
 } from 'lucide-react'
 import { getOrderInvoice } from '../../lib/orders-functions'
 import { createCustomer } from '../../lib/customers-functions'
@@ -21,6 +22,10 @@ import {
   formatPhoneNumber,
   isValidIndonesianPhone,
 } from '../../lib/format'
+import {
+  DEFAULT_WA_MESSAGE_TEMPLATE,
+  renderMessageTemplate,
+} from '../../lib/message-template'
 import CustomerFormModal from '../../components/CustomerFormModal'
 
 export const Route = createFileRoute('/_app/invoice/$eventId/$orderId')({
@@ -124,19 +129,20 @@ function InvoicePage() {
 
   const invoiceLink = `${typeof window !== 'undefined' ? window.location.origin : ''}/tagihan/${eventId}/${orderId}`
 
-  const waMessage = [
-    `Halo kak ${data.order.customerName}, ini invoice belanja di *${data.event.name}* ya kak, bisa dicek detailnya di link ini: ${invoiceLink}`,
-    '',
-    `Subtotal: ${formatIDR(subtotal)}`,
-    `Fee jastip: ${formatIDR(totalFee)}`,
-    `*Total Tagihan: ${formatIDR(total)}*`,
-    ...(bankText
-      ? [`Transfer ke ${data.user.bankName} ${data.user.bankAccountNumber}`]
-      : []),
-    'mohon dikirim bukti transfernya ya kak',
-    '',
-    `Terima kasih sudah berbelanja di ${data.user.brandName || data.user.name}!`,
-  ].join('\n')
+  const waMessage = renderMessageTemplate(
+    data.user.waMessageTemplate ?? DEFAULT_WA_MESSAGE_TEMPLATE,
+    {
+      customer: data.order.customerName,
+      event: data.event.name,
+      link: invoiceLink,
+      subtotal: formatIDR(subtotal),
+      fee: formatIDR(totalFee),
+      total: formatIDR(total),
+      bank: data.user.bankName ?? '',
+      bankAccount: data.user.bankAccountNumber ?? '',
+      brand: data.user.brandName || data.user.name,
+    },
+  )
 
   const phoneValid = isValidIndonesianPhone(phone)
 
@@ -347,10 +353,20 @@ function InvoicePage() {
 
       {/* ====== KIRIM KE WHATSAPP ====== */}
       <div className="app-card p-5">
-        <p className="mb-1 flex items-center gap-2 text-sm font-bold">
-          <MessageCircle size={16} style={{ color: 'var(--app-accent)' }} />
-          Kirim ke WhatsApp
-        </p>
+        <div className="mb-1 flex items-center justify-between text-sm font-bold">
+          <p className="flex items-center gap-2">
+            <MessageCircle size={16} style={{ color: 'var(--app-accent)' }} />
+            Kirim ke WhatsApp
+          </p>
+          <Link
+            to="/profil"
+            className="flex items-center gap-1 text-xs font-semibold"
+            style={{ color: 'var(--app-text-soft)' }}
+          >
+            <SquarePen size={13} />
+            Template
+          </Link>
+        </div>
 
         {!data.order.customerRegistered && (
           <div

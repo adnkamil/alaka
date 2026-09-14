@@ -23,6 +23,7 @@ export const users = pgTable('users', {
   brandName: varchar('brand_name'),
   bankName: varchar('bank_name'),
   bankAccountNumber: varchar('bank_account_number'),
+  waMessageTemplate: text('wa_message_template'),
   email: varchar().notNull().unique(),
   passwordHash: varchar('password_hash'),
   googleId: varchar('google_id').unique(),
