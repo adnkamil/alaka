@@ -508,6 +508,13 @@ a {
   color: var(--app-text);
 }
 
+/* Halaman dengan bottom nav (tab profi/beranda/dll): sediakan ruang di bawah
+   supaya isi paling bawah (mis. tombol Keluar di Profil) tidak tertutup nav
+   yang fixed di mobile. */
+.app-shell--with-nav {
+  padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+}
+
 @media (min-width: 481px) {
   .app-shell {
     box-shadow:
