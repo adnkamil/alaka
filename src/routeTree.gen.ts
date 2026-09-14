@@ -19,6 +19,7 @@ import { Route as AppEventsNewRouteImport } from './routes/_app/events.new'
 import { Route as AppPesananIndexRouteImport } from './routes/_app/pesanan/index'
 import { Route as AppPesananNewRouteImport } from './routes/_app/pesanan/new'
 import { Route as AppProfilIndexRouteImport } from './routes/_app/profil/index'
+import { Route as TagihanEventIdOrderIdRouteImport } from './routes/tagihan.$eventId.$orderId'
 import { Route as AppInvoiceEventIdOrderIdRouteImport } from './routes/_app/invoice.$eventId.$orderId'
 import { Route as AppProfilCustomersIndexRouteImport } from './routes/_app/profil/customers/index'
 import { Route as AppProfilFeeRulesIndexRouteImport } from './routes/_app/profil/fee-rules/index'
@@ -76,6 +77,11 @@ const AppProfilIndexRoute = AppProfilIndexRouteImport.update({
   path: '/profil/',
   getParentRoute: () => AppRoute,
 } as any)
+const TagihanEventIdOrderIdRoute = TagihanEventIdOrderIdRouteImport.update({
+  id: '/tagihan/$eventId/$orderId',
+  path: '/tagihan/$eventId/$orderId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppInvoiceEventIdOrderIdRoute =
   AppInvoiceEventIdOrderIdRouteImport.update({
     id: '/invoice/$eventId/$orderId',
@@ -122,6 +128,7 @@ export interface FileRoutesByFullPath {
   '/events/$eventId': typeof AppEventsEventIdRoute
   '/events/new': typeof AppEventsNewRoute
   '/pesanan/new': typeof AppPesananNewRoute
+  '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
   '/pesanan/': typeof AppPesananIndexRoute
   '/profil/': typeof AppProfilIndexRoute
   '/invoice/$eventId/$orderId': typeof AppInvoiceEventIdOrderIdRoute
@@ -140,6 +147,7 @@ export interface FileRoutesByTo {
   '/events/$eventId': typeof AppEventsEventIdRoute
   '/events/new': typeof AppEventsNewRoute
   '/pesanan/new': typeof AppPesananNewRoute
+  '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
   '/pesanan': typeof AppPesananIndexRoute
   '/profil': typeof AppProfilIndexRoute
   '/invoice/$eventId/$orderId': typeof AppInvoiceEventIdOrderIdRoute
@@ -160,6 +168,7 @@ export interface FileRoutesById {
   '/_app/events/$eventId': typeof AppEventsEventIdRoute
   '/_app/events/new': typeof AppEventsNewRoute
   '/_app/pesanan/new': typeof AppPesananNewRoute
+  '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
   '/_app/pesanan/': typeof AppPesananIndexRoute
   '/_app/profil/': typeof AppProfilIndexRoute
   '/_app/invoice/$eventId/$orderId': typeof AppInvoiceEventIdOrderIdRoute
@@ -180,6 +189,7 @@ export interface FileRouteTypes {
     | '/events/$eventId'
     | '/events/new'
     | '/pesanan/new'
+    | '/tagihan/$eventId/$orderId'
     | '/pesanan/'
     | '/profil/'
     | '/invoice/$eventId/$orderId'
@@ -198,6 +208,7 @@ export interface FileRouteTypes {
     | '/events/$eventId'
     | '/events/new'
     | '/pesanan/new'
+    | '/tagihan/$eventId/$orderId'
     | '/pesanan'
     | '/profil'
     | '/invoice/$eventId/$orderId'
@@ -217,6 +228,7 @@ export interface FileRouteTypes {
     | '/_app/events/$eventId'
     | '/_app/events/new'
     | '/_app/pesanan/new'
+    | '/tagihan/$eventId/$orderId'
     | '/_app/pesanan/'
     | '/_app/profil/'
     | '/_app/invoice/$eventId/$orderId'
@@ -232,6 +244,7 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
+  TagihanEventIdOrderIdRoute: typeof TagihanEventIdOrderIdRoute
   ApiAuthGoogleCallbackRoute: typeof ApiAuthGoogleCallbackRoute
   ApiAuthGoogleIndexRoute: typeof ApiAuthGoogleIndexRoute
 }
@@ -307,6 +320,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/profil/'
       preLoaderRoute: typeof AppProfilIndexRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/tagihan/$eventId/$orderId': {
+      id: '/tagihan/$eventId/$orderId'
+      path: '/tagihan/$eventId/$orderId'
+      fullPath: '/tagihan/$eventId/$orderId'
+      preLoaderRoute: typeof TagihanEventIdOrderIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_app/invoice/$eventId/$orderId': {
       id: '/_app/invoice/$eventId/$orderId'
@@ -396,6 +416,7 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
+  TagihanEventIdOrderIdRoute: TagihanEventIdOrderIdRoute,
   ApiAuthGoogleCallbackRoute: ApiAuthGoogleCallbackRoute,
   ApiAuthGoogleIndexRoute: ApiAuthGoogleIndexRoute,
 }

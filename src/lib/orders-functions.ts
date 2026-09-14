@@ -1,8 +1,8 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '../db'
-import { events, items, orders } from '../db/schema'
+import { customers, events, items, orders } from '../db/schema'
 import { getSessionUser } from './auth'
 
 async function requireUser() {
@@ -158,6 +158,50 @@ export const deleteItem = createServerFn({ method: 'POST' })
 
 // Data lengkap untuk halaman tagih/invoice: pastikan order milik event
 // dan event milik user yang sedang login.
+// Dipakai buat halaman invoice publik (dibuka customer lewat link WA,
+// TANPA login). Sengaja nggak butuh session, tapi cuma ngasih data yang
+// aman buat dilihat orang luar (nggak ada info user lain, nggak ada nomor
+// HP pelanggan, dll).
+export const getPublicOrderInvoice = createServerFn({ method: 'GET' })
+  .validator(z.object({ eventId: z.uuid(), orderId: z.uuid() }))
+  .handler(async ({ data }) => {
+    const order = await db.query.orders.findFirst({
+      where: eq(orders.id, data.orderId),
+      with: { items: true, event: { with: { user: true } } },
+    })
+    if (!order || order.eventId !== data.eventId) {
+      throw new Error('Invoice tidak ditemukan')
+    }
+
+    const owner = order.event.user
+
+    return {
+      order: {
+        id: order.id,
+        customerName: order.customerName,
+        paymentStatus: order.paymentStatus,
+        createdAt: order.createdAt,
+      },
+      event: {
+        id: order.event.id,
+        name: order.event.name,
+        eventDate: order.event.eventDate,
+      },
+      items: order.items.map((item) => ({
+        id: item.id,
+        name: item.name,
+        originalPrice: item.originalPrice,
+        fee: item.fee,
+      })),
+      user: {
+        name: owner.name,
+        brandName: owner.brandName,
+        bankName: owner.bankName,
+        bankAccountNumber: owner.bankAccountNumber,
+      },
+    }
+  })
+
 export const getOrderInvoice = createServerFn({ method: 'GET' })
   .validator(z.object({ eventId: z.uuid(), orderId: z.uuid() }))
   .handler(async ({ data }) => {
@@ -174,10 +218,24 @@ export const getOrderInvoice = createServerFn({ method: 'GET' })
       throw new Error('Pesanan tidak ditemukan')
     }
 
+    // Coba cari nomor HP dari data Customer yang tersimpan, cocokkan
+    // "nama" atau "nama 4digitTerakhir" (format yang keisi dari suggestion
+    // di AddOrderSheet) ke daftar Customer milik user ini.
+    const savedCustomers = await db.query.customers.findMany({
+      where: and(eq(customers.userId, user.id), isNull(customers.deletedAt)),
+    })
+    const matchedCustomer = savedCustomers.find(
+      (c) =>
+        order.customerName === c.name ||
+        order.customerName.startsWith(`${c.name} `),
+    )
+
     return {
       order: {
         id: order.id,
         customerName: order.customerName,
+        customerPhone: matchedCustomer?.phone ?? order.customerPhone ?? null,
+        customerRegistered: Boolean(matchedCustomer),
         paymentStatus: order.paymentStatus,
         createdAt: order.createdAt,
       },
