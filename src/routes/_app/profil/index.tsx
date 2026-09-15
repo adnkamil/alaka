@@ -242,7 +242,7 @@ function ProfilPage() {
               label="Customer"
             />
           </div>
-          <div
+          {/* <div
             style={{ borderColor: 'var(--app-border)' }}
             className="border-b"
           >
@@ -256,7 +256,7 @@ function ProfilPage() {
             to="/profil"
             icon={<History size={18} />}
             label="Activity Logs"
-          />
+          /> */}
         </div>
       </section>
 
@@ -393,7 +393,7 @@ function ProfilPage() {
             </span>
             <ChevronRight size={18} style={{ color: 'var(--app-text-mute)' }} />
           </button>
-          <div
+          {/* <div
             className="border-b"
             style={{ borderColor: 'var(--app-border)' }}
           >
@@ -402,7 +402,7 @@ function ProfilPage() {
               icon={<Bell size={18} />}
               label="Notifikasi"
             />
-          </div>
+          </div> */}
           <button
             type="button"
             onClick={handleInstallClick}
