@@ -41,6 +41,23 @@ export const sessions = pgTable('sessions', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
 })
 
+// PASSWORD RESET
+// Yang disimpan cuma hash token (sha256), bukan token mentahnya — sama pola
+// dengan password_hash: kalau DB bocor, token-nya tetap nggak bisa dipakai.
+// Token sekali pakai (used_at) dan punya masa berlaku (expires_at).
+export const passwordResetTokens = pgTable('password_reset_tokens', {
+  id: uuid().primaryKey().defaultRandom(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  tokenHash: varchar('token_hash').notNull().unique(),
+  expiresAt: timestamp('expires_at').notNull(),
+  // Diisi kalau token sudah dipakai buat ganti kata sandi, ATAU dihanguskan
+  // karena user minta link baru (yang berlaku cuma token terbaru).
+  usedAt: timestamp('used_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+})
+
 // FEE RULES (Manajemen Fee)
 export const feeRules = pgTable('fee_rules', {
   id: uuid().primaryKey().defaultRandom(),
@@ -141,6 +158,7 @@ export const activityLogs = pgTable('activity_logs', {
 
 export const usersRelations = relations(users, ({ many }) => ({
   sessions: many(sessions),
+  passwordResetTokens: many(passwordResetTokens),
   feeRules: many(feeRules),
   events: many(events),
   activityLogs: many(activityLogs),
@@ -150,6 +168,16 @@ export const usersRelations = relations(users, ({ many }) => ({
 export const sessionsRelations = relations(sessions, ({ one }) => ({
   user: one(users, { fields: [sessions.userId], references: [users.id] }),
 }))
+
+export const passwordResetTokensRelations = relations(
+  passwordResetTokens,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [passwordResetTokens.userId],
+      references: [users.id],
+    }),
+  }),
+)
 
 export const feeRulesRelations = relations(feeRules, ({ one, many }) => ({
   user: one(users, { fields: [feeRules.userId], references: [users.id] }),

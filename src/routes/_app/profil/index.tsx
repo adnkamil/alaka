@@ -13,6 +13,7 @@ import {
   Download,
   History,
   Info,
+  KeyRound,
   Landmark,
   LogOut,
   MessageSquareText,
@@ -21,10 +22,12 @@ import {
   Tag,
 } from 'lucide-react'
 import BankAccountModal from '../../../components/BankAccountModal'
+import ChangePasswordModal from '../../../components/ChangePasswordModal'
 import EditProfileModal from '../../../components/EditProfileModal'
 import MessageTemplateModal from '../../../components/MessageTemplateModal'
 import Switch from '../../../components/ui/Switch'
 import {
+  changePassword,
   fetchCurrentUser,
   logoutUser,
   updateProfile,
@@ -98,6 +101,7 @@ function ProfilPage() {
   const [showBankModal, setShowBankModal] = useState(false)
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [showTemplateModal, setShowTemplateModal] = useState(false)
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null)
   const [isInstalled, setIsInstalled] = useState(false)
@@ -163,6 +167,14 @@ function ProfilPage() {
     await updateMessageTemplate({ data: { template } })
     await queryClient.invalidateQueries({ queryKey: ['current-user'] })
     setShowTemplateModal(false)
+  }
+
+  async function handleChangePassword(data: {
+    currentPassword: string
+    newPassword: string
+  }) {
+    await changePassword({ data })
+    setShowPasswordModal(false)
   }
 
   async function handleInstallClick() {
@@ -281,6 +293,59 @@ function ProfilPage() {
             </span>
             <ChevronRight size={18} style={{ color: 'var(--app-text-mute)' }} />
           </button>
+        </div>
+      </section>
+
+      <section className="mb-6">
+        <h2
+          className="mb-2 text-xs font-semibold uppercase"
+          style={{ color: 'var(--app-text-mute)' }}
+        >
+          Keamanan
+        </h2>
+        <div
+          className="app-card flex flex-col"
+          style={{ borderColor: 'var(--app-border)' }}
+        >
+          {user?.hasPassword ? (
+            <button
+              type="button"
+              onClick={() => setShowPasswordModal(true)}
+              className="flex w-full items-center gap-3 px-4 py-3 text-left no-underline"
+              style={{ color: 'var(--app-text)' }}
+            >
+              <span style={{ color: 'var(--app-text-soft)' }}>
+                <KeyRound size={18} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block">Ubah Kata Sandi</span>
+                <span
+                  className="block truncate text-xs font-normal"
+                  style={{ color: 'var(--app-text-soft)' }}
+                >
+                  Ganti kata sandi akun kamu
+                </span>
+              </span>
+              <ChevronRight
+                size={18}
+                style={{ color: 'var(--app-text-mute)' }}
+              />
+            </button>
+          ) : (
+            <div className="flex items-center gap-3 px-4 py-3">
+              <KeyRound size={18} style={{ color: 'var(--app-text-soft)' }} />
+              <span className="min-w-0 flex-1">
+                <span className="block">Kata Sandi</span>
+                <span
+                  className="block text-xs"
+                  style={{ color: 'var(--app-text-soft)' }}
+                >
+                  Akun ini masuk lewat Google — kata sandi diatur dari akun
+                  Google kamu
+                </span>
+              </span>
+            </div>
+          )}
         </div>
       </section>
 
@@ -434,6 +499,15 @@ function ProfilPage() {
           initialValue={user?.waMessageTemplate ?? DEFAULT_WA_MESSAGE_TEMPLATE}
           onClose={() => setShowTemplateModal(false)}
           onSubmit={handleSaveTemplate}
+        />
+      )}
+
+      {showPasswordModal && (
+        <ChangePasswordModal
+          title="Ubah Kata Sandi"
+          submitLabel="Simpan"
+          onClose={() => setShowPasswordModal(false)}
+          onSubmit={handleChangePassword}
         />
       )}
     </main>

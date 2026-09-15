@@ -8,6 +8,7 @@ import {
   destroySession,
   getSessionUser,
   hashPassword,
+  revokeAllSessions,
   verifyPassword,
 } from './auth'
 
@@ -98,6 +99,43 @@ export const updateProfile = createServerFn({ method: 'POST' })
       .where(eq(users.id, current.id))
   })
 
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Kata sandi lama wajib diisi'),
+  newPassword: z.string().min(8, 'Password minimal 8 karakter'),
+})
+
+export const changePassword = createServerFn({ method: 'POST' })
+  .validator(changePasswordSchema)
+  .handler(async ({ data }) => {
+    const current = await getSessionUser()
+    if (!current) throw new Error('Belum login')
+
+    // Akun yang daftar lewat Google belum punya kata sandi — jalur gantinya
+    // lewat pengaturan Google, bukan di sini.
+    if (!current.passwordHash) {
+      throw new Error(
+        'Akun ini masuk lewat Google. Kata sandi diatur dari pengaturan akun Google kamu.',
+      )
+    }
+
+    const valid = await verifyPassword(
+      data.currentPassword,
+      current.passwordHash,
+    )
+    if (!valid) throw new Error('Kata sandi lama salah')
+
+    const passwordHash = await hashPassword(data.newPassword)
+    await db
+      .update(users)
+      .set({ passwordHash, updatedAt: new Date() })
+      .where(eq(users.id, current.id))
+
+    // Rotasi session: device lain yang masih login otomatis ter-logout,
+    // sementara device ini dapat sesi baru supaya nggak ikut keluar.
+    await revokeAllSessions(current.id)
+    await createSession(current.id)
+  })
+
 export const fetchCurrentUser = createServerFn({ method: 'GET' }).handler(
   async () => {
     const user = await getSessionUser()
@@ -110,6 +148,9 @@ export const fetchCurrentUser = createServerFn({ method: 'GET' }).handler(
       bankName: user.bankName,
       bankAccountNumber: user.bankAccountNumber,
       waMessageTemplate: user.waMessageTemplate,
+      // Dipakai di halaman Profil: akun Google-only belum punya kata sandi,
+      // jadi menu "Ubah Kata Sandi" ditampilkan sebagai info, bukan aksi.
+      hasPassword: Boolean(user.passwordHash),
     }
   },
 )

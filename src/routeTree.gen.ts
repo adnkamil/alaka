@@ -11,9 +11,11 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as LupaSandiRouteImport } from './routes/lupa-sandi'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppKeuanganRouteImport } from './routes/_app/keuangan'
+import { Route as ResetSandiTokenRouteImport } from './routes/reset-sandi.$token'
 import { Route as AppEventsEventIdRouteImport } from './routes/_app/events.$eventId'
 import { Route as AppEventsNewRouteImport } from './routes/_app/events.new'
 import { Route as AppPesananIndexRouteImport } from './routes/_app/pesanan/index'
@@ -37,6 +39,11 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LupaSandiRoute = LupaSandiRouteImport.update({
+  id: '/lupa-sandi',
+  path: '/lupa-sandi',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
   path: '/register',
@@ -51,6 +58,11 @@ const AppKeuanganRoute = AppKeuanganRouteImport.update({
   id: '/keuangan',
   path: '/keuangan',
   getParentRoute: () => AppRoute,
+} as any)
+const ResetSandiTokenRoute = ResetSandiTokenRouteImport.update({
+  id: '/reset-sandi/$token',
+  path: '/reset-sandi/$token',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AppEventsEventIdRoute = AppEventsEventIdRouteImport.update({
   id: '/events/$eventId',
@@ -123,8 +135,10 @@ const ApiAuthGoogleCallbackRoute = ApiAuthGoogleCallbackRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
+  '/lupa-sandi': typeof LupaSandiRoute
   '/register': typeof RegisterRoute
   '/keuangan': typeof AppKeuanganRoute
+  '/reset-sandi/$token': typeof ResetSandiTokenRoute
   '/events/$eventId': typeof AppEventsEventIdRoute
   '/events/new': typeof AppEventsNewRoute
   '/pesanan/new': typeof AppPesananNewRoute
@@ -141,8 +155,10 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
+  '/lupa-sandi': typeof LupaSandiRoute
   '/register': typeof RegisterRoute
   '/keuangan': typeof AppKeuanganRoute
+  '/reset-sandi/$token': typeof ResetSandiTokenRoute
   '/': typeof AppIndexRoute
   '/events/$eventId': typeof AppEventsEventIdRoute
   '/events/new': typeof AppEventsNewRoute
@@ -162,8 +178,10 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/lupa-sandi': typeof LupaSandiRoute
   '/register': typeof RegisterRoute
   '/_app/keuangan': typeof AppKeuanganRoute
+  '/reset-sandi/$token': typeof ResetSandiTokenRoute
   '/_app/': typeof AppIndexRoute
   '/_app/events/$eventId': typeof AppEventsEventIdRoute
   '/_app/events/new': typeof AppEventsNewRoute
@@ -184,8 +202,10 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/lupa-sandi'
     | '/register'
     | '/keuangan'
+    | '/reset-sandi/$token'
     | '/events/$eventId'
     | '/events/new'
     | '/pesanan/new'
@@ -202,8 +222,10 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
+    | '/lupa-sandi'
     | '/register'
     | '/keuangan'
+    | '/reset-sandi/$token'
     | '/'
     | '/events/$eventId'
     | '/events/new'
@@ -222,8 +244,10 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_app'
     | '/login'
+    | '/lupa-sandi'
     | '/register'
     | '/_app/keuangan'
+    | '/reset-sandi/$token'
     | '/_app/'
     | '/_app/events/$eventId'
     | '/_app/events/new'
@@ -243,7 +267,9 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
+  LupaSandiRoute: typeof LupaSandiRoute
   RegisterRoute: typeof RegisterRoute
+  ResetSandiTokenRoute: typeof ResetSandiTokenRoute
   TagihanEventIdOrderIdRoute: typeof TagihanEventIdOrderIdRoute
   ApiAuthGoogleCallbackRoute: typeof ApiAuthGoogleCallbackRoute
   ApiAuthGoogleIndexRoute: typeof ApiAuthGoogleIndexRoute
@@ -263,6 +289,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lupa-sandi': {
+      id: '/lupa-sandi'
+      path: '/lupa-sandi'
+      fullPath: '/lupa-sandi'
+      preLoaderRoute: typeof LupaSandiRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/register': {
@@ -285,6 +318,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/keuangan'
       preLoaderRoute: typeof AppKeuanganRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/reset-sandi/$token': {
+      id: '/reset-sandi/$token'
+      path: '/reset-sandi/$token'
+      fullPath: '/reset-sandi/$token'
+      preLoaderRoute: typeof ResetSandiTokenRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_app/events/$eventId': {
       id: '/_app/events/$eventId'
@@ -415,7 +455,9 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
+  LupaSandiRoute: LupaSandiRoute,
   RegisterRoute: RegisterRoute,
+  ResetSandiTokenRoute: ResetSandiTokenRoute,
   TagihanEventIdOrderIdRoute: TagihanEventIdOrderIdRoute,
   ApiAuthGoogleCallbackRoute: ApiAuthGoogleCallbackRoute,
   ApiAuthGoogleIndexRoute: ApiAuthGoogleIndexRoute,

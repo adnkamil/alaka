@@ -100,12 +100,13 @@ function LoginPage() {
             />
             Ingat saya
           </label>
-          <span
+          <Link
+            to="/lupa-sandi"
             className="font-semibold"
             style={{ color: 'var(--app-accent)' }}
           >
             Lupa sandi?
-          </span>
+          </Link>
         </div>
 
         {error && (

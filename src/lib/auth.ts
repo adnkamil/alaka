@@ -62,6 +62,13 @@ export async function getSessionUser() {
   return row.user
 }
 
+// Matikan SEMUA sesi milik user. Dipakai setelah reset/ganti kata sandi:
+// device lain yang masih login otomatis ter-logout. Session yang baru
+// (device ini) diterbitkan setelah fungsi ini dipanggil.
+export async function revokeAllSessions(userId: string) {
+  await db.delete(sessions).where(eq(sessions.userId, userId))
+}
+
 export async function destroySession() {
   const token = getCookie(SESSION_COOKIE_NAME)
   if (token) {
