@@ -136,6 +136,48 @@ export const changePassword = createServerFn({ method: 'POST' })
     await createSession(current.id)
   })
 
+const MAX_QRIS_BYTES = 1_500_000 // ~1.5MB, cukup buat gambar QR
+
+const qrisImageSchema = z.object({
+  image: z
+    .string()
+    .refine((v) => /^data:image\/(png|jpe?g|webp);base64,/.test(v), {
+      message: 'Format gambar harus PNG, JPEG, atau WEBP',
+    })
+    .refine(
+      (v) => {
+        const base64 = v.split(',')[1] ?? ''
+        // Perkiraan ukuran biner asli dari panjang string base64-nya.
+        return (base64.length * 3) / 4 <= MAX_QRIS_BYTES
+      },
+      { message: 'Ukuran gambar maksimal 1.5MB' },
+    ),
+})
+
+export const updateQrisImage = createServerFn({ method: 'POST' })
+  .validator(qrisImageSchema)
+  .handler(async ({ data }) => {
+    const current = await getSessionUser()
+    if (!current) throw new Error('Belum login')
+
+    await db
+      .update(users)
+      .set({ qrisImage: data.image, updatedAt: new Date() })
+      .where(eq(users.id, current.id))
+  })
+
+export const removeQrisImage = createServerFn({ method: 'POST' }).handler(
+  async () => {
+    const current = await getSessionUser()
+    if (!current) throw new Error('Belum login')
+
+    await db
+      .update(users)
+      .set({ qrisImage: null, updatedAt: new Date() })
+      .where(eq(users.id, current.id))
+  },
+)
+
 export const fetchCurrentUser = createServerFn({ method: 'GET' }).handler(
   async () => {
     const user = await getSessionUser()
@@ -147,6 +189,7 @@ export const fetchCurrentUser = createServerFn({ method: 'GET' }).handler(
       brandName: user.brandName,
       bankName: user.bankName,
       bankAccountNumber: user.bankAccountNumber,
+      qrisImage: user.qrisImage,
       waMessageTemplate: user.waMessageTemplate,
       // Dipakai di halaman Profil: akun Google-only belum punya kata sandi,
       // jadi menu "Ubah Kata Sandi" ditampilkan sebagai info, bukan aksi.

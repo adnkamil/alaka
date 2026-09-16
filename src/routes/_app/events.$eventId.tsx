@@ -23,6 +23,7 @@ import AddOrderSheet from '../../components/AddOrderSheet'
 import { getEventDetail, updateEvent } from '../../lib/events-functions'
 import { listFeeRules } from '../../lib/fee-rules-functions'
 import { listCustomers } from '../../lib/customers-functions'
+import { lineTotal, summarizeItems, totalUnits } from '../../lib/order-totals'
 import {
   createOrder,
   deleteOrder,
@@ -91,20 +92,18 @@ function EventDetailPage() {
   })
   const { data: customers } = useSuspenseQuery(customersQuery)
 
-  const amountIn = event.orders
-    .filter((o) => o.paymentStatus === 'paid' || o.paymentStatus === 'shipped')
-    .flatMap((o) => o.items)
-    .reduce(
-      (sum, item) => sum + Number(item.originalPrice) + Number(item.fee),
-      0,
-    )
-  const outstanding = event.orders
-    .filter((o) => o.paymentStatus === 'unpaid')
-    .flatMap((o) => o.items)
-    .reduce(
-      (sum, item) => sum + Number(item.originalPrice) + Number(item.fee),
-      0,
-    )
+  const amountIn = summarizeItems(
+    event.orders
+      .filter(
+        (o) => o.paymentStatus === 'paid' || o.paymentStatus === 'shipped',
+      )
+      .flatMap((o) => o.items),
+  ).total
+  const outstanding = summarizeItems(
+    event.orders
+      .filter((o) => o.paymentStatus === 'unpaid')
+      .flatMap((o) => o.items),
+  ).total
 
   const unpaidCount = event.orders.filter((o) => o.paymentStatus === 'unpaid').length
   const paidCount = event.orders.filter((o) => o.paymentStatus === 'paid').length
@@ -128,7 +127,12 @@ function EventDetailPage() {
   async function handleCreateOrder(value: {
     customerName: string
     paymentStatus: 'unpaid' | 'paid' | 'shipped'
-    items: Array<{ name: string; originalPrice: number; fee: number }>
+    items: Array<{
+      name: string
+      originalPrice: number
+      fee: number
+      qty: number
+    }>
   }) {
     await createOrder({ data: { eventId, ...value } })
     await queryClient.invalidateQueries({ queryKey: ['event', eventId] })
@@ -142,7 +146,12 @@ function EventDetailPage() {
     value: {
       customerName: string
       paymentStatus: 'unpaid' | 'paid' | 'shipped'
-      items: Array<{ name: string; originalPrice: number; fee: number }>
+      items: Array<{
+        name: string
+        originalPrice: number
+        fee: number
+        qty: number
+      }>
     },
   ) {
     await updateOrder({ data: { orderId, ...value } })
@@ -387,10 +396,8 @@ function EventDetailPage() {
           </p>
         )}
         {filteredOrders.map((order) => {
-          const orderTotal = order.items.reduce(
-            (sum, item) => sum + Number(item.originalPrice) + Number(item.fee),
-            0,
-          )
+          const orderTotal = summarizeItems(order.items).total
+          const orderQty = totalUnits(order.items)
           return (
             <details key={order.id} className="app-card p-4">
               <summary className="flex cursor-pointer items-center gap-3">
@@ -403,7 +410,7 @@ function EventDetailPage() {
                     className="text-xs"
                     style={{ color: 'var(--app-text-soft)' }}
                   >
-                    {order.items.length} item · {formatIDR(orderTotal)}
+                    {orderQty} item · {formatIDR(orderTotal)}
                   </p>
                 </span>
                 <div
@@ -448,11 +455,20 @@ function EventDetailPage() {
                 style={{ borderColor: 'var(--app-border)' }}
               >
                 {order.items.map((item) => (
-                  <div key={item.id} className="flex justify-between text-sm">
-                    <span>{item.name}</span>
-                    <span>
-                      {formatIDR(Number(item.originalPrice) + Number(item.fee))}
+                  <div
+                    key={item.id}
+                    className="flex justify-between gap-3 text-sm"
+                  >
+                    <span className="min-w-0 truncate">
+                      {item.name}
+                      {item.qty > 1 && (
+                        <span style={{ color: 'var(--app-text-mute)' }}>
+                          {' '}
+                          × {item.qty}
+                        </span>
+                      )}
                     </span>
+                    <span>{formatIDR(lineTotal(item))}</span>
                   </div>
                 ))}
                 <div
@@ -571,6 +587,7 @@ function EventDetailPage() {
               name: item.name,
               originalPrice: Number(item.originalPrice),
               fee: Number(item.fee),
+              qty: item.qty,
             })),
           }}
           onClose={() => setSheetMode(null)}

@@ -60,9 +60,10 @@ Astra Otoshop).
 
 - Context: event terkait (chip, non-editable).
 - Nama pelanggan (teks bebas, bukan akun).
-- Barang titipan — repeatable block: nama barang, harga asli, fee jastip.
+- Barang titipan — repeatable block: nama barang, harga asli, jumlah (qty), fee jastip.
   - **Fee auto-terisi** berdasarkan Aturan Fee event ini + harga barang yang diinput (lihat 4.6). Bila harga di luar semua tier, field fee dikosongkan untuk diisi manual.
-- Ringkasan otomatis: total harga jual, total fee, total tagihan.
+  - **Fee berlaku per unit**: total satu barang = `(harga asli + fee) × qty`. Contoh: barang 30.000 + fee 4.000, qty 2 → (30.000 + 4.000) × 2 = 68.000.
+- Ringkasan otomatis: total harga jual (`SUM(harga asli × qty)`), total fee (`SUM(fee × qty)`), total tagihan.
 - Status pembayaran (Lunas/Belum Lunas).
 - Simpan pesanan.
 
@@ -193,7 +194,8 @@ items
   order_id          uuid → orders.id
   name              varchar
   original_price    decimal
-  fee               decimal
+  fee               decimal  -- fee berlaku PER UNIT (per qty)
+  qty               integer default 1
   created_at        timestamp
 
 -- ACTIVITY LOGS
@@ -230,14 +232,15 @@ activity_logs
 
 ### Logika dashboard keuangan
 
-- **Uang masuk** = `SUM(original_price + fee)` dari items yang order-nya
+- **Uang masuk** = `SUM((original_price + fee) × qty)` dari items yang order-nya
   `payment_status IN ('paid', 'shipped')`.
 - **Outstanding** = sama seperti di atas tapi `payment_status = 'unpaid'`.
 - Status `shipped` ("Dikirim") diperlakukan setara `paid` untuk perhitungan
   keuangan — dipakai untuk menandai pesanan yang sudah dibayar dan barangnya
   sudah dikirim ke pelanggan.
-- **Untung bersih** = `SUM(fee)` dari seluruh items (fee jastip = keuntungan
-  jastiper).
+- **Modal keluar** = `SUM(original_price × qty)` dari items yang sudah dibayar.
+- **Untung bersih** = `SUM(fee × qty)` dari seluruh items (fee jastip =
+  keuntungan jastiper).
 
 ## 7. Di Luar Cakupan MVP (Next Phase)
 

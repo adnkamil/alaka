@@ -21,8 +21,8 @@ export const listEvents = createServerFn({ method: 'GET' }).handler(
         name: events.name,
         eventDate: events.eventDate,
         orderCount: sql<number>`count(distinct ${orders.id})`.mapWith(Number),
-        amountIn: sql<string>`coalesce(sum(case when ${orders.paymentStatus} in ('paid', 'shipped') then ${items.originalPrice} + ${items.fee} else 0 end), 0)`,
-        outstanding: sql<string>`coalesce(sum(case when ${orders.paymentStatus} = 'unpaid' then ${items.originalPrice} + ${items.fee} else 0 end), 0)`,
+        amountIn: sql<string>`coalesce(sum(case when ${orders.paymentStatus} in ('paid', 'shipped') then (${items.originalPrice} + ${items.fee}) * ${items.qty} else 0 end), 0)`,
+        outstanding: sql<string>`coalesce(sum(case when ${orders.paymentStatus} = 'unpaid' then (${items.originalPrice} + ${items.fee}) * ${items.qty} else 0 end), 0)`,
       })
       .from(events)
       .leftJoin(orders, eq(orders.eventId, events.id))

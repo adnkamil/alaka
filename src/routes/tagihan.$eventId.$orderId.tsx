@@ -1,7 +1,8 @@
 import { queryOptions, useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
-import { Landmark, Printer } from 'lucide-react'
+import { Download, Landmark, Printer } from 'lucide-react'
 import { getPublicOrderInvoice } from '../lib/orders-functions'
+import { lineTotal, summarizeItems } from '../lib/order-totals'
 
 export const Route = createFileRoute('/tagihan/$eventId/$orderId')({
   loader: ({ context, params }) => {
@@ -41,12 +42,7 @@ function PublicInvoicePage() {
   })
   const { data } = useSuspenseQuery(query)
 
-  const subtotal = data.items.reduce(
-    (sum, item) => sum + Number(item.originalPrice),
-    0,
-  )
-  const totalFee = data.items.reduce((sum, item) => sum + Number(item.fee), 0)
-  const total = subtotal + totalFee
+  const { subtotal, totalFee, total } = summarizeItems(data.items)
 
   const invoiceNo = data.order.id.slice(0, 8).toUpperCase()
   const invoiceDate = new Date(data.order.createdAt).toLocaleDateString(
@@ -148,13 +144,20 @@ function PublicInvoicePage() {
                   className="text-xs"
                   style={{ color: 'var(--app-text-mute)' }}
                 >
-                  Harga {formatIDR(item.originalPrice)} + Fee{' '}
-                  {formatIDR(item.fee)}
+                  {item.qty > 1 ? (
+                    <>
+                      {item.qty} × ({formatIDR(item.originalPrice)} + Fee{' '}
+                      {formatIDR(item.fee)})
+                    </>
+                  ) : (
+                    <>
+                      Harga {formatIDR(item.originalPrice)} + Fee{' '}
+                      {formatIDR(item.fee)}
+                    </>
+                  )}
                 </p>
               </div>
-              <p className="font-medium">
-                {formatIDR(Number(item.originalPrice) + Number(item.fee))}
-              </p>
+              <p className="font-medium">{formatIDR(lineTotal(item))}</p>
             </div>
           ))}
         </div>
@@ -187,46 +190,84 @@ function PublicInvoicePage() {
       </div>
 
       {/* ====== PEMBAYARAN ====== */}
-      <div className="app-card mb-4 p-5">
-        <p className="mb-1 text-sm font-bold">Pembayaran</p>
-        {bankText ? (
-          <>
-            <p
-              className="mb-3 text-xs"
-              style={{ color: 'var(--app-text-soft)' }}
-            >
-              Silakan transfer ke rekening berikut, lalu konfirmasi
-              pembayaran ke penjual.
-            </p>
-            <div
-              className="flex items-center gap-3 rounded-xl p-4"
-              style={{ background: 'var(--app-accent-soft)' }}
-            >
-              <span
-                className="app-icon-tile h-10 w-10 flex-shrink-0"
-                style={{ borderRadius: 999 }}
+      {!completed && (
+        <div className="app-card mb-4 p-5">
+          <p className="mb-1 text-sm font-bold">Pembayaran</p>
+          {bankText ? (
+            <>
+              <p
+                className="mb-3 text-xs"
+                style={{ color: 'var(--app-text-soft)' }}
               >
-                <Landmark size={18} />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p
-                  className="text-xs font-semibold"
-                  style={{ color: 'var(--app-accent)' }}
+                Silakan transfer ke rekening berikut, lalu konfirmasi
+                pembayaran ke penjual.
+              </p>
+              <div
+                className="flex items-center gap-3 rounded-xl p-4"
+                style={{ background: 'var(--app-accent-soft)' }}
+              >
+                <span
+                  className="app-icon-tile h-10 w-10 flex-shrink-0"
+                  style={{ borderRadius: 999 }}
                 >
-                  {data.user.bankName}
-                </p>
-                <p className="truncate text-base font-bold tracking-wide">
-                  {data.user.bankAccountNumber}
-                </p>
+                  <Landmark size={18} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p
+                    className="text-xs font-semibold"
+                    style={{ color: 'var(--app-accent)' }}
+                  >
+                    {data.user.bankName}
+                  </p>
+                  <p className="truncate text-base font-bold tracking-wide">
+                    {data.user.bankAccountNumber}
+                  </p>
+                </div>
               </div>
+            </>
+          ) : (
+            <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
+              Silakan hubungi penjual untuk info rekening pembayaran.
+            </p>
+          )}
+
+          {data.user.qrisImage && (
+            <div
+              className={bankText ? 'mt-4 border-t pt-4' : ''}
+              style={{ borderColor: 'var(--app-border)' }}
+            >
+              <p
+                className="mb-3 text-xs"
+                style={{ color: 'var(--app-text-soft)' }}
+              >
+                {bankText ? 'Atau bayar dengan scan QRIS:' : 'Bayar dengan scan QRIS:'}
+              </p>
+              <div className="flex justify-center">
+                <img
+                  src={data.user.qrisImage}
+                  alt="QRIS"
+                  className="h-56 w-56 rounded-xl border object-contain p-2"
+                  style={{ borderColor: 'var(--app-border)' }}
+                />
+              </div>
+              <a
+                href={data.user.qrisImage}
+                download={`qris-${data.user.brandName || data.user.name || 'jastip'}.${
+                  data.user.qrisImage.match(/^data:image\/(\w+);/)?.[1] ?? 'png'
+                }`}
+                className="mt-3 flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold"
+                style={{
+                  borderColor: 'var(--app-border)',
+                  color: 'var(--app-text-soft)',
+                }}
+              >
+                <Download size={14} />
+                Simpan QRIS
+              </a>
             </div>
-          </>
-        ) : (
-          <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
-            Silakan hubungi penjual untuk info rekening pembayaran.
-          </p>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       {/* ====== STATUS ====== */}
       <div className="app-card flex items-center justify-between p-5">

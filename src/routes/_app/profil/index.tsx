@@ -18,6 +18,7 @@ import {
   LogOut,
   MessageSquareText,
   Moon,
+  QrCode,
   SlidersHorizontal,
   Tag,
 } from 'lucide-react'
@@ -25,12 +26,15 @@ import BankAccountModal from '../../../components/BankAccountModal'
 import ChangePasswordModal from '../../../components/ChangePasswordModal'
 import EditProfileModal from '../../../components/EditProfileModal'
 import MessageTemplateModal from '../../../components/MessageTemplateModal'
+import QrisUploadModal from '../../../components/QrisUploadModal'
 import Switch from '../../../components/ui/Switch'
 import {
   changePassword,
   fetchCurrentUser,
   logoutUser,
+  removeQrisImage,
   updateProfile,
+  updateQrisImage,
 } from '../../../lib/auth-functions'
 import { updateMessageTemplate } from '../../../lib/message-template-functions'
 import { DEFAULT_WA_MESSAGE_TEMPLATE } from '../../../lib/message-template'
@@ -99,6 +103,7 @@ function ProfilPage() {
   const queryClient = useQueryClient()
   const [isDark, toggleDark] = useDarkModePreference()
   const [showBankModal, setShowBankModal] = useState(false)
+  const [showQrisModal, setShowQrisModal] = useState(false)
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [showTemplateModal, setShowTemplateModal] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
@@ -161,6 +166,18 @@ function ProfilPage() {
     })
     await queryClient.invalidateQueries({ queryKey: ['current-user'] })
     setShowBankModal(false)
+  }
+
+  async function handleSaveQris(image: string) {
+    await updateQrisImage({ data: { image } })
+    await queryClient.invalidateQueries({ queryKey: ['current-user'] })
+    setShowQrisModal(false)
+  }
+
+  async function handleRemoveQris() {
+    await removeQrisImage()
+    await queryClient.invalidateQueries({ queryKey: ['current-user'] })
+    setShowQrisModal(false)
   }
 
   async function handleSaveTemplate(template: string) {
@@ -242,7 +259,7 @@ function ProfilPage() {
               label="Customer"
             />
           </div>
-          {/* <div
+          <div
             style={{ borderColor: 'var(--app-border)' }}
             className="border-b"
           >
@@ -256,7 +273,7 @@ function ProfilPage() {
             to="/profil"
             icon={<History size={18} />}
             label="Activity Logs"
-          /> */}
+          />
         </div>
       </section>
 
@@ -293,6 +310,37 @@ function ProfilPage() {
             </span>
             <ChevronRight size={18} style={{ color: 'var(--app-text-mute)' }} />
           </button>
+
+          <div
+            className="border-t"
+            style={{ borderColor: 'var(--app-border)' }}
+          >
+            <button
+              type="button"
+              onClick={() => setShowQrisModal(true)}
+              className="flex w-full items-center gap-3 px-4 py-3 text-left no-underline"
+              style={{ color: 'var(--app-text)' }}
+            >
+              <span style={{ color: 'var(--app-text-soft)' }}>
+                <QrCode size={18} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block">QRIS</span>
+                <span
+                  className="block truncate text-xs font-normal"
+                  style={{ color: 'var(--app-text-soft)' }}
+                >
+                  {user?.qrisImage
+                    ? 'Sudah diupload — tampil di invoice tagih'
+                    : 'Belum diupload'}
+                </span>
+              </span>
+              <ChevronRight
+                size={18}
+                style={{ color: 'var(--app-text-mute)' }}
+              />
+            </button>
+          </div>
         </div>
       </section>
 
@@ -393,7 +441,7 @@ function ProfilPage() {
             </span>
             <ChevronRight size={18} style={{ color: 'var(--app-text-mute)' }} />
           </button>
-          {/* <div
+          <div
             className="border-b"
             style={{ borderColor: 'var(--app-border)' }}
           >
@@ -402,7 +450,7 @@ function ProfilPage() {
               icon={<Bell size={18} />}
               label="Notifikasi"
             />
-          </div> */}
+          </div>
           <button
             type="button"
             onClick={handleInstallClick}
@@ -476,6 +524,15 @@ function ProfilPage() {
           }}
           onClose={() => setShowBankModal(false)}
           onSubmit={handleSaveBank}
+        />
+      )}
+
+      {showQrisModal && (
+        <QrisUploadModal
+          initialImage={user?.qrisImage}
+          onClose={() => setShowQrisModal(false)}
+          onSubmit={handleSaveQris}
+          onRemove={handleRemoveQris}
         />
       )}
 

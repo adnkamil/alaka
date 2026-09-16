@@ -3,6 +3,7 @@ import { Trash2, User, X } from 'lucide-react'
 import NumberInput from './ui/NumberInput'
 import { findFeeForPrice } from '../lib/fee-tier-validation'
 import { formatPhoneNumber } from '../lib/format'
+import { lineTotal, summarizeItems } from '../lib/order-totals'
 
 interface FeeTier {
   minPrice: string
@@ -14,6 +15,7 @@ interface ItemDraft {
   name: string
   originalPrice: number
   fee: number
+  qty: number
 }
 
 interface CustomerOption {
@@ -39,11 +41,16 @@ interface AddOrderSheetProps {
   onSubmit: (value: {
     customerName: string
     paymentStatus: 'unpaid' | 'paid' | 'shipped'
-    items: Array<{ name: string; originalPrice: number; fee: number }>
+    items: Array<{
+      name: string
+      originalPrice: number
+      fee: number
+      qty: number
+    }>
   }) => Promise<void>
 }
 
-const emptyItem: ItemDraft = { name: '', originalPrice: 0, fee: 0 }
+const emptyItem: ItemDraft = { name: '', originalPrice: 0, fee: 0, qty: 1 }
 
 export default function AddOrderSheet({
   eventName,
@@ -97,8 +104,11 @@ export default function AddOrderSheet({
     setItems((prev) => prev.filter((_, i) => i !== index))
   }
 
-  const totalPrice = items.reduce((sum, item) => sum + item.originalPrice, 0)
-  const totalFee = items.reduce((sum, item) => sum + item.fee, 0)
+  const {
+    subtotal: totalPrice,
+    totalFee,
+    total: totalTagihan,
+  } = summarizeItems(items)
 
   const filteredCustomers = customerName.trim()
     ? customers
@@ -130,6 +140,7 @@ export default function AddOrderSheet({
           name: item.name,
           originalPrice: item.originalPrice,
           fee: item.fee,
+          qty: item.qty,
         })),
       })
     } catch (err) {
@@ -263,6 +274,60 @@ export default function AddOrderSheet({
                         />
                       </label>
                     </div>
+                    <div className="mt-2 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs">Jumlah</span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            updateItem(index, {
+                              qty: Math.max(1, item.qty - 1),
+                            })
+                          }
+                          className="flex h-8 w-8 items-center justify-center rounded-lg border text-base font-bold transition-colors"
+                          style={{
+                            borderColor: 'var(--app-border)',
+                            color: 'var(--app-text-soft)',
+                          }}
+                          aria-label="Kurangi jumlah"
+                        >
+                          −
+                        </button>
+                        <input
+                          inputMode="numeric"
+                          value={item.qty}
+                          onChange={(e) => {
+                            const digits = e.target.value.replace(/\D/g, '')
+                            updateItem(index, {
+                              qty:
+                                digits === '' ? 1 : Math.max(1, Number(digits)),
+                            })
+                          }}
+                          className="app-input w-14 px-2 py-1 text-center"
+                          aria-label="Jumlah barang"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            updateItem(index, { qty: item.qty + 1 })
+                          }
+                          className="flex h-8 w-8 items-center justify-center rounded-lg border text-base font-bold transition-colors"
+                          style={{
+                            borderColor: 'var(--app-border)',
+                            color: 'var(--app-text-soft)',
+                          }}
+                          aria-label="Tambah jumlah"
+                        >
+                          +
+                        </button>
+                      </div>
+                      <span
+                        className="text-xs font-semibold"
+                        style={{ color: 'var(--app-text-soft)' }}
+                      >
+                        = {lineTotal(item).toLocaleString('id-ID')}
+                      </span>
+                    </div>
                     {items.length > 1 && (
                       <button
                         type="button"
@@ -290,8 +355,13 @@ export default function AddOrderSheet({
                 <p>Total harga jual: {totalPrice.toLocaleString('id-ID')}</p>
                 <p>Total fee: {totalFee.toLocaleString('id-ID')}</p>
                 <p className="font-semibold">
-                  Total tagihan:{' '}
-                  {(totalPrice + totalFee).toLocaleString('id-ID')}
+                  Total tagihan: {totalTagihan.toLocaleString('id-ID')}
+                </p>
+                <p
+                  className="mt-1 text-xs"
+                  style={{ color: 'var(--app-text-mute)' }}
+                >
+                  Fee berlaku per barang, jadi jumlah ikut dikalikan.
                 </p>
               </div>
 

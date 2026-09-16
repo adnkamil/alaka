@@ -22,7 +22,9 @@ async function assertEventOwnership(eventId: string, userId: string) {
 const itemInputSchema = z.object({
   name: z.string().min(1, 'Nama barang wajib diisi'),
   originalPrice: z.number().nonnegative(),
+  // Fee berlaku per unit, jadi total baris = (originalPrice + fee) * qty.
   fee: z.number().nonnegative(),
+  qty: z.number().int().min(1, 'Jumlah minimal 1').default(1),
 })
 
 const createOrderSchema = z.object({
@@ -53,6 +55,7 @@ export const createOrder = createServerFn({ method: 'POST' })
         name: item.name,
         originalPrice: item.originalPrice.toString(),
         fee: item.fee.toString(),
+        qty: item.qty,
       })),
     )
 
@@ -120,6 +123,7 @@ export const updateOrder = createServerFn({ method: 'POST' })
         name: item.name,
         originalPrice: item.originalPrice.toString(),
         fee: item.fee.toString(),
+        qty: item.qty,
       })),
     )
   })
@@ -192,12 +196,14 @@ export const getPublicOrderInvoice = createServerFn({ method: 'GET' })
         name: item.name,
         originalPrice: item.originalPrice,
         fee: item.fee,
+        qty: item.qty,
       })),
       user: {
         name: owner.name,
         brandName: owner.brandName,
         bankName: owner.bankName,
         bankAccountNumber: owner.bankAccountNumber,
+        qrisImage: owner.qrisImage,
       },
     }
   })
@@ -249,12 +255,14 @@ export const getOrderInvoice = createServerFn({ method: 'GET' })
         name: item.name,
         originalPrice: item.originalPrice,
         fee: item.fee,
+        qty: item.qty,
       })),
       user: {
         name: user.name,
         brandName: user.brandName,
         bankName: user.bankName,
         bankAccountNumber: user.bankAccountNumber,
+        qrisImage: user.qrisImage,
         waMessageTemplate: user.waMessageTemplate,
       },
     }

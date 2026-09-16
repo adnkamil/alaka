@@ -26,6 +26,7 @@ import {
   DEFAULT_WA_MESSAGE_TEMPLATE,
   renderMessageTemplate,
 } from '../../lib/message-template'
+import { lineTotal, summarizeItems } from '../../lib/order-totals'
 import CustomerFormModal from '../../components/CustomerFormModal'
 
 export const Route = createFileRoute('/_app/invoice/$eventId/$orderId')({
@@ -85,12 +86,7 @@ function InvoicePage() {
     '',
   )
 
-  const subtotal = data.items.reduce(
-    (sum, item) => sum + Number(item.originalPrice),
-    0,
-  )
-  const totalFee = data.items.reduce((sum, item) => sum + Number(item.fee), 0)
-  const total = subtotal + totalFee
+  const { subtotal, totalFee, total } = summarizeItems(data.items)
 
   const invoiceNo = data.order.id.slice(0, 8).toUpperCase()
   const invoiceDate = new Date(data.order.createdAt).toLocaleDateString(
@@ -249,13 +245,20 @@ function InvoicePage() {
               <div className="min-w-0 flex-1">
                 <p className="truncate">{item.name}</p>
                 <p className="text-xs" style={{ color: 'var(--app-text-mute)' }}>
-                  Harga {formatIDR(item.originalPrice)} + Fee{' '}
-                  {formatIDR(item.fee)}
+                  {item.qty > 1 ? (
+                    <>
+                      {item.qty} × ({formatIDR(item.originalPrice)} + Fee{' '}
+                      {formatIDR(item.fee)})
+                    </>
+                  ) : (
+                    <>
+                      Harga {formatIDR(item.originalPrice)} + Fee{' '}
+                      {formatIDR(item.fee)}
+                    </>
+                  )}
                 </p>
               </div>
-              <p className="font-medium">
-                {formatIDR(Number(item.originalPrice) + Number(item.fee))}
-              </p>
+              <p className="font-medium">{formatIDR(lineTotal(item))}</p>
             </div>
           ))}
         </div>
@@ -288,52 +291,76 @@ function InvoicePage() {
         </div>
       </div>
 {/* ====== PEMBAYARAN ====== */}
-      <div className="app-card mb-4 p-5">
-        <p className="mb-1 text-sm font-bold">Pembayaran</p>
-        {bankText ? (
-          <>
-            <p className="mb-3 text-xs" style={{ color: 'var(--app-text-soft)' }}>
-              Silakan transfer ke rekening berikut, lalu konfirmasi pembayaran.
-            </p>
-            <div
-              className="flex items-center gap-3 rounded-xl p-4"
-              style={{ background: 'var(--app-accent-soft)' }}
-            >
-              <span
-                className="app-icon-tile h-10 w-10 flex-shrink-0"
-                style={{ borderRadius: 999 }}
+      {!completed && (
+        <div className="app-card mb-4 p-5">
+          <p className="mb-1 text-sm font-bold">Pembayaran</p>
+          {bankText ? (
+            <>
+              <p className="mb-3 text-xs" style={{ color: 'var(--app-text-soft)' }}>
+                Silakan transfer ke rekening berikut, lalu konfirmasi pembayaran.
+              </p>
+              <div
+                className="flex items-center gap-3 rounded-xl p-4"
+                style={{ background: 'var(--app-accent-soft)' }}
               >
-                <Landmark size={18} />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p
-                  className="text-xs font-semibold"
-                  style={{ color: 'var(--app-accent)' }}
+                <span
+                  className="app-icon-tile h-10 w-10 flex-shrink-0"
+                  style={{ borderRadius: 999 }}
                 >
-                  {data.user.bankName}
-                </p>
-                <p className="truncate text-base font-bold tracking-wide">
-                  {data.user.bankAccountNumber}
-                </p>
+                  <Landmark size={18} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p
+                    className="text-xs font-semibold"
+                    style={{ color: 'var(--app-accent)' }}
+                  >
+                    {data.user.bankName}
+                  </p>
+                  <p className="truncate text-base font-bold tracking-wide">
+                    {data.user.bankAccountNumber}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => copyText(bankText)}
+                  className="flex flex-shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold text-white"
+                  style={{ background: 'var(--app-accent)' }}
+                >
+                  {copied ? <Check size={14} /> : <Copy size={14} />}
+                  {copied ? 'Tersalin!' : 'Salin'}
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => copyText(bankText)}
-                className="flex flex-shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold text-white"
-                style={{ background: 'var(--app-accent)' }}
+            </>
+          ) : (
+            <p className="text-xs" style={{ color: 'var(--app-danger)' }}>
+              No. rekening belum diatur. Tambahkan lewat menu Profil → Pembayaran
+              agar pelanggan bisa transfer.
+            </p>
+          )}
+
+          {data.user.qrisImage && (
+            <div
+              className={bankText ? 'mt-4 border-t pt-4' : ''}
+              style={{ borderColor: 'var(--app-border)' }}
+            >
+              <p
+                className="mb-3 text-xs"
+                style={{ color: 'var(--app-text-soft)' }}
               >
-                {copied ? <Check size={14} /> : <Copy size={14} />}
-                {copied ? 'Tersalin!' : 'Salin'}
-              </button>
+                {bankText ? 'Atau bayar dengan scan QRIS:' : 'Bayar dengan scan QRIS:'}
+              </p>
+              <div className="flex justify-center">
+                <img
+                  src={data.user.qrisImage}
+                  alt="QRIS"
+                  className="h-56 w-56 rounded-xl border object-contain p-2"
+                  style={{ borderColor: 'var(--app-border)' }}
+                />
+              </div>
             </div>
-          </>
-        ) : (
-          <p className="text-xs" style={{ color: 'var(--app-danger)' }}>
-            No. rekening belum diatur. Tambahkan lewat menu Profil → Pembayaran
-            agar pelanggan bisa transfer.
-          </p>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       {/* ====== STATUS ====== */}
       <div className="app-card mb-4 flex items-center justify-between p-5">

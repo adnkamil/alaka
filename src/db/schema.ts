@@ -1,6 +1,7 @@
 import { relations } from 'drizzle-orm'
 import {
   decimal,
+  integer,
   jsonb,
   pgEnum,
   pgTable,
@@ -23,6 +24,7 @@ export const users = pgTable('users', {
   brandName: varchar('brand_name'),
   bankName: varchar('bank_name'),
   bankAccountNumber: varchar('bank_account_number'),
+  qrisImage: text('qris_image'), // data URL base64 (image/png|jpeg|webp)
   waMessageTemplate: text('wa_message_template'),
   email: varchar().notNull().unique(),
   passwordHash: varchar('password_hash'),
@@ -126,7 +128,8 @@ export const orders = pgTable('orders', {
 })
 
 // Fee is stored per-item (not recalculated) so past transactions stay
-// unchanged if fee_tiers are edited/removed later.
+// unchanged if fee_tiers are edited/removed later. `fee` berlaku PER UNIT:
+// total baris = (original_price + fee) * qty.
 export const items = pgTable('items', {
   id: uuid().primaryKey().defaultRandom(),
   orderId: uuid('order_id')
@@ -138,6 +141,7 @@ export const items = pgTable('items', {
     scale: 2,
   }).notNull(),
   fee: decimal({ precision: 12, scale: 2 }).notNull(),
+  qty: integer().notNull().default(1),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 })
 
