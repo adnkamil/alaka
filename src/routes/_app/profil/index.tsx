@@ -39,6 +39,12 @@ import {
 import { updateMessageTemplate } from '../../../lib/message-template-functions'
 import { DEFAULT_WA_MESSAGE_TEMPLATE } from '../../../lib/message-template'
 
+// Fitur "Master Control" & "Activity Logs" di section Kelola disembunyikan dulu
+// (belum fungsional). Ubah `advancedMenu` jadi `true` untuk memunculkannya lagi.
+const FEATURES = {
+  advancedMenu: false,
+}
+
 const currentUserQuery = queryOptions({
   queryKey: ['current-user'],
   queryFn: () => fetchCurrentUser(),
@@ -251,7 +257,7 @@ function ProfilPage() {
           </div>
           <div
             style={{ borderColor: 'var(--app-border)' }}
-            className="border-b"
+            className={FEATURES.advancedMenu ? 'border-b' : ''}
           >
             <RowLink
               to="/profil/customers"
@@ -259,21 +265,25 @@ function ProfilPage() {
               label="Customer"
             />
           </div>
-          <div
-            style={{ borderColor: 'var(--app-border)' }}
-            className="border-b"
-          >
-            <RowLink
-              to="/profil"
-              icon={<SlidersHorizontal size={18} />}
-              label="Master Control"
-            />
-          </div>
-          <RowLink
-            to="/profil"
-            icon={<History size={18} />}
-            label="Activity Logs"
-          />
+          {FEATURES.advancedMenu && (
+            <>
+              <div
+                style={{ borderColor: 'var(--app-border)' }}
+                className="border-b"
+              >
+                <RowLink
+                  to="/profil"
+                  icon={<SlidersHorizontal size={18} />}
+                  label="Master Control"
+                />
+              </div>
+              <RowLink
+                to="/profil"
+                icon={<History size={18} />}
+                label="Activity Logs"
+              />
+            </>
+          )}
         </div>
       </section>
 

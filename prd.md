@@ -111,7 +111,8 @@ Jastip di form Tambah Pesanan bisa otomatis terisi.
 ### 4.8 Profil
 
 - Header: avatar, nama, nama brand.
-- Section **Kelola**: Manajemen Fee, Master Control, Activity Logs.
+- Section **Kelola**: Manajemen Fee, Customer. (Master Control & Activity Logs
+  disembunyikan sementara lewat flag `FEATURES.advancedMenu` di halaman Profil.)
 - Section **Preferensi**: Mode Gelap, Notifikasi, "Tambahkan ke layar utama" (PWA install prompt).
 - Section **Lainnya**: Bantuan, Tentang aplikasi (versi).
 - Tombol Keluar (logout).
