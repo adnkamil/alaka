@@ -125,7 +125,7 @@ function KeuanganPage() {
       <p className="mb-3 text-sm" style={{ color: 'var(--app-text-soft)' }}>
         Hanya pesanan lunas
       </p>
-      <div className="app-card mb-6 flex h-40 items-end gap-2 p-4">
+      <div className="app-card mb-6 flex h-40 gap-2 p-4">
         {data.monthly.length === 0 && (
           <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
             Belum ada data.
@@ -134,7 +134,7 @@ function KeuanganPage() {
         {data.monthly.map((row) => (
           <div
             key={row.month}
-            className="flex flex-1 flex-col items-center gap-1"
+            className="flex h-full flex-1 flex-col items-center justify-end gap-1"
           >
             <div
               className="w-full rounded-t-md"
@@ -162,6 +162,16 @@ function KeuanganPage() {
           >
             <div>
               <p className="mb-1 font-semibold">{row.eventName}</p>
+              <p
+                className="mb-0.5 text-xs"
+                style={{ color: 'var(--app-text-mute)' }}
+              >
+                {new Date(row.eventDate).toLocaleDateString('id-ID', {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric',
+                })}
+              </p>
               <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
                 Masuk {formatIDR(row.amountIn)} · Keluar{' '}
                 {formatIDR(row.amountOut)}
