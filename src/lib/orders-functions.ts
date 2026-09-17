@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, eq, isNull } from 'drizzle-orm'
+import { and, eq, inArray, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '../db'
 import { customers, events, items, orders } from '../db/schema'
@@ -25,6 +25,10 @@ const itemInputSchema = z.object({
   // Fee berlaku per unit, jadi total baris = (originalPrice + fee) * qty.
   fee: z.number().nonnegative(),
   qty: z.number().int().min(1, 'Jumlah minimal 1').default(1),
+  // Checklist belanja: dibawa terus dari form edit supaya status "sudah didapat"
+  // tidak ke-reset waktu pesanan di-edit (updateOrder menghapus lalu insert ulang
+  // semua baris item).
+  obtained: z.boolean().default(false),
 })
 
 const createOrderSchema = z.object({
@@ -56,6 +60,7 @@ export const createOrder = createServerFn({ method: 'POST' })
         originalPrice: item.originalPrice.toString(),
         fee: item.fee.toString(),
         qty: item.qty,
+        obtained: item.obtained,
       })),
     )
 
@@ -124,8 +129,42 @@ export const updateOrder = createServerFn({ method: 'POST' })
         originalPrice: item.originalPrice.toString(),
         fee: item.fee.toString(),
         qty: item.qty,
+        obtained: item.obtained,
       })),
     )
+  })
+
+/**
+ * Tandai sekumpulan barang sebagai "sudah didapat" / "belum didapat".
+ * Dipakai checklist belanja waktu live shopping: bisa satu baris barang,
+ * atau sekaligus semua baris dengan nama barang yang sama (dari tab Per Item).
+ */
+export const updateItemsObtained = createServerFn({ method: 'POST' })
+  .validator(
+    z.object({
+      itemIds: z.array(z.uuid()).min(1, 'Minimal satu barang'),
+      obtained: z.boolean(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const user = await requireUser()
+
+    // Pastikan semua item memang milik user ini (items -> orders -> events).
+    const owned = await db
+      .select({ id: items.id })
+      .from(items)
+      .innerJoin(orders, eq(items.orderId, orders.id))
+      .innerJoin(events, eq(orders.eventId, events.id))
+      .where(and(inArray(items.id, data.itemIds), eq(events.userId, user.id)))
+
+    if (owned.length !== data.itemIds.length) {
+      throw new Error('Barang tidak ditemukan')
+    }
+
+    await db
+      .update(items)
+      .set({ obtained: data.obtained })
+      .where(inArray(items.id, data.itemIds))
   })
 
 export const deleteOrder = createServerFn({ method: 'POST' })

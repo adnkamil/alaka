@@ -1,5 +1,6 @@
 import { relations } from 'drizzle-orm'
 import {
+  boolean,
   decimal,
   integer,
   jsonb,
@@ -142,6 +143,8 @@ export const items = pgTable('items', {
   }).notNull(),
   fee: decimal({ precision: 12, scale: 2 }).notNull(),
   qty: integer().notNull().default(1),
+  // Checklist belanja (live shopping): true = barang sudah didapat/dibeli di toko.
+  obtained: boolean().notNull().default(false),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 })
 

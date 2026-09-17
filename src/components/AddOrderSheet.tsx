@@ -16,6 +16,9 @@ interface ItemDraft {
   originalPrice: number
   fee: number
   qty: number
+  // Checklist belanja; nggak ada inputnya di form, cuma dibawa terus dari pesanan
+  // yang lagi di-edit supaya statusnya nggak ke-reset.
+  obtained: boolean
 }
 
 interface CustomerOption {
@@ -46,11 +49,37 @@ interface AddOrderSheetProps {
       originalPrice: number
       fee: number
       qty: number
+      obtained: boolean
     }>
   }) => Promise<void>
 }
 
-const emptyItem: ItemDraft = { name: '', originalPrice: 0, fee: 0, qty: 1 }
+const emptyItem: ItemDraft = {
+  name: '',
+  originalPrice: 0,
+  fee: 0,
+  qty: 1,
+  obtained: false,
+}
+
+/**
+ * qty ikut dipakai buat hitung uang (lineTotal & summarizeItems), jadi kalau
+ * sampai undefined/NaN hasilnya "NaN" di ringkasan dan bisa bikin qty di DB
+ * ke-reset ke default. Normalisasi di sini biar aman: nilai tidak valid
+ * dibalikin ke 1, sama seperti default kolom qty di DB dan validasi zod di server.
+ */
+function normalizeQty(qty: number | undefined) {
+  return Number.isFinite(qty) && Number(qty) >= 1 ? Math.floor(Number(qty)) : 1
+}
+
+function toDraft(item: ItemDraft): ItemDraft {
+  return {
+    ...emptyItem,
+    ...item,
+    qty: normalizeQty(item.qty),
+    obtained: Boolean(item.obtained),
+  }
+}
 
 export default function AddOrderSheet({
   eventName,
@@ -71,7 +100,9 @@ export default function AddOrderSheet({
     initialValue?.paymentStatus ?? 'unpaid',
   )
   const [items, setItems] = useState<Array<ItemDraft>>(
-    initialValue?.items.length ? initialValue.items : [{ ...emptyItem }],
+    initialValue?.items.length
+      ? initialValue.items.map((item) => toDraft(item))
+      : [{ ...emptyItem }],
   )
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -141,6 +172,7 @@ export default function AddOrderSheet({
           originalPrice: item.originalPrice,
           fee: item.fee,
           qty: item.qty,
+          obtained: item.obtained,
         })),
       })
     } catch (err) {

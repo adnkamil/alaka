@@ -42,7 +42,7 @@ function PublicInvoicePage() {
   })
   const { data } = useSuspenseQuery(query)
 
-  const { subtotal, totalFee, total } = summarizeItems(data.items)
+  const { total } = summarizeItems(data.items)
 
   const invoiceNo = data.order.id.slice(0, 8).toUpperCase()
   const invoiceDate = new Date(data.order.createdAt).toLocaleDateString(
@@ -163,29 +163,16 @@ function PublicInvoicePage() {
         </div>
 
         <div
-          className="flex flex-col gap-1 border-t p-5 pt-3"
+          className="flex items-center justify-between border-t p-5 pt-3"
           style={{ borderColor: 'var(--app-border)' }}
         >
-          <div className="flex justify-between text-sm">
-            <span style={{ color: 'var(--app-text-soft)' }}>Subtotal</span>
-            <span>{formatIDR(subtotal)}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span style={{ color: 'var(--app-text-soft)' }}>Fee jastip</span>
-            <span>{formatIDR(totalFee)}</span>
-          </div>
-          <div
-            className="mt-2 flex items-center justify-between border-t pt-3"
-            style={{ borderColor: 'var(--app-border)' }}
+          <span className="font-bold">Total Tagihan</span>
+          <span
+            className="text-lg font-bold"
+            style={{ color: 'var(--app-accent)' }}
           >
-            <span className="font-bold">Total Tagihan</span>
-            <span
-              className="text-lg font-bold"
-              style={{ color: 'var(--app-accent)' }}
-            >
-              {formatIDR(total)}
-            </span>
-          </div>
+            {formatIDR(total)}
+          </span>
         </div>
       </div>
 

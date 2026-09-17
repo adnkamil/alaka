@@ -599,6 +599,15 @@ a {
   font-weight: 700;
 }
 
+/* Kotak centang checklist barang (live shopping). */
+.app-checkbox {
+  width: 1.15rem;
+  height: 1.15rem;
+  flex-shrink: 0;
+  accent-color: var(--app-accent);
+  cursor: pointer;
+}
+
 .app-badge {
   display: inline-flex;
   align-items: center;

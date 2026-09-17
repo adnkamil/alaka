@@ -245,17 +245,10 @@ function InvoicePage() {
               <div className="min-w-0 flex-1">
                 <p className="truncate">{item.name}</p>
                 <p className="text-xs" style={{ color: 'var(--app-text-mute)' }}>
-                  {item.qty > 1 ? (
-                    <>
-                      {item.qty} × ({formatIDR(item.originalPrice)} + Fee{' '}
-                      {formatIDR(item.fee)})
-                    </>
-                  ) : (
-                    <>
-                      Harga {formatIDR(item.originalPrice)} + Fee{' '}
-                      {formatIDR(item.fee)}
-                    </>
-                  )}
+                  <>
+                    {item.qty} × ({formatIDR(item.originalPrice)} + Fee{' '}
+                    {formatIDR(item.fee)})
+                  </>
                 </p>
               </div>
               <p className="font-medium">{formatIDR(lineTotal(item))}</p>
@@ -265,29 +258,16 @@ function InvoicePage() {
 
         {/* Total */}
         <div
-          className="flex flex-col gap-1 border-t p-5 pt-3"
+          className="flex items-center justify-between border-t p-5 pt-3"
           style={{ borderColor: 'var(--app-border)' }}
         >
-          <div className="flex justify-between text-sm">
-            <span style={{ color: 'var(--app-text-soft)' }}>Subtotal</span>
-            <span>{formatIDR(subtotal)}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span style={{ color: 'var(--app-text-soft)' }}>Fee jastip</span>
-            <span>{formatIDR(totalFee)}</span>
-          </div>
-          <div
-            className="mt-2 flex items-center justify-between border-t pt-3"
-            style={{ borderColor: 'var(--app-border)' }}
+          <span className="font-bold">Total Tagihan</span>
+          <span
+            className="text-lg font-bold"
+            style={{ color: 'var(--app-accent)' }}
           >
-            <span className="font-bold">Total Tagihan</span>
-            <span
-              className="text-lg font-bold"
-              style={{ color: 'var(--app-accent)' }}
-            >
-              {formatIDR(total)}
-            </span>
-          </div>
+            {formatIDR(total)}
+          </span>
         </div>
       </div>
 {/* ====== PEMBAYARAN ====== */}
