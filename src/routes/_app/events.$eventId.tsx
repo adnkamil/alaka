@@ -8,7 +8,6 @@ import {
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import {
   ArrowLeft,
-  Check,
   ChevronDown,
   ChevronRight,
   MoreVertical,
@@ -73,6 +72,8 @@ type ItemCustomer = {
   qty: number
   obtainedQty: number
   orderCount: number
+  /** Baris item milik pelanggan ini untuk barang tsb — buat checkbox per pelanggan. */
+  itemIds: Array<string>
 }
 
 type ItemSummary = {
@@ -93,6 +94,7 @@ type ItemGroupCustomer = {
   name: string
   qty: number
   obtainedQty: number
+  itemIds: Array<string>
   orderIds: Set<string>
 }
 
@@ -150,13 +152,15 @@ function summarizeItemQty(
       }
       entry.orderIds.add(order.id)
 
-      const customer = entry.customers.get(customerKey) ?? {
+      const customer: ItemGroupCustomer = entry.customers.get(customerKey) ?? {
         name: customerName,
         qty: 0,
         obtainedQty: 0,
+        itemIds: [],
         orderIds: new Set<string>(),
       }
       customer.qty += item.qty
+      customer.itemIds.push(item.id)
       if (item.obtained) customer.obtainedQty += item.qty
       customer.orderIds.add(order.id)
       entry.customers.set(customerKey, customer)
@@ -180,6 +184,7 @@ function summarizeItemQty(
           qty: customer.qty,
           obtainedQty: customer.obtainedQty,
           orderCount: customer.orderIds.size,
+          itemIds: customer.itemIds,
         }))
         .sort((a, b) => a.name.localeCompare(b.name, 'id')),
     }))
@@ -728,6 +733,14 @@ function EventDetailPage() {
                       type="checkbox"
                       className="app-checkbox"
                       checked={allObtained}
+                      // Sebagian didapat -> tampilkan state "sebagian" biar
+                      // kelihatan masih ada sisa yang belum ketemu.
+                      ref={(el) => {
+                        if (el) {
+                          el.indeterminate =
+                            !allObtained && item.obtainedQty > 0
+                        }
+                      }}
                       onChange={() =>
                         handleToggleObtained(item.itemIds, !allObtained)
                       }
@@ -740,17 +753,7 @@ function EventDetailPage() {
                       className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left"
                     >
                       <span className="min-w-0">
-                        <span
-                          className="block truncate text-sm font-medium"
-                          style={
-                            allObtained
-                              ? {
-                                  color: 'var(--app-text-mute)',
-                                  textDecoration: 'line-through',
-                                }
-                              : undefined
-                          }
-                        >
+                        <span className="block truncate text-sm font-medium">
                           {item.name}
                         </span>
                         <span
@@ -794,26 +797,40 @@ function EventDetailPage() {
                       {item.customers.map((customer) => {
                         const customerDone =
                           customer.obtainedQty === customer.qty
+                        // Sebagian dapat (mis. qty 2, baru 1 pcs ketemu).
+                        const customerPartial =
+                          !customerDone && customer.obtainedQty > 0
 
                         return (
                           <div
                             key={customer.name.toLowerCase()}
                             className="flex items-center gap-2 text-sm"
                           >
+                            <input
+                              type="checkbox"
+                              className="app-checkbox"
+                              checked={customerDone}
+                              ref={(el) => {
+                                if (el) el.indeterminate = customerPartial
+                              }}
+                              onChange={() =>
+                                handleToggleObtained(
+                                  customer.itemIds,
+                                  !customerDone,
+                                )
+                              }
+                              aria-label={`Tandai ${item.name} untuk ${customer.name} sudah didapat`}
+                            />
                             <span className="app-avatar h-6 w-6 flex-shrink-0 text-[10px]">
                               {customer.name.at(0)?.toUpperCase()}
                             </span>
                             <span className="min-w-0 flex-1 truncate">
                               {customer.name}
                             </span>
-                            {customerDone && (
-                              <Check
-                                size={14}
-                                style={{ color: 'var(--app-success)' }}
-                              />
-                            )}
                             <span className="flex-shrink-0 font-semibold">
-                              {customer.qty} pcs
+                              {customerPartial
+                                ? `${customer.obtainedQty}/${customer.qty} pcs`
+                                : `${customer.qty} pcs`}
                             </span>
                           </div>
                         )
