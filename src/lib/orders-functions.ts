@@ -1,8 +1,8 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, eq, inArray, isNull } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '../db'
-import { customers, events, items, orders } from '../db/schema'
+import { customers, events, items, orders, paymentMethods } from '../db/schema'
 import { getSessionUser } from './auth'
 
 async function requireUser() {
@@ -17,6 +17,34 @@ async function assertEventOwnership(eventId: string, userId: string) {
   })
   if (!event) throw new Error('Event tidak ditemukan')
   return event
+}
+
+/**
+ * Metode pembayaran aktif milik user (dari Profil → Pembayaran) yang ditampilkan
+ * di halaman invoice/tagih. Hanya yang `is_active` yang ikut.
+ */
+async function listActivePaymentMethods(userId: string) {
+  return (
+    db
+      .select({
+        id: paymentMethods.id,
+        type: paymentMethods.type,
+        provider: paymentMethods.provider,
+        accountNumber: paymentMethods.accountNumber,
+        accountName: paymentMethods.accountName,
+        qrisImage: paymentMethods.qrisImage,
+      })
+      .from(paymentMethods)
+      .where(
+        and(
+          eq(paymentMethods.userId, userId),
+          eq(paymentMethods.isActive, true),
+        ),
+      )
+      // id sebagai tiebreaker supaya urutan stabil kalau created_at sama persis
+      // (Postgres pakai waktu mulai transaksi, jadi bisa identik).
+      .orderBy(asc(paymentMethods.createdAt), asc(paymentMethods.id))
+  )
 }
 
 const itemInputSchema = z.object({
@@ -240,10 +268,9 @@ export const getPublicOrderInvoice = createServerFn({ method: 'GET' })
       user: {
         name: owner.name,
         brandName: owner.brandName,
-        bankName: owner.bankName,
-        bankAccountNumber: owner.bankAccountNumber,
-        qrisImage: owner.qrisImage,
       },
+      // Cuma metode pembayaran yang aktif — ini yang ditampilkan ke pelanggan.
+      paymentMethods: await listActivePaymentMethods(owner.id),
     }
   })
 
@@ -299,10 +326,9 @@ export const getOrderInvoice = createServerFn({ method: 'GET' })
       user: {
         name: user.name,
         brandName: user.brandName,
-        bankName: user.bankName,
-        bankAccountNumber: user.bankAccountNumber,
-        qrisImage: user.qrisImage,
         waMessageTemplate: user.waMessageTemplate,
       },
+      // Cuma metode pembayaran yang aktif — ini yang ditampilkan ke pelanggan.
+      paymentMethods: await listActivePaymentMethods(user.id),
     }
   })

@@ -18,14 +18,17 @@ export const paymentStatusEnum = pgEnum('payment_status', [
   'shipped',
 ])
 
+export const paymentMethodTypeEnum = pgEnum('payment_method_type', [
+  'bank',
+  'wallet',
+  'qris',
+])
+
 // USERS & AUTH
 export const users = pgTable('users', {
   id: uuid().primaryKey().defaultRandom(),
   name: varchar().notNull(),
   brandName: varchar('brand_name'),
-  bankName: varchar('bank_name'),
-  bankAccountNumber: varchar('bank_account_number'),
-  qrisImage: text('qris_image'), // data URL base64 (image/png|jpeg|webp)
   waMessageTemplate: text('wa_message_template'),
   email: varchar().notNull().unique(),
   passwordHash: varchar('password_hash'),
@@ -95,6 +98,25 @@ export const customers = pgTable('customers', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
   deletedAt: timestamp('deleted_at'),
+})
+
+// PAYMENT METHODS (Profil → Pembayaran): bank, e-wallet, atau QRIS.
+// Satu user bisa punya banyak metode; yang tampil di invoice/tagih cuma yang
+// is_active = true. QRIS disimpan sebagai gambar (data URL base64), bank/wallet
+// pakai provider + nomor rekening/akun.
+export const paymentMethods = pgTable('payment_methods', {
+  id: uuid().primaryKey().defaultRandom(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  type: paymentMethodTypeEnum('type').notNull(),
+  provider: varchar().notNull(), // "BCA", "GoPay", "QRIS"
+  accountNumber: varchar('account_number'), // no. rekening / no. HP wallet
+  accountName: varchar('account_name'), // atas nama (opsional)
+  qrisImage: text('qris_image'), // data URL base64 (image/png|jpeg|webp)
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })
 
 // EVENTS
@@ -170,6 +192,11 @@ export const usersRelations = relations(users, ({ many }) => ({
   events: many(events),
   activityLogs: many(activityLogs),
   customers: many(customers),
+  paymentMethods: many(paymentMethods),
+}))
+
+export const paymentMethodsRelations = relations(paymentMethods, ({ one }) => ({
+  user: one(users, { fields: [paymentMethods.userId], references: [users.id] }),
 }))
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({

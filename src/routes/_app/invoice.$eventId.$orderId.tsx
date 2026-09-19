@@ -8,8 +8,6 @@ import { Link, createFileRoute } from '@tanstack/react-router'
 import {
   AlertTriangle,
   ArrowLeft,
-  Check,
-  Copy,
   Landmark,
   MessageCircle,
   Printer,
@@ -28,6 +26,7 @@ import {
 } from '../../lib/message-template'
 import { lineTotal, summarizeItems } from '../../lib/order-totals'
 import CustomerFormModal from '../../components/CustomerFormModal'
+import PaymentInfoCard from '../../components/PaymentInfoCard'
 
 export const Route = createFileRoute('/_app/invoice/$eventId/$orderId')({
   loader: ({ context, params }) => {
@@ -59,7 +58,6 @@ const statusLabel: Record<string, string> = {
 
 function InvoicePage() {
   const { eventId, orderId } = Route.useParams()
-  const [copied, setCopied] = useState(false)
   const [phone, setPhone] = useState('')
   const [phoneInitialized, setPhoneInitialized] = useState(false)
   const [showAddCustomer, setShowAddCustomer] = useState(false)
@@ -81,10 +79,7 @@ function InvoicePage() {
   // "niar 6608" -> "niar" (buang 4-digit terakhir yang keisi otomatis
   // dari suggestion), biar nama yang ke-prefill ke modal Tambah Customer
   // lebih rapi. Kalau nggak ada pola gitu, dipakai apa adanya.
-  const suggestedCustomerName = data.order.customerName.replace(
-    /\s\d{4}$/,
-    '',
-  )
+  const suggestedCustomerName = data.order.customerName.replace(/\s\d{4}$/, '')
 
   const { subtotal, totalFee, total } = summarizeItems(data.items)
 
@@ -97,29 +92,10 @@ function InvoicePage() {
       year: 'numeric',
     },
   )
-  const bankText =
-    data.user.bankName && data.user.bankAccountNumber
-      ? data.user.bankAccountNumber
-      : null
-
-  async function copyText(text: string) {
-    try {
-      await navigator.clipboard.writeText(text)
-    } catch {
-      const ta = document.createElement('textarea')
-      ta.value = text
-      ta.style.position = 'fixed'
-      ta.style.opacity = '0'
-      document.body.appendChild(ta)
-      ta.select()
-      document.execCommand('copy')
-      document.body.removeChild(ta)
-    }
-    setCopied(true)
-    setTimeout(() => {
-      setCopied(false)
-    }, 2000)
-  }
+  // Bank/e-wallet aktif pertama dipakai buat variabel {bank}/{bankAccount} di chat WA.
+  const primaryTransfer = data.paymentMethods.find(
+    (method) => method.type !== 'qris',
+  )
 
   const completed = data.order.paymentStatus !== 'unpaid'
 
@@ -134,8 +110,8 @@ function InvoicePage() {
       subtotal: formatIDR(subtotal),
       fee: formatIDR(totalFee),
       total: formatIDR(total),
-      bank: data.user.bankName ?? '',
-      bankAccount: data.user.bankAccountNumber ?? '',
+      bank: primaryTransfer?.provider ?? '',
+      bankAccount: primaryTransfer?.accountNumber ?? '',
       brand: data.user.brandName || data.user.name,
     },
   )
@@ -145,7 +121,9 @@ function InvoicePage() {
   async function handleAddCustomer(value: { name: string; phone: string }) {
     await createCustomer({ data: value })
     await queryClient.invalidateQueries({ queryKey: ['customers'] })
-    await queryClient.invalidateQueries({ queryKey: ['invoice', eventId, orderId] })
+    await queryClient.invalidateQueries({
+      queryKey: ['invoice', eventId, orderId],
+    })
     setPhone(value.phone)
     setShowAddCustomer(false)
   }
@@ -188,8 +166,7 @@ function InvoicePage() {
         </div>
       )}
 
-
-{/* ====== INVOICE CARD ====== */}
+      {/* ====== INVOICE CARD ====== */}
       <div className="app-card mb-4 overflow-hidden">
         {/* Header */}
         <div
@@ -244,7 +221,10 @@ function InvoicePage() {
             >
               <div className="min-w-0 flex-1">
                 <p className="truncate">{item.name}</p>
-                <p className="text-xs" style={{ color: 'var(--app-text-mute)' }}>
+                <p
+                  className="text-xs"
+                  style={{ color: 'var(--app-text-mute)' }}
+                >
                   <>
                     {item.qty} × ({formatIDR(item.originalPrice)} + Fee{' '}
                     {formatIDR(item.fee)})
@@ -270,76 +250,12 @@ function InvoicePage() {
           </span>
         </div>
       </div>
-{/* ====== PEMBAYARAN ====== */}
+      {/* ====== PEMBAYARAN ====== */}
       {!completed && (
-        <div className="app-card mb-4 p-5">
-          <p className="mb-1 text-sm font-bold">Pembayaran</p>
-          {bankText ? (
-            <>
-              <p className="mb-3 text-xs" style={{ color: 'var(--app-text-soft)' }}>
-                Silakan transfer ke rekening berikut, lalu konfirmasi pembayaran.
-              </p>
-              <div
-                className="flex items-center gap-3 rounded-xl p-4"
-                style={{ background: 'var(--app-accent-soft)' }}
-              >
-                <span
-                  className="app-icon-tile h-10 w-10 flex-shrink-0"
-                  style={{ borderRadius: 999 }}
-                >
-                  <Landmark size={18} />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p
-                    className="text-xs font-semibold"
-                    style={{ color: 'var(--app-accent)' }}
-                  >
-                    {data.user.bankName}
-                  </p>
-                  <p className="truncate text-base font-bold tracking-wide">
-                    {data.user.bankAccountNumber}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => copyText(bankText)}
-                  className="flex flex-shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold text-white"
-                  style={{ background: 'var(--app-accent)' }}
-                >
-                  {copied ? <Check size={14} /> : <Copy size={14} />}
-                  {copied ? 'Tersalin!' : 'Salin'}
-                </button>
-              </div>
-            </>
-          ) : (
-            <p className="text-xs" style={{ color: 'var(--app-danger)' }}>
-              No. rekening belum diatur. Tambahkan lewat menu Profil → Pembayaran
-              agar pelanggan bisa transfer.
-            </p>
-          )}
-
-          {data.user.qrisImage && (
-            <div
-              className={bankText ? 'mt-4 border-t pt-4' : ''}
-              style={{ borderColor: 'var(--app-border)' }}
-            >
-              <p
-                className="mb-3 text-xs"
-                style={{ color: 'var(--app-text-soft)' }}
-              >
-                {bankText ? 'Atau bayar dengan scan QRIS:' : 'Bayar dengan scan QRIS:'}
-              </p>
-              <div className="flex justify-center">
-                <img
-                  src={data.user.qrisImage}
-                  alt="QRIS"
-                  className="h-56 w-56 rounded-xl border object-contain p-2"
-                  style={{ borderColor: 'var(--app-border)' }}
-                />
-              </div>
-            </div>
-          )}
-        </div>
+        <PaymentInfoCard
+          methods={data.paymentMethods}
+          emptyMessage="Belum ada metode pembayaran aktif. Tambahkan lewat menu Profil → Pembayaran agar pelanggan bisa transfer."
+        />
       )}
 
       {/* ====== STATUS ====== */}
@@ -387,8 +303,7 @@ function InvoicePage() {
             <div className="flex-1">
               <p className="mb-2">
                 Nomor pelanggan ini belum terdaftar di daftar Customer.
-                Tambahkan dulu supaya nomornya kesimpen buat pesanan
-                berikutnya.
+                Tambahkan dulu supaya nomornya kesimpen buat pesanan berikutnya.
               </p>
               <button
                 type="button"
@@ -416,10 +331,7 @@ function InvoicePage() {
             </span>
           )}
           {formatPhoneNumber(phone) && phoneValid && (
-            <span
-              className="text-xs"
-              style={{ color: 'var(--app-text-mute)' }}
-            >
+            <span className="text-xs" style={{ color: 'var(--app-text-mute)' }}>
               {formatPhoneNumber(phone)}
             </span>
           )}

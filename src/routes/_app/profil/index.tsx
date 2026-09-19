@@ -18,24 +18,31 @@ import {
   LogOut,
   MessageSquareText,
   Moon,
+  Plus,
   QrCode,
   SlidersHorizontal,
   Tag,
+  Wallet,
 } from 'lucide-react'
-import BankAccountModal from '../../../components/BankAccountModal'
 import ChangePasswordModal from '../../../components/ChangePasswordModal'
 import EditProfileModal from '../../../components/EditProfileModal'
 import MessageTemplateModal from '../../../components/MessageTemplateModal'
-import QrisUploadModal from '../../../components/QrisUploadModal'
+import type { PaymentMethodFormValue } from '../../../components/PaymentMethodModal'
+import PaymentMethodModal from '../../../components/PaymentMethodModal'
 import Switch from '../../../components/ui/Switch'
 import {
   changePassword,
   fetchCurrentUser,
   logoutUser,
-  removeQrisImage,
   updateProfile,
-  updateQrisImage,
 } from '../../../lib/auth-functions'
+import {
+  createPaymentMethod,
+  deletePaymentMethod,
+  listPaymentMethods,
+  setPaymentMethodActive,
+  updatePaymentMethod,
+} from '../../../lib/payment-methods-functions'
 import { updateMessageTemplate } from '../../../lib/message-template-functions'
 import { DEFAULT_WA_MESSAGE_TEMPLATE } from '../../../lib/message-template'
 
@@ -50,6 +57,31 @@ const currentUserQuery = queryOptions({
   queryFn: () => fetchCurrentUser(),
 })
 
+const paymentMethodsQuery = queryOptions({
+  queryKey: ['payment-methods'],
+  queryFn: () => listPaymentMethods(),
+})
+
+type PaymentMethod = Awaited<ReturnType<typeof listPaymentMethods>>[number]
+
+/** Ikon + baris keterangan tiap metode pembayaran di daftar Profil. */
+function paymentMethodIcon(type: PaymentMethod['type']) {
+  if (type === 'wallet') return <Wallet size={18} />
+  if (type === 'qris') return <QrCode size={18} />
+  return <Landmark size={18} />
+}
+
+function paymentMethodSubtitle(method: PaymentMethod) {
+  if (method.type === 'qris') {
+    return method.qrisImage
+      ? 'Gambar QRIS sudah diupload'
+      : 'Belum ada gambar QRIS'
+  }
+
+  const owner = method.accountName ? `a/n ${method.accountName} · ` : ''
+  return `${owner}${method.accountNumber ?? ''}`
+}
+
 // Event dari browser yang dipakai buat menampilkan prompt install PWA.
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -58,7 +90,10 @@ interface BeforeInstallPromptEvent extends Event {
 
 export const Route = createFileRoute('/_app/profil/')({
   loader: ({ context }) =>
-    context.queryClient.ensureQueryData(currentUserQuery),
+    Promise.all([
+      context.queryClient.ensureQueryData(currentUserQuery),
+      context.queryClient.ensureQueryData(paymentMethodsQuery),
+    ]),
   component: ProfilPage,
 })
 
@@ -105,11 +140,13 @@ function RowLink({
 
 function ProfilPage() {
   const { data: user } = useSuspenseQuery(currentUserQuery)
+  const { data: paymentMethods } = useSuspenseQuery(paymentMethodsQuery)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [isDark, toggleDark] = useDarkModePreference()
-  const [showBankModal, setShowBankModal] = useState(false)
-  const [showQrisModal, setShowQrisModal] = useState(false)
+  const [paymentModal, setPaymentModal] = useState<
+    { mode: 'create' } | { mode: 'edit'; id: string } | null
+  >(null)
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [showTemplateModal, setShowTemplateModal] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
@@ -147,44 +184,51 @@ function ProfilPage() {
 
   async function handleSaveProfile(data: { name: string; brandName: string }) {
     await updateProfile({
-      data: {
-        name: data.name,
-        brandName: data.brandName,
-        bankName: user?.bankName ?? undefined,
-        bankAccountNumber: user?.bankAccountNumber ?? undefined,
-      },
+      data: { name: data.name, brandName: data.brandName },
     })
     await queryClient.invalidateQueries({ queryKey: ['current-user'] })
     setShowProfileModal(false)
   }
 
-  async function handleSaveBank(data: {
-    bankName: string
-    bankAccountNumber: string
-  }) {
-    await updateProfile({
-      data: {
-        name: user?.name ?? '',
-        brandName: user?.brandName ?? undefined,
-        bankName: data.bankName,
-        bankAccountNumber: data.bankAccountNumber,
-      },
-    })
+  async function refreshPaymentMethods() {
+    await queryClient.invalidateQueries({ queryKey: ['payment-methods'] })
     await queryClient.invalidateQueries({ queryKey: ['current-user'] })
-    setShowBankModal(false)
   }
 
-  async function handleSaveQris(image: string) {
-    await updateQrisImage({ data: { image } })
-    await queryClient.invalidateQueries({ queryKey: ['current-user'] })
-    setShowQrisModal(false)
+  async function handleSavePaymentMethod(value: PaymentMethodFormValue) {
+    // Server function pakai `undefined` buat "tidak ada gambar" (bukan null).
+    const payload = {
+      ...value,
+      qrisImage: value.qrisImage ?? undefined,
+    }
+
+    if (paymentModal?.mode === 'edit') {
+      await updatePaymentMethod({
+        data: { id: paymentModal.id, ...payload },
+      })
+    } else {
+      await createPaymentMethod({ data: payload })
+    }
+    await refreshPaymentMethods()
+    setPaymentModal(null)
   }
 
-  async function handleRemoveQris() {
-    await removeQrisImage()
-    await queryClient.invalidateQueries({ queryKey: ['current-user'] })
-    setShowQrisModal(false)
+  async function handleDeletePaymentMethod(id: string) {
+    await deletePaymentMethod({ data: { id } })
+    await refreshPaymentMethods()
+    setPaymentModal(null)
   }
+
+  async function handleTogglePaymentMethod(id: string, isActive: boolean) {
+    await setPaymentMethodActive({ data: { id, isActive } })
+    await refreshPaymentMethods()
+  }
+
+  // Metode yang lagi dibuka di modal (mode edit) — dipakai buat initialValue.
+  const editingPaymentMethod =
+    paymentModal?.mode === 'edit'
+      ? paymentMethods.find((method) => method.id === paymentModal.id)
+      : undefined
 
   async function handleSaveTemplate(template: string) {
     await updateMessageTemplate({ data: { template } })
@@ -298,59 +342,73 @@ function ProfilPage() {
           className="app-card flex flex-col"
           style={{ borderColor: 'var(--app-border)' }}
         >
-          <button
-            type="button"
-            onClick={() => setShowBankModal(true)}
-            className="flex w-full items-center gap-3 px-4 py-3 text-left no-underline"
-            style={{ color: 'var(--app-text)' }}
-          >
-            <span style={{ color: 'var(--app-text-soft)' }}>
-              <Landmark size={18} />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block">No. Rekening</span>
-              <span
-                className="block truncate text-xs font-normal"
-                style={{ color: 'var(--app-text-soft)' }}
-              >
-                {user?.bankName && user.bankAccountNumber
-                  ? `${user.bankName} ${user.bankAccountNumber}`
-                  : 'Belum diatur — tampil di invoice tagih'}
-              </span>
-            </span>
-            <ChevronRight size={18} style={{ color: 'var(--app-text-mute)' }} />
-          </button>
+          {paymentMethods.length === 0 && (
+            <p
+              className="px-4 py-3 text-xs"
+              style={{ color: 'var(--app-text-soft)' }}
+            >
+              Belum ada metode pembayaran. Tambahkan bank, e-wallet, atau QRIS
+              supaya pelanggan bisa bayar.
+            </p>
+          )}
 
-          <div
-            className="border-t"
-            style={{ borderColor: 'var(--app-border)' }}
-          >
-            <button
-              type="button"
-              onClick={() => setShowQrisModal(true)}
-              className="flex w-full items-center gap-3 px-4 py-3 text-left no-underline"
-              style={{ color: 'var(--app-text)' }}
+          {paymentMethods.map((method) => (
+            <div
+              key={method.id}
+              className="flex items-center gap-3 border-b px-4 py-3"
+              style={{ borderColor: 'var(--app-border)' }}
             >
               <span style={{ color: 'var(--app-text-soft)' }}>
-                <QrCode size={18} />
+                {paymentMethodIcon(method.type)}
               </span>
-              <span className="min-w-0 flex-1">
-                <span className="block">QRIS</span>
+              <button
+                type="button"
+                onClick={() => setPaymentModal({ mode: 'edit', id: method.id })}
+                className="min-w-0 flex-1 text-left"
+                style={{ color: 'var(--app-text)' }}
+              >
+                <span className="flex items-center gap-2">
+                  <span className="truncate">{method.provider}</span>
+                  {!method.isActive && (
+                    <span
+                      className="app-badge flex-shrink-0"
+                      style={{
+                        background: 'var(--app-border)',
+                        color: 'var(--app-text-soft)',
+                      }}
+                    >
+                      Nonaktif
+                    </span>
+                  )}
+                </span>
                 <span
                   className="block truncate text-xs font-normal"
                   style={{ color: 'var(--app-text-soft)' }}
                 >
-                  {user?.qrisImage
-                    ? 'Sudah diupload — tampil di invoice tagih'
-                    : 'Belum diupload'}
+                  {paymentMethodSubtitle(method)}
                 </span>
-              </span>
-              <ChevronRight
-                size={18}
-                style={{ color: 'var(--app-text-mute)' }}
+              </button>
+              <Switch
+                checked={method.isActive}
+                onChange={(checked) =>
+                  handleTogglePaymentMethod(method.id, checked)
+                }
+                label={`Aktifkan ${method.provider}`}
               />
-            </button>
-          </div>
+            </div>
+          ))}
+
+          <button
+            type="button"
+            onClick={() => setPaymentModal({ mode: 'create' })}
+            className="flex w-full items-center gap-3 px-4 py-3 text-left"
+            style={{ color: 'var(--app-accent)' }}
+          >
+            <Plus size={18} />
+            <span className="flex-1 text-sm font-semibold">
+              Tambah metode pembayaran
+            </span>
+          </button>
         </div>
       </section>
 
@@ -524,25 +582,35 @@ function ProfilPage() {
         Keluar
       </button>
 
-      {showBankModal && (
-        <BankAccountModal
-          title="No. Rekening"
-          submitLabel="Simpan"
-          initialValue={{
-            bankName: user?.bankName ?? '',
-            bankAccountNumber: user?.bankAccountNumber ?? '',
-          }}
-          onClose={() => setShowBankModal(false)}
-          onSubmit={handleSaveBank}
-        />
-      )}
-
-      {showQrisModal && (
-        <QrisUploadModal
-          initialImage={user?.qrisImage}
-          onClose={() => setShowQrisModal(false)}
-          onSubmit={handleSaveQris}
-          onRemove={handleRemoveQris}
+      {paymentModal && (
+        <PaymentMethodModal
+          title={
+            paymentModal.mode === 'edit'
+              ? 'Edit Metode Pembayaran'
+              : 'Tambah Metode Pembayaran'
+          }
+          submitLabel={
+            paymentModal.mode === 'edit' ? 'Simpan perubahan' : 'Tambah'
+          }
+          initialValue={
+            editingPaymentMethod
+              ? {
+                  type: editingPaymentMethod.type,
+                  provider: editingPaymentMethod.provider,
+                  accountNumber: editingPaymentMethod.accountNumber ?? '',
+                  accountName: editingPaymentMethod.accountName ?? '',
+                  qrisImage: editingPaymentMethod.qrisImage,
+                  isActive: editingPaymentMethod.isActive,
+                }
+              : undefined
+          }
+          onClose={() => setPaymentModal(null)}
+          onSubmit={handleSavePaymentMethod}
+          onDelete={
+            paymentModal.mode === 'edit'
+              ? () => handleDeletePaymentMethod(paymentModal.id)
+              : undefined
+          }
         />
       )}
 

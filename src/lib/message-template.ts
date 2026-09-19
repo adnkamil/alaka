@@ -60,12 +60,12 @@ export const MESSAGE_TEMPLATE_VARIABLES: MessageTemplateVariable[] = [
   {
     key: '{bank}',
     label: '{bank}',
-    description: 'Nama bank (Profil → Pembayaran)',
+    description: 'Nama bank/e-wallet aktif (Profil → Pembayaran)',
   },
   {
     key: '{bankAccount}',
     label: '{bankAccount}',
-    description: 'No. rekening (Profil → Pembayaran)',
+    description: 'No. rekening/akun bank/e-wallet aktif (Profil → Pembayaran)',
   },
   {
     key: '{bankLine}',
