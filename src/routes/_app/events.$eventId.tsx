@@ -23,6 +23,7 @@ import AddOrderSheet from '../../components/AddOrderSheet'
 import { getEventDetail, updateEvent } from '../../lib/events-functions'
 import { listFeeRules } from '../../lib/fee-rules-functions'
 import { listCustomers } from '../../lib/customers-functions'
+import { lineTotal, summarizeItems } from '../../lib/order-totals'
 import {
   createOrder,
   deleteOrder,
@@ -238,20 +239,16 @@ function EventDetailPage() {
   })
   const { data: customers } = useSuspenseQuery(customersQuery)
 
-  const amountIn = event.orders
-    .filter((o) => o.paymentStatus === 'paid' || o.paymentStatus === 'shipped')
-    .flatMap((o) => o.items)
-    .reduce(
-      (sum, item) => sum + Number(item.originalPrice) + Number(item.fee),
-      0,
-    )
-  const outstanding = event.orders
-    .filter((o) => o.paymentStatus === 'unpaid')
-    .flatMap((o) => o.items)
-    .reduce(
-      (sum, item) => sum + Number(item.originalPrice) + Number(item.fee),
-      0,
-    )
+  const amountIn = summarizeItems(
+    event.orders
+      .filter((o) => o.paymentStatus === 'paid' || o.paymentStatus === 'shipped')
+      .flatMap((o) => o.items),
+  ).total
+  const outstanding = summarizeItems(
+    event.orders
+      .filter((o) => o.paymentStatus === 'unpaid')
+      .flatMap((o) => o.items),
+  ).total
 
   const unpaidCount = event.orders.filter(
     (o) => o.paymentStatus === 'unpaid',
@@ -862,11 +859,7 @@ function EventDetailPage() {
         )}
         {viewMode === 'perCustomer' &&
           filteredOrders.map((order) => {
-            const orderTotal = order.items.reduce(
-              (sum, item) =>
-                sum + Number(item.originalPrice) + Number(item.fee),
-              0,
-            )
+            const orderTotal = summarizeItems(order.items).total
             return (
               <details key={order.id} className="app-card p-4">
                 <summary className="flex cursor-pointer items-center gap-3">
@@ -929,9 +922,7 @@ function EventDetailPage() {
                     <div key={item.id} className="flex justify-between text-sm">
                       <span>{item.name}</span>
                       <span>
-                        {formatIDR(
-                          Number(item.originalPrice) + Number(item.fee),
-                        )}
+                        {formatIDR(lineTotal(item))}
                       </span>
                     </div>
                   ))}

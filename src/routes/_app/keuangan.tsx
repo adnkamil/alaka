@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { queryOptions, useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { DollarSign, TrendingDown, TrendingUp } from 'lucide-react'
@@ -38,6 +39,7 @@ const monthLabels = [
 
 function KeuanganPage() {
   const { data } = useSuspenseQuery(financeQuery)
+  const [selectedMonth, setSelectedMonth] = useState<string | null>(null)
   const maxRevenue = Math.max(
     1,
     ...data.monthly.map((row) => Number(row.revenue)),
@@ -131,26 +133,46 @@ function KeuanganPage() {
             Belum ada data.
           </p>
         )}
-        {data.monthly.map((row) => (
-          <div
-            key={row.month}
-            className="flex h-full flex-1 flex-col items-center justify-end gap-1"
-          >
+        {data.monthly.map((row) => {
+          const pct = (Number(row.revenue) / maxRevenue) * 100
+          const isSelected = selectedMonth === row.month
+          return (
             <div
-              className="w-full rounded-t-md"
-              style={{
-                background: 'var(--app-accent)',
-                height: `${(Number(row.revenue) / maxRevenue) * 100}%`,
-              }}
-            />
-            <span
-              className="text-[10px]"
-              style={{ color: 'var(--app-text-mute)' }}
+              key={row.month}
+              onClick={() =>
+                setSelectedMonth((prev) => (prev === row.month ? null : row.month))
+              }
+              className="relative flex h-full flex-1 cursor-pointer flex-col items-center justify-end gap-1"
             >
-              {monthLabels[Number(row.month.split('-')[1]) - 1]}
-            </span>
-          </div>
-        ))}
+              {isSelected && (
+                <div
+                  className="absolute z-10 -translate-x-1/2 whitespace-nowrap rounded-md px-2 py-1 text-[10px] font-semibold text-white shadow-lg"
+                  style={{
+                    left: '50%',
+                    bottom: `calc(${pct}% + 6px)`,
+                    background: 'var(--app-accent-strong)',
+                  }}
+                >
+                  {formatIDR(row.revenue)}
+                </div>
+              )}
+              <div
+                className="w-full rounded-t-md transition-opacity"
+                style={{
+                  background: 'var(--app-accent)',
+                  height: `${pct}%`,
+                  opacity: selectedMonth && !isSelected ? 0.4 : 1,
+                }}
+              />
+              <span
+                className="text-[10px]"
+                style={{ color: 'var(--app-text-mute)' }}
+              >
+                {monthLabels[Number(row.month.split('-')[1]) - 1]}
+              </span>
+            </div>
+          )
+        })}
       </div>
 
       <h2 className="mb-3 font-bold">Rincian per event</h2>
