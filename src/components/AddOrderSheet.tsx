@@ -37,6 +37,8 @@ interface AddOrderSheetProps {
   eventName: string
   feeTiers: Array<FeeTier>
   customers?: Array<CustomerOption>
+  itemNameSuggestions?: Array<string>
+  itemPriceSuggestions?: Record<string, Array<number>>
   title?: string
   submitLabel?: string
   initialValue?: AddOrderSheetValue
@@ -85,6 +87,8 @@ export default function AddOrderSheet({
   eventName,
   feeTiers,
   customers = [],
+  itemNameSuggestions = [],
+  itemPriceSuggestions = {},
   title = 'Tambah Pesanan',
   submitLabel = 'Simpan pesanan',
   initialValue,
@@ -96,6 +100,11 @@ export default function AddOrderSheet({
     initialValue?.customerName ?? '',
   )
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [activeItemSuggestionIndex, setActiveItemSuggestionIndex] = useState<
+    number | null
+  >(null)
+  const [activePriceSuggestionIndex, setActivePriceSuggestionIndex] =
+    useState<number | null>(null)
   const [paymentStatus, setPaymentStatus] = useState<'unpaid' | 'paid' | 'shipped'>(
     initialValue?.paymentStatus ?? 'unpaid',
   )
@@ -157,6 +166,23 @@ export default function AddOrderSheet({
     if (!customer.phone) return customer.name
     const last4 = customer.phone.replace(/\D/g, '').slice(-4)
     return last4 ? `${customer.name} ${last4}` : customer.name
+  }
+
+  function filteredItemNames(query: string) {
+    const trimmed = query.trim().toLowerCase()
+    const pool = trimmed
+      ? itemNameSuggestions.filter((n) => n.toLowerCase().includes(trimmed))
+      : itemNameSuggestions
+    return pool.slice(0, 5)
+  }
+
+  function pricesForItemName(name: string) {
+    const target = name.trim().toLowerCase()
+    if (!target) return []
+    const key = Object.keys(itemPriceSuggestions).find(
+      (n) => n.trim().toLowerCase() === target,
+    )
+    return key ? itemPriceSuggestions[key] : []
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -273,7 +299,7 @@ export default function AddOrderSheet({
               <div className="flex flex-col gap-3">
                 {items.map((item, index) => (
                   <div key={index} className="app-card p-3">
-                    <label className="mb-2 flex flex-col gap-1 text-xs">
+                    <label className="relative mb-2 flex flex-col gap-1 text-xs">
                       Nama barang
                       <input
                         required
@@ -281,11 +307,44 @@ export default function AddOrderSheet({
                         onChange={(e) =>
                           updateItem(index, { name: e.target.value })
                         }
+                        onFocus={() => setActiveItemSuggestionIndex(index)}
+                        onBlur={() =>
+                          setTimeout(
+                            () => setActiveItemSuggestionIndex(null),
+                            120,
+                          )
+                        }
+                        autoComplete="off"
                         className="app-input"
                       />
+                      {activeItemSuggestionIndex === index &&
+                        filteredItemNames(item.name).length > 0 && (
+                          <div
+                            className="absolute left-0 right-0 top-full z-10 mt-1 max-h-40 overflow-y-auto rounded-xl border shadow-lg"
+                            style={{
+                              background: 'var(--app-card)',
+                              borderColor: 'var(--app-border)',
+                            }}
+                          >
+                            {filteredItemNames(item.name).map((name) => (
+                              <button
+                                key={name}
+                                type="button"
+                                onMouseDown={(e) => {
+                                  e.preventDefault()
+                                  updateItem(index, { name })
+                                  setActiveItemSuggestionIndex(null)
+                                }}
+                                className="block w-full truncate px-3 py-2 text-left text-sm"
+                              >
+                                {name}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                     </label>
                     <div className="grid grid-cols-2 gap-2">
-                      <label className="flex flex-col gap-1 text-xs">
+                      <label className="relative flex flex-col gap-1 text-xs">
                         Harga asli
                         <NumberInput
                           required
@@ -293,8 +352,40 @@ export default function AddOrderSheet({
                           onChange={(originalPrice) =>
                             updateItem(index, { originalPrice })
                           }
+                          onFocus={() => setActivePriceSuggestionIndex(index)}
+                          onBlur={() =>
+                            setTimeout(
+                              () => setActivePriceSuggestionIndex(null),
+                              120,
+                            )
+                          }
                           className="app-input"
                         />
+                        {activePriceSuggestionIndex === index &&
+                          pricesForItemName(item.name).length > 0 && (
+                            <div
+                              className="absolute left-0 right-0 top-full z-10 mt-1 max-h-40 overflow-y-auto rounded-xl border shadow-lg"
+                              style={{
+                                background: 'var(--app-card)',
+                                borderColor: 'var(--app-border)',
+                              }}
+                            >
+                              {pricesForItemName(item.name).map((price) => (
+                                <button
+                                  key={price}
+                                  type="button"
+                                  onMouseDown={(e) => {
+                                    e.preventDefault()
+                                    updateItem(index, { originalPrice: price })
+                                    setActivePriceSuggestionIndex(null)
+                                  }}
+                                  className="block w-full truncate px-3 py-2 text-left text-sm"
+                                >
+                                  {price.toLocaleString('id-ID')}
+                                </button>
+                              ))}
+                            </div>
+                          )}
                       </label>
                       <label className="flex flex-col gap-1 text-xs">
                         Fee jastip

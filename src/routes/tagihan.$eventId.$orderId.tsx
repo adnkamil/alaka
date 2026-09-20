@@ -140,17 +140,8 @@ function PublicInvoicePage() {
                   className="text-xs"
                   style={{ color: 'var(--app-text-mute)' }}
                 >
-                  {item.qty > 1 ? (
-                    <>
-                      {item.qty} × ({formatIDR(item.originalPrice)} + Fee{' '}
-                      {formatIDR(item.fee)})
-                    </>
-                  ) : (
-                    <>
-                      Harga {formatIDR(item.originalPrice)} + Fee{' '}
-                      {formatIDR(item.fee)}
-                    </>
-                  )}
+                  {item.qty} × ({formatIDR(item.originalPrice)} + Fee{' '}
+                  {formatIDR(item.fee)})
                 </p>
               </div>
               <p className="font-medium">{formatIDR(lineTotal(item))}</p>

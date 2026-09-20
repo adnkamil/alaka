@@ -250,6 +250,21 @@ function EventDetailPage() {
       .flatMap((o) => o.items),
   ).total
 
+  const itemNameSuggestions = Array.from(
+    new Set(event.orders.flatMap((o) => o.items.map((item) => item.name))),
+  ).sort((a, b) => a.localeCompare(b))
+
+  const itemPriceSuggestions: Record<string, Array<number>> = {}
+  for (const item of event.orders.flatMap((o) => o.items)) {
+    const price = Number(item.originalPrice)
+    const list = itemPriceSuggestions[item.name] ?? []
+    if (!list.includes(price)) list.push(price)
+    itemPriceSuggestions[item.name] = list
+  }
+  for (const name in itemPriceSuggestions) {
+    itemPriceSuggestions[name].sort((a, b) => a - b)
+  }
+
   const unpaidCount = event.orders.filter(
     (o) => o.paymentStatus === 'unpaid',
   ).length
@@ -1006,6 +1021,8 @@ function EventDetailPage() {
           eventName={event.name}
           feeTiers={event.feeRule?.tiers ?? []}
           customers={customers}
+          itemNameSuggestions={itemNameSuggestions}
+          itemPriceSuggestions={itemPriceSuggestions}
           onClose={() => setSheetMode(null)}
           onSubmit={handleCreateOrder}
         />
@@ -1016,6 +1033,8 @@ function EventDetailPage() {
           eventName={event.name}
           feeTiers={event.feeRule?.tiers ?? []}
           customers={customers}
+          itemNameSuggestions={itemNameSuggestions}
+          itemPriceSuggestions={itemPriceSuggestions}
           title="Tambah Pesanan"
           submitLabel="Simpan pesanan"
           initialValue={{
@@ -1033,6 +1052,8 @@ function EventDetailPage() {
           eventName={event.name}
           feeTiers={event.feeRule?.tiers ?? []}
           customers={customers}
+          itemNameSuggestions={itemNameSuggestions}
+          itemPriceSuggestions={itemPriceSuggestions}
           title="Edit Pesanan"
           submitLabel="Simpan perubahan"
           initialValue={{
