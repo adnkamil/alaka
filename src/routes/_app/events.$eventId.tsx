@@ -772,8 +772,7 @@ function EventDetailPage() {
                           className="block text-xs"
                           style={{ color: 'var(--app-text-soft)' }}
                         >
-                          {item.orderCount} pesanan · {item.customers.length}{' '}
-                          pembeli ·{' '}
+                          {item.customers.length} pembeli ·{' '}
                           {allObtained
                             ? 'semua sudah didapat'
                             : `${item.obtainedQty}/${item.qty} pcs didapat`}
