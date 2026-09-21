@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { db } from '../db'
 import { customers, events, items, orders, paymentMethods } from '../db/schema'
 import { getSessionUser } from './auth'
+import { derivePaymentStatus } from './order-totals'
 
 async function requireUser() {
   const user = await getSessionUser()
@@ -62,7 +63,9 @@ const itemInputSchema = z.object({
 const createOrderSchema = z.object({
   eventId: z.uuid(),
   customerName: z.string().min(1, 'Nama pelanggan wajib diisi'),
-  paymentStatus: z.enum(['unpaid', 'paid', 'shipped']).default('unpaid'),
+  paymentStatus: z.enum(['unpaid', 'dp', 'paid', 'shipped']).default('unpaid'),
+  /** Nominal DP (opsional). Kalau kosong, dihitung dari status pembayaran. */
+  paidAmount: z.number().nonnegative().optional(),
   items: z.array(itemInputSchema).min(1, 'Minimal satu barang'),
 })
 
@@ -72,12 +75,25 @@ export const createOrder = createServerFn({ method: 'POST' })
     const user = await requireUser()
     await assertEventOwnership(data.eventId, user.id)
 
+    const total = data.items.reduce(
+      (sum, item) => sum + (item.originalPrice + item.fee) * item.qty,
+      0,
+    )
+    const requestedPaid =
+      data.paidAmount ?? (data.paymentStatus === 'unpaid' ? 0 : total)
+    const paidAmount = Math.min(Math.max(requestedPaid, 0), total)
+    const paymentStatus =
+      data.paymentStatus === 'shipped'
+        ? 'shipped'
+        : derivePaymentStatus(paidAmount, total)
+
     const [order] = await db
       .insert(orders)
       .values({
         eventId: data.eventId,
         customerName: data.customerName,
-        paymentStatus: data.paymentStatus,
+        paymentStatus,
+        paidAmount: paidAmount.toString(),
       })
       .returning()
 
@@ -99,7 +115,9 @@ export const updateOrderPaymentStatus = createServerFn({ method: 'POST' })
   .validator(
     z.object({
       orderId: z.uuid(),
-      paymentStatus: z.enum(['unpaid', 'paid', 'shipped']),
+      paymentStatus: z.enum(['unpaid', 'dp', 'paid', 'shipped']),
+      /** Nominal dibayar — dipakai waktu status 'dp' (nominal DP). */
+      paidAmount: z.number().nonnegative().optional(),
     }),
   )
   .handler(async ({ data }) => {
@@ -107,22 +125,47 @@ export const updateOrderPaymentStatus = createServerFn({ method: 'POST' })
 
     const order = await db.query.orders.findFirst({
       where: eq(orders.id, data.orderId),
-      with: { event: true },
+      with: { event: true, items: true },
     })
     if (!order || order.event.userId !== user.id) {
       throw new Error('Pesanan tidak ditemukan')
     }
 
+    const total = order.items.reduce(
+      (sum, item) =>
+        sum + (Number(item.originalPrice) + Number(item.fee)) * item.qty,
+      0,
+    )
+
+    // Nominal per status: unpaid -> 0, paid -> lunas penuh, dp -> nominal yang
+    // dikirim, shipped -> penanda pengiriman (nominal tidak dipaksa lunas).
+    const requestedPaid =
+      data.paymentStatus === 'unpaid'
+        ? 0
+        : data.paymentStatus === 'paid'
+          ? total
+          : (data.paidAmount ?? Number(order.paidAmount))
+    const paidAmount = Math.min(Math.max(requestedPaid, 0), total)
+    const paymentStatus =
+      data.paymentStatus === 'shipped'
+        ? 'shipped'
+        : derivePaymentStatus(paidAmount, total)
+
     await db
       .update(orders)
-      .set({ paymentStatus: data.paymentStatus, updatedAt: new Date() })
+      .set({
+        paymentStatus,
+        paidAmount: paidAmount.toString(),
+        updatedAt: new Date(),
+      })
       .where(eq(orders.id, data.orderId))
   })
 
 const updateOrderSchema = z.object({
   orderId: z.uuid(),
   customerName: z.string().min(1, 'Nama pelanggan wajib diisi'),
-  paymentStatus: z.enum(['unpaid', 'paid', 'shipped']),
+  paymentStatus: z.enum(['unpaid', 'dp', 'paid', 'shipped']),
+  paidAmount: z.number().nonnegative().optional(),
   items: z.array(itemInputSchema).min(1, 'Minimal satu barang'),
 })
 
@@ -139,11 +182,30 @@ export const updateOrder = createServerFn({ method: 'POST' })
       throw new Error('Pesanan tidak ditemukan')
     }
 
+    // Total tagihan baru ikut barang yang baru, jadi nominal terbayar dirapikan:
+    // kalau lunas -> penuh, kalau DP -> tidak boleh lebih dari total baru.
+    const total = data.items.reduce(
+      (sum, item) => sum + (item.originalPrice + item.fee) * item.qty,
+      0,
+    )
+    const requestedPaid =
+      data.paymentStatus === 'unpaid'
+        ? 0
+        : data.paymentStatus === 'paid'
+          ? total
+          : (data.paidAmount ?? Number(order.paidAmount))
+    const paidAmount = Math.min(Math.max(requestedPaid, 0), total)
+    const paymentStatus =
+      data.paymentStatus === 'shipped'
+        ? 'shipped'
+        : derivePaymentStatus(paidAmount, total)
+
     await db
       .update(orders)
       .set({
         customerName: data.customerName,
-        paymentStatus: data.paymentStatus,
+        paymentStatus,
+        paidAmount: paidAmount.toString(),
         updatedAt: new Date(),
       })
       .where(eq(orders.id, data.orderId))
@@ -251,6 +313,7 @@ export const getPublicOrderInvoice = createServerFn({ method: 'GET' })
         id: order.id,
         customerName: order.customerName,
         paymentStatus: order.paymentStatus,
+        paidAmount: order.paidAmount,
         createdAt: order.createdAt,
       },
       event: {
@@ -309,6 +372,7 @@ export const getOrderInvoice = createServerFn({ method: 'GET' })
         customerPhone: matchedCustomer?.phone ?? order.customerPhone ?? null,
         customerRegistered: Boolean(matchedCustomer),
         paymentStatus: order.paymentStatus,
+        paidAmount: order.paidAmount,
         createdAt: order.createdAt,
       },
       event: {

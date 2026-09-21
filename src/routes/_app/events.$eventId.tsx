@@ -209,7 +209,7 @@ function EventDetailPage() {
   )
   // Filter tab Per Pelanggan: status pembayaran pesanan (seperti semula).
   const [statusFilter, setStatusFilter] = useState<
-    'unpaid' | 'paid' | 'shipped' | null
+    'unpaid' | 'dp' | 'paid' | 'shipped' | null
   >(null)
   // Filter tab Per Item (checklist belanja): mana barang yang sudah didapat.
   const [obtainedFilter, setObtainedFilter] = useState<
@@ -239,16 +239,16 @@ function EventDetailPage() {
   })
   const { data: customers } = useSuspenseQuery(customersQuery)
 
-  const amountIn = summarizeItems(
-    event.orders
-      .filter((o) => o.paymentStatus === 'paid' || o.paymentStatus === 'shipped')
-      .flatMap((o) => o.items),
-  ).total
-  const outstanding = summarizeItems(
-    event.orders
-      .filter((o) => o.paymentStatus === 'unpaid')
-      .flatMap((o) => o.items),
-  ).total
+  // Uang masuk = sum paid_amount dari semua pesanan (konsisten dengan server).
+  const amountIn = event.orders.reduce(
+    (sum, o) => sum + Number(o.paidAmount),
+    0,
+  )
+  // Outstanding = sisa tagihan: max(total - paidAmount, 0) per pesanan.
+  const outstanding = event.orders.reduce((sum, o) => {
+    const total = summarizeItems(o.items).total
+    return sum + Math.max(0, total - Number(o.paidAmount))
+  }, 0)
 
   const itemNameSuggestions = Array.from(
     new Set(event.orders.flatMap((o) => o.items.map((item) => item.name))),
@@ -267,6 +267,9 @@ function EventDetailPage() {
 
   const unpaidCount = event.orders.filter(
     (o) => o.paymentStatus === 'unpaid',
+  ).length
+  const dpCount = event.orders.filter(
+    (o) => o.paymentStatus === 'dp',
   ).length
   const paidCount = event.orders.filter(
     (o) => o.paymentStatus === 'paid',
@@ -310,7 +313,8 @@ function EventDetailPage() {
 
   async function handleCreateOrder(value: {
     customerName: string
-    paymentStatus: 'unpaid' | 'paid' | 'shipped'
+    paymentStatus: 'unpaid' | 'dp' | 'paid' | 'shipped'
+    paidAmount?: number
     items: Array<OrderItemInput>
   }) {
     await createOrder({ data: { eventId, ...value } })
@@ -325,7 +329,8 @@ function EventDetailPage() {
     orderId: string,
     value: {
       customerName: string
-      paymentStatus: 'unpaid' | 'paid' | 'shipped'
+      paymentStatus: 'unpaid' | 'dp' | 'paid' | 'shipped'
+      paidAmount?: number
       items: Array<OrderItemInput>
     },
   ) {
@@ -338,10 +343,11 @@ function EventDetailPage() {
 
   async function handlePaymentStatusChange(
     orderId: string,
-    paymentStatus: 'unpaid' | 'paid' | 'shipped',
+    paymentStatus: 'unpaid' | 'dp' | 'paid' | 'shipped',
+    paidAmount?: number,
   ) {
     await updateOrderPaymentStatus({
-      data: { orderId, paymentStatus },
+      data: { orderId, paymentStatus, paidAmount },
     })
     await queryClient.invalidateQueries({ queryKey: ['event', eventId] })
     await queryClient.invalidateQueries({ queryKey: ['events'] })
@@ -573,7 +579,7 @@ function EventDetailPage() {
 
       {viewMode === 'perCustomer' ? (
         /* Filter Status Pembayaran — khusus tab Per Pelanggan (seperti semula) */
-        <div className="mb-4 grid grid-cols-3 gap-2">
+        <div className="mb-4 grid grid-cols-4 gap-2">
           <button
             type="button"
             onClick={() =>
@@ -585,7 +591,7 @@ function EventDetailPage() {
                 : 'border-[var(--app-border)] bg-[var(--app-card)] text-[var(--app-text-soft)] hover:border-[var(--app-warning)]'
             }`}
           >
-            <span>Belum lunas</span>
+            <span>Belum</span>
             <span
               className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
                 statusFilter === 'unpaid'
@@ -594,6 +600,29 @@ function EventDetailPage() {
               }`}
             >
               {unpaidCount}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              setStatusFilter(statusFilter === 'dp' ? null : 'dp')
+            }
+            className={`flex items-center justify-center gap-1.5 rounded-xl py-2 px-1 text-xs font-semibold transition-all border ${
+              statusFilter === 'dp'
+                ? 'border-[var(--app-accent)] bg-[var(--app-accent)] text-white shadow-sm'
+                : 'border-[var(--app-border)] bg-[var(--app-card)] text-[var(--app-text-soft)] hover:border-[var(--app-accent)]'
+            }`}
+          >
+            <span>DP</span>
+            <span
+              className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                statusFilter === 'dp'
+                  ? 'bg-white/20 text-white'
+                  : 'bg-[var(--app-accent-soft)] text-[var(--app-accent)]'
+              }`}
+            >
+              {dpCount}
             </span>
           </button>
 
@@ -631,7 +660,7 @@ function EventDetailPage() {
                 : 'border-[var(--app-border)] bg-[var(--app-card)] text-[var(--app-text-soft)] hover:border-[#2563eb]'
             }`}
           >
-            <span>Dikirim</span>
+            <span>Kirim</span>
             <span
               className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
                 statusFilter === 'shipped'
@@ -874,6 +903,7 @@ function EventDetailPage() {
         {viewMode === 'perCustomer' &&
           filteredOrders.map((order) => {
             const orderTotal = summarizeItems(order.items).total
+            const remaining = Math.max(0, orderTotal - Number(order.paidAmount ?? 0))
             return (
               <details key={order.id} className="app-card p-4">
                 <summary className="flex cursor-pointer items-center gap-3">
@@ -889,6 +919,11 @@ function EventDetailPage() {
                       style={{ color: 'var(--app-text-soft)' }}
                     >
                       {order.items.length} item · {formatIDR(orderTotal)}
+                      {order.paymentStatus === 'dp' && (
+                        <span style={{ color: 'var(--app-warning)' }}>
+                          {' '}· Sisa {formatIDR(remaining)}
+                        </span>
+                      )}
                     </p>
                   </span>
                   <div
@@ -903,7 +938,7 @@ function EventDetailPage() {
                         e.stopPropagation()
                         handlePaymentStatusChange(
                           order.id,
-                          e.target.value as 'unpaid' | 'paid' | 'shipped',
+                          e.target.value as 'unpaid' | 'dp' | 'paid' | 'shipped',
                         )
                       }}
                       className={`cursor-pointer appearance-none rounded-full py-1 pl-2.5 pr-5 text-xs font-semibold outline-none transition-colors border-0 ${
@@ -911,10 +946,13 @@ function EventDetailPage() {
                           ? 'app-badge-success'
                           : order.paymentStatus === 'shipped'
                             ? 'app-badge-info'
-                            : 'app-badge-warning'
+                            : order.paymentStatus === 'dp'
+                              ? 'app-badge-accent'
+                              : 'app-badge-warning'
                       }`}
                     >
                       <option value="unpaid">Belum lunas</option>
+                      <option value="dp">DP</option>
                       <option value="paid">Lunas</option>
                       <option value="shipped">Dikirim</option>
                     </select>
@@ -947,11 +985,23 @@ function EventDetailPage() {
                     <span>Total</span>
                     <span>{formatIDR(orderTotal)}</span>
                   </div>
+                  {order.paymentStatus === 'dp' && (
+                    <div className="flex flex-col gap-0.5 rounded-xl px-3 py-2 text-xs" style={{ background: 'var(--app-accent-soft)', color: 'var(--app-accent)' }}>
+                      <div className="flex justify-between">
+                        <span>DP dibayar</span>
+                        <span className="font-semibold">{formatIDR(Number(order.paidAmount ?? 0))}</span>
+                      </div>
+                      <div className="flex justify-between font-semibold" style={{ color: 'var(--app-warning)' }}>
+                        <span>Sisa tagihan</span>
+                        <span>{formatIDR(remaining)}</span>
+                      </div>
+                    </div>
+                  )}
                   <div
                     className="mt-2 flex gap-2 border-t pt-3"
                     style={{ borderColor: 'var(--app-border)' }}
                   >
-                    {order.paymentStatus === 'unpaid' && (
+                    {(order.paymentStatus === 'unpaid' || order.paymentStatus === 'dp') && (
                       <Link
                         to="/invoice/$eventId/$orderId"
                         params={{ eventId, orderId: order.id }}

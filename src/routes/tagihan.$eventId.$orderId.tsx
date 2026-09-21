@@ -29,6 +29,7 @@ function formatIDR(value: string | number) {
 
 const statusLabel: Record<string, string> = {
   unpaid: 'Belum Lunas',
+  dp: 'DP (Sudah Bayar Sebagian)',
   paid: 'Lunas',
   shipped: 'Dikirim',
 }
@@ -43,13 +44,17 @@ function PublicInvoicePage() {
   const { data } = useSuspenseQuery(query)
 
   const { total } = summarizeItems(data.items)
+  const isDp = data.order.paymentStatus === 'dp'
+  const paidAmount = Number(data.order.paidAmount)
+  const remaining = Math.max(0, total - paidAmount)
 
   const invoiceNo = data.order.id.slice(0, 8).toUpperCase()
   const invoiceDate = new Date(data.order.createdAt).toLocaleDateString(
     'id-ID',
     { day: 'numeric', month: 'long', year: 'numeric' },
   )
-  const completed = data.order.paymentStatus !== 'unpaid'
+  const completed =
+    data.order.paymentStatus === 'paid' || data.order.paymentStatus === 'shipped'
 
   return (
     <main className="app-shell relative mx-auto min-h-screen max-w-lg px-4 pb-10 pt-6">
@@ -149,6 +154,7 @@ function PublicInvoicePage() {
           ))}
         </div>
 
+        {/* Total */}
         <div
           className="flex items-center justify-between border-t p-5 pt-3"
           style={{ borderColor: 'var(--app-border)' }}
@@ -161,6 +167,28 @@ function PublicInvoicePage() {
             {formatIDR(total)}
           </span>
         </div>
+
+        {isDp && (
+          <div
+            className="flex flex-col gap-1 border-t px-5 py-3 text-sm"
+            style={{
+              borderColor: 'var(--app-border)',
+              background: 'var(--app-accent-soft)',
+            }}
+          >
+            <div className="flex justify-between">
+              <span>DP sudah dibayar</span>
+              <span className="font-semibold">{formatIDR(paidAmount)}</span>
+            </div>
+            <div
+              className="flex justify-between font-bold"
+              style={{ color: 'var(--app-warning)' }}
+            >
+              <span>Sisa yang harus dibayar</span>
+              <span>{formatIDR(remaining)}</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ====== PEMBAYARAN ====== */}
@@ -179,9 +207,11 @@ function PublicInvoicePage() {
           className={`app-badge ${
             data.order.paymentStatus === 'unpaid'
               ? 'app-badge-warning'
-              : data.order.paymentStatus === 'paid'
-                ? 'app-badge-success'
-                : 'app-badge-info'
+              : data.order.paymentStatus === 'dp'
+                ? 'app-badge-accent'
+                : data.order.paymentStatus === 'paid'
+                  ? 'app-badge-success'
+                  : 'app-badge-info'
           }`}
         >
           {statusLabel[data.order.paymentStatus]}

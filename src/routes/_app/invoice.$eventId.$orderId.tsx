@@ -52,6 +52,7 @@ function formatIDR(value: string | number) {
 
 const statusLabel: Record<string, string> = {
   unpaid: 'Belum Lunas',
+  dp: 'DP (Sudah Bayar Sebagian)',
   paid: 'Lunas',
   shipped: 'Dikirim',
 }
@@ -82,6 +83,9 @@ function InvoicePage() {
   const suggestedCustomerName = data.order.customerName.replace(/\s\d{4}$/, '')
 
   const { subtotal, totalFee, total } = summarizeItems(data.items)
+  const isDp = data.order.paymentStatus === 'dp'
+  const paidAmount = Number(data.order.paidAmount)
+  const remaining = Math.max(0, total - paidAmount)
 
   const invoiceNo = data.order.id.slice(0, 8).toUpperCase()
   const invoiceDate = new Date(data.order.createdAt).toLocaleDateString(
@@ -97,12 +101,29 @@ function InvoicePage() {
     (method) => method.type !== 'qris',
   )
 
-  const completed = data.order.paymentStatus !== 'unpaid'
+  const completed =
+    data.order.paymentStatus === 'paid' || data.order.paymentStatus === 'shipped'
 
   const invoiceLink = `${typeof window !== 'undefined' ? window.location.origin : ''}/tagihan/${eventId}/${orderId}`
 
+  const defaultTemplate = isDp
+    ? [
+        'Halo kak {customer}, ini invoice belanja di *{event}* ya kak, bisa dicek detailnya di link ini: {link}',
+        '',
+        'Subtotal: {subtotal}',
+        'Fee jastip: {fee}',
+        'Total Tagihan: {total}',
+        'DP Dibayar: {dp}',
+        '*Sisa Tagihan: {sisa}*',
+        '{bankLine}',
+        'mohon dikirim bukti transfernya ya kak',
+        '',
+        'Terima kasih sudah berbelanja di {brand}!',
+      ].join('\n')
+    : DEFAULT_WA_MESSAGE_TEMPLATE
+
   const waMessage = renderMessageTemplate(
-    data.user.waMessageTemplate ?? DEFAULT_WA_MESSAGE_TEMPLATE,
+    data.user.waMessageTemplate ?? defaultTemplate,
     {
       customer: data.order.customerName,
       event: data.event.name,
@@ -110,6 +131,8 @@ function InvoicePage() {
       subtotal: formatIDR(subtotal),
       fee: formatIDR(totalFee),
       total: formatIDR(total),
+      dp: formatIDR(paidAmount),
+      sisa: formatIDR(remaining),
       bank: primaryTransfer?.provider ?? '',
       bankAccount: primaryTransfer?.accountNumber ?? '',
       brand: data.user.brandName || data.user.name,
@@ -249,6 +272,28 @@ function InvoicePage() {
             {formatIDR(total)}
           </span>
         </div>
+
+        {isDp && (
+          <div
+            className="flex flex-col gap-1 border-t px-5 py-3 text-sm"
+            style={{
+              borderColor: 'var(--app-border)',
+              background: 'var(--app-accent-soft)',
+            }}
+          >
+            <div className="flex justify-between">
+              <span>DP sudah dibayar</span>
+              <span className="font-semibold">{formatIDR(paidAmount)}</span>
+            </div>
+            <div
+              className="flex justify-between font-bold"
+              style={{ color: 'var(--app-warning)' }}
+            >
+              <span>Sisa yang harus dibayar</span>
+              <span>{formatIDR(remaining)}</span>
+            </div>
+          </div>
+        )}
       </div>
       {/* ====== PEMBAYARAN ====== */}
       {!completed && (
@@ -265,9 +310,11 @@ function InvoicePage() {
           className={`app-badge ${
             data.order.paymentStatus === 'unpaid'
               ? 'app-badge-warning'
-              : data.order.paymentStatus === 'paid'
-                ? 'app-badge-success'
-                : 'app-badge-info'
+              : data.order.paymentStatus === 'dp'
+                ? 'app-badge-accent'
+                : data.order.paymentStatus === 'paid'
+                  ? 'app-badge-success'
+                  : 'app-badge-info'
           }`}
         >
           {statusLabel[data.order.paymentStatus]}

@@ -1,14 +1,40 @@
 // Seed data dummy: 10 event, tiap event 10-15 pesanan, campuran status
 // Belum Lunas/Lunas/Dikirim, tanggal event tersebar di 6 bulan terakhir.
-// Nama pelanggan diambil dari data Customer yang SUDAH ada (bukan bikin baru).
+// Nama pelanggan diambil dari data Customer yang sudah ada. Kalau user target
+// belum punya Customer sama sekali, script bikin customer dummy dulu supaya
+// seed tetap jalan (nggak berhenti dengan error "belum ada customer").
 //
 // Cara pakai:
 //   pnpm db:seed-dummy
-//   (opsional) pnpm db:seed-dummy -- --email=kamu@email.com
-//   kalau --email nggak dikasih, script pakai user PERTAMA yang ada di DB.
+//     -> otomatis pilih user yang punya Customer aktif TERBANYAK.
+//   pnpm db:seed-dummy -- --email=kamu@email.com
+//     -> pilih user tertentu (wajib kalau mau pilih akun lain).
+//   pnpm db:seed-dummy -- --reset
+//     -> hapus dulu event dummy lama (nama sama dengan script ini), lalu seed ulang.
+//   pnpm db:seed-dummy -- --append
+//     -> tetap seed walaupun data dummy sudah ada (hasilnya nambah/dobel).
+//
+// Tanpa --reset / --append, kalau event dummy sudah ada script berhenti biar
+// nggak bikin data dobel tanpa sengaja.
 
 import { config } from 'dotenv'
 config({ path: ['.env.local', '.env'] })
+
+/** Customer dummy yang dibuat kalau user target belum punya Customer. */
+const DUMMY_CUSTOMER_POOL = [
+  { name: 'Nia', phone: '081234567801' },
+  { name: 'Rika', phone: '081234567802' },
+  { name: 'Dewi', phone: '081234567803' },
+  { name: 'Salsa', phone: '081234567804' },
+  { name: 'Ibu Ani', phone: '081234567805' },
+  { name: 'Mbak Yuni', phone: '081234567806' },
+  { name: 'Fitri', phone: '081234567807' },
+  { name: 'Laras', phone: '081234567808' },
+  { name: 'Vina', phone: '081234567809' },
+  { name: 'Tata', phone: '081234567810' },
+  { name: 'Bunda Ina', phone: '081234567811' },
+  { name: 'Mama Rere', phone: '081234567812' },
+]
 
 const EVENT_NAMES = [
   'wikibex',
@@ -86,41 +112,128 @@ async function main() {
   // static import di ESM selalu "naik" duluan sebelum kode lain jalan,
   // jadi kalau db diimport statis, dia bakal kebaca sebelum config()
   // dotenv sempat ngisi DATABASE_URL — bikin koneksinya undefined.
-  const { and, eq, isNull } = await import('drizzle-orm')
+  const { and, eq, inArray, isNull, sql } = await import('drizzle-orm')
   const { db } = await import('../src/db')
-  const { customers, events, items, orders, users } = await import(
-    '../src/db/schema'
-  )
+  const { customers, events, items, orders, users } =
+    await import('../src/db/schema')
 
   const emailArg = process.argv
     .find((a) => a.startsWith('--email='))
     ?.split('=')[1]
+  const shouldReset = process.argv.includes('--reset')
+  const shouldAppend = process.argv.includes('--append')
 
-  const targetUser = emailArg
+  // Pilih user target. Kalau --email nggak dikasih, JANGAN pakai findFirst()
+  // polos: tanpa orderBy urutannya nggak pasti, jadi bisa kena user yang belum
+  // punya Customer sama sekali (penyebab error "belum ada customer"). Sekarang
+  // dipilih user dengan Customer aktif terbanyak supaya seed langsung "kena".
+  let targetUser = emailArg
     ? await db.query.users.findFirst({ where: eq(users.email, emailArg) })
-    : await db.query.users.findFirst()
+    : undefined
 
-  if (!targetUser) {
-    throw new Error(
-      emailArg
-        ? `User dengan email "${emailArg}" tidak ditemukan.`
-        : 'Belum ada user sama sekali di database.',
-    )
+  if (emailArg && !targetUser) {
+    throw new Error(`User dengan email "${emailArg}" tidak ditemukan.`)
   }
 
-  const savedCustomers = await db.query.customers.findMany({
-    where: and(eq(customers.userId, targetUser.id), isNull(customers.deletedAt)),
+  if (!targetUser) {
+    const customerCounts = await db
+      .select({
+        userId: customers.userId,
+        total: sql<number>`count(*)`.mapWith(Number),
+      })
+      .from(customers)
+      .where(isNull(customers.deletedAt))
+      .groupBy(customers.userId)
+      .orderBy(sql`count(*) desc`)
+
+    targetUser =
+      customerCounts.length > 0
+        ? await db.query.users.findFirst({
+            where: eq(users.id, customerCounts[0].userId),
+          })
+        : await db.query.users.findFirst({
+            orderBy: (u, { asc }) => asc(u.createdAt),
+          })
+
+    if (targetUser) {
+      console.log(
+        `User otomatis: ${targetUser.email} (punya ${customerCounts[0]?.total ?? 0} customer aktif).`,
+      )
+    }
+  }
+
+  if (!targetUser) {
+    throw new Error('Belum ada user sama sekali di database.')
+  }
+
+  // Pakai Customer yang sudah ada; kalau belum ada sama sekali, bikin customer
+  // dummy dulu supaya seed tetap bisa jalan.
+  let savedCustomers = await db.query.customers.findMany({
+    where: and(
+      eq(customers.userId, targetUser.id),
+      isNull(customers.deletedAt),
+    ),
   })
 
   if (savedCustomers.length === 0) {
-    throw new Error(
-      'Belum ada data Customer tersimpan untuk user ini. Tambahkan beberapa customer dulu lewat halaman Profil > Customer, baru jalankan seed ini lagi.',
-    )
+    console.log('User ini belum punya Customer — bikin customer dummy dulu...')
+    savedCustomers = await db
+      .insert(customers)
+      .values(
+        DUMMY_CUSTOMER_POOL.map((c) => ({
+          userId: targetUser.id,
+          name: c.name,
+          phone: c.phone,
+        })),
+      )
+      .returning()
+    console.log(`  + ${savedCustomers.length} customer dummy dibuat.`)
   }
 
   console.log(
-    `Seeding untuk user: ${targetUser.name} (${targetUser.email}) — pakai ${savedCustomers.length} customer tersimpan.`,
+    `Seeding untuk user: ${targetUser.name} (${targetUser.email}) — pakai ${savedCustomers.length} customer.`,
   )
+
+  // Cegah data dobel: kalau event dummy (nama sama dengan script ini) sudah ada,
+  // default-nya berhenti dulu. Pakai --reset atau --append untuk lanjut.
+  const existingDummyEvents = await db.query.events.findMany({
+    where: and(
+      eq(events.userId, targetUser.id),
+      inArray(events.name, EVENT_NAMES),
+    ),
+    columns: { id: true },
+  })
+
+  if (existingDummyEvents.length > 0) {
+    if (shouldReset) {
+      await db
+        .delete(events)
+        .where(
+          and(
+            eq(events.userId, targetUser.id),
+            inArray(events.name, EVENT_NAMES),
+          ),
+        )
+      console.log(
+        `--reset: ${existingDummyEvents.length} event dummy lama dihapus.`,
+      )
+    } else if (!shouldAppend) {
+      console.log(
+        `\n⚠ User ini sudah punya ${existingDummyEvents.length} event dummy (nama sama dengan script).`,
+      )
+      console.log('  Script berhenti biar data nggak dobel. Pilihan:')
+      console.log(
+        '    pnpm db:seed-dummy -- --reset    (hapus dummy lama, lalu seed ulang)',
+      )
+      console.log(
+        '    pnpm db:seed-dummy -- --append   (tetap tambah data dummy baru)',
+      )
+      process.exit(0)
+    }
+  }
+
+  let totalOrders = 0
+  let totalItems = 0
 
   for (let i = 0; i < EVENT_NAMES.length; i++) {
     const eventName = EVENT_NAMES[i]
@@ -174,15 +287,23 @@ async function main() {
           name: `${pickRandom(ITEM_NAME_POOL)} - ${pickRandom(SIZE_POOL)}`,
           originalPrice: price.toString(),
           fee: feeForPrice(price).toString(),
+          // qty variatif (1-3) supaya data dummy ikut menguji fitur jumlah.
+          qty: randInt(1, 3),
           createdAt: orderDate,
         })
+        totalItems += 1
       }
+      totalOrders += 1
     }
 
-    console.log(`  ✓ ${eventName} — ${orderCount} pesanan (${eventDate.toLocaleDateString('id-ID')})`)
+    console.log(
+      `  ✓ ${eventName} — ${orderCount} pesanan (${eventDate.toLocaleDateString('id-ID')})`,
+    )
   }
 
-  console.log('Selesai!')
+  console.log(
+    `Selesai! ${EVENT_NAMES.length} event, ${totalOrders} pesanan, ${totalItems} baris barang.`,
+  )
   process.exit(0)
 }
 

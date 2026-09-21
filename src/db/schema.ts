@@ -14,6 +14,7 @@ import {
 
 export const paymentStatusEnum = pgEnum('payment_status', [
   'unpaid',
+  'dp',
   'paid',
   'shipped',
 ])
@@ -146,6 +147,10 @@ export const orders = pgTable('orders', {
   paymentStatus: paymentStatusEnum('payment_status')
     .notNull()
     .default('unpaid'),
+  /** Nominal yang sudah dibayar pelanggan (untuk DP). 0 = belum bayar. */
+  paidAmount: decimal('paid_amount', { precision: 12, scale: 2 })
+    .notNull()
+    .default('0'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })

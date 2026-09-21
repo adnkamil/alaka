@@ -29,7 +29,8 @@ interface CustomerOption {
 
 export interface AddOrderSheetValue {
   customerName: string
-  paymentStatus?: 'unpaid' | 'paid' | 'shipped'
+  paymentStatus?: 'unpaid' | 'dp' | 'paid' | 'shipped'
+  paidAmount?: number
   items: Array<ItemDraft>
 }
 
@@ -45,7 +46,8 @@ interface AddOrderSheetProps {
   onClose: () => void
   onSubmit: (value: {
     customerName: string
-    paymentStatus: 'unpaid' | 'paid' | 'shipped'
+    paymentStatus: 'unpaid' | 'dp' | 'paid' | 'shipped'
+    paidAmount?: number
     items: Array<{
       name: string
       originalPrice: number
@@ -95,7 +97,6 @@ export default function AddOrderSheet({
   onClose,
   onSubmit,
 }: AddOrderSheetProps) {
-  const isEdit = Boolean(initialValue && title.toLowerCase().includes('edit'))
   const [customerName, setCustomerName] = useState(
     initialValue?.customerName ?? '',
   )
@@ -105,8 +106,12 @@ export default function AddOrderSheet({
   >(null)
   const [activePriceSuggestionIndex, setActivePriceSuggestionIndex] =
     useState<number | null>(null)
-  const [paymentStatus, setPaymentStatus] = useState<'unpaid' | 'paid' | 'shipped'>(
+  const [paymentStatus, setPaymentStatus] = useState<'unpaid' | 'dp' | 'paid' | 'shipped'>(
     initialValue?.paymentStatus ?? 'unpaid',
+  )
+  // Nominal DP — hanya relevan saat paymentStatus === 'dp'.
+  const [dpAmount, setDpAmount] = useState<number>(
+    initialValue?.paidAmount ?? 0,
   )
   const [items, setItems] = useState<Array<ItemDraft>>(
     initialValue?.items.length
@@ -193,6 +198,7 @@ export default function AddOrderSheet({
       await onSubmit({
         customerName,
         paymentStatus,
+        paidAmount: paymentStatus === 'dp' ? dpAmount : undefined,
         items: items.map((item) => ({
           name: item.name,
           originalPrice: item.originalPrice,
@@ -488,24 +494,54 @@ export default function AddOrderSheet({
                 </p>
               </div>
 
-              {isEdit && (
+              <label className="flex flex-col gap-1 text-sm font-medium">
+                Status pembayaran
+                <select
+                  value={paymentStatus}
+                  onChange={(e) =>
+                    setPaymentStatus(
+                      e.target.value as 'unpaid' | 'dp' | 'paid' | 'shipped',
+                    )
+                  }
+                  className="app-input"
+                >
+                  <option value="unpaid">Belum Lunas</option>
+                  <option value="dp">DP (Bayar Sebagian)</option>
+                  <option value="paid">Lunas</option>
+                  <option value="shipped">Dikirim</option>
+                </select>
+              </label>
+
+              {paymentStatus === 'dp' && (
                 <label className="flex flex-col gap-1 text-sm font-medium">
-                  Status pembayaran
-                  <select
-                    value={paymentStatus}
-                    onChange={(e) =>
-                      setPaymentStatus(
-                        e.target.value as 'unpaid' | 'paid' | 'shipped',
-                      )
-                    }
+                  Nominal DP yang dibayar
+                  <NumberInput
+                    required
+                    value={dpAmount}
+                    onChange={(v) => setDpAmount(v)}
                     className="app-input"
-                  >
-                    <option value="unpaid">Belum Lunas</option>
-                    <option value="paid">Lunas</option>
-                    <option value="shipped">Dikirim</option>
-                  </select>
+                    placeholder="0"
+                  />
+                  {dpAmount > 0 && dpAmount < totalTagihan && (
+                    <span
+                      className="text-xs"
+                      style={{ color: 'var(--app-text-soft)' }}
+                    >
+                      Sisa tagihan:{' '}
+                      {(totalTagihan - dpAmount).toLocaleString('id-ID')}
+                    </span>
+                  )}
+                  {dpAmount >= totalTagihan && totalTagihan > 0 && (
+                    <span
+                      className="text-xs"
+                      style={{ color: 'var(--app-warning)' }}
+                    >
+                      Nominal DP melebihi total tagihan — akan dianggap Lunas.
+                    </span>
+                  )}
                 </label>
               )}
+
             </div>
           </div>
 

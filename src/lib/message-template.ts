@@ -29,6 +29,8 @@ export interface MessageTemplateContext {
   bank: string
   bankAccount: string
   brand: string
+  dp?: string
+  sisa?: string
 }
 
 export interface MessageTemplateVariable {
@@ -56,6 +58,16 @@ export const MESSAGE_TEMPLATE_VARIABLES: MessageTemplateVariable[] = [
     key: '{total}',
     label: '{total}',
     description: 'Total tagihan (subtotal + fee)',
+  },
+  {
+    key: '{dp}',
+    label: '{dp}',
+    description: 'Nominal DP yang sudah dibayar',
+  },
+  {
+    key: '{sisa}',
+    label: '{sisa}',
+    description: 'Sisa tagihan yang harus dibayar',
   },
   {
     key: '{bank}',
@@ -88,6 +100,8 @@ export const MESSAGE_TEMPLATE_SAMPLE: MessageTemplateContext = {
   subtotal: 'Rp 1.500.000',
   fee: 'Rp 150.000',
   total: 'Rp 1.650.000',
+  dp: 'Rp 500.000',
+  sisa: 'Rp 1.150.000',
   bank: 'BCA',
   bankAccount: '1234567890',
   brand: 'Jastip by Mici',
@@ -109,6 +123,8 @@ export function renderMessageTemplate(
     '{subtotal}': context.subtotal,
     '{fee}': context.fee,
     '{total}': context.total,
+    '{dp}': context.dp ?? '',
+    '{sisa}': context.sisa ?? '',
     '{bank}': context.bank,
     '{bankAccount}': context.bankAccount,
     '{bankLine}': bankLine,

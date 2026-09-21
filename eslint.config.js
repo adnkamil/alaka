@@ -24,6 +24,8 @@ export default [
       'scripts/**',
       'dev-dist/**',
       'dist/**',
+      // Worktree agent tooling (bukan kode aplikasi).
+      '.kilo/**',
     ],
   },
 ]

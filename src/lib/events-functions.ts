@@ -15,18 +15,32 @@ export const listEvents = createServerFn({ method: 'GET' }).handler(
   async () => {
     const user = await requireUser()
 
+    // Total tagihan per pesanan — dipakai buat hitung sisa tagihan (DP).
+    const orderTotals = db
+      .select({
+        orderId: items.orderId,
+        total: sql<string>`coalesce(sum((${items.originalPrice} + ${items.fee}) * ${items.qty}), 0)`.as(
+          'total',
+        ),
+      })
+      .from(items)
+      .groupBy(items.orderId)
+      .as('order_totals')
+
     const rows = await db
       .select({
         id: events.id,
         name: events.name,
         eventDate: events.eventDate,
         orderCount: sql<number>`count(distinct ${orders.id})`.mapWith(Number),
-        amountIn: sql<string>`coalesce(sum(case when ${orders.paymentStatus} in ('paid', 'shipped') then (${items.originalPrice} + ${items.fee}) * ${items.qty} else 0 end), 0)`,
-        outstanding: sql<string>`coalesce(sum(case when ${orders.paymentStatus} = 'unpaid' then (${items.originalPrice} + ${items.fee}) * ${items.qty} else 0 end), 0)`,
+        // Uang masuk = nominal yang sudah dibayar (DP ikut kehitung).
+        amountIn: sql<string>`coalesce(sum(${orders.paidAmount}), 0)`,
+        // Belum bayar = sisa tagihan tiap pesanan (total - yang sudah dibayar).
+        outstanding: sql<string>`coalesce(sum(greatest(${orderTotals.total} - ${orders.paidAmount}, 0)), 0)`,
       })
       .from(events)
       .leftJoin(orders, eq(orders.eventId, events.id))
-      .leftJoin(items, eq(items.orderId, orders.id))
+      .leftJoin(orderTotals, eq(orderTotals.orderId, orders.id))
       .where(eq(events.userId, user.id))
       .groupBy(events.id)
       .orderBy(desc(events.eventDate))

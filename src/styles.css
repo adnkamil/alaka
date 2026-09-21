@@ -632,6 +632,11 @@ a {
   color: #2563eb;
 }
 
+.app-badge-accent {
+  background: var(--app-accent-soft);
+  color: var(--app-accent);
+}
+
 :root[data-theme='dark'] .app-badge-info {
   background: rgba(59, 130, 246, 0.22);
   color: #60a5fa;

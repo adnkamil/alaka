@@ -35,3 +35,27 @@ export function summarizeItems(items: Array<OrderItemLike>) {
 export function totalUnits(items: Array<OrderItemLike>) {
   return items.reduce((sum, item) => sum + item.qty, 0)
 }
+
+/** Status pembayaran pesanan. `dp` = sudah bayar sebagian (uang muka). */
+export type PaymentStatus = 'unpaid' | 'dp' | 'paid' | 'shipped'
+
+/**
+ * Status pembayaran otomatis dari nominal terbayar.
+ * Dipakai kalau status bukan 'shipped' (dikirim itu penanda manual jastiper).
+ */
+export function derivePaymentStatus(
+  paidAmount: number,
+  total: number,
+): Exclude<PaymentStatus, 'shipped'> {
+  if (paidAmount <= 0) return 'unpaid'
+  if (paidAmount >= total) return 'paid'
+  return 'dp'
+}
+
+/** Sisa tagihan (tidak pernah minus). */
+export function remainingAmount(
+  paidAmount: string | number,
+  total: number,
+) {
+  return Math.max(0, total - Number(paidAmount))
+}
