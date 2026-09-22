@@ -10,11 +10,14 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LupaSandiRouteImport } from './routes/lupa-sandi'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppKeuanganRouteImport } from './routes/_app/keuangan'
+import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as AdminSubscriptionsRouteImport } from './routes/admin/subscriptions'
 import { Route as ResetSandiTokenRouteImport } from './routes/reset-sandi.$token'
 import { Route as AppEventsEventIdRouteImport } from './routes/_app/events.$eventId'
 import { Route as AppEventsNewRouteImport } from './routes/_app/events.new'
@@ -33,6 +36,11 @@ import { Route as ApiAuthGoogleCallbackRouteImport } from './routes/api/auth/goo
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -59,6 +67,16 @@ const AppKeuanganRoute = AppKeuanganRouteImport.update({
   id: '/keuangan',
   path: '/keuangan',
   getParentRoute: () => AppRoute,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSubscriptionsRoute = AdminSubscriptionsRouteImport.update({
+  id: '/subscriptions',
+  path: '/subscriptions',
+  getParentRoute: () => AdminRoute,
 } as any)
 const ResetSandiTokenRoute = ResetSandiTokenRouteImport.update({
   id: '/reset-sandi/$token',
@@ -140,11 +158,14 @@ const ApiAuthGoogleCallbackRoute = ApiAuthGoogleCallbackRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
   '/lupa-sandi': typeof LupaSandiRoute
   '/register': typeof RegisterRoute
   '/keuangan': typeof AppKeuanganRoute
+  '/admin/subscriptions': typeof AdminSubscriptionsRoute
   '/reset-sandi/$token': typeof ResetSandiTokenRoute
+  '/admin/': typeof AdminIndexRoute
   '/events/$eventId': typeof AppEventsEventIdRoute
   '/events/new': typeof AppEventsNewRoute
   '/pesanan/new': typeof AppPesananNewRoute
@@ -165,8 +186,10 @@ export interface FileRoutesByTo {
   '/lupa-sandi': typeof LupaSandiRoute
   '/register': typeof RegisterRoute
   '/keuangan': typeof AppKeuanganRoute
+  '/admin/subscriptions': typeof AdminSubscriptionsRoute
   '/reset-sandi/$token': typeof ResetSandiTokenRoute
   '/': typeof AppIndexRoute
+  '/admin': typeof AdminIndexRoute
   '/events/$eventId': typeof AppEventsEventIdRoute
   '/events/new': typeof AppEventsNewRoute
   '/pesanan/new': typeof AppPesananNewRoute
@@ -185,12 +208,15 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
+  '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
   '/lupa-sandi': typeof LupaSandiRoute
   '/register': typeof RegisterRoute
   '/_app/keuangan': typeof AppKeuanganRoute
+  '/admin/subscriptions': typeof AdminSubscriptionsRoute
   '/reset-sandi/$token': typeof ResetSandiTokenRoute
   '/_app/': typeof AppIndexRoute
+  '/admin/': typeof AdminIndexRoute
   '/_app/events/$eventId': typeof AppEventsEventIdRoute
   '/_app/events/new': typeof AppEventsNewRoute
   '/_app/pesanan/new': typeof AppPesananNewRoute
@@ -210,11 +236,14 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/login'
     | '/lupa-sandi'
     | '/register'
     | '/keuangan'
+    | '/admin/subscriptions'
     | '/reset-sandi/$token'
+    | '/admin/'
     | '/events/$eventId'
     | '/events/new'
     | '/pesanan/new'
@@ -235,8 +264,10 @@ export interface FileRouteTypes {
     | '/lupa-sandi'
     | '/register'
     | '/keuangan'
+    | '/admin/subscriptions'
     | '/reset-sandi/$token'
     | '/'
+    | '/admin'
     | '/events/$eventId'
     | '/events/new'
     | '/pesanan/new'
@@ -254,12 +285,15 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_app'
+    | '/admin'
     | '/login'
     | '/lupa-sandi'
     | '/register'
     | '/_app/keuangan'
+    | '/admin/subscriptions'
     | '/reset-sandi/$token'
     | '/_app/'
+    | '/admin/'
     | '/_app/events/$eventId'
     | '/_app/events/new'
     | '/_app/pesanan/new'
@@ -278,6 +312,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
+  AdminRoute: typeof AdminRouteWithChildren
   LoginRoute: typeof LoginRoute
   LupaSandiRoute: typeof LupaSandiRoute
   RegisterRoute: typeof RegisterRoute
@@ -294,6 +329,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -330,6 +372,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/keuangan'
       preLoaderRoute: typeof AppKeuanganRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/subscriptions': {
+      id: '/admin/subscriptions'
+      path: '/subscriptions'
+      fullPath: '/admin/subscriptions'
+      preLoaderRoute: typeof AdminSubscriptionsRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/reset-sandi/$token': {
       id: '/reset-sandi/$token'
@@ -473,8 +529,21 @@ const AppRouteChildren: AppRouteChildren = {
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
+interface AdminRouteChildren {
+  AdminSubscriptionsRoute: typeof AdminSubscriptionsRoute
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminSubscriptionsRoute: AdminSubscriptionsRoute,
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
+  AdminRoute: AdminRouteWithChildren,
   LoginRoute: LoginRoute,
   LupaSandiRoute: LupaSandiRoute,
   RegisterRoute: RegisterRoute,

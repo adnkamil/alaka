@@ -22,6 +22,7 @@ import {
   Moon,
   Plus,
   QrCode,
+  ShieldCheck,
   SlidersHorizontal,
   Tag,
   Wallet,
@@ -412,6 +413,18 @@ function ProfilPage() {
                 label="Activity Logs"
               />
             </>
+          )}
+          {user?.isAdmin && (
+            <div
+              style={{ borderColor: 'var(--app-border)' }}
+              className="border-t"
+            >
+              <RowLink
+                to="/admin"
+                icon={<ShieldCheck size={18} />}
+                label="Admin Dashboard"
+              />
+            </div>
           )}
         </div>
       </section>

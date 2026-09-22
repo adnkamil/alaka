@@ -152,6 +152,9 @@ export const fetchCurrentUser = createServerFn({ method: 'GET' }).handler(
       // Dipakai di halaman Profil: akun Google-only belum punya kata sandi,
       // jadi menu "Ubah Kata Sandi" ditampilkan sebagai info, bukan aksi.
       hasPassword: Boolean(user.passwordHash),
+      // Cuma buat nampilin/nyembunyiin menu & nge-redirect di client (UX).
+      // Proteksi yang beneran ada di server — lihat `requireAdminUser()`.
+      isAdmin: user.isAdmin,
       entitlements,
     }
   },

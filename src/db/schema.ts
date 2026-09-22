@@ -63,6 +63,12 @@ export const users = pgTable(
     email: varchar().notNull().unique(),
     passwordHash: varchar('password_hash'),
     googleId: varchar('google_id').unique(),
+    /**
+     * Akses ke `/admin` (verifikasi pembayaran PRO, metrik). Default false —
+     * cuma diaktifkan manual lewat DB (`pnpm db:studio`) oleh pemilik app,
+     * bukan lewat UI, supaya nggak ada jalur self-service jadi admin.
+     */
+    isAdmin: boolean('is_admin').notNull().default(false),
     /** Awal masa trial (= waktu user dibuat). */
     trialStartedAt: timestamp('trial_started_at').notNull().defaultNow(),
     /** Akhir masa trial (trial_started_at + TRIAL_DAYS hari). */
