@@ -66,7 +66,7 @@ export const loginUser = createServerFn({ method: 'POST' })
     }
 
     await createSession(user.id)
-    return { id: user.id, name: user.name, email: user.email }
+    return { id: user.id, name: user.name, email: user.email, isAdmin: user.isAdmin }
   })
 
 export const logoutUser = createServerFn({ method: 'POST' }).handler(

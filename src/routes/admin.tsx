@@ -1,6 +1,11 @@
-import { Link, Outlet, createFileRoute, redirect } from '@tanstack/react-router'
-import { LayoutDashboard, ListChecks } from 'lucide-react'
-import { fetchCurrentUser } from '../lib/auth-functions'
+import {
+  Outlet,
+  createFileRoute,
+  redirect,
+  useNavigate,
+} from '@tanstack/react-router'
+import { LogOut } from 'lucide-react'
+import { fetchCurrentUser, logoutUser } from '../lib/auth-functions'
 
 // Proteksi di sini cuma buat UX (redirect kalau bukan admin). Proteksi yang
 // beneran mengikat ada di server lewat `requireAdminUser()` — lihat
@@ -20,16 +25,14 @@ export const Route = createFileRoute('/admin')({
   component: AdminLayout,
 })
 
-const TABS = [
-  { to: '/admin' as const, label: 'Dashboard', icon: LayoutDashboard },
-  {
-    to: '/admin/subscriptions' as const,
-    label: 'Langganan',
-    icon: ListChecks,
-  },
-]
-
 function AdminLayout() {
+  const navigate = useNavigate()
+
+  async function handleLogout() {
+    await logoutUser()
+    await navigate({ to: '/login' })
+  }
+
   return (
     <div className="app-shell mx-auto min-h-screen max-w-2xl">
       <header
@@ -48,24 +51,16 @@ function AdminLayout() {
           </span>
           <span className="text-sm font-bold">Admin Jastip</span>
         </div>
-        <nav className="flex gap-4">
-          {TABS.map((tab) => {
-            const Icon = tab.icon
-            return (
-              <Link
-                key={tab.to}
-                to={tab.to}
-                activeOptions={{ exact: tab.to === '/admin' }}
-                className="flex items-center gap-1.5 text-xs font-semibold no-underline"
-                style={{ color: 'var(--app-text-soft)' }}
-                activeProps={{ style: { color: 'var(--app-accent)' } }}
-              >
-                <Icon size={15} />
-                {tab.label}
-              </Link>
-            )
-          })}
-        </nav>
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="flex items-center gap-1.5 text-xs font-semibold"
+          style={{ color: 'var(--app-danger)' }}
+          aria-label="Keluar"
+        >
+          <LogOut size={15} />
+          Keluar
+        </button>
       </header>
       <Outlet />
     </div>

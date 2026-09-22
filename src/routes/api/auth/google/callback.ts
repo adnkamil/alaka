@@ -105,7 +105,9 @@ export const Route = createFileRoute('/api/auth/google/callback')({
           headers.append('Set-Cookie', sessionCookie)
 
           return new Response(
-            closePopupAndRefreshOpenerHtml(`${origin}/`),
+            closePopupAndRefreshOpenerHtml(
+              `${origin}${user.isAdmin ? '/admin' : '/'}`,
+            ),
             { headers },
           )
         } catch (err) {

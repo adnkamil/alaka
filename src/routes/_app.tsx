@@ -8,6 +8,9 @@ export const Route = createFileRoute('/_app')({
     if (!user) {
       throw redirect({ to: '/login' })
     }
+    if (user.isAdmin) {
+      throw redirect({ to: '/admin' })
+    }
     return { user }
   },
   component: AppLayout,

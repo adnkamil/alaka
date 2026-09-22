@@ -414,18 +414,6 @@ function ProfilPage() {
               />
             </>
           )}
-          {user?.isAdmin && (
-            <div
-              style={{ borderColor: 'var(--app-border)' }}
-              className="border-t"
-            >
-              <RowLink
-                to="/admin"
-                icon={<ShieldCheck size={18} />}
-                label="Admin Dashboard"
-              />
-            </div>
-          )}
         </div>
       </section>
 

@@ -34,8 +34,8 @@ function LoginPage() {
     setError(null)
     setIsSubmitting(true)
     try {
-      await loginUser({ data: { email, password } })
-      await navigate({ to: '/' })
+      const result = await loginUser({ data: { email, password } })
+      await navigate({ to: result.isAdmin ? '/admin' : '/' })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Gagal masuk')
     } finally {
