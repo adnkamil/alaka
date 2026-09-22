@@ -21,6 +21,7 @@ import { Route as AppEventsNewRouteImport } from './routes/_app/events.new'
 import { Route as AppPesananIndexRouteImport } from './routes/_app/pesanan/index'
 import { Route as AppPesananNewRouteImport } from './routes/_app/pesanan/new'
 import { Route as AppProfilIndexRouteImport } from './routes/_app/profil/index'
+import { Route as AppProfilLanggananRouteImport } from './routes/_app/profil/langganan'
 import { Route as TagihanEventIdOrderIdRouteImport } from './routes/tagihan.$eventId.$orderId'
 import { Route as AppInvoiceEventIdOrderIdRouteImport } from './routes/_app/invoice.$eventId.$orderId'
 import { Route as AppProfilCustomersIndexRouteImport } from './routes/_app/profil/customers/index'
@@ -89,6 +90,11 @@ const AppProfilIndexRoute = AppProfilIndexRouteImport.update({
   path: '/profil/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppProfilLanggananRoute = AppProfilLanggananRouteImport.update({
+  id: '/profil/langganan',
+  path: '/profil/langganan',
+  getParentRoute: () => AppRoute,
+} as any)
 const TagihanEventIdOrderIdRoute = TagihanEventIdOrderIdRouteImport.update({
   id: '/tagihan/$eventId/$orderId',
   path: '/tagihan/$eventId/$orderId',
@@ -142,6 +148,7 @@ export interface FileRoutesByFullPath {
   '/events/$eventId': typeof AppEventsEventIdRoute
   '/events/new': typeof AppEventsNewRoute
   '/pesanan/new': typeof AppPesananNewRoute
+  '/profil/langganan': typeof AppProfilLanggananRoute
   '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
   '/pesanan/': typeof AppPesananIndexRoute
   '/profil/': typeof AppProfilIndexRoute
@@ -163,6 +170,7 @@ export interface FileRoutesByTo {
   '/events/$eventId': typeof AppEventsEventIdRoute
   '/events/new': typeof AppEventsNewRoute
   '/pesanan/new': typeof AppPesananNewRoute
+  '/profil/langganan': typeof AppProfilLanggananRoute
   '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
   '/pesanan': typeof AppPesananIndexRoute
   '/profil': typeof AppProfilIndexRoute
@@ -186,6 +194,7 @@ export interface FileRoutesById {
   '/_app/events/$eventId': typeof AppEventsEventIdRoute
   '/_app/events/new': typeof AppEventsNewRoute
   '/_app/pesanan/new': typeof AppPesananNewRoute
+  '/_app/profil/langganan': typeof AppProfilLanggananRoute
   '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
   '/_app/pesanan/': typeof AppPesananIndexRoute
   '/_app/profil/': typeof AppProfilIndexRoute
@@ -209,6 +218,7 @@ export interface FileRouteTypes {
     | '/events/$eventId'
     | '/events/new'
     | '/pesanan/new'
+    | '/profil/langganan'
     | '/tagihan/$eventId/$orderId'
     | '/pesanan/'
     | '/profil/'
@@ -230,6 +240,7 @@ export interface FileRouteTypes {
     | '/events/$eventId'
     | '/events/new'
     | '/pesanan/new'
+    | '/profil/langganan'
     | '/tagihan/$eventId/$orderId'
     | '/pesanan'
     | '/profil'
@@ -252,6 +263,7 @@ export interface FileRouteTypes {
     | '/_app/events/$eventId'
     | '/_app/events/new'
     | '/_app/pesanan/new'
+    | '/_app/profil/langganan'
     | '/tagihan/$eventId/$orderId'
     | '/_app/pesanan/'
     | '/_app/profil/'
@@ -361,6 +373,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProfilIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/profil/langganan': {
+      id: '/_app/profil/langganan'
+      path: '/profil/langganan'
+      fullPath: '/profil/langganan'
+      preLoaderRoute: typeof AppProfilLanggananRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/tagihan/$eventId/$orderId': {
       id: '/tagihan/$eventId/$orderId'
       path: '/tagihan/$eventId/$orderId'
@@ -426,6 +445,7 @@ interface AppRouteChildren {
   AppEventsEventIdRoute: typeof AppEventsEventIdRoute
   AppEventsNewRoute: typeof AppEventsNewRoute
   AppPesananNewRoute: typeof AppPesananNewRoute
+  AppProfilLanggananRoute: typeof AppProfilLanggananRoute
   AppPesananIndexRoute: typeof AppPesananIndexRoute
   AppProfilIndexRoute: typeof AppProfilIndexRoute
   AppInvoiceEventIdOrderIdRoute: typeof AppInvoiceEventIdOrderIdRoute
@@ -441,6 +461,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppEventsEventIdRoute: AppEventsEventIdRoute,
   AppEventsNewRoute: AppEventsNewRoute,
   AppPesananNewRoute: AppPesananNewRoute,
+  AppProfilLanggananRoute: AppProfilLanggananRoute,
   AppPesananIndexRoute: AppPesananIndexRoute,
   AppProfilIndexRoute: AppProfilIndexRoute,
   AppInvoiceEventIdOrderIdRoute: AppInvoiceEventIdOrderIdRoute,

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import ConfirmModal from '../../components/ui/ConfirmModal'
 import {
   queryOptions,
+  useQuery,
   useQueryClient,
   useSuspenseQuery,
 } from '@tanstack/react-query'
@@ -10,6 +11,7 @@ import {
   ArrowLeft,
   ChevronDown,
   ChevronRight,
+  Lock,
   MoreVertical,
   Pencil,
   Plus,
@@ -20,10 +22,16 @@ import {
 } from 'lucide-react'
 import { z } from 'zod'
 import AddOrderSheet from '../../components/AddOrderSheet'
+import ProBadge from '../../components/ProBadge'
+import ProLockPrompt from '../../components/ProLockPrompt'
+import { fetchCurrentUser } from '../../lib/auth-functions'
 import { getEventDetail, updateEvent } from '../../lib/events-functions'
 import { listFeeRules } from '../../lib/fee-rules-functions'
 import { listCustomers } from '../../lib/customers-functions'
+import { getOrderSuggestions } from '../../lib/order-suggestions-functions'
 import { lineTotal, summarizeItems } from '../../lib/order-totals'
+import { canUseFeature } from '../../lib/subscription'
+import type { ProFeature } from '../../lib/subscription'
 import {
   createOrder,
   deleteOrder,
@@ -36,6 +44,12 @@ const searchSchema = z.object({
   addOrder: z.boolean().optional(),
 })
 
+/** Status akses user (trial/FREE/PRO) — satu sumber, dipakai juga di Profil. */
+const currentUserQuery = queryOptions({
+  queryKey: ['current-user'],
+  queryFn: () => fetchCurrentUser(),
+})
+
 export const Route = createFileRoute('/_app/events/$eventId')({
   validateSearch: searchSchema,
   loader: ({ context, params }) => {
@@ -43,7 +57,10 @@ export const Route = createFileRoute('/_app/events/$eventId')({
       queryKey: ['event', params.eventId],
       queryFn: () => getEventDetail({ data: { id: params.eventId } }),
     })
-    return context.queryClient.ensureQueryData(query)
+    return Promise.all([
+      context.queryClient.ensureQueryData(query),
+      context.queryClient.ensureQueryData(currentUserQuery),
+    ])
   },
   component: EventDetailPage,
 })
@@ -220,12 +237,23 @@ function EventDetailPage() {
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showEventMenu, setShowEventMenu] = useState(false)
+  // Fitur PRO yang lagi dicoba dibuka user FREE (null = dialog ketutup).
+  const [lockedFeature, setLockedFeature] = useState<ProFeature | null>(null)
 
   const query = queryOptions({
     queryKey: ['event', eventId],
     queryFn: () => getEventDetail({ data: { id: eventId } }),
   })
   const { data: event } = useSuspenseQuery(query)
+
+  const { data: currentUser } = useSuspenseQuery(currentUserQuery)
+  // Satu tempat hitung status akses; pengecekan mengikat tetap di server.
+  const billingUnlocked = currentUser
+    ? canUseFeature(currentUser.entitlements, 'billing')
+    : false
+  const orderSuggestionsUnlocked = currentUser
+    ? canUseFeature(currentUser.entitlements, 'order_suggestions')
+    : false
 
   const feeRulesQuery = queryOptions({
     queryKey: ['fee-rules'],
@@ -250,27 +278,24 @@ function EventDetailPage() {
     return sum + Math.max(0, total - Number(o.paidAmount))
   }, 0)
 
-  const itemNameSuggestions = Array.from(
-    new Set(event.orders.flatMap((o) => o.items.map((item) => item.name))),
-  ).sort((a, b) => a.localeCompare(b))
-
-  const itemPriceSuggestions: Record<string, Array<number>> = {}
-  for (const item of event.orders.flatMap((o) => o.items)) {
-    const price = Number(item.originalPrice)
-    const list = itemPriceSuggestions[item.name] ?? []
-    if (!list.includes(price)) list.push(price)
-    itemPriceSuggestions[item.name] = list
-  }
-  for (const name in itemPriceSuggestions) {
-    itemPriceSuggestions[name].sort((a, b) => a - b)
-  }
+  // Saran nama barang & harga (fitur PRO `order_suggestions`). Endpoint-nya
+  // tidak dipanggil sama sekali waktu fiturnya terkunci, jadi datanya benar-benar
+  // tidak dikirim ke client user FREE.
+  const orderSuggestionsQuery = queryOptions({
+    queryKey: ['order-suggestions', eventId],
+    queryFn: () => getOrderSuggestions({ data: { eventId } }),
+  })
+  const { data: orderSuggestions } = useQuery({
+    ...orderSuggestionsQuery,
+    enabled: orderSuggestionsUnlocked,
+  })
+  const itemNameSuggestions = orderSuggestions?.itemNames ?? []
+  const itemPriceSuggestions = orderSuggestions?.itemPrices ?? {}
 
   const unpaidCount = event.orders.filter(
     (o) => o.paymentStatus === 'unpaid',
   ).length
-  const dpCount = event.orders.filter(
-    (o) => o.paymentStatus === 'dp',
-  ).length
+  const dpCount = event.orders.filter((o) => o.paymentStatus === 'dp').length
   const paidCount = event.orders.filter(
     (o) => o.paymentStatus === 'paid',
   ).length
@@ -605,9 +630,7 @@ function EventDetailPage() {
 
           <button
             type="button"
-            onClick={() =>
-              setStatusFilter(statusFilter === 'dp' ? null : 'dp')
-            }
+            onClick={() => setStatusFilter(statusFilter === 'dp' ? null : 'dp')}
             className={`flex items-center justify-center gap-1.5 rounded-xl py-2 px-1 text-xs font-semibold transition-all border ${
               statusFilter === 'dp'
                 ? 'border-[var(--app-accent)] bg-[var(--app-accent)] text-white shadow-sm'
@@ -903,7 +926,8 @@ function EventDetailPage() {
         {viewMode === 'perCustomer' &&
           filteredOrders.map((order) => {
             const orderTotal = summarizeItems(order.items).total
-            const remaining = Math.max(0, orderTotal - Number(order.paidAmount ?? 0))
+            // `paid_amount` di DB NOT NULL default 0, jadi tidak perlu fallback null.
+            const remaining = Math.max(0, orderTotal - Number(order.paidAmount))
             return (
               <details key={order.id} className="app-card p-4">
                 <summary className="flex cursor-pointer items-center gap-3">
@@ -921,7 +945,8 @@ function EventDetailPage() {
                       {order.items.length} item · {formatIDR(orderTotal)}
                       {order.paymentStatus === 'dp' && (
                         <span style={{ color: 'var(--app-warning)' }}>
-                          {' '}· Sisa {formatIDR(remaining)}
+                          {' '}
+                          · Sisa {formatIDR(remaining)}
                         </span>
                       )}
                     </p>
@@ -938,7 +963,8 @@ function EventDetailPage() {
                         e.stopPropagation()
                         handlePaymentStatusChange(
                           order.id,
-                          e.target.value as 'unpaid' | 'dp' | 'paid' | 'shipped',
+                          e.target.value as
+                            'unpaid' | 'dp' | 'paid' | 'shipped',
                         )
                       }}
                       className={`cursor-pointer appearance-none rounded-full py-1 pl-2.5 pr-5 text-xs font-semibold outline-none transition-colors border-0 ${
@@ -973,9 +999,7 @@ function EventDetailPage() {
                   {order.items.map((item) => (
                     <div key={item.id} className="flex justify-between text-sm">
                       <span>{item.name}</span>
-                      <span>
-                        {formatIDR(lineTotal(item))}
-                      </span>
+                      <span>{formatIDR(lineTotal(item))}</span>
                     </div>
                   ))}
                   <div
@@ -986,12 +1010,23 @@ function EventDetailPage() {
                     <span>{formatIDR(orderTotal)}</span>
                   </div>
                   {order.paymentStatus === 'dp' && (
-                    <div className="flex flex-col gap-0.5 rounded-xl px-3 py-2 text-xs" style={{ background: 'var(--app-accent-soft)', color: 'var(--app-accent)' }}>
+                    <div
+                      className="flex flex-col gap-0.5 rounded-xl px-3 py-2 text-xs"
+                      style={{
+                        background: 'var(--app-accent-soft)',
+                        color: 'var(--app-accent)',
+                      }}
+                    >
                       <div className="flex justify-between">
                         <span>DP dibayar</span>
-                        <span className="font-semibold">{formatIDR(Number(order.paidAmount ?? 0))}</span>
+                        <span className="font-semibold">
+                          {formatIDR(Number(order.paidAmount))}
+                        </span>
                       </div>
-                      <div className="flex justify-between font-semibold" style={{ color: 'var(--app-warning)' }}>
+                      <div
+                        className="flex justify-between font-semibold"
+                        style={{ color: 'var(--app-warning)' }}
+                      >
                         <span>Sisa tagihan</span>
                         <span>{formatIDR(remaining)}</span>
                       </div>
@@ -1001,22 +1036,46 @@ function EventDetailPage() {
                     className="mt-2 flex gap-2 border-t pt-3"
                     style={{ borderColor: 'var(--app-border)' }}
                   >
-                    {(order.paymentStatus === 'unpaid' || order.paymentStatus === 'dp') && (
-                      <Link
-                        to="/invoice/$eventId/$orderId"
-                        params={{ eventId, orderId: order.id }}
-                        onClick={(e) => e.stopPropagation()}
-                        className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-2 text-xs font-semibold no-underline"
-                        style={{
-                          borderColor: 'var(--app-accent-soft)',
-                          color: 'var(--app-accent)',
-                          background: 'var(--app-accent-soft)',
-                        }}
-                      >
-                        <ReceiptText size={13} />
-                        Tagih
-                      </Link>
-                    )}
+                    {(order.paymentStatus === 'unpaid' ||
+                      order.paymentStatus === 'dp') &&
+                      (billingUnlocked ? (
+                        <Link
+                          to="/invoice/$eventId/$orderId"
+                          params={{ eventId, orderId: order.id }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-2 text-xs font-semibold no-underline"
+                          style={{
+                            borderColor: 'var(--app-accent-soft)',
+                            color: 'var(--app-accent)',
+                            background: 'var(--app-accent-soft)',
+                          }}
+                        >
+                          <ReceiptText size={13} />
+                          Tagih
+                        </Link>
+                      ) : (
+                        // FREE: tombolnya tetap tampil (biar fiturnya kelihatan),
+                        // tapi kliknya cuma nampilin info upgrade — dan server
+                        // tetap menolak kalau halaman tagihnya diakses langsung.
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            setLockedFeature('billing')
+                          }}
+                          aria-label="Tagih pelanggan (fitur PRO)"
+                          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-2 text-xs font-semibold"
+                          style={{
+                            borderColor: 'var(--app-border)',
+                            color: 'var(--app-text-mute)',
+                          }}
+                        >
+                          <Lock size={13} />
+                          Tagih
+                          <ProBadge />
+                        </button>
+                      ))}
                     <button
                       type="button"
                       onClick={(e) => {
@@ -1072,6 +1131,7 @@ function EventDetailPage() {
           customers={customers}
           itemNameSuggestions={itemNameSuggestions}
           itemPriceSuggestions={itemPriceSuggestions}
+          suggestionsLocked={!orderSuggestionsUnlocked}
           onClose={() => setSheetMode(null)}
           onSubmit={handleCreateOrder}
         />
@@ -1084,6 +1144,7 @@ function EventDetailPage() {
           customers={customers}
           itemNameSuggestions={itemNameSuggestions}
           itemPriceSuggestions={itemPriceSuggestions}
+          suggestionsLocked={!orderSuggestionsUnlocked}
           title="Tambah Pesanan"
           submitLabel="Simpan pesanan"
           initialValue={{
@@ -1103,6 +1164,7 @@ function EventDetailPage() {
           customers={customers}
           itemNameSuggestions={itemNameSuggestions}
           itemPriceSuggestions={itemPriceSuggestions}
+          suggestionsLocked={!orderSuggestionsUnlocked}
           title="Edit Pesanan"
           submitLabel="Simpan perubahan"
           initialValue={{
@@ -1135,6 +1197,12 @@ function EventDetailPage() {
         onCancel={() => {
           if (!isDeleting) setDeletingOrderId(null)
         }}
+      />
+
+      <ProLockPrompt
+        feature={lockedFeature}
+        entitlements={currentUser?.entitlements ?? null}
+        onClose={() => setLockedFeature(null)}
       />
     </main>
   )

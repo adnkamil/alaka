@@ -4,7 +4,13 @@ import { z } from 'zod'
 import { db } from '../db'
 import { paymentMethods } from '../db/schema'
 import { getSessionUser } from './auth'
+import { requireUserFeature } from './entitlements'
 
+/**
+ * Baca metode pembayaran TIDAK dikunci (dipakai juga di invoice/tagihan buat
+ * nampilin rekening ke pelanggan), yang dikunci cuma aksi tambah/ubah/hapus/
+ * aktif-nonaktif — lihat `requireUserFeature('payment_methods')` di bawah.
+ */
 async function requireUser() {
   const user = await getSessionUser()
   if (!user) throw new Error('Belum login')
@@ -73,7 +79,8 @@ export const listPaymentMethods = createServerFn({ method: 'GET' }).handler(
 export const createPaymentMethod = createServerFn({ method: 'POST' })
   .validator(paymentMethodInputSchema)
   .handler(async ({ data }) => {
-    const user = await requireUser()
+    // `payment_methods` termasuk fitur PRO (TRIAL & PRO terbuka).
+    const { user } = await requireUserFeature('payment_methods')
     const [method] = await db
       .insert(paymentMethods)
       .values({
@@ -92,7 +99,7 @@ export const createPaymentMethod = createServerFn({ method: 'POST' })
 export const updatePaymentMethod = createServerFn({ method: 'POST' })
   .validator(paymentMethodInputSchema.extend({ id: z.uuid() }))
   .handler(async ({ data }) => {
-    const user = await requireUser()
+    const { user } = await requireUserFeature('payment_methods')
     const existing = await db.query.paymentMethods.findFirst({
       where: and(
         eq(paymentMethods.id, data.id),
@@ -119,7 +126,7 @@ export const updatePaymentMethod = createServerFn({ method: 'POST' })
 export const setPaymentMethodActive = createServerFn({ method: 'POST' })
   .validator(z.object({ id: z.uuid(), isActive: z.boolean() }))
   .handler(async ({ data }) => {
-    const user = await requireUser()
+    const { user } = await requireUserFeature('payment_methods')
     await db
       .update(paymentMethods)
       .set({ isActive: data.isActive, updatedAt: new Date() })
@@ -131,7 +138,7 @@ export const setPaymentMethodActive = createServerFn({ method: 'POST' })
 export const deletePaymentMethod = createServerFn({ method: 'POST' })
   .validator(z.object({ id: z.uuid() }))
   .handler(async ({ data }) => {
-    const user = await requireUser()
+    const { user } = await requireUserFeature('payment_methods')
     await db
       .delete(paymentMethods)
       .where(

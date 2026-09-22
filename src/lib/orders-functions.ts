@@ -4,6 +4,13 @@ import { z } from 'zod'
 import { db } from '../db'
 import { customers, events, items, orders, paymentMethods } from '../db/schema'
 import { getSessionUser } from './auth'
+import {
+  FeatureLockedError,
+  getUserEntitlements,
+  hasFullAccessAtForUser,
+  requireFeature,
+} from './entitlements'
+import { canUseFeature } from './subscription'
 import { derivePaymentStatus } from './order-totals'
 
 async function requireUser() {
@@ -308,6 +315,19 @@ export const getPublicOrderInvoice = createServerFn({ method: 'GET' })
 
     const owner = order.event.user
 
+    // Gate fitur PRO `billing`. Aturan tambahan (grandfathering): pesanan yang
+    // dibuat waktu akses user masih terbuka (trial/PRO) tetap bisa dibuka lewat
+    // link publik — link itu sudah terlanjur dikirim ke pelanggan, jadi nggak
+    // boleh mati mendadak waktu masa trial habis.
+    const ownerEntitlements = await getUserEntitlements(owner)
+    if (!canUseFeature(ownerEntitlements, 'billing')) {
+      const entitledWhenCreated = await hasFullAccessAtForUser(
+        owner,
+        order.createdAt,
+      )
+      if (!entitledWhenCreated) throw new FeatureLockedError('billing')
+    }
+
     return {
       order: {
         id: order.id,
@@ -352,6 +372,9 @@ export const getOrderInvoice = createServerFn({ method: 'GET' })
     if (order.event.userId !== user.id) {
       throw new Error('Pesanan tidak ditemukan')
     }
+
+    // Fitur PRO `billing`: halaman tagih + kirim invoice ke pelanggan.
+    requireFeature(await getUserEntitlements(user), 'billing')
 
     // Coba cari nomor HP dari data Customer yang tersimpan, cocokkan
     // "nama" atau "nama 4digitTerakhir" (format yang keisi dari suggestion

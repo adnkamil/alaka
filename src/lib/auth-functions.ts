@@ -11,6 +11,7 @@ import {
   revokeAllSessions,
   verifyPassword,
 } from './auth'
+import { getUserEntitlements } from './entitlements'
 
 const registerSchema = z.object({
   name: z.string().min(1, 'Nama wajib diisi'),
@@ -136,6 +137,12 @@ export const fetchCurrentUser = createServerFn({ method: 'GET' }).handler(
   async () => {
     const user = await getSessionUser()
     if (!user) return null
+
+    // Status akses (TRIAL/FREE/PRO + fitur PRO yang terbuka) ikut dikirim, supaya
+    // komponen punya SATU sumber dan nggak menghitung `isPro` sendiri-sendiri.
+    // Pengecekan yang mengikat tetap di server (`src/lib/entitlements.ts`).
+    const entitlements = await getUserEntitlements(user)
+
     return {
       id: user.id,
       name: user.name,
@@ -145,6 +152,7 @@ export const fetchCurrentUser = createServerFn({ method: 'GET' }).handler(
       // Dipakai di halaman Profil: akun Google-only belum punya kata sandi,
       // jadi menu "Ubah Kata Sandi" ditampilkan sebagai info, bukan aksi.
       hasPassword: Boolean(user.passwordHash),
+      entitlements,
     }
   },
 )

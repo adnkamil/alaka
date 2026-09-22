@@ -10,11 +10,13 @@ import {
   ChevronRight,
   CircleHelp,
   Contact,
+  Crown,
   Download,
   History,
   Info,
   KeyRound,
   Landmark,
+  Lock,
   LogOut,
   MessageSquareText,
   Moon,
@@ -29,6 +31,8 @@ import EditProfileModal from '../../../components/EditProfileModal'
 import MessageTemplateModal from '../../../components/MessageTemplateModal'
 import type { PaymentMethodFormValue } from '../../../components/PaymentMethodModal'
 import PaymentMethodModal from '../../../components/PaymentMethodModal'
+import ProBadge from '../../../components/ProBadge'
+import ProLockPrompt from '../../../components/ProLockPrompt'
 import Switch from '../../../components/ui/Switch'
 import {
   changePassword,
@@ -45,6 +49,12 @@ import {
 } from '../../../lib/payment-methods-functions'
 import { updateMessageTemplate } from '../../../lib/message-template-functions'
 import { DEFAULT_WA_MESSAGE_TEMPLATE } from '../../../lib/message-template'
+import {
+  canUseFeature,
+  hasFullAccess,
+  planLabel,
+} from '../../../lib/subscription'
+import type { Entitlement, ProFeature } from '../../../lib/subscription'
 
 // Fitur "Master Control" & "Activity Logs" di section Kelola disembunyikan dulu
 // (belum fungsional). Ubah `advancedMenu` jadi `true` untuk memunculkannya lagi.
@@ -116,6 +126,16 @@ function useDarkModePreference() {
   return [isDark, toggle] as const
 }
 
+/** Keterangan singkat status paket di baris "Langganan" halaman Profil. */
+function planRowSubtitle(entitlement: Entitlement | null) {
+  if (!entitlement) return ''
+  if (entitlement.plan === 'pro') return 'Semua fitur terbuka'
+  if (entitlement.plan === 'trial') {
+    return `Sisa ${entitlement.trialDaysLeft} hari trial`
+  }
+  return 'Fitur PRO terkunci'
+}
+
 function RowLink({
   to,
   icon,
@@ -150,9 +170,33 @@ function ProfilPage() {
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [showTemplateModal, setShowTemplateModal] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const [lockedFeature, setLockedFeature] = useState<ProFeature | null>(null)
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null)
   const [isInstalled, setIsInstalled] = useState(false)
+
+  // Akses fitur PRO diambil dari entitlement user (satu sumber). Server tetap
+  // jadi penentu akhir — kalau UI-nya ke-bypass, server function-nya menolak.
+  const paymentMethodsUnlocked = user
+    ? canUseFeature(user.entitlements, 'payment_methods')
+    : false
+
+  // Ajakan upgrade di baris "Langganan" — TRIAL & PRO sama-sama akses penuh,
+  // jadi cuma FREE yang perlu lihat CTA-nya. Pakai helper entitlement yang ada.
+  const showUpgradeCta = user ? !hasFullAccess(user.entitlements) : false
+
+  /**
+   * Semua aksi tulis metode pembayaran lewat sini, jadi terkunci/tidaknya cukup
+   * dijaga di satu tempat: kalau terkunci, tampilkan info upgrade (bukan panggil
+   * server function yang pasti ditolak).
+   */
+  function runPaymentMethodAction(action: () => void) {
+    if (paymentMethodsUnlocked) {
+      action()
+      return
+    }
+    setLockedFeature('payment_methods')
+  }
 
   useEffect(() => {
     function onBeforeInstallPrompt(e: Event) {
@@ -283,8 +327,49 @@ function ProfilPage() {
           className="mb-2 text-xs font-semibold uppercase"
           style={{ color: 'var(--app-text-mute)' }}
         >
+          Langganan
+        </h2>
+        <Link
+          to="/profil/langganan"
+          className="app-card flex w-full items-center gap-3 p-4 no-underline"
+          style={{ color: 'var(--app-text)' }}
+        >
+          <span
+            className="flex h-9 w-9 items-center justify-center rounded-full"
+            style={{
+              background: 'var(--app-accent-soft)',
+              color: 'var(--app-accent)',
+            }}
+          >
+            <Crown size={18} />
+          </span>
+          <div className="flex-1">
+            <p className="text-sm font-semibold">
+              Paket {user ? planLabel(user.entitlements.plan) : '-'}
+            </p>
+            <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
+              {planRowSubtitle(user?.entitlements ?? null)}
+            </p>
+          </div>
+          {showUpgradeCta && (
+            <span
+              className="text-xs font-semibold"
+              style={{ color: 'var(--app-accent)' }}
+            >
+              Upgrade
+            </span>
+          )}
+          <ChevronRight size={18} style={{ color: 'var(--app-text-mute)' }} />
+        </Link>
+      </section>
+      <section className="mb-6">
+        <h2
+          className="mb-2 text-xs font-semibold uppercase"
+          style={{ color: 'var(--app-text-mute)' }}
+        >
           Kelola
         </h2>
+
         <div
           className="app-card flex flex-col divide-y"
           style={{ borderColor: 'var(--app-border)' }}
@@ -347,8 +432,9 @@ function ProfilPage() {
               className="px-4 py-3 text-xs"
               style={{ color: 'var(--app-text-soft)' }}
             >
-              Belum ada metode pembayaran. Tambahkan bank, e-wallet, atau QRIS
-              supaya pelanggan bisa bayar.
+              {paymentMethodsUnlocked
+                ? 'Belum ada metode pembayaran. Tambahkan bank, e-wallet, atau QRIS supaya pelanggan bisa bayar.'
+                : 'Metode pembayaran (bank, e-wallet, QRIS) bisa ditambahkan di paket PRO.'}
             </p>
           )}
 
@@ -363,7 +449,11 @@ function ProfilPage() {
               </span>
               <button
                 type="button"
-                onClick={() => setPaymentModal({ mode: 'edit', id: method.id })}
+                onClick={() =>
+                  runPaymentMethodAction(() =>
+                    setPaymentModal({ mode: 'edit', id: method.id }),
+                  )
+                }
                 className="min-w-0 flex-1 text-left"
                 style={{ color: 'var(--app-text)' }}
               >
@@ -391,7 +481,9 @@ function ProfilPage() {
               <Switch
                 checked={method.isActive}
                 onChange={(checked) =>
-                  handleTogglePaymentMethod(method.id, checked)
+                  runPaymentMethodAction(
+                    () => void handleTogglePaymentMethod(method.id, checked),
+                  )
                 }
                 label={`Aktifkan ${method.provider}`}
               />
@@ -400,14 +492,21 @@ function ProfilPage() {
 
           <button
             type="button"
-            onClick={() => setPaymentModal({ mode: 'create' })}
+            onClick={() =>
+              runPaymentMethodAction(() => setPaymentModal({ mode: 'create' }))
+            }
             className="flex w-full items-center gap-3 px-4 py-3 text-left"
-            style={{ color: 'var(--app-accent)' }}
+            style={{
+              color: paymentMethodsUnlocked
+                ? 'var(--app-accent)'
+                : 'var(--app-text-mute)',
+            }}
           >
-            <Plus size={18} />
+            {paymentMethodsUnlocked ? <Plus size={18} /> : <Lock size={18} />}
             <span className="flex-1 text-sm font-semibold">
               Tambah metode pembayaran
             </span>
+            {!paymentMethodsUnlocked && <ProBadge />}
           </button>
         </div>
       </section>
@@ -645,6 +744,12 @@ function ProfilPage() {
           onSubmit={handleChangePassword}
         />
       )}
+
+      <ProLockPrompt
+        feature={lockedFeature}
+        entitlements={user?.entitlements ?? null}
+        onClose={() => setLockedFeature(null)}
+      />
     </main>
   )
 }

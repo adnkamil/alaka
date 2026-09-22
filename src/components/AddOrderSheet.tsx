@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Trash2, User, X } from 'lucide-react'
+import { Lock, Trash2, User, X } from 'lucide-react'
 import NumberInput from './ui/NumberInput'
 import { findFeeForPrice } from '../lib/fee-tier-validation'
 import { formatPhoneNumber } from '../lib/format'
@@ -40,6 +40,11 @@ interface AddOrderSheetProps {
   customers?: Array<CustomerOption>
   itemNameSuggestions?: Array<string>
   itemPriceSuggestions?: Record<string, Array<number>>
+  /**
+   * Fitur PRO `order_suggestions` lagi terkunci (user FREE). Saran memang tidak
+   * dikirim server, jadi di sini cukup ditampilkan alasannya.
+   */
+  suggestionsLocked?: boolean
   title?: string
   submitLabel?: string
   initialValue?: AddOrderSheetValue
@@ -91,6 +96,7 @@ export default function AddOrderSheet({
   customers = [],
   itemNameSuggestions = [],
   itemPriceSuggestions = {},
+  suggestionsLocked = false,
   title = 'Tambah Pesanan',
   submitLabel = 'Simpan pesanan',
   initialValue,
@@ -303,6 +309,21 @@ export default function AddOrderSheet({
               </label>
 
               <div className="flex flex-col gap-3">
+                {suggestionsLocked && (
+                  <div
+                    className="flex items-center gap-2 rounded-xl border border-dashed px-3 py-2 text-xs"
+                    style={{
+                      borderColor: 'var(--app-border)',
+                      color: 'var(--app-text-mute)',
+                    }}
+                  >
+                    <Lock size={13} className="flex-shrink-0" />
+                    <span>
+                      Saran nama barang &amp; harga dari riwayat pesanan
+                      tersedia di paket PRO.
+                    </span>
+                  </div>
+                )}
                 {items.map((item, index) => (
                   <div key={index} className="app-card p-3">
                     <label className="relative mb-2 flex flex-col gap-1 text-xs">

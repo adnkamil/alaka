@@ -1,5 +1,6 @@
 import {
   queryOptions,
+  useQuery,
   useQueryClient,
   useSuspenseQuery,
 } from '@tanstack/react-query'
@@ -12,6 +13,7 @@ import {
   getFeeRule,
   updateFeeRule,
 } from '../../../../lib/fee-rules-functions'
+import { getFeeSuggestions } from '../../../../lib/fee-suggestions-functions'
 
 export const Route = createFileRoute('/_app/profil/fee-rules/$feeRuleId')({
   loader: ({ context, params }) => {
@@ -24,10 +26,23 @@ export const Route = createFileRoute('/_app/profil/fee-rules/$feeRuleId')({
   component: EditFeeRulePage,
 })
 
+// Saran tier (fitur PRO `fee_suggestions`) — query & kunci yang sama dengan
+// halaman tambah, jadi cache-nya dipakai bareng. Sengaja `useQuery` biasa, bukan
+// loader: formnya tetap bisa dipakai walau saran gagal dimuat.
+const feeSuggestionsQuery = queryOptions({
+  queryKey: ['fee-suggestions'],
+  queryFn: () => getFeeSuggestions(),
+})
+
 function EditFeeRulePage() {
   const { feeRuleId } = Route.useParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { data: feeSuggestions } = useQuery(feeSuggestionsQuery)
+
+  // `unlocked` dari server; selama masih dimuat belum ada info, jadi dianggap
+  // belum terkunci (biar nggak nge-flash pesan terkunci).
+  const suggestionsLocked = feeSuggestions ? !feeSuggestions.unlocked : false
 
   const query = queryOptions({
     queryKey: ['fee-rule', feeRuleId],
@@ -76,6 +91,8 @@ function EditFeeRulePage() {
           })),
         }}
         onSubmit={handleSubmit}
+        suggestions={feeSuggestions?.suggestions ?? []}
+        suggestionsLocked={suggestionsLocked}
       />
     </main>
   )

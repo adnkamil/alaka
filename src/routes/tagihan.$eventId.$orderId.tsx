@@ -1,5 +1,6 @@
 import { queryOptions, useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
+import type { ErrorComponentProps } from '@tanstack/react-router'
 import { Landmark, Printer } from 'lucide-react'
 import { getPublicOrderInvoice } from '../lib/orders-functions'
 import { lineTotal, summarizeItems } from '../lib/order-totals'
@@ -17,7 +18,37 @@ export const Route = createFileRoute('/tagihan/$eventId/$orderId')({
     return context.queryClient.ensureQueryData(query)
   },
   component: PublicInvoicePage,
+  errorComponent: PublicInvoiceError,
 })
+
+/**
+ * Link tagihan ini dibuka pelanggan (bukan pemilik akun), jadi kalau server
+ * menolak, pesannya harus enak dibaca: jelasin bahwa link-nya sudah tidak aktif
+ * dan arahkan pelanggan menghubungi jastipernya.
+ */
+function PublicInvoiceError({ error }: ErrorComponentProps) {
+  const message =
+    error instanceof Error
+      ? error.message
+      : 'Terjadi kesalahan saat memuat tagihan.'
+
+  return (
+    <main className="app-shell relative mx-auto min-h-screen max-w-lg px-4 pb-10 pt-6">
+      <div className="flex flex-col items-center py-16 text-center">
+        <span className="app-icon-tile mb-4 h-12 w-12">
+          <Landmark size={22} />
+        </span>
+        <h1 className="mb-1.5 text-lg font-bold">Tagihan tidak bisa dibuka</h1>
+        <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
+          {message}
+        </p>
+        <p className="mt-3 text-sm" style={{ color: 'var(--app-text-soft)' }}>
+          Silakan hubungi penjual untuk mendapatkan tagihan terbaru.
+        </p>
+      </div>
+    </main>
+  )
+}
 
 function formatIDR(value: string | number) {
   return new Intl.NumberFormat('id-ID', {
@@ -54,7 +85,8 @@ function PublicInvoicePage() {
     { day: 'numeric', month: 'long', year: 'numeric' },
   )
   const completed =
-    data.order.paymentStatus === 'paid' || data.order.paymentStatus === 'shipped'
+    data.order.paymentStatus === 'paid' ||
+    data.order.paymentStatus === 'shipped'
 
   return (
     <main className="app-shell relative mx-auto min-h-screen max-w-lg px-4 pb-10 pt-6">

@@ -45,6 +45,20 @@ export function buildWhatsAppLink(phone: string, message: string) {
  * 0 dibuang, harus diawali angka 8 dan panjangnya wajar (9-13 digit).
  * Ini cuma validasi FORMAT, bukan cek apakah nomornya beneran aktif/punya WA.
  */
+/**
+ * Tanggal panjang bahasa Indonesia, mis. "12 Agustus 2026". Terima `Date`,
+ * string ISO (hasil serialisasi server function), atau null — null jadi string
+ * kosong supaya aman dipakai langsung di JSX.
+ */
+export function formatDate(date: Date | string | null | undefined) {
+  if (!date) return ''
+  return new Date(date).toLocaleDateString('id-ID', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+}
+
 export function isValidIndonesianPhone(phone: string | null | undefined) {
   if (!phone) return false
   const digits = phone.replace(/\D/g, '')

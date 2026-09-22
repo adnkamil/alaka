@@ -5,10 +5,12 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
+import type { ErrorComponentProps } from '@tanstack/react-router'
 import {
   AlertTriangle,
   ArrowLeft,
   Landmark,
+  Lock,
   MessageCircle,
   Printer,
   SquarePen,
@@ -40,6 +42,7 @@ export const Route = createFileRoute('/_app/invoice/$eventId/$orderId')({
     return context.queryClient.ensureQueryData(query)
   },
   component: InvoicePage,
+  errorComponent: InvoiceError,
 })
 
 function formatIDR(value: string | number) {
@@ -55,6 +58,41 @@ const statusLabel: Record<string, string> = {
   dp: 'DP (Sudah Bayar Sebagian)',
   paid: 'Lunas',
   shipped: 'Dikirim',
+}
+
+/**
+ * `getOrderInvoice` bisa ditolak server — salah satunya kalau fitur PRO
+ * `billing` sudah terkunci (masa trial habis & belum PRO). Daripada muncul
+ * halaman error default, tampilkan pesannya langsung + jalan kembali.
+ */
+function InvoiceError({ error }: ErrorComponentProps) {
+  const message =
+    error instanceof Error
+      ? error.message
+      : 'Terjadi kesalahan saat memuat tagihan.'
+
+  return (
+    <main className="app-shell relative mx-auto min-h-screen max-w-lg px-4 pb-10 pt-6">
+      <div className="flex flex-col items-center py-16 text-center">
+        <span className="app-icon-tile mb-4 h-12 w-12">
+          <Lock size={22} />
+        </span>
+        <h1 className="mb-1.5 text-lg font-bold">
+          Halaman tagih tidak bisa dibuka
+        </h1>
+        <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
+          {message}
+        </p>
+        <Link
+          to="/"
+          className="app-btn-outline mt-6 inline-flex items-center gap-2 no-underline"
+        >
+          <ArrowLeft size={16} />
+          Kembali ke Beranda
+        </Link>
+      </div>
+    </main>
+  )
 }
 
 function InvoicePage() {
@@ -102,7 +140,8 @@ function InvoicePage() {
   )
 
   const completed =
-    data.order.paymentStatus === 'paid' || data.order.paymentStatus === 'shipped'
+    data.order.paymentStatus === 'paid' ||
+    data.order.paymentStatus === 'shipped'
 
   const invoiceLink = `${typeof window !== 'undefined' ? window.location.origin : ''}/tagihan/${eventId}/${orderId}`
 

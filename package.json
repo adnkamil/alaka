@@ -15,8 +15,11 @@
     "db:push": "drizzle-kit push",
     "db:pull": "drizzle-kit pull",
     "db:studio": "drizzle-kit studio",
+    "db:baseline": "tsx scripts/drizzle-baseline.ts",
     "db:seed-dummy": "tsx scripts/seed-dummy-data.ts",
+    "db:backfill-trial": "tsx scripts/backfill-trial.ts",
     "lint": "eslint",
+    "test": "tsx --test src/**/*.test.ts",
     "format": "prettier --write . && eslint --fix",
     "check": "prettier --check ."
   },
