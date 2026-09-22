@@ -12,6 +12,11 @@ user memiliki data (event, pesanan, aturan fee) yang terisolasi dari user
 lain. Semua user memiliki role yang sama sebagai jastiper (tidak ada role
 customer terpisah).
 
+Model bisnisnya langganan (lihat 5): setiap user baru otomatis dapat **trial
+30 hari** dengan semua fitur terbuka, lalu turun ke paket **FREE** (fitur
+dasar tetap jalan, fitur PRO terkunci) dan bisa naik ke **PRO** lewat
+pembayaran manual yang diverifikasi admin.
+
 ## 2. Referensi
 
 Riset awal dilakukan terhadap aplikasi sejenis "JasTip.Nya by Afathya"
@@ -22,18 +27,18 @@ Astra Otoshop).
 
 ## 3. Tech Stack
 
-| Layer               | Pilihan                                                              |
-| ------------------- | -------------------------------------------------------------------- |
-| Framework           | TanStack Start (React 19 + Vite 8)                                   |
-| Routing             | TanStack Router                                                      |
-| Data fetching/cache | TanStack Query                                                       |
-| Styling             | Tailwind CSS v4 (mobile-first)                                       |
-| PWA                 | vite-plugin-pwa + Workbox (custom service worker)                    |
-| Database            | PostgreSQL via Drizzle ORM                                           |
-| Auth                | Session-based, cookie httpOnly; password di-hash (bcryptjs)          |
-| OAuth               | Google OAuth 2.0 (OpenID Connect — login/register via Google)        |
-| Validasi            | Zod (client & server)                                                |
-| Icons               | Lucide React                                                         |
+| Layer               | Pilihan                                                       |
+| ------------------- | ------------------------------------------------------------- |
+| Framework           | TanStack Start (React 19 + Vite 8)                            |
+| Routing             | TanStack Router                                               |
+| Data fetching/cache | TanStack Query                                                |
+| Styling             | Tailwind CSS v4 (mobile-first)                                |
+| PWA                 | vite-plugin-pwa + Workbox (custom service worker)             |
+| Database            | PostgreSQL via Drizzle ORM                                    |
+| Auth                | Session-based, cookie httpOnly; password di-hash (bcryptjs)   |
+| OAuth               | Google OAuth 2.0 (OpenID Connect — login/register via Google) |
+| Validasi            | Zod (client & server)                                         |
+| Icons               | Lucide React                                                  |
 
 ## 4. Fitur & Halaman
 
@@ -57,11 +62,11 @@ Astra Otoshop).
 
 - **Header**: tombol back, nama event, menu tiga titik (edit/hapus event) dengan konfirmasi hapus.
 - **Ringkasan keuangan event**: uang masuk, outstanding, estimasi untung bersih.
-- **Dropdown pilih Aturan Fee** untuk event ini (lihat 4.6).
+- **Dropdown pilih Aturan Fee** untuk event ini (lihat 4.9).
 - **Search/filter pelanggan** (filter real-time berdasarkan nama customer).
 - **View toggle**: mode "Per Pelanggan" (accordion customer) dan mode "Ringkasan Barang" (lihat 4.3.1).
 - List pesanan dikelompokkan per customer (accordion), badge status **Belum Lunas / DP / Lunas / Dikirim**.
-- Expand customer → list item + tombol aksi: **Tagih** (→ invoice internal), **Tambah**, **Hapus**, **Edit status**.
+- Expand customer → list item + tombol aksi: **Tagih** (→ invoice internal; fitur PRO — di paket FREE tombolnya berubah jadi ikon gembok + badge PRO, dan klik-nya hanya memunculkan dialog upgrade, bukan halaman tagih. Lihat 5), **Tambah**, **Hapus**, **Edit status**.
 - **Floating action button (+)** → buka form Tambah Pesanan.
 - URL search param `?addOrder=true` → otomatis buka sheet Tambah Pesanan saat navigasi dari tab Tambah di bottom nav.
 
@@ -78,8 +83,9 @@ Astra Otoshop).
 - **Nama pelanggan** — autocomplete dari daftar Customer yang tersimpan. Bisa diisi bebas jika belum terdaftar.
 - **No. HP pelanggan** — opsional, dipakai untuk kirim WA dari halaman Invoice.
 - Barang titipan — repeatable block: nama barang, harga asli, jumlah (qty), fee jastip.
-  - **Fee auto-terisi** berdasarkan Aturan Fee event ini + harga barang yang diinput (lihat 4.6). Bila harga di luar semua tier, field fee dikosongkan untuk diisi manual.
+  - **Fee auto-terisi** berdasarkan Aturan Fee event ini + harga barang yang diinput (lihat 4.9). Bila harga di luar semua tier, field fee dikosongkan untuk diisi manual.
   - **Fee berlaku per unit**: total satu barang = `(harga asli + fee) × qty`. Contoh: barang 30.000 + fee 4.000, qty 2 → (30.000 + 4.000) × 2 = 68.000.
+  - **Saran nama barang & harga asli** — saat mengisi nama barang, muncul saran dari barang yang pernah dicatat di event ini (nama + daftar harga), diambil dari server (`getOrderSuggestions`). Ini fitur PRO `order_suggestions`: kalau terkunci, field tetap bisa diisi manual dan di tempat saran muncul keterangan "Saran nama barang & harga dari riwayat pesanan tersedia di paket PRO" — server tidak mengirim data saran sama sekali ke user FREE (lihat 5).
 - **Ringkasan otomatis**: total harga jual (`SUM((harga asli + fee) × qty)`), total fee, total tagihan.
 - **Status pembayaran**: Belum Lunas / DP / Lunas / Dikirim.
   - Jika status **DP**: muncul field input **Nominal DP** yang dibayarkan (`paidAmount`).
@@ -89,16 +95,18 @@ Astra Otoshop).
 ### 4.5 Invoice (Internal) — `/invoice/:eventId/:orderId`
 
 - Halaman untuk jastiper — dilindungi auth.
+- Termasuk fitur PRO `billing`. Datanya diambil lewat server function yang dijaga (`getOrderInvoice`), jadi user FREE ditolak walau URL-nya diketik langsung (lihat 5).
 - Card invoice: nama brand/jastiper, no. invoice (8 karakter UUID), nama pelanggan, nama event, tanggal invoice, daftar item (qty × harga + fee), total tagihan.
 - Info metode pembayaran aktif milik jastiper (bank, e-wallet, QRIS).
 - Status pembayaran dengan badge warna.
-- **Kirim ke WhatsApp**: input No. HP pelanggan (validasi format nomor Indonesia), tombol generate link `wa.me` dengan pesan dari **Template Chat WA** (lihat 4.8.3).
+- **Kirim ke WhatsApp**: input No. HP pelanggan (validasi format nomor Indonesia), tombol generate link `wa.me` dengan pesan dari **Template Chat WA** (lihat 4.8.5). Tombol ini cuma ada di halaman invoice, jadi otomatis ikut terkunci untuk paket FREE.
   - Jika pelanggan belum terdaftar di daftar Customer → muncul prompt untuk menambahkan.
 - Tombol **Cetak** (`window.print()`).
 
 ### 4.6 Tagihan (Publik) — `/tagihan/:eventId/:orderId`
 
 - Halaman publik tanpa auth — bisa dibagikan ke pelanggan lewat link.
+- Termasuk fitur PRO `billing`, **dengan pengecualian (grandfathering)**: pesanan yang dibuat saat pemiliknya masih punya akses penuh (trial/PRO) tetap bisa dibuka walau sekarang paketnya FREE — link-nya sudah terlanjur dikirim ke pelanggan, jadi tidak boleh mati mendadak. Dicek lewat `hasFullAccessAtForUser(order.createdAt)` (lihat 5).
 - Tampilan mirip Invoice internal tapi tanpa fitur kirim WA dan tanpa info internal.
 - Menampilkan info pembayaran (bank/e-wallet/QRIS) milik jastiper jika pesanan **belum lunas**.
 - Status pembayaran.
@@ -114,29 +122,40 @@ Astra Otoshop).
 
 - Header: avatar inisial, nama, nama brand. Tap → modal **Edit Profil** (nama + nama brand).
 
-#### 4.8.1 Section Kelola
+#### 4.8.1 Section Langganan
+
+- Baris status paket (ikon Crown) — teks "Paket Trial / FREE / PRO" + keterangan periode: sisa hari trial, batas aktif PRO, atau kapan masa trial berakhir (untuk FREE).
+- Chip **Upgrade** tampil khusus paket FREE. Tap baris → halaman **Paket & Langganan** (lihat 4.12).
+
+#### 4.8.2 Section Kelola
+
 - **Manajemen Fee** → `/profil/fee-rules`
 - **Customer** → `/profil/customers`
 - (Master Control & Activity Logs disembunyikan sementara lewat flag `FEATURES.advancedMenu`.)
 
-#### 4.8.2 Section Pembayaran
+#### 4.8.3 Section Pembayaran
+
 - List metode pembayaran aktif/nonaktif: bank, e-wallet, QRIS.
 - Toggle aktif/nonaktif per metode.
 - Tambah / edit / hapus metode pembayaran (modal `PaymentMethodModal`).
+- Semua aksi **tulis** (tambah / edit / hapus / aktif-nonaktif) termasuk fitur PRO `payment_methods`: di paket FREE tombol "Tambah metode pembayaran" tampil terkunci + badge PRO, dan servernya menolak (`requireUserFeature('payment_methods')`). Daftar metodenya sendiri tetap bisa dibaca karena dipakai halaman tagihan pelanggan (lihat 5).
 - Tipe yang didukung: `bank` (provider + no. rekening + nama pemilik), `wallet` (provider + no. HP), `qris` (upload gambar QRIS — disimpan sebagai base64 data URL).
 - Metode aktif tampil di invoice/tagihan pelanggan.
 
-#### 4.8.3 Section Keamanan
+#### 4.8.4 Section Keamanan
+
 - **Ubah Kata Sandi** (modal `ChangePasswordModal`) — hanya muncul jika akun punya password (bukan login via Google saja).
 - Akun Google-only menampilkan info statis bahwa kata sandi diatur dari akun Google.
 
-#### 4.8.4 Section Preferensi
+#### 4.8.5 Section Preferensi
+
 - **Mode gelap** — toggle, disimpan di `localStorage` + `data-theme` attribute.
 - **Template Chat WA** (modal `MessageTemplateModal`) — template pesan WhatsApp untuk tagih pelanggan, dengan variabel `{customer}`, `{event}`, `{link}`, `{subtotal}`, `{fee}`, `{total}`, `{bank}`, `{bankAccount}`, `{brand}`. Bisa dikembalikan ke default.
 - **Notifikasi** — placeholder (belum fungsional).
 - **Tambahkan ke layar utama** — PWA install prompt (`beforeinstallprompt`); jika sudah terpasang, tombol berubah jadi "Terpasang di perangkat".
 
-#### 4.8.5 Section Lainnya
+#### 4.8.6 Section Lainnya
+
 - Bantuan (placeholder).
 - Tentang aplikasi (versi `v1.0.0`).
 - Tombol **Keluar** (logout).
@@ -145,6 +164,7 @@ Astra Otoshop).
 
 - List aturan fee: card per aturan — nama, jumlah tier, rentang harga, preview tier. Tombol "Tambah aturan fee".
 - **Tambah / Edit Aturan Fee** — nama aturan + list tier (bisa tambah/hapus baris). Tiap tier: harga min, harga maks, fee jastip.
+- **Saran tier otomatis** (dipakai di form Tambah **dan** Edit aturan fee) — dari harga dan fee barang yang pernah dicatat user, sistem mengelompokkan harga ke rentang (band) lalu menyarankan satu tier per rentang dengan fee = nilai tengah rentang tersebut (dibulatkan). Ini fitur PRO `fee_suggestions`: di paket FREE panel saran diganti keterangan "Saran tier otomatis dari riwayat harga & fee barang tersedia di paket PRO", dan server (`getFeeSuggestions`) cuma mengirim `unlocked: false` tanpa data (lihat 5.2).
 - User bisa membuat **lebih dari satu aturan fee** (misal beda aturan untuk jastip lokal vs luar negeri).
 - Di Detail Event, user memilih **satu Aturan Fee** yang berlaku untuk event tersebut.
 
@@ -180,21 +200,87 @@ Astra Otoshop).
 - **MVP: halaman dengan tulisan "Coming soon"** dan deskripsi singkat rencana ke depan.
 - FAB tengah di bottom nav (tab "Tambah") mengarah ke `/pesanan/new` → redirect ke beranda dengan `?addOrder=true` (flow tambah pesanan cepat tanpa pilih event spesifik — belum diimplementasi penuh).
 
-## 5. Navigasi
+### 4.12 Paket & Langganan — `/profil/langganan`
+
+- Halaman status langganan, dibuka dari baris **Langganan** di Profil. Punya header sendiri dengan tombol back (bottom nav tetap tampil di sini).
+- **Kartu paket**: ikon Crown + teks "Paket Trial / FREE / PRO" + kalimat periode — "Sisa 12 hari (sampai 12 Februari 2026)" untuk trial, "Aktif sampai …" untuk PRO, "Masa trial berakhir …" untuk FREE — dilengkapi keterangan singkat masing-masing plan.
+- **Daftar 4 fitur PRO** dengan status **Terbuka / Terkunci** per fitur (ikon centang vs gembok) + deskripsi singkat tiap fitur.
+- **Cara upgrade ke PRO** (muncul kalau belum PRO): hubungi admin → bayar sesuai nominal paket (transfer manual) → kirim bukti transfer; setelah diverifikasi admin, status PRO aktif dan fitur terkunci otomatis terbuka.
+- Halaman ini **hanya menampilkan** hasil entitlement dari server (`fetchCurrentUser`) — tidak ada perhitungan plan di client.
+- Pengajuan upgrade dari dalam aplikasi (upload bukti transfer) + panel verifikasi admin **belum ada** — lihat 9.
+
+## 5. Paket & Entitlement (Trial / FREE / PRO)
+
+Tiga status akses. Seluruh aturannya ditulis di `src/lib/subscription.ts` (modul murni tanpa `db`, jadi dipakai bersama server & client) dan dihitung ulang setiap kali dibutuhkan.
+
+| Plan  | Cara dapat                                                                    | Akses fitur                            |
+| ----- | ----------------------------------------------------------------------------- | -------------------------------------- |
+| Trial | Otomatis, 30 hari sejak user dibuat (`TRIAL_DAYS`)                            | Semua fitur terbuka                    |
+| FREE  | Otomatis setelah trial habis (atau setelah masa PRO habis)                    | Fitur dasar saja, 4 fitur PRO terkunci |
+| PRO   | Langganan 30 hari (`PRO_DURATION_DAYS`) yang pembayarannya diverifikasi admin | Semua fitur terbuka                    |
+
+### 5.1 Cara status dihitung
+
+- **Tidak ada kolom `users.is_pro`.** Status dihitung dari dua sumber: (1) kolom `users.trial_started_at` + `users.trial_ends_at` untuk masa trial, (2) histori tabel `subscriptions` — baris `status = 'active'` yang `ends_at`-nya belum lewat berarti PRO.
+- Prioritas: **PRO aktif > trial belum habis > FREE** (fungsi `resolveEntitlement`).
+- Nilai trial diisi **DEFAULT kolom di database**, bukan diset di kode, supaya semua jalur pembuatan user (register email, Google OAuth, seed) otomatis kebagian trial yang sama.
+- Aturan buka/tutup fitur ditulis **satu kali** di `featuresForPlan(plan)`: `plan !== 'free'` → semua fitur PRO terbuka. Fungsi inilah yang dibaca server & client, jadi tidak ada lagi pengecekan `isPro` yang tersebar sendiri-sendiri.
+- Entitlement yang dikirim ke client (lewat `fetchCurrentUser`) berisi: `plan`, `isTrial`, `isPro`, `proUntil`, `trialStartedAt`, `trialEndsAt`, `trialDaysLeft`, dan `features` (satu flag per fitur PRO).
+
+### 5.2 Daftar fitur PRO (kunci + gerbang server)
+
+| Kunci fitur         | Fitur                                                              | Gerbang server                                                                                                                          |
+| ------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `billing`           | Tagih: halaman invoice internal, kirim WA, dan link tagihan publik | `requireFeature(getUserEntitlements(user), 'billing')` di `getOrderInvoice`; di `getPublicOrderInvoice` ada aturan grandfathering (5.5) |
+| `payment_methods`   | Tambah / edit / hapus / aktif-nonaktif metode pembayaran           | `requireUserFeature('payment_methods')` di 4 server function tulis — baca daftar tetap terbuka                                          |
+| `order_suggestions` | Saran nama barang & harga asli di form Tambah/Edit Pesanan         | `getOrderSuggestions` mengembalikan `unlocked: false` + data kosong (tidak melempar error)                                              |
+| `fee_suggestions`   | Saran tier aturan fee di form Tambah/Edit Aturan Fee               | `getFeeSuggestions` mengembalikan `unlocked: false` + data kosong                                                                       |
+
+Label & deskripsi tiap kunci (`PRO_FEATURE_INFO`), label/deskripsi plan (`PLAN_INFO`, `planLabel()`), dan pesan seragam `featureLockedMessage()` juga tinggal di `src/lib/subscription.ts` — jadi teks UI dan pesan server tidak bisa beda.
+
+### 5.3 Gerbang server (yang mengikat)
+
+- Pintu masuknya `src/lib/entitlements.ts`: `getUserEntitlements(user)` (hitung status) → `requireFeature()` / `requireUserFeature()` yang melempar `FeatureLockedError` (`code = 'FEATURE_LOCKED'`, pesannya siap ditampilkan) kalau fiturnya terkunci.
+- Server function **tidak boleh** menulis `plan === 'pro'` sendiri; selalu lewat helper di atas.
+- Endpoint saran (`order_suggestions`, `fee_suggestions`) sengaja **tidak melempar error**, tapi mengembalikan `unlocked: false` + data kosong supaya halaman tetap bisa dirender dan UI-nya cukup menampilkan status terkunci. Yang penting: server tidak pernah mengirim data saran ke user FREE.
+- Karena pengecekannya di server, UI yang diakali (memanggil endpoint langsung) tetap ditolak.
+
+### 5.4 Perilaku UI saat fitur terkunci
+
+- `ProBadge` — penanda kecil "PRO" pada kontrol yang terkunci.
+- `ProLockPrompt` — dialog seragam untuk fitur terkunci: penjelasan fiturnya, isi paket PRO, status plan user saat ini, lalu tombol **"Upgrade ke PRO"** (menuju `/profil/langganan`) dan "Nanti saja".
+- Kontrol yang tampil terkunci di paket FREE: tombol **Tagih** di Detail Event (gembok + badge PRO; klik = dialog upgrade), tombol "Tambah metode pembayaran" serta toggle aktif-nonaktif metode (semua aksi tulis dialihkan ke dialog upgrade), lalu keterangan pengganti saran di form pesanan ("Saran nama barang & harga dari riwayat pesanan tersedia di paket PRO") dan di form aturan fee ("Saran tier otomatis dari riwayat harga & fee barang tersedia di paket PRO").
+- Baris **Langganan** di Profil menampilkan status paket + chip **Upgrade** (khusus FREE) sebagai jalan masuk ke halaman Paket & Langganan.
+- Semua kunci di UI dibaca dari `canUseFeature(entitlements, '<kunci fitur>')` — komponen tidak menghitung status plan sendiri.
+
+### 5.5 Grandfathering (agar tidak merusak data yang sudah beredar)
+
+- Link tagihan publik (`/tagihan/:eventId/:orderId`) untuk pesanan yang dibuat saat pemiliknya masih punya akses penuh **tetap bisa dibuka** walau sekarang paketnya FREE — dicek dengan `hasFullAccessAtForUser(owner, order.createdAt)`. Alasannya link itu sudah terlanjur dikirim ke pelanggan lewat WhatsApp.
+- Ringkasnya: **akses sekarang** menentukan boleh-tidaknya membuat/membuka invoice baru; **akses saat pesanan dibuat** dipakai untuk menoleransi link lama.
+
+### 5.6 Aktivasi PRO (kondisi sekarang)
+
+- Pembayaran **manual** (transfer), verifikasi oleh **admin**.
+- Tabel `subscriptions` sudah menyiapkan semuanya: durasi (`duration_days`), periode PRO (`started_at` / `ends_at`), info pembayaran (nominal, metode, provider, nama pengirim, referensi transfer, bukti transfer, tanggal bayar, catatan), plus kolom hasil review admin (`reviewed_by`, `reviewed_at`, `review_note`).
+- Maksimal **satu baris `pending` per user** (unique index `subscriptions_pending_per_user_unique`), jadi bukti transfer tidak bisa dikirim dobel sebelum yang lama diproses.
+- Helper yang sudah siap dipakai fase pengajuan/verifikasi: `nextProWindow()` (perpanjangan menambah dari `ends_at` yang masih aktif, bukan dari hari ini), `listSubscriptions()`, `findPendingSubscription()`, `getSubscriptionState()`.
+- Yang **belum** dibangun: form pengajuan upgrade dari dalam aplikasi + panel verifikasi admin (lihat 9).
+
+## 6. Navigasi
 
 Bottom tab bar (5 slot), fixed, dengan `padding-bottom: env(safe-area-inset-bottom)` untuk safe area. Max width 480px.
 
-| Icon         | Tab                    | Route        | Isi                                   |
-| ------------ | ---------------------- | ------------ | ------------------------------------- |
-| 🏠 Home      | Beranda                | `/`          | List event aktif + ringkasan keuangan |
-| 💰 Wallet    | Keuangan               | `/keuangan`  | Dashboard keuangan global             |
-| ➕ Plus (FAB) | Tambah (FAB, menonjol) | `/pesanan/new` | Quick add pesanan                   |
-| 📋 List      | Pesanan                | `/pesanan`   | Coming soon                           |
-| 👤 User      | Profil                 | `/profil`    | Settings & akses ke fitur sekunder    |
+| Icon          | Tab                    | Route          | Isi                                   |
+| ------------- | ---------------------- | -------------- | ------------------------------------- |
+| 🏠 Home       | Beranda                | `/`            | List event aktif + ringkasan keuangan |
+| 💰 Wallet     | Keuangan               | `/keuangan`    | Dashboard keuangan global             |
+| ➕ Plus (FAB) | Tambah (FAB, menonjol) | `/pesanan/new` | Quick add pesanan                     |
+| 📋 List       | Pesanan                | `/pesanan`     | Coming soon                           |
+| 👤 User       | Profil                 | `/profil`      | Settings & akses ke fitur sekunder    |
 
 Halaman detail (Detail Event, Fee Rules, Customers, Invoice) menyembunyikan bottom nav dan menggunakan header dengan tombol back. Path prefix yang menyembunyikan bottom nav: `/events/`, `/profil/fee-rules`, `/profil/customers`, `/invoice/`.
 
-## 6. Skema Database
+## 7. Skema Database
 
 ```sql
 -- USERS & AUTH
@@ -206,8 +292,11 @@ users
   email             varchar unique NOT NULL
   password_hash     varchar (nullable)   -- null jika login via Google saja
   google_id         varchar unique (nullable)
+  trial_started_at  timestamp NOT NULL default now()                    -- awal masa trial
+  trial_ends_at     timestamp NOT NULL default now() + interval '30 days' -- akhir masa trial (TRIAL_DAYS)
   created_at        timestamp
   updated_at        timestamp
+  -- constraint: trial_ends_at >= trial_started_at
 
 sessions
   id                uuid primary key
@@ -223,6 +312,34 @@ password_reset_tokens
   expires_at        timestamp NOT NULL
   used_at           timestamp (nullable)     -- diisi saat token dipakai/hangus
   created_at        timestamp
+
+-- SUBSCRIPTIONS (histori langganan PRO — pembayaran manual, diverifikasi admin)
+subscriptions
+  id                uuid primary key
+  user_id           uuid → users.id (cascade delete)
+  plan_code         varchar NOT NULL default 'pro'      -- PRO_PLAN_CODE
+  status            enum('pending','active','expired','rejected') NOT NULL default 'pending'
+  duration_days     integer NOT NULL default 30         -- PRO_DURATION_DAYS
+  started_at        timestamp (nullable)  -- diisi saat status jadi 'active'
+  ends_at           timestamp (nullable)  -- akhir masa PRO (dasar resolveEntitlement)
+  -- info pembayaran (diisi user saat mengajukan)
+  amount              decimal(12,2) NOT NULL default 0
+  payment_method      enum('bank','wallet','qris') (nullable)
+  payment_provider    varchar (nullable)  -- "BCA", "GoPay"
+  payment_sender_name varchar (nullable)  -- nama pengirim, buat dicocokkan admin
+  payment_reference   varchar (nullable)  -- no. referensi / 4 digit terakhir
+  payment_proof_image text (nullable)     -- bukti transfer (data URL base64)
+  payment_note        text (nullable)
+  paid_at             timestamp (nullable)  -- tanggal user mengaku transfer
+  -- hasil verifikasi manual admin (diisi di fase admin)
+  reviewed_by       uuid → users.id (set null on delete) (nullable)
+  reviewed_at       timestamp (nullable)
+  review_note       text (nullable)
+  created_at        timestamp
+  updated_at        timestamp
+  -- index: (user_id, created_at), status
+  -- unique: maksimal satu baris `pending` per user
+  -- constraint: amount >= 0; ends_at >= started_at (kalau keduanya terisi)
 
 -- FEE RULES (Manajemen Fee)
 fee_rules
@@ -316,6 +433,10 @@ activity_logs
 - **`obtained` di `items`**: dipakai untuk checklist live shopping — menandai barang sudah didapat di toko.
 - **`password_hash` nullable**: user yang hanya mendaftar via Google tidak punya password; tampilan Profil menyesuaikan.
 - **`wa_message_template` di `users`**: template default ada di `src/lib/message-template.ts`. Jika null, dipakai template default.
+- **Status langganan tidak disimpan sebagai flag**: tidak ada kolom `users.is_pro`. Masa trial ada di `users.trial_started_at` / `users.trial_ends_at`, sedangkan status PRO dihitung dari baris `subscriptions` berstatus `active` yang `ends_at`-nya belum lewat (lihat 5.1).
+- **`subscriptions` bersifat histori, bukan state**: satu baris = satu pengajuan/pembelian. Perpanjangan membuat baris baru (baris lama jadi `expired`), jadi riwayat pembayaran selalu bisa diaudit.
+- **Kolom `payment_*` di `subscriptions`**: info pembayaran disimpan di tabel yang sama supaya admin bisa mencocokkan transfer tanpa tabel tambahan. Bukti transfer memakai pola yang sama dengan `payment_methods.qris_image` (data URL base64).
+- **Default trial ada di level database**: `trial_started_at DEFAULT now()` dan `trial_ends_at DEFAULT now() + interval '30 days'` — semua jalur pembuatan user otomatis kebagian trial. Migrasi `0001_curious_blade.sql` membackfill user lama dengan aturan "trial mulai saat user dibuat" (`trial_started_at = created_at`), dan `pnpm db:backfill-trial` dipakai kalau pemilik aplikasi mau mengecualikan user lama (mis. trial 30 hari mulai hari rilis).
 
 ### Logika auto-fill fee
 
@@ -339,7 +460,7 @@ activity_logs
 - **Pendapatan bulanan** (grafik) = `SUM((originalPrice + fee) × qty)` per bulan, hanya dari orders berstatus `paid` atau `shipped`.
 - Status `shipped` diperlakukan setara `paid` untuk kalkulasi keuangan — menandai pesanan yang sudah dibayar dan barangnya sudah dikirim ke pelanggan.
 
-## 7. Struktur File Utama
+## 8. Struktur File Utama
 
 ```
 src/
@@ -353,29 +474,38 @@ src/
 │   ├── MessageTemplateModal.tsx
 │   ├── PaymentInfoCard.tsx     # Info metode pembayaran di invoice
 │   ├── PaymentMethodModal.tsx
+│   ├── ProBadge.tsx            # Badge "PRO" untuk kontrol yang terkunci
+│   ├── ProLockPrompt.tsx       # Dialog fitur terkunci + tombol upgrade
 │   ├── ThemeToggle.tsx
 │   └── ui/                    # Komponen primitif (Switch, ConfirmModal, dll)
 ├── db/
 │   ├── index.ts               # Koneksi Drizzle + pg
-│   └── schema.ts              # Definisi semua tabel & relasi
+│   └── schema.ts              # Definisi semua tabel & relasi (termasuk subscriptions)
 ├── lib/                  # Server functions (createServerFn)
 │   ├── auth.ts                # getSessionUser, session management
 │   ├── auth-functions.ts      # login, register, logout, updateProfile, changePassword
 │   ├── customers-functions.ts
+│   ├── entitlements.ts        # getUserEntitlements, requireFeature/requireUserFeature (gerbang PRO)
 │   ├── events-functions.ts    # listEvents, createEvent, updateEvent, deleteEvent, getEventDetail
 │   ├── fee-rules-functions.ts
+│   ├── fee-suggestions.ts     # Hitung saran tier fee (murni, tanpa db)
+│   ├── fee-suggestions-functions.ts  # getFeeSuggestions (gerbang fee_suggestions)
 │   ├── fee-tier-validation.ts # Validasi overlap tier (dipakai client & server)
 │   ├── finance-functions.ts   # getFinanceSummary
-│   ├── format.ts              # formatPhoneNumber, buildWhatsAppLink, isValidIndonesianPhone
+│   ├── format.ts              # formatPhoneNumber, formatDate, buildWhatsAppLink, isValidIndonesianPhone
 │   ├── google-auth.ts         # buildGoogleAuthUrl, exchangeGoogleCode
 │   ├── mailer.ts              # Kirim email reset password
 │   ├── message-template.ts    # DEFAULT_WA_MESSAGE_TEMPLATE, renderMessageTemplate
 │   ├── message-template-functions.ts
+│   ├── order-suggestions-functions.ts  # getOrderSuggestions (gerbang order_suggestions)
 │   ├── order-totals.ts        # lineTotal, summarizeItems
-│   ├── orders-functions.ts    # CRUD order & item, invoice, updateItemsObtained
+│   ├── orders-functions.ts    # CRUD order & item, invoice, updateItemsObtained (+ gate billing)
 │   ├── password-reset-functions.ts
 │   ├── password-reset-mail.ts
-│   └── payment-methods-functions.ts
+│   ├── payment-methods-functions.ts  # CRUD metode pembayaran (+ gate payment_methods)
+│   ├── subscription.ts        # Aturan trial/FREE/PRO, PRO_FEATURES, PLAN_INFO (murni)
+│   ├── subscription.test.ts   # Unit test aturan plan & entitlement
+│   └── subscription-queries.ts # Baca histori & pengajuan subscription (server)
 ├── routes/
 │   ├── __root.tsx             # Root layout (theme init, QueryClient provider)
 │   ├── _app.tsx               # Auth-protected layout (session check + BottomNav)
@@ -390,6 +520,7 @@ src/
 │   │   │   └── new.tsx        # Redirect ke beranda + ?addOrder=true
 │   │   └── profil/
 │   │       ├── index.tsx      # Halaman profil
+│   │       ├── langganan.tsx  # Paket & Langganan (status trial/FREE/PRO)
 │   │       ├── customers/index.tsx
 │   │       ├── fee-rules/index.tsx
 │   │       ├── fee-rules/new.tsx
@@ -405,9 +536,11 @@ src/
 └── styles.css                 # CSS variables + Tailwind directives
 ```
 
-## 8. Di Luar Cakupan MVP (Next Phase)
+## 9. Di Luar Cakupan MVP (Next Phase)
 
 - Tab Pesanan (list & filter lintas event).
+- **Pengajuan upgrade PRO dari dalam aplikasi** — form upload bukti transfer + riwayat langganan di `/profil/langganan`. Skema `subscriptions` dan helper `nextProWindow()` / `getSubscriptionState()` sudah siap; sekarang aktivasi masih dikerjakan manual oleh admin (lihat 5.6).
+- **Panel admin verifikasi pembayaran** (`reviewed_by`, `reviewed_at`, `review_note`) — termasuk penetapan harga paket & durasi. Durasi saat ini konstanta `PRO_DURATION_DAYS` (30 hari).
 - Reminder otomatis ke pelanggan yang belum lunas (WhatsApp API / bot).
 - Payment gateway (pembayaran online) — untuk MVP masih manual/transfer.
 - Verifikasi email saat register.
