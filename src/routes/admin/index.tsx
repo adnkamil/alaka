@@ -351,7 +351,10 @@ function AdminDashboardPage() {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {/* Kartu metrik selalu 2 per baris (bukan 1 per baris): halaman admin
+          duduk di dalam `app-shell` (max-width 480px), jadi breakpoint `sm:`
+          tidak pernah aktif dan kartunya jadi menumpuk satu-satu. */}
+      <section className="grid grid-cols-2 gap-3">
         <MetricCard label="Total Users" value={String(metrics.totalUsers)} icon={Users} />
         <MetricCard
           label="Active Users"
