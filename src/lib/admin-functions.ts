@@ -96,3 +96,77 @@ export const rejectSubscription = createServerFn({ method: 'POST' })
       })
       .where(eq(subscriptions.id, data.id))
   })
+
+// ─────────────────────────────────────────────────────────────
+// Tambahkan ke src/lib/admin-functions.ts — INI GANTI paste QRIS
+// sebelumnya (kalau sudah kamu tempel), karena sekarang ada
+// helper upsert bersama buat QRIS & harga.
+// (pakai `requireAdminUser()`, `db`, `eq` yang sudah ada di file itu)
+// ─────────────────────────────────────────────────────────────
+import { subscriptionSettings } from '../db/schema'
+import { getSubscriptionSettings } from './subscription-settings-queries'
+
+const MAX_QRIS_BYTES = 1_500_000 // ~1.5MB, sama dengan validasi QRIS di payment-methods-functions.ts
+
+const qrisImageSchema = z
+  .string()
+  .refine((v) => /^data:image\/(png|jpe?g|webp);base64,/.test(v), {
+    message: 'Format QRIS harus PNG, JPEG, atau WEBP',
+  })
+  .refine(
+    (v) => {
+      const base64 = v.split(',')[1] ?? ''
+      return (base64.length * 3) / 4 <= MAX_QRIS_BYTES
+    },
+    { message: 'Ukuran gambar QRIS maksimal 1.5MB' },
+  )
+
+/** Upsert baris singleton `subscription_settings` — dipakai QRIS & harga. */
+async function upsertSubscriptionSettings(
+  patch: Partial<{ qrisImage: string; proPrice: string }>,
+  adminId: string,
+) {
+  const existing = await getSubscriptionSettings()
+
+  if (existing) {
+    await db
+      .update(subscriptionSettings)
+      .set({ ...patch, updatedAt: new Date(), updatedBy: adminId })
+      .where(eq(subscriptionSettings.id, existing.id))
+  } else {
+    await db.insert(subscriptionSettings).values({ ...patch, updatedBy: adminId })
+  }
+}
+
+/** Admin lihat pengaturan pembayaran PRO yang lagi aktif (QRIS + harga). */
+export const fetchSubscriptionSettingsAdmin = createServerFn({
+  method: 'GET',
+}).handler(async () => {
+  await requireAdminUser()
+  return getSubscriptionSettings()
+})
+
+/** Admin upload/ganti QRIS pembayaran PRO. */
+export const updateSubscriptionQris = createServerFn({ method: 'POST' })
+  .validator(z.object({ qrisImage: qrisImageSchema }))
+  .handler(async ({ data }) => {
+    const admin = await requireAdminUser()
+    await upsertSubscriptionSettings({ qrisImage: data.qrisImage }, admin.id)
+    return { success: true }
+  })
+
+/** Admin atur harga membership PRO. Cuma berlaku buat pengajuan BARU. */
+export const updateSubscriptionPrice = createServerFn({ method: 'POST' })
+  .validator(
+    z.object({
+      proPrice: z.number().nonnegative('Harga tidak boleh negatif'),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const admin = await requireAdminUser()
+    await upsertSubscriptionSettings(
+      { proPrice: data.proPrice.toFixed(2) },
+      admin.id,
+    )
+    return { success: true }
+  })

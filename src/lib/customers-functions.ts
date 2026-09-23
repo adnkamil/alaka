@@ -11,6 +11,19 @@ async function requireUser() {
   return user
 }
 
+/**
+ * Query murni (bukan server function) buat daftar customer aktif milik user —
+ * dipakai `listCustomers` di sini DAN `getCustomerSuggestions` di
+ * `customer-suggestions-functions.ts`, supaya query-nya nggak ditulis dua kali.
+ */
+export function queryActiveCustomers(userId: string) {
+  return db
+    .select()
+    .from(customers)
+    .where(and(eq(customers.userId, userId), isNull(customers.deletedAt)))
+    .orderBy(asc(customers.name))
+}
+
 const customerInputSchema = z.object({
   name: z.string().min(1, 'Nama customer wajib diisi'),
   phone: z.string().trim().optional(),
@@ -19,11 +32,7 @@ const customerInputSchema = z.object({
 export const listCustomers = createServerFn({ method: 'GET' }).handler(
   async () => {
     const user = await requireUser()
-    return db
-      .select()
-      .from(customers)
-      .where(and(eq(customers.userId, user.id), isNull(customers.deletedAt)))
-      .orderBy(asc(customers.name))
+    return queryActiveCustomers(user.id)
   },
 )
 

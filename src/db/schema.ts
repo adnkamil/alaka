@@ -376,3 +376,24 @@ export const activityLogsRelations = relations(activityLogs, ({ one }) => ({
 export const customersRelations = relations(customers, ({ one }) => ({
   user: one(users, { fields: [customers.userId], references: [users.id] }),
 }))
+
+export const subscriptionSettings = pgTable('subscription_settings', {
+  id: uuid().primaryKey().defaultRandom(),
+  qrisImage: text('qris_image'), // data URL base64, sama pola dengan payment_methods.qris_image
+  /** Harga membership PRO saat ini. Di-snapshot ke subscriptions.amount tiap kali ada pengajuan baru. */
+  proPrice: decimal('pro_price', { precision: 12, scale: 2 }).notNull().default('0'),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  updatedBy: uuid('updated_by').references(() => users.id, {
+    onDelete: 'set null',
+  }),
+})
+
+export const subscriptionSettingsRelations = relations(
+  subscriptionSettings,
+  ({ one }) => ({
+    updatedByUser: one(users, {
+      fields: [subscriptionSettings.updatedBy],
+      references: [users.id],
+    }),
+  }),
+)

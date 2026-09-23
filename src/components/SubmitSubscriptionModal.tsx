@@ -1,44 +1,16 @@
 import { useRef, useState } from 'react'
-import { Landmark, QrCode, Wallet, X } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { QrCode, X } from 'lucide-react'
+import { fetchSubscriptionPaymentInfo } from '../lib/subscription-functions'
 
 export type SubmitSubscriptionValue = {
-  amount: number
-  paymentMethod: 'bank' | 'wallet' | 'qris'
-  paymentProvider: string
-  paymentSenderName: string
-  paymentReference: string
   paymentProofImage: string
-  paymentNote: string
 }
 
 interface SubmitSubscriptionModalProps {
   onClose: () => void
   onSubmit: (value: SubmitSubscriptionValue) => Promise<void>
 }
-
-// Sama dengan daftar di PaymentMethodModal.tsx, biar user tidak menghadapi
-// dua daftar bank/e-wallet yang beda antara bayar tagihan pelanggan dan bayar
-// langganan PRO.
-const BANK_OPTIONS = ['BCA', 'Mandiri', 'BRI', 'BNI', 'BSI', 'Bank Lainnya']
-const WALLET_OPTIONS = [
-  'GoPay',
-  'OVO',
-  'DANA',
-  'ShopeePay',
-  'LinkAja',
-  'Jenius',
-  'E-Wallet Lainnya',
-]
-
-const TYPE_OPTIONS: Array<{
-  type: 'bank' | 'wallet' | 'qris'
-  label: string
-  icon: typeof Landmark
-}> = [
-  { type: 'bank', label: 'Bank', icon: Landmark },
-  { type: 'wallet', label: 'E-Wallet', icon: Wallet },
-  { type: 'qris', label: 'QRIS', icon: QrCode },
-]
 
 const MAX_BYTES = 1_500_000 // ~1.5MB, sama dengan validasi di server
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp']
@@ -52,33 +24,29 @@ function fileToDataUrl(file: File): Promise<string> {
   })
 }
 
+function formatIDR(value: string | number) {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    maximumFractionDigits: 0,
+  }).format(Number(value))
+}
+
 export default function SubmitSubscriptionModal({
   onClose,
   onSubmit,
 }: SubmitSubscriptionModalProps) {
-  const [type, setType] = useState<'bank' | 'wallet' | 'qris'>('bank')
-  const [selectedOption, setSelectedOption] = useState('')
-  const [customProvider, setCustomProvider] = useState('')
-  const [amount, setAmount] = useState('')
-  const [senderName, setSenderName] = useState('')
-  const [reference, setReference] = useState('')
+  const { data: paymentInfo, isLoading: infoLoading } = useQuery({
+    queryKey: ['subscription-payment-info'],
+    queryFn: () => fetchSubscriptionPaymentInfo(),
+  })
+  const qrisImage = paymentInfo?.qrisImage ?? null
+  const proPrice = paymentInfo?.proPrice ?? '0'
+
   const [proofImage, setProofImage] = useState<string | null>(null)
-  const [note, setNote] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-
-  const options = type === 'wallet' ? WALLET_OPTIONS : BANK_OPTIONS
-  const customLabel = type === 'wallet' ? 'E-Wallet Lainnya' : 'Bank Lainnya'
-  const ActiveIcon = type === 'qris' ? QrCode : type === 'wallet' ? Wallet : Landmark
-
-  function handleTypeChange(next: 'bank' | 'wallet' | 'qris') {
-    if (next === type) return
-    setType(next)
-    setSelectedOption('')
-    setCustomProvider('')
-    setError(null)
-  }
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -105,44 +73,16 @@ export default function SubmitSubscriptionModal({
     e.preventDefault()
     setError(null)
 
-    const amountValue = Number(amount.replace(/\D/g, ''))
-    if (!amountValue || amountValue <= 0) {
-      setError('Nominal transfer wajib diisi')
-      return
-    }
-    if (senderName.trim().length < 1) {
-      setError('Nama pengirim wajib diisi')
-      return
-    }
     if (!proofImage) {
       setError('Upload bukti transfer dulu')
       return
     }
 
-    const provider =
-      type === 'qris'
-        ? 'QRIS'
-        : (selectedOption === customLabel ? customProvider : selectedOption).trim()
-    if (type !== 'qris' && !provider) {
-      setError('Pilih bank/e-wallet dulu')
-      return
-    }
-
     setIsSubmitting(true)
     try {
-      await onSubmit({
-        amount: amountValue,
-        paymentMethod: type,
-        paymentProvider: provider,
-        paymentSenderName: senderName.trim(),
-        paymentReference: reference.trim(),
-        paymentProofImage: proofImage,
-        paymentNote: note.trim(),
-      })
+      await onSubmit({ paymentProofImage: proofImage })
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Gagal mengirim pengajuan',
-      )
+      setError(err instanceof Error ? err.message : 'Gagal mengirim pengajuan')
     } finally {
       setIsSubmitting(false)
     }
@@ -151,7 +91,7 @@ export default function SubmitSubscriptionModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-[2px] transition-opacity animate-in fade-in duration-200"
+        className="fixed inset-0 bg-black/50 backdrop-blur-[2px]"
         onClick={() => {
           if (!isSubmitting) onClose()
         }}
@@ -171,17 +111,15 @@ export default function SubmitSubscriptionModal({
         <div className="mb-4 flex items-start justify-between">
           <div className="flex items-center gap-3">
             <span className="app-icon-tile h-10 w-10">
-              <ActiveIcon size={18} />
+              <QrCode size={18} />
             </span>
-            <h3 className="text-base font-bold leading-tight">
-              Ajukan Upgrade PRO
-            </h3>
+            <h3 className="text-base font-bold leading-tight">Ajukan Upgrade PRO</h3>
           </div>
           <button
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="rounded-full p-1 transition-colors hover:opacity-75 disabled:opacity-30"
+            className="rounded-full p-1 hover:opacity-75 disabled:opacity-30"
             style={{ color: 'var(--app-text-mute)' }}
             aria-label="Tutup"
           >
@@ -189,105 +127,42 @@ export default function SubmitSubscriptionModal({
           </button>
         </div>
 
-        <p className="mb-4 text-xs" style={{ color: 'var(--app-text-soft)' }}>
-          Transfer ke rekening/QRIS yang diinfokan admin, lalu isi form ini.
-          Status PRO aktif otomatis begitu admin memverifikasi.
-        </p>
-
-        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-          <div className="grid grid-cols-3 gap-2">
-            {TYPE_OPTIONS.map((option) => {
-              const Icon = option.icon
-              const active = type === option.type
-              return (
-                <button
-                  key={option.type}
-                  type="button"
-                  disabled={isSubmitting}
-                  onClick={() => handleTypeChange(option.type)}
-                  className={`flex flex-col items-center gap-1 rounded-xl border py-2.5 text-xs font-semibold transition-all disabled:opacity-50 ${
-                    active
-                      ? 'border-[var(--app-accent)] bg-[var(--app-accent)] text-white shadow-sm'
-                      : 'border-[var(--app-border)] bg-[var(--app-card)] text-[var(--app-text-soft)]'
-                  }`}
-                >
-                  <Icon size={16} />
-                  {option.label}
-                </button>
-              )
-            })}
-          </div>
-
-          {type !== 'qris' && (
-            <>
-              <label className="flex flex-col gap-1 text-sm font-medium">
-                {type === 'wallet' ? 'E-wallet tujuan' : 'Bank tujuan'}
-                <select
-                  required
-                  value={selectedOption}
-                  onChange={(e) => setSelectedOption(e.target.value)}
-                  className="app-input"
-                >
-                  <option value="" disabled>
-                    Pilih {type === 'wallet' ? 'e-wallet' : 'bank'}
-                  </option>
-                  {options.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              {selectedOption === customLabel && (
-                <label className="flex flex-col gap-1 text-sm font-medium">
-                  Nama {type === 'wallet' ? 'e-wallet' : 'bank'} lain
-                  <input
-                    required
-                    autoFocus
-                    placeholder={type === 'wallet' ? 'cth. Sakuku' : 'cth. CIMB Niaga'}
-                    value={customProvider}
-                    onChange={(e) => setCustomProvider(e.target.value)}
-                    className="app-input"
-                  />
-                </label>
-              )}
-            </>
+        <div
+          className="mb-4 flex flex-col items-center gap-2 rounded-xl p-4"
+          style={{ background: 'var(--app-accent-soft)' }}
+        >
+          {infoLoading ? (
+            <div className="flex h-40 w-40 items-center justify-center">
+              <span className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
+                Memuat...
+              </span>
+            </div>
+          ) : qrisImage ? (
+            <img
+              src={qrisImage}
+              alt="QRIS pembayaran PRO"
+              className="h-40 w-40 rounded-lg bg-white object-contain p-1"
+            />
+          ) : (
+            <div className="flex h-40 w-40 flex-col items-center justify-center gap-1 text-center">
+              <QrCode size={22} style={{ color: 'var(--app-text-mute)' }} />
+              <span className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
+                QRIS belum tersedia, hubungi admin.
+              </span>
+            </div>
           )}
 
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            Nominal transfer
-            <input
-              required
-              inputMode="numeric"
-              placeholder="cth. 50000"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value.replace(/\D/g, ''))}
-              className="app-input"
-            />
-          </label>
+          {!infoLoading && (
+            <p className="text-lg font-bold" style={{ color: 'var(--app-accent)' }}>
+              {formatIDR(proPrice)}
+            </p>
+          )}
+          <p className="text-center text-xs" style={{ color: 'var(--app-accent)' }}>
+            Scan lalu transfer sesuai nominal di atas, upload buktinya di bawah.
+          </p>
+        </div>
 
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            Nama pengirim
-            <input
-              required
-              placeholder="Nama sesuai rekening pengirim"
-              value={senderName}
-              onChange={(e) => setSenderName(e.target.value)}
-              className="app-input"
-            />
-          </label>
-
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            No. referensi (opsional)
-            <input
-              placeholder="cth. 4 digit terakhir / no. transaksi"
-              value={reference}
-              onChange={(e) => setReference(e.target.value)}
-              className="app-input"
-            />
-          </label>
-
+        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
           <div className="flex flex-col gap-1">
             <span className="text-sm font-medium">Bukti transfer</span>
             <button
@@ -335,18 +210,6 @@ export default function SubmitSubscriptionModal({
             )}
           </div>
 
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            Catatan (opsional)
-            <textarea
-              rows={2}
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="cth. transfer dari rekening istri"
-              className="app-input resize-none text-sm font-normal"
-              maxLength={500}
-            />
-          </label>
-
           {error && (
             <p className="text-sm" style={{ color: 'var(--app-danger)' }}>
               {error}
@@ -358,7 +221,7 @@ export default function SubmitSubscriptionModal({
               type="button"
               disabled={isSubmitting}
               onClick={onClose}
-              className="rounded-xl px-4 py-2 text-xs font-semibold transition-colors disabled:opacity-50"
+              className="rounded-xl px-4 py-2 text-xs font-semibold disabled:opacity-50"
               style={{
                 border: '1px solid var(--app-border)',
                 background: 'transparent',
@@ -369,8 +232,8 @@ export default function SubmitSubscriptionModal({
             </button>
             <button
               type="submit"
-              disabled={isSubmitting}
-              className="rounded-xl px-4 py-2 text-xs font-semibold text-white shadow-sm transition-opacity hover:opacity-90 disabled:opacity-50"
+              disabled={isSubmitting || !qrisImage}
+              className="rounded-xl px-4 py-2 text-xs font-semibold text-white shadow-sm hover:opacity-90 disabled:opacity-50"
               style={{ background: 'var(--app-accent)' }}
             >
               {isSubmitting ? 'Mengirim...' : 'Kirim Pengajuan'}

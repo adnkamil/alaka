@@ -45,6 +45,8 @@ interface AddOrderSheetProps {
    * dikirim server, jadi di sini cukup ditampilkan alasannya.
    */
   suggestionsLocked?: boolean
+  /** Sama seperti `suggestionsLocked`, tapi buat fitur PRO `customer_suggestions`. */
+  customerSuggestionsLocked?: boolean
   title?: string
   submitLabel?: string
   initialValue?: AddOrderSheetValue
@@ -97,6 +99,7 @@ export default function AddOrderSheet({
   itemNameSuggestions = [],
   itemPriceSuggestions = {},
   suggestionsLocked = false,
+  customerSuggestionsLocked = false,
   title = 'Tambah Pesanan',
   submitLabel = 'Simpan pesanan',
   initialValue,
@@ -307,6 +310,22 @@ export default function AddOrderSheet({
                   </div>
                 )}
               </label>
+
+              {customerSuggestionsLocked && (
+                <div
+                  className="flex items-center gap-2 rounded-xl border border-dashed px-3 py-2 text-xs"
+                  style={{
+                    borderColor: 'var(--app-border)',
+                    color: 'var(--app-text-mute)',
+                  }}
+                >
+                  <Lock size={13} className="flex-shrink-0" />
+                  <span>
+                    Saran nama &amp; no. HP pelanggan dari data customer
+                    tersedia di paket PRO.
+                  </span>
+                </div>
+              )}
 
               <div className="flex flex-col gap-3">
                 {suggestionsLocked && (

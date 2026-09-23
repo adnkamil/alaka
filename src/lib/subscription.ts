@@ -30,13 +30,18 @@ export const PRO_DURATION_DAYS = 30
  * jadi string-nya harus sama persis di dua sisi.
  */
 export type ProFeature =
-  'billing' | 'payment_methods' | 'order_suggestions' | 'fee_suggestions'
+  | 'billing'
+  | 'payment_methods'
+  | 'order_suggestions'
+  | 'fee_suggestions'
+  | 'customer_suggestions'
 
 export const PRO_FEATURES: Array<ProFeature> = [
   'billing',
   'payment_methods',
   'order_suggestions',
   'fee_suggestions',
+  'customer_suggestions',
 ]
 
 /** Label & keterangan tiap fitur PRO — dipakai di pesan error dan UI terkunci. */
@@ -63,6 +68,11 @@ export const PRO_FEATURE_INFO: Record<
     label: 'Saran Fee',
     description:
       'Saran tier aturan fee yang dihitung dari harga & fee barang yang pernah kamu catat.',
+  },
+  customer_suggestions: {
+    label: 'Saran Pelanggan',
+    description:
+      'Saran nama & no. HP pelanggan dari data customer tersimpan, saat menambah pesanan.',
   },
 }
 

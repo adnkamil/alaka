@@ -92,15 +92,7 @@ function SubscriptionPage() {
 
   async function handleSubmit(value: SubmitSubscriptionValue) {
     await submitSubscriptionRequest({
-      data: {
-        amount: value.amount,
-        paymentMethod: value.paymentMethod,
-        paymentProvider: value.paymentProvider,
-        paymentSenderName: value.paymentSenderName,
-        paymentReference: value.paymentReference || undefined,
-        paymentProofImage: value.paymentProofImage,
-        paymentNote: value.paymentNote || undefined,
-      },
+      data: { paymentProofImage: value.paymentProofImage },
     })
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['my-subscription-state'] }),
@@ -197,18 +189,21 @@ function SubscriptionPage() {
                   </p>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
-                <div>
-                  <p style={{ color: 'var(--app-text-mute)' }}>Nominal</p>
-                  <p className="font-medium">{formatIDR(pending.amount)}</p>
-                </div>
-                <div>
-                  <p style={{ color: 'var(--app-text-mute)' }}>Metode</p>
-                  <p className="font-medium">
-                    {pending.paymentProvider ?? '-'}
-                  </p>
-                </div>
+              <div className="mb-2 flex items-center justify-between text-xs">
+                <span style={{ color: 'var(--app-text-mute)' }}>Nominal</span>
+                <span className="font-semibold">{formatIDR(pending.amount)}</span>
               </div>
+              {pending.paymentProofImage && (
+                <a
+                  href={pending.paymentProofImage}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1.5 text-xs font-semibold no-underline"
+                  style={{ color: 'var(--app-accent)' }}
+                >
+                  📎 Lihat bukti transfer yang kamu kirim
+                </a>
+              )}
               <p className="mt-3 text-xs leading-relaxed" style={{ color: 'var(--app-text-mute)' }}>
                 Admin akan memverifikasi bukti transfer ini, biasanya 1x24 jam. Status
                 PRO otomatis aktif begitu disetujui.

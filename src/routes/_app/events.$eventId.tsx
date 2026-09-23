@@ -27,7 +27,6 @@ import ProLockPrompt from '../../components/ProLockPrompt'
 import { fetchCurrentUser } from '../../lib/auth-functions'
 import { getEventDetail, updateEvent } from '../../lib/events-functions'
 import { listFeeRules } from '../../lib/fee-rules-functions'
-import { listCustomers } from '../../lib/customers-functions'
 import { getOrderSuggestions } from '../../lib/order-suggestions-functions'
 import { lineTotal, summarizeItems } from '../../lib/order-totals'
 import { canUseFeature } from '../../lib/subscription'
@@ -39,6 +38,7 @@ import {
   updateOrder,
   updateOrderPaymentStatus,
 } from '../../lib/orders-functions'
+import { getCustomerSuggestions } from '#/lib/customer-suggestions-functions'
 
 const searchSchema = z.object({
   addOrder: z.boolean().optional(),
@@ -261,11 +261,22 @@ function EventDetailPage() {
   })
   const { data: feeRules } = useSuspenseQuery(feeRulesQuery)
 
-  const customersQuery = queryOptions({
-    queryKey: ['customers'],
-    queryFn: () => listCustomers(),
+  // Saran nama & no. HP pelanggan (fitur PRO `customer_suggestions`). Endpoint-nya
+  // tidak dipanggil sama sekali waktu fiturnya terkunci, jadi datanya benar-benar
+  // tidak dikirim ke client user FREE.
+  const customerSuggestionsUnlocked = currentUser
+    ? canUseFeature(currentUser.entitlements, 'customer_suggestions')
+    : false
+
+  const customerSuggestionsQuery = queryOptions({
+    queryKey: ['customer-suggestions'],
+    queryFn: () => getCustomerSuggestions(),
   })
-  const { data: customers } = useSuspenseQuery(customersQuery)
+  const { data: customerSuggestions } = useQuery({
+    ...customerSuggestionsQuery,
+    enabled: customerSuggestionsUnlocked,
+  })
+  const customers = customerSuggestions?.customers ?? []
 
   // Uang masuk = sum paid_amount dari semua pesanan (konsisten dengan server).
   const amountIn = event.orders.reduce(
@@ -1132,6 +1143,7 @@ function EventDetailPage() {
           itemNameSuggestions={itemNameSuggestions}
           itemPriceSuggestions={itemPriceSuggestions}
           suggestionsLocked={!orderSuggestionsUnlocked}
+          customerSuggestionsLocked={!customerSuggestionsUnlocked}
           onClose={() => setSheetMode(null)}
           onSubmit={handleCreateOrder}
         />
@@ -1145,6 +1157,7 @@ function EventDetailPage() {
           itemNameSuggestions={itemNameSuggestions}
           itemPriceSuggestions={itemPriceSuggestions}
           suggestionsLocked={!orderSuggestionsUnlocked}
+          customerSuggestionsLocked={!customerSuggestionsUnlocked}
           title="Tambah Pesanan"
           submitLabel="Simpan pesanan"
           initialValue={{
@@ -1165,6 +1178,7 @@ function EventDetailPage() {
           itemNameSuggestions={itemNameSuggestions}
           itemPriceSuggestions={itemPriceSuggestions}
           suggestionsLocked={!orderSuggestionsUnlocked}
+          customerSuggestionsLocked={!customerSuggestionsUnlocked}
           title="Edit Pesanan"
           submitLabel="Simpan perubahan"
           initialValue={{

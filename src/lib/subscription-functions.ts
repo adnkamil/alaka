@@ -5,6 +5,7 @@ import { subscriptions } from '../db/schema'
 import { getSessionUser } from './auth'
 import { PRO_DURATION_DAYS, PRO_PLAN_CODE } from './subscription'
 import { findPendingSubscription, getSubscriptionState } from './subscription-queries'
+import { getSubscriptionSettings } from './subscription-settings-queries'
 
 /**
  * Sisi MEMBER dari alur langganan PRO — pengajuan upgrade + baca status/riwayat
@@ -31,17 +32,7 @@ const paymentProofSchema = z
   )
 
 const submitSubscriptionSchema = z.object({
-  amount: z.number().positive('Nominal wajib diisi'),
-  paymentMethod: z.enum(['bank', 'wallet', 'qris']),
-  paymentProvider: z
-    .string()
-    .trim()
-    .min(1, 'Bank/e-wallet wajib diisi')
-    .max(40),
-  paymentSenderName: z.string().trim().min(1, 'Nama pengirim wajib diisi').max(80),
-  paymentReference: z.string().trim().max(60).optional(),
   paymentProofImage: paymentProofSchema,
-  paymentNote: z.string().trim().max(500).optional(),
 })
 
 export const submitSubscriptionRequest = createServerFn({ method: 'POST' })
@@ -57,6 +48,10 @@ export const submitSubscriptionRequest = createServerFn({ method: 'POST' })
       throw new Error('Kamu masih punya pengajuan yang menunggu verifikasi.')
     }
 
+    // Snapshot harga yang berlaku SAAT pengajuan dikirim — kalau admin ganti
+    // harga besok, pengajuan yang sudah masuk hari ini tetap kepakai harga lama.
+    const settings = await getSubscriptionSettings()
+
     const [request] = await db
       .insert(subscriptions)
       .values({
@@ -64,19 +59,29 @@ export const submitSubscriptionRequest = createServerFn({ method: 'POST' })
         planCode: PRO_PLAN_CODE,
         status: 'pending',
         durationDays: PRO_DURATION_DAYS,
-        amount: data.amount.toFixed(2),
-        paymentMethod: data.paymentMethod,
-        paymentProvider: data.paymentProvider,
-        paymentSenderName: data.paymentSenderName,
-        paymentReference: data.paymentReference || null,
+        amount: settings?.proPrice ?? '0',
+        paymentMethod: 'qris',
+        paymentProvider: 'QRIS',
         paymentProofImage: data.paymentProofImage,
-        paymentNote: data.paymentNote || null,
         paidAt: new Date(),
       })
       .returning()
 
     return request
   })
+
+/** QRIS + harga membership PRO buat ditampilkan di form pengajuan. */
+export const fetchSubscriptionPaymentInfo = createServerFn({
+  method: 'GET',
+}).handler(async () => {
+  const user = await getSessionUser()
+  if (!user) throw new Error('Belum login')
+  const settings = await getSubscriptionSettings()
+  return {
+    qrisImage: settings?.qrisImage ?? null,
+    proPrice: settings?.proPrice ?? '0',
+  }
+})
 
 /** Status akses + pengajuan pending + riwayat langganan milik user yang login. */
 export const fetchMySubscriptionState = createServerFn({ method: 'GET' }).handler(
