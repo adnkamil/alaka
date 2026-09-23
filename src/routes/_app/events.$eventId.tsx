@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import ConfirmModal from '../../components/ui/ConfirmModal'
+import DpAmountModal from '../../components/ui/DpAmountModal'
 import {
   queryOptions,
   useQuery,
@@ -236,6 +237,10 @@ function EventDetailPage() {
   const [expandedItems, setExpandedItems] = useState<Array<string>>([])
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  // Modal nominal DP — dibuka waktu user pilih status "DP" dari dropdown cepat
+  // di list order (bukan lewat form edit yang sudah punya field nominal sendiri).
+  const [dpPromptOrderId, setDpPromptOrderId] = useState<string | null>(null)
+  const [isSavingDpAmount, setIsSavingDpAmount] = useState(false)
   const [showEventMenu, setShowEventMenu] = useState(false)
   // Fitur PRO yang lagi dicoba dibuka user FREE (null = dialog ketutup).
   const [lockedFeature, setLockedFeature] = useState<ProFeature | null>(null)
@@ -347,6 +352,13 @@ function EventDetailPage() {
       ? event.orders.find((o) => o.id === sheetMode.orderId)
       : undefined
 
+  const dpPromptOrder = dpPromptOrderId
+    ? event.orders.find((o) => o.id === dpPromptOrderId)
+    : undefined
+  const dpPromptTotal = dpPromptOrder
+    ? summarizeItems(dpPromptOrder.items).total
+    : 0
+
   async function handleCreateOrder(value: {
     customerName: string
     paymentStatus: 'unpaid' | 'dp' | 'paid' | 'shipped'
@@ -438,6 +450,17 @@ function EventDetailPage() {
       setDeletingOrderId(null)
     } finally {
       setIsDeleting(false)
+    }
+  }
+
+  async function confirmDpAmount(amount: number) {
+    if (!dpPromptOrderId) return
+    setIsSavingDpAmount(true)
+    try {
+      await handlePaymentStatusChange(dpPromptOrderId, 'dp', amount)
+      setDpPromptOrderId(null)
+    } finally {
+      setIsSavingDpAmount(false)
     }
   }
 
@@ -972,11 +995,19 @@ function EventDetailPage() {
                       value={order.paymentStatus}
                       onChange={(e) => {
                         e.stopPropagation()
-                        handlePaymentStatusChange(
-                          order.id,
-                          e.target.value as
-                            'unpaid' | 'dp' | 'paid' | 'shipped',
-                        )
+                        const nextStatus = e.target.value as
+                          | 'unpaid'
+                          | 'dp'
+                          | 'paid'
+                          | 'shipped'
+                        if (nextStatus === 'dp') {
+                          // Nominal DP wajib diisi eksplisit lewat modal —
+                          // kalau tidak, backend fallback ke paidAmount lama
+                          // (biasanya 0) dan status balik jadi "unpaid".
+                          setDpPromptOrderId(order.id)
+                          return
+                        }
+                        handlePaymentStatusChange(order.id, nextStatus)
                       }}
                       className={`cursor-pointer appearance-none rounded-full py-1 pl-2.5 pr-5 text-xs font-semibold outline-none transition-colors border-0 ${
                         order.paymentStatus === 'paid'
@@ -1184,6 +1215,7 @@ function EventDetailPage() {
           initialValue={{
             customerName: editingOrder.customerName,
             paymentStatus: editingOrder.paymentStatus,
+            paidAmount: Number(editingOrder.paidAmount),
             items: editingOrder.items.map((item) => ({
               name: item.name,
               originalPrice: Number(item.originalPrice),
@@ -1211,6 +1243,21 @@ function EventDetailPage() {
         onCancel={() => {
           if (!isDeleting) setDeletingOrderId(null)
         }}
+      />
+
+      <DpAmountModal
+        open={Boolean(dpPromptOrderId) && Boolean(dpPromptOrder)}
+        total={dpPromptTotal}
+        defaultAmount={
+          dpPromptOrder?.paymentStatus === 'dp'
+            ? Number(dpPromptOrder.paidAmount)
+            : 0
+        }
+        loading={isSavingDpAmount}
+        onCancel={() => {
+          if (!isSavingDpAmount) setDpPromptOrderId(null)
+        }}
+        onConfirm={confirmDpAmount}
       />
 
       <ProLockPrompt

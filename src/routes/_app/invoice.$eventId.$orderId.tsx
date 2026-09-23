@@ -1,68 +1,48 @@
 import { useState } from 'react'
-import ConfirmModal from '../../components/ui/ConfirmModal'
 import {
   queryOptions,
-  useQuery,
   useQueryClient,
   useSuspenseQuery,
 } from '@tanstack/react-query'
-import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
+import { Link, createFileRoute } from '@tanstack/react-router'
+import type { ErrorComponentProps } from '@tanstack/react-router'
 import {
+  AlertTriangle,
   ArrowLeft,
-  ChevronDown,
-  ChevronRight,
+  Landmark,
   Lock,
-  MoreVertical,
-  Pencil,
-  Plus,
-  ReceiptText,
-  Search,
-  Tag,
-  Trash2,
+  MessageCircle,
+  Printer,
+  SquarePen,
 } from 'lucide-react'
-import { z } from 'zod'
-import AddOrderSheet from '../../components/AddOrderSheet'
-import ProBadge from '../../components/ProBadge'
-import ProLockPrompt from '../../components/ProLockPrompt'
-import { fetchCurrentUser } from '../../lib/auth-functions'
-import { getEventDetail, updateEvent } from '../../lib/events-functions'
-import { listFeeRules } from '../../lib/fee-rules-functions'
-import { getCustomerSuggestions } from '../../lib/customer-suggestions-functions'
-import { getOrderSuggestions } from '../../lib/order-suggestions-functions'
-import { lineTotal, summarizeItems } from '../../lib/order-totals'
-import { canUseFeature } from '../../lib/subscription'
-import type { ProFeature } from '../../lib/subscription'
+import { getOrderInvoice } from '../../lib/orders-functions'
+import { createCustomer } from '../../lib/customers-functions'
 import {
-  createOrder,
-  deleteOrder,
-  updateItemsObtained,
-  updateOrder,
-  updateOrderPaymentStatus,
-} from '../../lib/orders-functions'
-
-const searchSchema = z.object({
-  addOrder: z.boolean().optional(),
-})
-
-/** Status akses user (trial/FREE/PRO) — satu sumber, dipakai juga di Profil. */
-const currentUserQuery = queryOptions({
-  queryKey: ['current-user'],
-  queryFn: () => fetchCurrentUser(),
-})
+  buildWhatsAppLink,
+  formatPhoneNumber,
+  isValidIndonesianPhone,
+} from '../../lib/format'
+import {
+  DEFAULT_WA_MESSAGE_TEMPLATE,
+  renderMessageTemplate,
+} from '../../lib/message-template'
+import { lineTotal, summarizeItems } from '../../lib/order-totals'
+import CustomerFormModal from '../../components/CustomerFormModal'
+import PaymentInfoCard from '../../components/PaymentInfoCard'
 
 export const Route = createFileRoute('/_app/invoice/$eventId/$orderId')({
-  validateSearch: searchSchema,
   loader: ({ context, params }) => {
     const query = queryOptions({
-      queryKey: ['event', params.eventId],
-      queryFn: () => getEventDetail({ data: { id: params.eventId } }),
+      queryKey: ['invoice', params.eventId, params.orderId],
+      queryFn: () =>
+        getOrderInvoice({
+          data: { eventId: params.eventId, orderId: params.orderId },
+        }),
     })
-    return Promise.all([
-      context.queryClient.ensureQueryData(query),
-      context.queryClient.ensureQueryData(currentUserQuery),
-    ])
+    return context.queryClient.ensureQueryData(query)
   },
-  component: EventDetailPage,
+  component: InvoicePage,
+  errorComponent: InvoiceError,
 })
 
 function formatIDR(value: string | number) {
@@ -73,1151 +53,412 @@ function formatIDR(value: string | number) {
   }).format(Number(value))
 }
 
-type EventOrder = Awaited<ReturnType<typeof getEventDetail>>['orders'][number]
-
-/** Barang yang dikirim balik ke server lewat create/update pesanan (qty per unit). */
-type OrderItemInput = {
-  name: string
-  originalPrice: number
-  fee: number
-  qty: number
-  obtained: boolean
-}
-
-/** Satu pelanggan yang memesan sebuah barang + total qty barang itu untuk dia. */
-type ItemCustomer = {
-  name: string
-  qty: number
-  obtainedQty: number
-  orderCount: number
-  /** Baris item milik pelanggan ini untuk barang tsb — buat checkbox per pelanggan. */
-  itemIds: Array<string>
-}
-
-type ItemSummary = {
-  name: string
-  qty: number
-  obtainedQty: number
-  pendingQty: number
-  orderCount: number
-  /** Semua baris item dengan nama barang ini (lintas pesanan) — buat toggle checklist. */
-  itemIds: Array<string>
-  /** Jumlah baris item yang masih belum didapat. */
-  pendingCount: number
-  customers: Array<ItemCustomer>
-}
-
-/** Bentuk internal saat barang dikelompokkan (sebelum dirapikan jadi ItemSummary). */
-type ItemGroupCustomer = {
-  name: string
-  qty: number
-  obtainedQty: number
-  itemIds: Array<string>
-  orderIds: Set<string>
-}
-
-type ItemGroup = {
-  name: string
-  qty: number
-  obtainedQty: number
-  itemIds: Array<string>
-  pendingCount: number
-  orderIds: Set<string>
-  customers: Map<string, ItemGroupCustomer>
+const statusLabel: Record<string, string> = {
+  unpaid: 'Belum Lunas',
+  dp: 'DP (Sudah Bayar Sebagian)',
+  paid: 'Lunas',
+  shipped: 'Dikirim',
 }
 
 /**
- * Ringkasan per item: total qty tiap barang di semua pesanan, digabung
- * berdasarkan nama barang (case-insensitive, trim spasi). Dipakai tab "Per Item"
- * supaya kelihatan total barang yang harus dibeli/dititip.
- *
- * Setiap item juga menyimpan daftar pelanggan yang memesannya (digabung per nama
- * pelanggan, jadi kalau satu orang punya beberapa pesanan qty-nya tetap dijumlah),
- * dipakai waktu baris item di-klik untuk lihat "siapa aja yang pesan".
- *
- * Info checklist belanja (`obtained`) ikut dihitung per barang & per pelanggan,
- * supaya ketahuan mana yang sudah didapat di toko dan mana yang belum.
+ * `getOrderInvoice` bisa ditolak server — salah satunya kalau fitur PRO
+ * `billing` sudah terkunci (masa trial habis & belum PRO). Daripada muncul
+ * halaman error default, tampilkan pesannya langsung + jalan kembali.
  */
-function summarizeItemQty(
-  orders: Array<EventOrder>,
-  keyword: string,
-): ItemSummary[] {
-  const query = keyword.trim().toLowerCase()
-  const grouped = new Map<string, ItemGroup>()
+function InvoiceError({ error }: ErrorComponentProps) {
+  const message =
+    error instanceof Error
+      ? error.message
+      : 'Terjadi kesalahan saat memuat tagihan.'
 
-  for (const order of orders) {
-    const customerName = order.customerName.trim()
-    const customerKey = customerName.toLowerCase()
-
-    for (const item of order.items) {
-      if (query && !item.name.toLowerCase().includes(query)) continue
-      const key = item.name.trim().toLowerCase()
-      const entry = grouped.get(key) ?? {
-        name: item.name.trim(),
-        qty: 0,
-        obtainedQty: 0,
-        itemIds: [],
-        pendingCount: 0,
-        orderIds: new Set<string>(),
-        customers: new Map<string, ItemGroupCustomer>(),
-      }
-      entry.qty += item.qty
-      entry.itemIds.push(item.id)
-      if (item.obtained) {
-        entry.obtainedQty += item.qty
-      } else {
-        entry.pendingCount += 1
-      }
-      entry.orderIds.add(order.id)
-
-      const customer: ItemGroupCustomer = entry.customers.get(customerKey) ?? {
-        name: customerName,
-        qty: 0,
-        obtainedQty: 0,
-        itemIds: [],
-        orderIds: new Set<string>(),
-      }
-      customer.qty += item.qty
-      customer.itemIds.push(item.id)
-      if (item.obtained) customer.obtainedQty += item.qty
-      customer.orderIds.add(order.id)
-      entry.customers.set(customerKey, customer)
-
-      grouped.set(key, entry)
-    }
-  }
-
-  return Array.from(grouped.values())
-    .map((entry) => ({
-      name: entry.name,
-      qty: entry.qty,
-      obtainedQty: entry.obtainedQty,
-      pendingQty: entry.qty - entry.obtainedQty,
-      orderCount: entry.orderIds.size,
-      itemIds: entry.itemIds,
-      pendingCount: entry.pendingCount,
-      customers: Array.from(entry.customers.values())
-        .map((customer) => ({
-          name: customer.name,
-          qty: customer.qty,
-          obtainedQty: customer.obtainedQty,
-          orderCount: customer.orderIds.size,
-          itemIds: customer.itemIds,
-        }))
-        .sort((a, b) => a.name.localeCompare(b.name, 'id')),
-    }))
-    .sort((a, b) => a.name.localeCompare(b.name, 'id'))
+  return (
+    <main className="app-shell relative mx-auto min-h-screen max-w-lg px-4 pb-10 pt-6">
+      <div className="flex flex-col items-center py-16 text-center">
+        <span className="app-icon-tile mb-4 h-12 w-12">
+          <Lock size={22} />
+        </span>
+        <h1 className="mb-1.5 text-lg font-bold">
+          Halaman tagih tidak bisa dibuka
+        </h1>
+        <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
+          {message}
+        </p>
+        <Link
+          to="/"
+          className="app-btn-outline mt-6 inline-flex items-center gap-2 no-underline"
+        >
+          <ArrowLeft size={16} />
+          Kembali ke Beranda
+        </Link>
+      </div>
+    </main>
+  )
 }
 
-function EventDetailPage() {
-  const { eventId } = Route.useParams()
-  const { addOrder } = Route.useSearch()
-  const navigate = useNavigate()
+function InvoicePage() {
+  const { eventId, orderId } = Route.useParams()
+  const [phone, setPhone] = useState('')
+  const [phoneInitialized, setPhoneInitialized] = useState(false)
+  const [showAddCustomer, setShowAddCustomer] = useState(false)
   const queryClient = useQueryClient()
-  const [sheetMode, setSheetMode] = useState<
-    | { type: 'create' }
-    | { type: 'duplicate'; customerName: string }
-    | { type: 'edit'; orderId: string }
-    | null
-  >(addOrder ? { type: 'create' } : null)
-  const [search, setSearch] = useState('')
-  const [viewMode, setViewMode] = useState<'perCustomer' | 'perItem'>(
-    'perCustomer',
-  )
-  // Filter tab Per Pelanggan: status pembayaran pesanan (seperti semula).
-  const [statusFilter, setStatusFilter] = useState<
-    'unpaid' | 'dp' | 'paid' | 'shipped' | null
-  >(null)
-  // Filter tab Per Item (checklist belanja): mana barang yang sudah didapat.
-  const [obtainedFilter, setObtainedFilter] = useState<
-    'obtained' | 'pending' | null
-  >(null)
-  // Nama barang (lowercase) yang panelnya lagi kebuka di tab Per Item.
-  const [expandedItems, setExpandedItems] = useState<Array<string>>([])
-  const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [showEventMenu, setShowEventMenu] = useState(false)
-  // Fitur PRO yang lagi dicoba dibuka user FREE (null = dialog ketutup).
-  const [lockedFeature, setLockedFeature] = useState<ProFeature | null>(null)
 
   const query = queryOptions({
-    queryKey: ['event', eventId],
-    queryFn: () => getEventDetail({ data: { id: eventId } }),
+    queryKey: ['invoice', eventId, orderId],
+    queryFn: () => getOrderInvoice({ data: { eventId, orderId } }),
   })
-  const { data: event } = useSuspenseQuery(query)
+  const { data } = useSuspenseQuery(query)
 
-  const { data: currentUser } = useSuspenseQuery(currentUserQuery)
-  // Satu tempat hitung status akses; pengecekan mengikat tetap di server.
-  const billingUnlocked = currentUser
-    ? canUseFeature(currentUser.entitlements, 'billing')
-    : false
-  const orderSuggestionsUnlocked = currentUser
-    ? canUseFeature(currentUser.entitlements, 'order_suggestions')
-    : false
-
-  const feeRulesQuery = queryOptions({
-    queryKey: ['fee-rules'],
-    queryFn: () => listFeeRules(),
-  })
-  const { data: feeRules } = useSuspenseQuery(feeRulesQuery)
-
-  // Saran nama & no. HP pelanggan (fitur PRO `customer_suggestions`). Endpoint-nya
-  // tidak dipanggil sama sekali waktu fiturnya terkunci, jadi datanya benar-benar
-  // tidak dikirim ke client user FREE.
-  const customerSuggestionsUnlocked = currentUser
-    ? canUseFeature(currentUser.entitlements, 'customer_suggestions')
-    : false
-
-  const customerSuggestionsQuery = queryOptions({
-    queryKey: ['customer-suggestions'],
-    queryFn: () => getCustomerSuggestions(),
-  })
-  const { data: customerSuggestions } = useQuery({
-    ...customerSuggestionsQuery,
-    enabled: customerSuggestionsUnlocked,
-  })
-  const customers = customerSuggestions?.customers ?? []
-
-  // Uang masuk = sum paid_amount dari semua pesanan (konsisten dengan server).
-  const amountIn = event.orders.reduce(
-    (sum, o) => sum + Number(o.paidAmount),
-    0,
-  )
-  // Outstanding = sisa tagihan: max(total - paidAmount, 0) per pesanan.
-  const outstanding = event.orders.reduce((sum, o) => {
-    const total = summarizeItems(o.items).total
-    return sum + Math.max(0, total - Number(o.paidAmount))
-  }, 0)
-
-  // Saran nama barang & harga (fitur PRO `order_suggestions`). Endpoint-nya
-  // tidak dipanggil sama sekali waktu fiturnya terkunci, jadi datanya benar-benar
-  // tidak dikirim ke client user FREE.
-  const orderSuggestionsQuery = queryOptions({
-    queryKey: ['order-suggestions', eventId],
-    queryFn: () => getOrderSuggestions({ data: { eventId } }),
-  })
-  const { data: orderSuggestions } = useQuery({
-    ...orderSuggestionsQuery,
-    enabled: orderSuggestionsUnlocked,
-  })
-  const itemNameSuggestions = orderSuggestions?.itemNames ?? []
-  const itemPriceSuggestions = orderSuggestions?.itemPrices ?? {}
-
-  const unpaidCount = event.orders.filter(
-    (o) => o.paymentStatus === 'unpaid',
-  ).length
-  const dpCount = event.orders.filter((o) => o.paymentStatus === 'dp').length
-  const paidCount = event.orders.filter(
-    (o) => o.paymentStatus === 'paid',
-  ).length
-  const shippedCount = event.orders.filter(
-    (o) => o.paymentStatus === 'shipped',
-  ).length
-
-  // Tab Per Pelanggan: filter status pembayaran (kayak semula).
-  const ordersByStatus = statusFilter
-    ? event.orders.filter((order) => order.paymentStatus === statusFilter)
-    : event.orders
-
-  const filteredOrders = ordersByStatus.filter((order) =>
-    order.customerName.toLowerCase().includes(search.toLowerCase()),
-  )
-
-  // Tab Per Item: checklist belanja dihitung dari SEMUA pesanan, nggak
-  // dipengaruhi status pembayaran — yang dipakai cuma filter Dapat/Belum dapat.
-  const eventItems = event.orders.flatMap((order) => order.items)
-  const obtainedItemCount = eventItems.filter((item) => item.obtained).length
-  const pendingItemCount = eventItems.length - obtainedItemCount
-
-  const itemSummary = summarizeItemQty(event.orders, search).filter((item) =>
-    obtainedFilter === 'obtained'
-      ? item.pendingCount === 0
-      : obtainedFilter === 'pending'
-        ? item.pendingCount > 0
-        : true,
-  )
-  const totalItemQty = itemSummary.reduce((sum, item) => sum + item.qty, 0)
-  const totalPendingQty = itemSummary.reduce(
-    (sum, item) => sum + item.pendingQty,
-    0,
-  )
-
-  const editingOrder =
-    sheetMode?.type === 'edit'
-      ? event.orders.find((o) => o.id === sheetMode.orderId)
-      : undefined
-
-  async function handleCreateOrder(value: {
-    customerName: string
-    paymentStatus: 'unpaid' | 'dp' | 'paid' | 'shipped'
-    paidAmount?: number
-    items: Array<OrderItemInput>
-  }) {
-    await createOrder({ data: { eventId, ...value } })
-    await queryClient.invalidateQueries({ queryKey: ['event', eventId] })
-    await queryClient.invalidateQueries({ queryKey: ['events'] })
-    await queryClient.invalidateQueries({ queryKey: ['finance-summary'] })
-    setSheetMode(null)
-    await navigate({ to: '/events/$eventId', params: { eventId }, search: {} })
+  // Isi awal input No. HP cuma sekali (biar nggak ke-reset kalau
+  // di-refetch), diambil dari nomor yang berhasil dicocokkan di server.
+  if (!phoneInitialized) {
+    setPhone(data.order.customerPhone ?? '')
+    setPhoneInitialized(true)
   }
 
-  async function handleUpdateOrder(
-    orderId: string,
-    value: {
-      customerName: string
-      paymentStatus: 'unpaid' | 'dp' | 'paid' | 'shipped'
-      paidAmount?: number
-      items: Array<OrderItemInput>
+  // "niar 6608" -> "niar" (buang 4-digit terakhir yang keisi otomatis
+  // dari suggestion), biar nama yang ke-prefill ke modal Tambah Customer
+  // lebih rapi. Kalau nggak ada pola gitu, dipakai apa adanya.
+  const suggestedCustomerName = data.order.customerName.replace(/\s\d{4}$/, '')
+
+  const { subtotal, totalFee, total } = summarizeItems(data.items)
+  const isDp = data.order.paymentStatus === 'dp'
+  const paidAmount = Number(data.order.paidAmount)
+  const remaining = Math.max(0, total - paidAmount)
+
+  const invoiceNo = data.order.id.slice(0, 8).toUpperCase()
+  const invoiceDate = new Date(data.order.createdAt).toLocaleDateString(
+    'id-ID',
+    {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
     },
-  ) {
-    await updateOrder({ data: { orderId, ...value } })
-    await queryClient.invalidateQueries({ queryKey: ['event', eventId] })
-    await queryClient.invalidateQueries({ queryKey: ['events'] })
-    await queryClient.invalidateQueries({ queryKey: ['finance-summary'] })
-    setSheetMode(null)
-  }
+  )
+  // Bank/e-wallet aktif pertama dipakai buat variabel {bank}/{bankAccount} di chat WA.
+  const primaryTransfer = data.paymentMethods.find(
+    (method) => method.type !== 'qris',
+  )
 
-  async function handlePaymentStatusChange(
-    orderId: string,
-    paymentStatus: 'unpaid' | 'dp' | 'paid' | 'shipped',
-    paidAmount?: number,
-  ) {
-    await updateOrderPaymentStatus({
-      data: { orderId, paymentStatus, paidAmount },
+  const completed =
+    data.order.paymentStatus === 'paid' ||
+    data.order.paymentStatus === 'shipped'
+
+  const invoiceLink = `${typeof window !== 'undefined' ? window.location.origin : ''}/tagihan/${eventId}/${orderId}`
+
+  const defaultTemplate = isDp
+    ? [
+        'Halo kak {customer}, ini invoice belanja di *{event}* ya kak, bisa dicek detailnya di link ini: {link}',
+        '',
+        'Subtotal: {subtotal}',
+        'Fee jastip: {fee}',
+        'Total Tagihan: {total}',
+        'DP Dibayar: {dp}',
+        '*Sisa Tagihan: {sisa}*',
+        '{bankLine}',
+        'mohon dikirim bukti transfernya ya kak',
+        '',
+        'Terima kasih sudah berbelanja di {brand}!',
+      ].join('\n')
+    : DEFAULT_WA_MESSAGE_TEMPLATE
+
+  const waMessage = renderMessageTemplate(
+    data.user.waMessageTemplate ?? defaultTemplate,
+    {
+      customer: data.order.customerName,
+      event: data.event.name,
+      link: invoiceLink,
+      subtotal: formatIDR(subtotal),
+      fee: formatIDR(totalFee),
+      total: formatIDR(total),
+      dp: formatIDR(paidAmount),
+      sisa: formatIDR(remaining),
+      bank: primaryTransfer?.provider ?? '',
+      bankAccount: primaryTransfer?.accountNumber ?? '',
+      brand: data.user.brandName || data.user.name,
+    },
+  )
+
+  const phoneValid = isValidIndonesianPhone(phone)
+
+  async function handleAddCustomer(value: { name: string; phone: string }) {
+    await createCustomer({ data: value })
+    await queryClient.invalidateQueries({ queryKey: ['customers'] })
+    await queryClient.invalidateQueries({
+      queryKey: ['invoice', eventId, orderId],
     })
-    await queryClient.invalidateQueries({ queryKey: ['event', eventId] })
-    await queryClient.invalidateQueries({ queryKey: ['events'] })
-    await queryClient.invalidateQueries({ queryKey: ['finance-summary'] })
-  }
-
-  function toggleItemExpanded(key: string) {
-    setExpandedItems((prev) =>
-      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
-    )
-  }
-
-  /**
-   * Checklist belanja: tandai barang sudah/belum didapat di toko.
-   * Langsung update cache dulu (optimistic) biar waktu live shopping checkbox-nya
-   * berasa instan, lalu refetch buat memastikan data dari server.
-   */
-  async function handleToggleObtained(
-    itemIds: Array<string>,
-    obtained: boolean,
-  ) {
-    const idSet = new Set(itemIds)
-    queryClient.setQueryData(query.queryKey, (old) =>
-      old
-        ? {
-            ...old,
-            orders: old.orders.map((order) => ({
-              ...order,
-              items: order.items.map((item) =>
-                idSet.has(item.id) ? { ...item, obtained } : item,
-              ),
-            })),
-          }
-        : old,
-    )
-
-    try {
-      await updateItemsObtained({ data: { itemIds, obtained } })
-    } finally {
-      await queryClient.invalidateQueries({ queryKey: ['event', eventId] })
-    }
-  }
-
-  async function confirmDeleteOrder() {
-    if (!deletingOrderId) return
-    setIsDeleting(true)
-    try {
-      await deleteOrder({ data: { orderId: deletingOrderId } })
-      await queryClient.invalidateQueries({ queryKey: ['event', eventId] })
-      await queryClient.invalidateQueries({ queryKey: ['events'] })
-      await queryClient.invalidateQueries({ queryKey: ['finance-summary'] })
-      setDeletingOrderId(null)
-    } finally {
-      setIsDeleting(false)
-    }
-  }
-
-  async function handleFeeRuleChange(feeRuleId: string) {
-    await updateEvent({
-      data: {
-        id: eventId,
-        name: event.name,
-        description: event.description ?? undefined,
-        eventDate: new Date(event.eventDate).toISOString(),
-        feeRuleId: feeRuleId || null,
-      },
-    })
-    await queryClient.invalidateQueries({ queryKey: ['event', eventId] })
+    setPhone(value.phone)
+    setShowAddCustomer(false)
   }
 
   return (
-    <main className="app-shell relative mx-auto max-w-lg px-4 pb-24 pt-6">
+    <main className="app-shell relative mx-auto min-h-screen max-w-lg px-4 pb-10 pt-6">
       <header className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Link to="/" style={{ color: 'var(--app-text)' }}>
-            <ArrowLeft size={22} />
+          <Link to="/events/$eventId" params={{ eventId }}>
+            <ArrowLeft size={22} style={{ color: 'var(--app-text)' }} />
           </Link>
-          <div>
-            <h1 className="text-lg font-bold">{event.name}</h1>
-            <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
-              Event date{' '}
-              {new Date(event.eventDate).toLocaleDateString('id-ID', {
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-              })}
-            </p>
-          </div>
+          <h1 className="text-lg font-bold">Tagih Pesanan</h1>
         </div>
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setShowEventMenu((v) => !v)}
-            className="rounded-full p-1.5 transition-colors"
-            style={{ color: 'var(--app-text-mute)' }}
-            aria-label="Menu event"
-            aria-expanded={showEventMenu}
-          >
-            <MoreVertical size={20} />
-          </button>
-
-          {showEventMenu && (
-            <>
-              <div
-                className="fixed inset-0 z-10"
-                onClick={() => setShowEventMenu(false)}
-                aria-hidden="true"
-              />
-              <div
-                className="absolute right-0 top-full z-20 mt-2 w-72 rounded-2xl border p-4 shadow-xl animate-in fade-in slide-in-from-top-1 duration-150"
-                style={{
-                  background: 'var(--app-card)',
-                  borderColor: 'var(--app-border)',
-                }}
-              >
-                <p
-                  className="mb-2 text-xs font-semibold"
-                  style={{ color: 'var(--app-text-soft)' }}
-                >
-                  Aturan fee jastip untuk event ini
-                </p>
-                <div className="relative">
-                  <span
-                    className="pointer-events-none absolute inset-y-0 left-3 flex items-center"
-                    style={{ color: 'var(--app-accent)' }}
-                  >
-                    <Tag size={16} />
-                  </span>
-                  <select
-                    value={event.feeRule?.id ?? ''}
-                    onChange={(e) => {
-                      handleFeeRuleChange(e.target.value)
-                      setShowEventMenu(false)
-                    }}
-                    className="app-input appearance-none pl-9"
-                  >
-                    <option value="">Belum dipilih</option>
-                    {feeRules.map((rule) => (
-                      <option key={rule.id} value={rule.id}>
-                        {rule.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
+        <button
+          type="button"
+          onClick={() => window.print()}
+          className="flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold"
+          style={{
+            borderColor: 'var(--app-border)',
+            color: 'var(--app-text-soft)',
+          }}
+        >
+          <Printer size={14} />
+          Cetak
+        </button>
       </header>
 
-      <section className="mb-4 grid grid-cols-2 gap-3">
-        <div className="app-card p-4">
-          <p className="mb-1 text-sm" style={{ color: 'var(--app-text-soft)' }}>
-            Uang masuk
-          </p>
-          <p className="text-lg font-bold">{formatIDR(amountIn)}</p>
-        </div>
-        <div className="app-card p-4">
-          <p className="mb-1 text-sm" style={{ color: 'var(--app-text-soft)' }}>
-            Belum bayar
-          </p>
-          <p
-            className="text-lg font-bold"
-            style={{ color: 'var(--app-warning)' }}
-          >
-            {formatIDR(outstanding)}
-          </p>
-        </div>
-      </section>
-
-      {/* Tab tampilan: per pelanggan (default, seperti sebelumnya) atau per item */}
-      <div
-        className="mb-3 flex gap-1 rounded-xl border p-1"
-        style={{
-          borderColor: 'var(--app-border)',
-          background: 'var(--app-card)',
-        }}
-      >
-        <button
-          type="button"
-          onClick={() => {
-            setViewMode('perCustomer')
-            setSearch('')
+      {completed && (
+        <div
+          className="mb-4 rounded-xl border px-4 py-3 text-sm font-medium"
+          style={{
+            borderColor: 'var(--app-success-soft)',
+            background: 'var(--app-success-soft)',
+            color: 'var(--app-success)',
           }}
-          className="flex-1 rounded-lg py-2 text-xs font-semibold transition-all"
-          style={
-            viewMode === 'perCustomer'
-              ? { background: 'var(--app-accent)', color: 'white' }
-              : { color: 'var(--app-text-soft)' }
-          }
-          aria-pressed={viewMode === 'perCustomer'}
         >
-          Per Pelanggan
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setViewMode('perItem')
-            setSearch('')
-          }}
-          className="flex-1 rounded-lg py-2 text-xs font-semibold transition-all"
-          style={
-            viewMode === 'perItem'
-              ? { background: 'var(--app-accent)', color: 'white' }
-              : { color: 'var(--app-text-soft)' }
-          }
-          aria-pressed={viewMode === 'perItem'}
-        >
-          Per Item
-        </button>
-      </div>
-
-      <div className="relative mb-3">
-        <span
-          className="pointer-events-none absolute inset-y-0 left-3 flex items-center"
-          style={{ color: 'var(--app-text-mute)' }}
-        >
-          <Search size={16} />
-        </span>
-        <input
-          placeholder={
-            viewMode === 'perItem' ? 'Cari nama barang' : 'Cari nama pelanggan'
-          }
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="app-input pl-9"
-        />
-      </div>
-
-      {viewMode === 'perCustomer' ? (
-        /* Filter Status Pembayaran — khusus tab Per Pelanggan (seperti semula) */
-        <div className="mb-4 grid grid-cols-4 gap-2">
-          <button
-            type="button"
-            onClick={() =>
-              setStatusFilter(statusFilter === 'unpaid' ? null : 'unpaid')
-            }
-            className={`flex items-center justify-center gap-1.5 rounded-xl py-2 px-1 text-xs font-semibold transition-all border ${
-              statusFilter === 'unpaid'
-                ? 'border-[var(--app-warning)] bg-[var(--app-warning)] text-white shadow-sm'
-                : 'border-[var(--app-border)] bg-[var(--app-card)] text-[var(--app-text-soft)] hover:border-[var(--app-warning)]'
-            }`}
-          >
-            <span>Belum</span>
-            <span
-              className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-                statusFilter === 'unpaid'
-                  ? 'bg-white/20 text-white'
-                  : 'bg-[var(--app-warning-soft)] text-[var(--app-warning)]'
-              }`}
-            >
-              {unpaidCount}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setStatusFilter(statusFilter === 'dp' ? null : 'dp')}
-            className={`flex items-center justify-center gap-1.5 rounded-xl py-2 px-1 text-xs font-semibold transition-all border ${
-              statusFilter === 'dp'
-                ? 'border-[var(--app-accent)] bg-[var(--app-accent)] text-white shadow-sm'
-                : 'border-[var(--app-border)] bg-[var(--app-card)] text-[var(--app-text-soft)] hover:border-[var(--app-accent)]'
-            }`}
-          >
-            <span>DP</span>
-            <span
-              className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-                statusFilter === 'dp'
-                  ? 'bg-white/20 text-white'
-                  : 'bg-[var(--app-accent-soft)] text-[var(--app-accent)]'
-              }`}
-            >
-              {dpCount}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() =>
-              setStatusFilter(statusFilter === 'paid' ? null : 'paid')
-            }
-            className={`flex items-center justify-center gap-1.5 rounded-xl py-2 px-1 text-xs font-semibold transition-all border ${
-              statusFilter === 'paid'
-                ? 'border-[var(--app-success)] bg-[var(--app-success)] text-white shadow-sm'
-                : 'border-[var(--app-border)] bg-[var(--app-card)] text-[var(--app-text-soft)] hover:border-[var(--app-success)]'
-            }`}
-          >
-            <span>Lunas</span>
-            <span
-              className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-                statusFilter === 'paid'
-                  ? 'bg-white/20 text-white'
-                  : 'bg-[var(--app-success-soft)] text-[var(--app-success)]'
-              }`}
-            >
-              {paidCount}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() =>
-              setStatusFilter(statusFilter === 'shipped' ? null : 'shipped')
-            }
-            className={`flex items-center justify-center gap-1.5 rounded-xl py-2 px-1 text-xs font-semibold transition-all border ${
-              statusFilter === 'shipped'
-                ? 'border-[#2563eb] bg-[#2563eb] text-white shadow-sm'
-                : 'border-[var(--app-border)] bg-[var(--app-card)] text-[var(--app-text-soft)] hover:border-[#2563eb]'
-            }`}
-          >
-            <span>Kirim</span>
-            <span
-              className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-                statusFilter === 'shipped'
-                  ? 'bg-white/20 text-white'
-                  : 'bg-[rgba(59,130,246,0.14)] text-[#2563eb]'
-              }`}
-            >
-              {shippedCount}
-            </span>
-          </button>
-        </div>
-      ) : (
-        /* Filter checklist belanja — khusus tab Per Item */
-        <div className="mb-4 grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() =>
-              setObtainedFilter(obtainedFilter === 'pending' ? null : 'pending')
-            }
-            className={`flex items-center justify-center gap-1.5 rounded-xl py-2 px-1 text-xs font-semibold transition-all border ${
-              obtainedFilter === 'pending'
-                ? 'border-[var(--app-warning)] bg-[var(--app-warning)] text-white shadow-sm'
-                : 'border-[var(--app-border)] bg-[var(--app-card)] text-[var(--app-text-soft)] hover:border-[var(--app-warning)]'
-            }`}
-          >
-            <span>Belum dapat</span>
-            <span
-              className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-                obtainedFilter === 'pending'
-                  ? 'bg-white/20 text-white'
-                  : 'bg-[var(--app-warning-soft)] text-[var(--app-warning)]'
-              }`}
-            >
-              {pendingItemCount}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() =>
-              setObtainedFilter(
-                obtainedFilter === 'obtained' ? null : 'obtained',
-              )
-            }
-            className={`flex items-center justify-center gap-1.5 rounded-xl py-2 px-1 text-xs font-semibold transition-all border ${
-              obtainedFilter === 'obtained'
-                ? 'border-[var(--app-success)] bg-[var(--app-success)] text-white shadow-sm'
-                : 'border-[var(--app-border)] bg-[var(--app-card)] text-[var(--app-text-soft)] hover:border-[var(--app-success)]'
-            }`}
-          >
-            <span>Dapat</span>
-            <span
-              className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-                obtainedFilter === 'obtained'
-                  ? 'bg-white/20 text-white'
-                  : 'bg-[var(--app-success-soft)] text-[var(--app-success)]'
-              }`}
-            >
-              {obtainedItemCount}
-            </span>
-          </button>
+          Pesanan ini sudah{' '}
+          {data.order.paymentStatus === 'paid' ? 'lunas' : 'dikirim'} — invoice
+          ditampilkan untuk arsip.
         </div>
       )}
 
-      <div className="flex flex-col gap-3">
-        {viewMode === 'perCustomer' && filteredOrders.length === 0 && (
-          <p
-            className="py-10 text-center text-sm"
-            style={{ color: 'var(--app-text-soft)' }}
+      {/* ====== INVOICE CARD ====== */}
+      <div className="app-card mb-4 overflow-hidden">
+        {/* Header */}
+        <div
+          className="flex items-center justify-between p-5"
+          style={{ background: 'var(--app-accent-soft)' }}
+        >
+          <div>
+            <p className="text-lg font-bold">
+              {data.user.brandName || data.user.name}
+            </p>
+            <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
+              INVOICE · {invoiceNo}
+            </p>
+          </div>
+          <span
+            className="app-icon-tile h-11 w-11"
+            style={{ borderRadius: 999 }}
           >
-            {statusFilter || search.trim()
-              ? 'Tidak ada pesanan yang sesuai filter.'
-              : 'Belum ada pesanan.'}
-          </p>
-        )}
-        {viewMode === 'perItem' && itemSummary.length === 0 && (
-          <p
-            className="py-10 text-center text-sm"
-            style={{ color: 'var(--app-text-soft)' }}
-          >
-            {obtainedFilter || search.trim()
-              ? 'Tidak ada barang yang sesuai filter.'
-              : 'Belum ada barang.'}
-          </p>
-        )}
-        {viewMode === 'perItem' && itemSummary.length > 0 && (
-          <div className="app-card overflow-hidden">
-            <div
-              className="flex items-center justify-between border-b px-4 py-2.5 text-xs font-semibold uppercase tracking-wide"
-              style={{
-                borderColor: 'var(--app-border)',
-                color: 'var(--app-text-soft)',
-              }}
-            >
-              <span>Item</span>
-              <span>Qty</span>
-            </div>
-            {itemSummary.map((item) => {
-              const key = item.name.toLowerCase()
-              const isExpanded = expandedItems.includes(key)
-              const allObtained = item.pendingCount === 0
+            <Landmark size={20} />
+          </span>
+        </div>
 
-              return (
-                <div
-                  key={key}
-                  className="border-b last:border-b-0"
-                  style={{ borderColor: 'var(--app-border)' }}
+        {/* Info order */}
+        <div
+          className="flex flex-col gap-1.5 border-b p-5 pb-4"
+          style={{ borderColor: 'var(--app-border)' }}
+        >
+          <p className="text-sm font-semibold">
+            Untuk: {data.order.customerName}
+          </p>
+          <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
+            Event: {data.event.name}
+          </p>
+          <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
+            Tanggal invoice: {invoiceDate}
+          </p>
+        </div>
+
+        {/* Items */}
+        <div className="flex flex-col gap-1 p-5 pb-4">
+          <div
+            className="mb-1 flex justify-between text-xs font-semibold"
+            style={{ color: 'var(--app-text-mute)' }}
+          >
+            <span>Barang</span>
+            <span>Harga Jual</span>
+          </div>
+          {data.items.map((item) => (
+            <div
+              key={item.id}
+              className="flex justify-between gap-3 py-1 text-sm"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="truncate">{item.name}</p>
+                <p
+                  className="text-xs"
+                  style={{ color: 'var(--app-text-mute)' }}
                 >
-                  <div className="flex items-center gap-2 px-4 py-3">
-                    <input
-                      type="checkbox"
-                      className="app-checkbox"
-                      checked={allObtained}
-                      // Sebagian didapat -> tampilkan state "sebagian" biar
-                      // kelihatan masih ada sisa yang belum ketemu.
-                      ref={(el) => {
-                        if (el) {
-                          el.indeterminate =
-                            !allObtained && item.obtainedQty > 0
-                        }
-                      }}
-                      onChange={() =>
-                        handleToggleObtained(item.itemIds, !allObtained)
-                      }
-                      aria-label={`Tandai ${item.name} sudah didapat`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => toggleItemExpanded(key)}
-                      aria-expanded={isExpanded}
-                      className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left"
-                    >
-                      <span className="min-w-0">
-                        <span className="block truncate text-sm font-medium">
-                          {item.name}
-                        </span>
-                        <span
-                          className="block text-xs"
-                          style={{ color: 'var(--app-text-soft)' }}
-                        >
-                          {item.customers.length} pembeli ·{' '}
-                          {allObtained
-                            ? 'semua sudah didapat'
-                            : `${item.obtainedQty}/${item.qty} pcs didapat`}
-                        </span>
-                      </span>
-                      <span className="flex flex-shrink-0 items-center gap-1.5">
-                        <span className="text-sm font-bold">{item.qty}</span>
-                        <ChevronRight
-                          size={16}
-                          style={{
-                            color: 'var(--app-text-mute)',
-                            transform: isExpanded ? 'rotate(90deg)' : undefined,
-                            transition: 'transform 150ms ease',
-                          }}
-                        />
-                      </span>
-                    </button>
-                  </div>
-                  {isExpanded && (
-                    <div
-                      className="flex flex-col gap-2 border-t px-4 py-3"
-                      style={{
-                        borderColor: 'var(--app-border)',
-                        background: 'var(--app-card-hover)',
-                      }}
-                    >
-                      <p
-                        className="text-xs font-semibold"
-                        style={{ color: 'var(--app-text-soft)' }}
-                      >
-                        Yang pesan barang ini
-                      </p>
-                      {item.customers.map((customer) => {
-                        const customerDone =
-                          customer.obtainedQty === customer.qty
-                        // Sebagian dapat (mis. qty 2, baru 1 pcs ketemu).
-                        const customerPartial =
-                          !customerDone && customer.obtainedQty > 0
-
-                        return (
-                          <div
-                            key={customer.name.toLowerCase()}
-                            className="flex items-center gap-2 text-sm"
-                          >
-                            <input
-                              type="checkbox"
-                              className="app-checkbox"
-                              checked={customerDone}
-                              ref={(el) => {
-                                if (el) el.indeterminate = customerPartial
-                              }}
-                              onChange={() =>
-                                handleToggleObtained(
-                                  customer.itemIds,
-                                  !customerDone,
-                                )
-                              }
-                              aria-label={`Tandai ${item.name} untuk ${customer.name} sudah didapat`}
-                            />
-                            <span className="app-avatar h-6 w-6 flex-shrink-0 text-[10px]">
-                              {customer.name.at(0)?.toUpperCase()}
-                            </span>
-                            <span className="min-w-0 flex-1 truncate">
-                              {customer.name}
-                            </span>
-                            <span className="flex-shrink-0 font-semibold">
-                              {customerPartial
-                                ? `${customer.obtainedQty}/${customer.qty} pcs`
-                                : `${customer.qty} pcs`}
-                            </span>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-            <div
-              className="flex flex-col gap-0.5 px-4 py-3 text-sm font-semibold"
-              style={{
-                background: 'var(--app-accent-soft)',
-                color: 'var(--app-accent)',
-              }}
-            >
-              <div className="flex items-center justify-between">
-                <span>{itemSummary.length} jenis barang</span>
-                <span>{totalItemQty} pcs</span>
+                  <>
+                    {item.qty} × ({formatIDR(item.originalPrice)} + Fee{' '}
+                    {formatIDR(item.fee)})
+                  </>
+                </p>
               </div>
-              {totalPendingQty > 0 && (
-                <div className="flex items-center justify-between text-xs font-medium">
-                  <span>Belum didapat</span>
-                  <span>{totalPendingQty} pcs</span>
-                </div>
-              )}
+              <p className="font-medium">{formatIDR(lineTotal(item))}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Total */}
+        <div
+          className="flex items-center justify-between border-t p-5 pt-3"
+          style={{ borderColor: 'var(--app-border)' }}
+        >
+          <span className="font-bold">Total Tagihan</span>
+          <span
+            className="text-lg font-bold"
+            style={{ color: 'var(--app-accent)' }}
+          >
+            {formatIDR(total)}
+          </span>
+        </div>
+
+        {isDp && (
+          <div
+            className="flex flex-col gap-1 border-t px-5 py-3 text-sm"
+            style={{
+              borderColor: 'var(--app-border)',
+              background: 'var(--app-accent-soft)',
+            }}
+          >
+            <div className="flex justify-between">
+              <span>DP sudah dibayar</span>
+              <span className="font-semibold">{formatIDR(paidAmount)}</span>
+            </div>
+            <div
+              className="flex justify-between font-bold"
+              style={{ color: 'var(--app-warning)' }}
+            >
+              <span>Sisa yang harus dibayar</span>
+              <span>{formatIDR(remaining)}</span>
             </div>
           </div>
         )}
-        {viewMode === 'perCustomer' &&
-          filteredOrders.map((order) => {
-            const orderTotal = summarizeItems(order.items).total
-            // `paid_amount` di DB NOT NULL default 0, jadi tidak perlu fallback null.
-            const remaining = Math.max(0, orderTotal - Number(order.paidAmount))
-            return (
-              <details key={order.id} className="app-card p-4">
-                <summary className="flex cursor-pointer items-center gap-3">
-                  <span className="app-avatar h-9 w-9 flex-shrink-0">
-                    {order.customerName.at(0)?.toUpperCase()}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <p className="truncate font-semibold">
-                      {order.customerName}
-                    </p>
-                    <p
-                      className="text-xs"
-                      style={{ color: 'var(--app-text-soft)' }}
-                    >
-                      {order.items.length} item · {formatIDR(orderTotal)}
-                      {order.paymentStatus === 'dp' && (
-                        <span style={{ color: 'var(--app-warning)' }}>
-                          {' '}
-                          · Sisa {formatIDR(remaining)}
-                        </span>
-                      )}
-                    </p>
-                  </span>
-                  <div
-                    className="relative flex items-center"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                    }}
-                  >
-                    <select
-                      value={order.paymentStatus}
-                      onChange={(e) => {
-                        e.stopPropagation()
-                        handlePaymentStatusChange(
-                          order.id,
-                          e.target.value as
-                            'unpaid' | 'dp' | 'paid' | 'shipped',
-                        )
-                      }}
-                      className={`cursor-pointer appearance-none rounded-full py-1 pl-2.5 pr-5 text-xs font-semibold outline-none transition-colors border-0 ${
-                        order.paymentStatus === 'paid'
-                          ? 'app-badge-success'
-                          : order.paymentStatus === 'shipped'
-                            ? 'app-badge-info'
-                            : order.paymentStatus === 'dp'
-                              ? 'app-badge-accent'
-                              : 'app-badge-warning'
-                      }`}
-                    >
-                      <option value="unpaid">Belum lunas</option>
-                      <option value="dp">DP</option>
-                      <option value="paid">Lunas</option>
-                      <option value="shipped">Dikirim</option>
-                    </select>
-                    <ChevronDown
-                      size={12}
-                      className="pointer-events-none absolute right-1.5 opacity-60"
-                    />
-                  </div>
-                  <ChevronRight
-                    size={16}
-                    style={{ color: 'var(--app-text-mute)' }}
-                  />
-                </summary>
-                <div
-                  className="mt-3 flex flex-col gap-2 border-t pt-3"
-                  style={{ borderColor: 'var(--app-border)' }}
-                >
-                  {order.items.map((item) => (
-                    <div key={item.id} className="flex justify-between text-sm">
-                      <span>{item.name}</span>
-                      <span>{formatIDR(lineTotal(item))}</span>
-                    </div>
-                  ))}
-                  <div
-                    className="mt-1 flex justify-between border-t pt-2 text-sm font-semibold"
-                    style={{ borderColor: 'var(--app-border)' }}
-                  >
-                    <span>Total</span>
-                    <span>{formatIDR(orderTotal)}</span>
-                  </div>
-                  {order.paymentStatus === 'dp' && (
-                    <div
-                      className="flex flex-col gap-0.5 rounded-xl px-3 py-2 text-xs"
-                      style={{
-                        background: 'var(--app-accent-soft)',
-                        color: 'var(--app-accent)',
-                      }}
-                    >
-                      <div className="flex justify-between">
-                        <span>DP dibayar</span>
-                        <span className="font-semibold">
-                          {formatIDR(Number(order.paidAmount))}
-                        </span>
-                      </div>
-                      <div
-                        className="flex justify-between font-semibold"
-                        style={{ color: 'var(--app-warning)' }}
-                      >
-                        <span>Sisa tagihan</span>
-                        <span>{formatIDR(remaining)}</span>
-                      </div>
-                    </div>
-                  )}
-                  <div
-                    className="mt-2 flex gap-2 border-t pt-3"
-                    style={{ borderColor: 'var(--app-border)' }}
-                  >
-                    {(order.paymentStatus === 'unpaid' ||
-                      order.paymentStatus === 'dp') &&
-                      (billingUnlocked ? (
-                        <Link
-                          to="/invoice/$eventId/$orderId"
-                          params={{ eventId, orderId: order.id }}
-                          onClick={(e) => e.stopPropagation()}
-                          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-2 text-xs font-semibold no-underline"
-                          style={{
-                            borderColor: 'var(--app-accent-soft)',
-                            color: 'var(--app-accent)',
-                            background: 'var(--app-accent-soft)',
-                          }}
-                        >
-                          <ReceiptText size={13} />
-                          Tagih
-                        </Link>
-                      ) : (
-                        // FREE: tombolnya tetap tampil (biar fiturnya kelihatan),
-                        // tapi kliknya cuma nampilin info upgrade — dan server
-                        // tetap menolak kalau halaman tagihnya diakses langsung.
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            setLockedFeature('billing')
-                          }}
-                          aria-label="Tagih pelanggan (fitur PRO)"
-                          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-2 text-xs font-semibold"
-                          style={{
-                            borderColor: 'var(--app-border)',
-                            color: 'var(--app-text-mute)',
-                          }}
-                        >
-                          <Lock size={13} />
-                          Tagih
-                          <ProBadge />
-                        </button>
-                      ))}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        setSheetMode({ type: 'edit', orderId: order.id })
-                      }}
-                      className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-2 text-xs font-semibold"
-                      style={{
-                        borderColor: 'var(--app-border)',
-                        color: 'var(--app-text-soft)',
-                      }}
-                    >
-                      <Pencil size={13} />
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault()
-                        setDeletingOrderId(order.id)
-                      }}
-                      className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-2 text-xs font-semibold"
-                      style={{
-                        borderColor: 'var(--app-danger-soft)',
-                        color: 'var(--app-danger)',
-                      }}
-                    >
-                      <Trash2 size={13} />
-                      Hapus
-                    </button>
-                  </div>
-                </div>
-              </details>
-            )
-          })}
       </div>
+      {/* ====== PEMBAYARAN ====== */}
+      {!completed && (
+        <PaymentInfoCard
+          methods={data.paymentMethods}
+          emptyMessage="Belum ada metode pembayaran aktif. Tambahkan lewat menu Profil → Pembayaran agar pelanggan bisa transfer."
+        />
+      )}
 
-      <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 mx-auto flex max-w-lg justify-end px-6">
-        <button
-          onClick={() => setSheetMode({ type: 'create' })}
-          className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg"
-          style={{ background: 'var(--app-accent)' }}
-          aria-label="Tambah Pesanan"
+      {/* ====== STATUS ====== */}
+      <div className="app-card mb-4 flex items-center justify-between p-5">
+        <span className="text-sm font-semibold">Status Pembayaran</span>
+        <span
+          className={`app-badge ${
+            data.order.paymentStatus === 'unpaid'
+              ? 'app-badge-warning'
+              : data.order.paymentStatus === 'dp'
+                ? 'app-badge-accent'
+                : data.order.paymentStatus === 'paid'
+                  ? 'app-badge-success'
+                  : 'app-badge-info'
+          }`}
         >
-          <Plus size={26} />
-        </button>
+          {statusLabel[data.order.paymentStatus]}
+        </span>
       </div>
 
-      {sheetMode?.type === 'create' && (
-        <AddOrderSheet
-          eventName={event.name}
-          feeTiers={event.feeRule?.tiers ?? []}
-          customers={customers}
-          itemNameSuggestions={itemNameSuggestions}
-          itemPriceSuggestions={itemPriceSuggestions}
-          suggestionsLocked={!orderSuggestionsUnlocked}
-          customerSuggestionsLocked={!customerSuggestionsUnlocked}
-          onClose={() => setSheetMode(null)}
-          onSubmit={handleCreateOrder}
-        />
-      )}
+      {/* ====== KIRIM KE WHATSAPP ====== */}
+      <div className="app-card p-5">
+        <div className="mb-1 flex items-center justify-between text-sm font-bold">
+          <p className="flex items-center gap-2">
+            <MessageCircle size={16} style={{ color: 'var(--app-accent)' }} />
+            Kirim ke WhatsApp
+          </p>
+          <Link
+            to="/profil"
+            className="flex items-center gap-1 text-xs font-semibold"
+            style={{ color: 'var(--app-text-soft)' }}
+          >
+            <SquarePen size={13} />
+            Template
+          </Link>
+        </div>
 
-      {sheetMode?.type === 'duplicate' && (
-        <AddOrderSheet
-          eventName={event.name}
-          feeTiers={event.feeRule?.tiers ?? []}
-          customers={customers}
-          itemNameSuggestions={itemNameSuggestions}
-          itemPriceSuggestions={itemPriceSuggestions}
-          suggestionsLocked={!orderSuggestionsUnlocked}
-          customerSuggestionsLocked={!customerSuggestionsUnlocked}
-          title="Tambah Pesanan"
-          submitLabel="Simpan pesanan"
-          initialValue={{
-            customerName: sheetMode.customerName,
-            paymentStatus: 'unpaid',
-            items: [],
+        {!data.order.customerRegistered && (
+          <div
+            className="mb-3 flex items-start gap-2 rounded-xl p-3 text-xs"
+            style={{
+              background: 'var(--app-accent-soft)',
+              color: 'var(--app-accent)',
+            }}
+          >
+            <AlertTriangle size={15} className="mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="mb-2">
+                Nomor pelanggan ini belum terdaftar di daftar Customer.
+                Tambahkan dulu supaya nomornya kesimpen buat pesanan berikutnya.
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowAddCustomer(true)}
+                className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white"
+                style={{ background: 'var(--app-accent)' }}
+              >
+                Tambah ke Customer
+              </button>
+            </div>
+          </div>
+        )}
+
+        <label className="mb-3 flex flex-col gap-1 text-sm font-medium">
+          No. HP pelanggan
+          <input
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="08xxxxxxxxxx"
+            className="app-input"
+          />
+          {phone && !phoneValid && (
+            <span className="text-xs" style={{ color: 'var(--app-danger)' }}>
+              Format nomor HP kelihatannya belum benar.
+            </span>
+          )}
+          {formatPhoneNumber(phone) && phoneValid && (
+            <span className="text-xs" style={{ color: 'var(--app-text-mute)' }}>
+              {formatPhoneNumber(phone)}
+            </span>
+          )}
+        </label>
+
+        <a
+          href={phoneValid ? buildWhatsAppLink(phone, waMessage) : undefined}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-disabled={!phoneValid}
+          onClick={(e) => {
+            if (!phoneValid) e.preventDefault()
           }}
-          onClose={() => setSheetMode(null)}
-          onSubmit={handleCreateOrder}
-        />
-      )}
-
-      {sheetMode?.type === 'edit' && editingOrder && (
-        <AddOrderSheet
-          eventName={event.name}
-          feeTiers={event.feeRule?.tiers ?? []}
-          customers={customers}
-          itemNameSuggestions={itemNameSuggestions}
-          itemPriceSuggestions={itemPriceSuggestions}
-          suggestionsLocked={!orderSuggestionsUnlocked}
-          customerSuggestionsLocked={!customerSuggestionsUnlocked}
-          title="Edit Pesanan"
-          submitLabel="Simpan perubahan"
-          initialValue={{
-            customerName: editingOrder.customerName,
-            paymentStatus: editingOrder.paymentStatus,
-            items: editingOrder.items.map((item) => ({
-              name: item.name,
-              originalPrice: Number(item.originalPrice),
-              fee: Number(item.fee),
-              qty: item.qty,
-              // Checklist belanja dibawa terus, biar updateOrder yang hapus +
-              // insert ulang item nggak me-reset status "sudah didapat".
-              obtained: item.obtained,
-            })),
+          className="app-btn-primary w-full"
+          style={{
+            background: '#25D366',
+            opacity: phoneValid ? 1 : 0.5,
+            pointerEvents: phoneValid ? 'auto' : 'none',
           }}
-          onClose={() => setSheetMode(null)}
-          onSubmit={(value) => handleUpdateOrder(editingOrder.id, value)}
+        >
+          <MessageCircle size={18} />
+          Kirim ke WhatsApp
+        </a>
+      </div>
+
+      <p
+        className="mt-6 text-center text-xs"
+        style={{ color: 'var(--app-text-mute)' }}
+      >
+        Terima kasih sudah berbelanja di {data.user.brandName || data.user.name}
+      </p>
+
+      {showAddCustomer && (
+        <CustomerFormModal
+          title="Tambah Customer"
+          submitLabel="Simpan"
+          initialValue={{ name: suggestedCustomerName, phone }}
+          onClose={() => setShowAddCustomer(false)}
+          onSubmit={handleAddCustomer}
         />
       )}
-
-      <ConfirmModal
-        open={Boolean(deletingOrderId)}
-        title="Hapus pesanan ini?"
-        content="Pesanan dan semua item di dalamnya akan dihapus permanen."
-        okText="Ya, hapus"
-        cancelText="Batal"
-        danger={true}
-        loading={isDeleting}
-        onOk={confirmDeleteOrder}
-        onCancel={() => {
-          if (!isDeleting) setDeletingOrderId(null)
-        }}
-      />
-
-      <ProLockPrompt
-        feature={lockedFeature}
-        entitlements={currentUser?.entitlements ?? null}
-        onClose={() => setLockedFeature(null)}
-      />
     </main>
   )
 }
