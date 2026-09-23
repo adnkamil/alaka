@@ -2,7 +2,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '../db'
-import { subscriptions } from '../db/schema'
+import { subscriptionSettings, subscriptions } from '../db/schema'
 import { requireAdminUser } from './admin'
 import {
   findSubscriptionById,
@@ -14,6 +14,7 @@ import {
   SUBSCRIPTION_STATUSES,
   listActiveSubscriptions,
 } from './subscription-queries'
+import { getSubscriptionSettings } from './subscription-settings-queries'
 
 export const fetchAdminMetrics = createServerFn({ method: 'GET' }).handler(
   async () => {
@@ -97,16 +98,13 @@ export const rejectSubscription = createServerFn({ method: 'POST' })
       .where(eq(subscriptions.id, data.id))
   })
 
-// ─────────────────────────────────────────────────────────────
-// Tambahkan ke src/lib/admin-functions.ts — INI GANTI paste QRIS
-// sebelumnya (kalau sudah kamu tempel), karena sekarang ada
-// helper upsert bersama buat QRIS & harga.
-// (pakai `requireAdminUser()`, `db`, `eq` yang sudah ada di file itu)
-// ─────────────────────────────────────────────────────────────
-import { subscriptionSettings } from '../db/schema'
-import { getSubscriptionSettings } from './subscription-settings-queries'
+// ── Pengaturan pembayaran PRO (harga membership + QRIS) ──────────────────────
+// Disimpan di satu baris singleton `subscription_settings`: member membacanya
+// lewat `fetchSubscriptionPaymentInfo()` untuk form pengajuan upgrade, admin
+// menulisnya lewat dua server function di bawah. Keduanya lewat helper upsert
+// bersama supaya QRIS & harga tidak punya jalur tulis sendiri-sendiri.
 
-const MAX_QRIS_BYTES = 1_500_000 // ~1.5MB, sama dengan validasi QRIS di payment-methods-functions.ts
+const MAX_QRIS_BYTES = 1_500_000 // ~1.5MB, sama dengan batas QRIS di payment-methods-functions.ts & bukti transfer di subscription-functions.ts
 
 const qrisImageSchema = z
   .string()

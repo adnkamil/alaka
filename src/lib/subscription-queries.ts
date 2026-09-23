@@ -6,11 +6,13 @@ import type { users } from '../db/schema'
 import type { Entitlement, SubscriptionStatus } from './subscription'
 
 /**
- * Akses data langganan (server-side).
+ * Akses data langganan (server-side) — query murni tanpa `createServerFn`,
+ * sama polanya dengan `admin-queries.ts` & `customers-queries.ts`.
  *
- * Layer ini sengaja tipis dan BELUM dibungkus `createServerFn`: fase ini baru
- * menyiapkan database + cara menghitung status. Server function (endpoint) &
- * UI-nya dikerjakan di fase berikutnya, dan tinggal memakai fungsi di sini.
+ * Dipakai oleh `entitlements.ts` (hitung status akses), `subscription-functions.ts`
+ * (sisi member: pengajuan upgrade + baca status sendiri), dan `admin-functions.ts`
+ * (sisi admin: approve/reject). Client tidak boleh meng-import file ini karena
+ * `db` ada di level modul — lihat `client-bundle-safety.test.ts`.
  */
 
 /** Baris `subscriptions` apa adanya (sesuai tabel). */
@@ -101,7 +103,7 @@ export async function findSubscriptionForUser(id: string, userId: string) {
   })
 }
 
-/** Tipe status langganan dalam bentuk union string (buat validasi zod nanti). */
+/** Tipe status langganan sebagai union string — dipakai `z.enum()` di server function admin. */
 export const SUBSCRIPTION_STATUSES: Array<SubscriptionStatus> = [
   'pending',
   'active',
