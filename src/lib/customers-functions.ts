@@ -1,27 +1,15 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, asc, eq, isNull } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '../db'
 import { customers } from '../db/schema'
 import { getSessionUser } from './auth'
+import { queryActiveCustomers } from './customers-queries'
 
 async function requireUser() {
   const user = await getSessionUser()
   if (!user) throw new Error('Belum login')
   return user
-}
-
-/**
- * Query murni (bukan server function) buat daftar customer aktif milik user —
- * dipakai `listCustomers` di sini DAN `getCustomerSuggestions` di
- * `customer-suggestions-functions.ts`, supaya query-nya nggak ditulis dua kali.
- */
-export function queryActiveCustomers(userId: string) {
-  return db
-    .select()
-    .from(customers)
-    .where(and(eq(customers.userId, userId), isNull(customers.deletedAt)))
-    .orderBy(asc(customers.name))
 }
 
 const customerInputSchema = z.object({
@@ -66,7 +54,11 @@ export const updateCustomer = createServerFn({ method: 'POST' })
 
     await db
       .update(customers)
-      .set({ name: data.name, phone: data.phone || null, updatedAt: new Date() })
+      .set({
+        name: data.name,
+        phone: data.phone || null,
+        updatedAt: new Date(),
+      })
       .where(eq(customers.id, data.id))
   })
 

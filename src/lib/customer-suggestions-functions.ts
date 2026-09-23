@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { getSessionUser } from './auth'
-import { queryActiveCustomers } from './customers-functions'
+import { queryActiveCustomers } from './customers-queries'
 import { getUserEntitlements } from './entitlements'
 import { canUseFeature } from './subscription'
 
