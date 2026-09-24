@@ -30,19 +30,19 @@ Astra Otoshop).
 
 ## 3. Tech Stack
 
-| Layer               | Pilihan                                                       |
-| ------------------- | ------------------------------------------------------------- |
-| Framework           | TanStack Start (React 19 + Vite 8)                            |
-| Routing             | TanStack Router                                               |
-| Data fetching/cache | TanStack Query                                                |
-| Styling             | Tailwind CSS v4 (mobile-first)                                |
-| PWA                 | vite-plugin-pwa + Workbox (custom service worker)             |
-| Database            | PostgreSQL via Drizzle ORM                                    |
-| Auth                | Session-based, cookie httpOnly; password di-hash (bcryptjs)   |
-| OAuth               | Google OAuth 2.0 (OpenID Connect — login/register via Google) |
-| Validasi            | Zod (client & server)                                         |
-| Testing             | `node:test` (dijalankan via `tsx --test`, lihat `npm test`)   |
-| Icons               | Lucide React                                                  |
+| Layer               | Pilihan                                                                                                                          |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Framework           | TanStack Start (React 19 + Vite 8)                                                                                               |
+| Routing             | TanStack Router                                                                                                                  |
+| Data fetching/cache | TanStack Query                                                                                                                   |
+| Styling             | Tailwind CSS v4 (mobile-first)                                                                                                   |
+| PWA                 | vite-plugin-pwa + Workbox (custom service worker)                                                                                |
+| Database            | PostgreSQL via Drizzle ORM — perubahan skema **wajib lewat migrasi** (`db:generate` + `db:migrate`), bukan `db:push` (lihat 7.1) |
+| Auth                | Session-based, cookie httpOnly; password di-hash (bcryptjs)                                                                      |
+| OAuth               | Google OAuth 2.0 (OpenID Connect — login/register via Google)                                                                    |
+| Validasi            | Zod (client & server)                                                                                                            |
+| Testing             | `node:test` (dijalankan via `tsx --test`, lihat `npm test`)                                                                      |
+| Icons               | Lucide React                                                                                                                     |
 
 ## 4. Fitur & Halaman
 
@@ -517,6 +517,27 @@ activity_logs
 - **`is_admin` ditandai di DB, bukan di UI**: kolom `users.is_admin` (default `false`) cuma diaktifkan manual lewat `pnpm db:studio` oleh pemilik aplikasi — sengaja tidak ada jalur self-service dari aplikasi supaya tidak ada yang bisa mengangkat dirinya jadi admin. Nilainya dipakai `requireAdminUser()` (`src/lib/admin.ts`) di server dan `fetchCurrentUser()` di client.
 - **`subscription_settings` = baris tunggal**: harga membership PRO dan gambar QRIS pembayaran sengaja tidak jadi konstanta di kode supaya admin bisa mengubahnya tanpa deploy. Harga di-snapshot ke `subscriptions.amount` saat pengajuan dibuat (lihat 5.7).
 - **Default trial ada di level database**: `trial_started_at DEFAULT now()` dan `trial_ends_at DEFAULT now() + interval '30 days'` — semua jalur pembuatan user otomatis kebagian trial. Migrasi `0001_curious_blade.sql` membackfill user lama dengan aturan "trial mulai saat user dibuat" (`trial_started_at = created_at`), dan `pnpm db:backfill-trial` dipakai kalau pemilik aplikasi mau mengecualikan user lama (mis. trial 30 hari mulai hari rilis).
+- **Perubahan skema wajib lewat migrasi Drizzle** (`pnpm db:generate` + `pnpm db:migrate`, file di `drizzle/` ikut di-commit) — jangan pakai `pnpm db:push` supaya setiap perubahan DB ke-track di git. Langkahnya di 7.1.
+
+### 7.1 Perubahan skema database — wajib lewat migrasi (jangan `db:push`)
+
+Setiap perubahan skema (tabel, kolom, enum, index, constraint) **wajib lewat file migrasi Drizzle yang ikut di-commit ke git**, bukan `pnpm db:push`. `db:push` menyamakan database dengan `src/db/schema.ts` secara langsung tanpa meninggalkan jejak apa pun: perubahan tidak ke-track di git, tidak bisa di-review, tidak punya riwayat untuk rollback, dan skema DB lokal / anggota tim / produksi bisa berbeda diam-diam.
+
+**Alur yang benar:**
+
+1. Edit dulu `src/db/schema.ts` — ini satu-satunya sumber kebenaran skema.
+2. `pnpm db:generate` → drizzle-kit membuat file SQL baru di `drizzle/` + snapshot di `drizzle/meta/`. Semua file itu **wajib di-commit** satu paket dengan perubahan `schema.ts`-nya.
+3. **Baca dan periksa file SQL hasil generate** sebelum dijalankan — khususnya kalau ada kolom yang di-rename atau tipe data yang diubah, karena drizzle-kit bisa menghasilkan `DROP COLUMN` + `ADD COLUMN` yang membuang data lama. Kalau perlu, sunting manual jadi `ALTER TABLE ... RENAME COLUMN` / `ADD COLUMN ... DEFAULT` lalu simpan begitu.
+4. `pnpm db:migrate` untuk menerapkan migrasi ke database (lokal maupun produksi).
+5. Migrasi yang **sudah** di-commit tidak boleh diubah lagi — hash isinya dipakai Drizzle untuk menandai sudah/belum dijalankan. Kalau ada yang salah, buat migrasi perbaikan baru.
+6. `pnpm db:push` hanya untuk eksperimen sekali pakai di DB scratch yang datanya boleh hilang. **Jangan** dipakai di database yang berisi data user atau dipakai bersama.
+
+**Catatan operasional:**
+
+- Aplikasi **tidak** menjalankan migrasi otomatis saat start (`src/db/index.ts` cuma membuat koneksi), jadi `pnpm db:migrate` harus dijalankan manual setelah deploy.
+- Nama file bawaan drizzle-kit berupa kode acak (`0000_greedy_thing.sql`); `0002_add_users_is_admin.sql` di-rename manual supaya mudah dibaca. Rename file `*.sql` boleh, asal `tag` pada `drizzle/meta/_journal.json` ikut disesuaikan.
+- Untuk database yang skemanya **sudah ada duluan** (dibuat lewat `db:push` sebelum folder `drizzle/` dipakai), jalankan `pnpm db:baseline` (atau `pnpm db:baseline --tag=0000_greedy_thing`) sekali supaya migrasi lama tidak dijalankan ulang dan tabel/data yang sudah ada tidak tersentuh — lihat `scripts/drizzle-baseline.ts`.
+- `pnpm db:studio` tetap boleh dipakai untuk mengubah **data** (mis. menandai `users.is_admin = true`), tapi bukan untuk mengubah skema.
 
 ### Logika auto-fill fee
 
