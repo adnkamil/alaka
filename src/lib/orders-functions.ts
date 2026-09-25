@@ -81,7 +81,15 @@ export const createOrder = createServerFn({ method: 'POST' })
   .validator(createOrderSchema)
   .handler(async ({ data }) => {
     const user = await requireUser()
-    await assertEventOwnership(data.eventId, user.id)
+    const event = await assertEventOwnership(data.eventId, user.id)
+
+    // Event nonaktif = sudah ditutup, jadi tidak boleh nambah pesanan baru.
+    // Pesanan lama tetap bisa diedit/dihapus (lihat updateOrder/deleteOrder).
+    if (!event.isActive) {
+      throw new Error(
+        'Event ini sedang nonaktif. Aktifkan dulu lewat menu ⋮ di halaman event untuk menambah pesanan baru.',
+      )
+    }
 
     const total = data.items.reduce(
       (sum, item) => sum + (item.originalPrice + item.fee) * item.qty,

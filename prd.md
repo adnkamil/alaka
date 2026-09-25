@@ -56,15 +56,18 @@ Astra Otoshop).
 
 ### 4.2 Beranda
 
-- Ringkasan keuangan singkat (2 kartu: **Uang masuk** = total `paidAmount` seluruh event; **Belum bayar** = sisa tagihan semua pesanan yang belum lunas).
-- List semua event milik user (diurutkan terbaru dulu): card berisi nama, tanggal (format `d MMM`), jumlah pesanan.
+- Ringkasan keuangan singkat (2 kartu: **Uang masuk** = total `paidAmount` seluruh event; **Belum bayar** = sisa tagihan semua pesanan yang belum lunas). Kedua angka ini menghitung **semua** event termasuk yang nonaktif — event ditutup bukan berarti uangnya hilang dari catatan.
+- List **Event aktif** milik user (diurutkan terbaru dulu): card berisi nama, tanggal (format `d MMM`), jumlah pesanan.
+- Event yang **nonaktif** (lihat 4.3) dikeluarkan dari daftar itu dan dipindah ke bagian **Event nonaktif (n)** yang terlipat di bawahnya (buka-tutup), tiap card diberi badge "Nonaktif" dan tampil lebih redup. Datanya tidak dihapus, cuma tidak mengganggu daftar event yang masih jalan.
 - Tap card → masuk ke Detail Event.
 - Link **Tambah event** di pojok kanan atas.
 - Avatar pengguna di header → link ke halaman Profil.
 
 ### 4.3 Detail Event (`/events/:eventId`)
 
-- **Header**: tombol back, nama event, menu tiga titik (edit/hapus event) dengan konfirmasi hapus.
+- **Header**: tombol back, nama event (+ badge **Nonaktif** kalau event sudah ditutup), menu tiga titik berisi: pilih **Aturan Fee** event (lihat 4.9), toggle **Event aktif**, dan **Hapus event** (dengan konfirmasi).
+- **Nonaktifkan event** (toggle di menu tiga titik) = menutup event tanpa menghapus data: muncul banner "Event ini nonaktif", tombol **+ (Tambah Pesanan)** disembunyikan, dan `createOrder` di server ikut menolak. Pesanan lama tetap bisa dibuka, diedit, dihapus, dan ditagih seperti biasa. Bisa diaktifkan lagi kapan saja.
+- **Hapus event**: konfirmasi menyebut jumlah pesanan yang ikut terhapus (FK `orders` → `events` dan `items` → `orders` pakai `ON DELETE CASCADE`), sekaligus menyarankan pakai **nonaktifkan** kalau cuma mau menutup event. Setelah terhapus, user dibalikkan ke Beranda.
 - **Ringkasan keuangan event**: uang masuk, outstanding, estimasi untung bersih.
 - **Dropdown pilih Aturan Fee** untuk event ini (lihat 4.9).
 - **Search/filter pelanggan** (filter real-time berdasarkan nama customer).
@@ -207,6 +210,7 @@ Astra Otoshop).
 
 - **MVP: halaman dengan tulisan "Coming soon"** dan deskripsi singkat rencana ke depan.
 - FAB tengah di bottom nav (tab "Tambah") mengarah ke `/pesanan/new` → redirect ke beranda dengan `?addOrder=true` (flow tambah pesanan cepat tanpa pilih event spesifik — belum diimplementasi penuh).
+- Halaman pemilih event (`/pesanan/new`) cuma menampilkan **event aktif** — event yang nonaktif tidak bisa ditambah pesanan baru (server juga menolak `createOrder`).
 
 ### 4.12 Paket & Langganan — `/profil/langganan`
 
@@ -473,6 +477,7 @@ events
   name              varchar NOT NULL
   description       text (nullable)
   event_date        date NOT NULL
+  is_active         boolean NOT NULL default true  -- nonaktif = event ditutup (bukan hapus)
   created_at        timestamp
   updated_at        timestamp
 
@@ -514,6 +519,7 @@ activity_logs
 - **Fee disimpan di `items`, bukan dihitung ulang** — supaya histori transaksi tidak berubah kalau `fee_tiers` diedit/dihapus di kemudian hari.
 - **Status `dp`**: pesanan bisa berstatus DP dengan `paid_amount` yang diisi sebagian dari total tagihan. Sisa tagihan = `total - paid_amount`.
 - **`obtained` di `items`**: dipakai untuk checklist live shopping — menandai barang sudah didapat di toko.
+- **`is_active` di `events`**: nonaktif ≠ hapus. Event nonaktif disembunyikan dari daftar "Event aktif" di beranda dan ditolak saat `createOrder`, tapi barisnya, pesanannya, dan tagihannya tetap ada; diatur dari menu tiga titik di halaman Detail Event. Ringkasan uang (beranda & Keuangan) tetap menghitung event nonaktif karena uangnya nyata.
 - **`password_hash` nullable**: user yang hanya mendaftar via Google tidak punya password; tampilan Profil menyesuaikan.
 - **`wa_message_template` di `users`**: template default ada di `src/lib/message-template.ts`. Jika null, dipakai template default.
 - **Status langganan tidak disimpan sebagai flag**: tidak ada kolom `users.is_pro`. Masa trial ada di `users.trial_started_at` / `users.trial_ends_at`, sedangkan status PRO dihitung dari baris `subscriptions` berstatus `active` yang `ends_at`-nya belum lewat (lihat 5.1).
@@ -540,7 +546,7 @@ Setiap perubahan skema (tabel, kolom, enum, index, constraint) **wajib lewat fil
 **Catatan operasional:**
 
 - Aplikasi **tidak** menjalankan migrasi otomatis saat start (`src/db/index.ts` cuma membuat koneksi), jadi `pnpm db:migrate` harus dijalankan manual setelah deploy.
-- Nama file bawaan drizzle-kit berupa kode acak (`0000_greedy_thing.sql`); `0002_add_users_is_admin.sql` dan `0003_add_customers_address.sql` di-rename manual supaya mudah dibaca. Rename file `*.sql` boleh, asal `tag` pada `drizzle/meta/_journal.json` ikut disesuaikan.
+- Nama file bawaan drizzle-kit berupa kode acak (`0000_greedy_thing.sql`); `0002_add_users_is_admin.sql`, `0003_add_customers_address.sql`, dan `0004_add_events_is_active.sql` di-rename manual supaya mudah dibaca. Rename file `*.sql` boleh, asal `tag` pada `drizzle/meta/_journal.json` ikut disesuaikan.
 - **Migrasi `0003` menyusul celah lama**: tabel `subscription_settings` (dari commit "feat(admin): implement admin dashboard and subscription management") sebelumnya dibuat langsung di database lewat `db:push` sehingga tidak punya file migrasi — makanya tabel itu ikut ter-generate di `0003`. Statement-nya sengaja dibuat idempotent (`CREATE TABLE IF NOT EXISTS` + cek `pg_constraint`) supaya jalur database yang tabelnya sudah ada (lokal & produksi, sudah berisi data) dan database yang dibangun dari nol dua-duanya aman. Kalau ada DB yang perubahan skemanya sudah ada tapi belum tercatat di `drizzle.__drizzle_migrations`, tandai dulu dengan `pnpm db:baseline --tag=<tag>` (mis. `--tag=0002_add_users_is_admin`) sebelum `pnpm db:migrate`.
 - Untuk database yang skemanya **sudah ada duluan** (dibuat lewat `db:push` sebelum folder `drizzle/` dipakai), jalankan `pnpm db:baseline` (atau `pnpm db:baseline --tag=0000_greedy_thing`) sekali supaya migrasi lama tidak dijalankan ulang dan tabel/data yang sudah ada tidak tersentuh — lihat `scripts/drizzle-baseline.ts`.
 - `pnpm db:studio` tetap boleh dipakai untuk mengubah **data** (mis. menandai `users.is_admin = true`), tapi bukan untuk mengubah skema.
@@ -566,6 +572,7 @@ Setiap perubahan skema (tabel, kolom, enum, index, constraint) **wajib lewat fil
 - **Untung bersih** = `SUM(fee × qty)` dari items yang order-nya berstatus `paid` atau `shipped`.
 - **Pendapatan bulanan** (grafik) = `SUM((originalPrice + fee) × qty)` per bulan, hanya dari orders berstatus `paid` atau `shipped`.
 - Status `shipped` diperlakukan setara `paid` untuk kalkulasi keuangan — menandai pesanan yang sudah dibayar dan barangnya sudah dikirim ke pelanggan.
+- Event yang **nonaktif tetap ikut dihitung** di semua angka di atas: nonaktif cuma menyembunyikan event dari daftar event aktif, bukan mengeluarkan catatan uangnya.
 
 ## 8. Struktur File Utama
 

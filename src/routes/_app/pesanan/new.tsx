@@ -15,6 +15,9 @@ export const Route = createFileRoute('/_app/pesanan/new')({
 
 function PickEventPage() {
   const { data: events } = useSuspenseQuery(eventsQuery)
+  // Event nonaktif tidak bisa ditambah pesanan baru (server juga menolak lewat
+  // `createOrder`), jadi tidak perlu ikut ditampilkan di pemilih event ini.
+  const activeEvents = events.filter((event) => event.isActive)
 
   return (
     <main className="mx-auto max-w-lg px-4 pb-8 pt-6">
@@ -23,14 +26,16 @@ function PickEventPage() {
         Pilih event untuk pesanan ini.
       </p>
 
-      {events.length === 0 && (
+      {activeEvents.length === 0 && (
         <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
-          Belum ada event. Buat event dulu dari Beranda.
+          {events.length > 0
+            ? 'Semua event sedang nonaktif. Aktifkan dulu lewat menu ⋮ di halaman event.'
+            : 'Belum ada event. Buat event dulu dari Beranda.'}
         </p>
       )}
 
       <div className="flex flex-col gap-3">
-        {events.map((event) => (
+        {activeEvents.map((event) => (
           <Link
             key={event.id}
             to="/events/$eventId"

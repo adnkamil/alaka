@@ -32,6 +32,7 @@ export const listEvents = createServerFn({ method: 'GET' }).handler(
         id: events.id,
         name: events.name,
         eventDate: events.eventDate,
+        isActive: events.isActive,
         orderCount: sql<number>`count(distinct ${orders.id})`.mapWith(Number),
         // Uang masuk = nominal yang sudah dibayar (DP ikut kehitung).
         amountIn: sql<string>`coalesce(sum(${orders.paidAmount}), 0)`,
@@ -96,6 +97,25 @@ export const deleteEvent = createServerFn({ method: 'POST' })
     await db
       .delete(events)
       .where(and(eq(events.id, data.id), eq(events.userId, user.id)))
+  })
+
+/**
+ * Aktifkan / nonaktifkan event. Nonaktif bukan hapus: cuma menandai event sudah
+ * selesai/ditutup, jadi ia keluar dari daftar "Event aktif" di beranda dan
+ * pesanan baru ditolak (`createOrder`), sementara data pesanan/tagihan lamanya
+ * tetap utuh dan bisa dibuka lagi kapan pun.
+ */
+export const setEventActive = createServerFn({ method: 'POST' })
+  .validator(z.object({ id: z.uuid(), isActive: z.boolean() }))
+  .handler(async ({ data }) => {
+    const user = await requireUser()
+    const updated = await db
+      .update(events)
+      .set({ isActive: data.isActive, updatedAt: new Date() })
+      .where(and(eq(events.id, data.id), eq(events.userId, user.id)))
+      .returning({ id: events.id })
+
+    if (updated.length === 0) throw new Error('Event tidak ditemukan')
   })
 
 export const getEventDetail = createServerFn({ method: 'GET' })

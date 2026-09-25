@@ -29,6 +29,13 @@
       "when": 1790329765097,
       "tag": "0003_add_customers_address",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790351615967,
+      "tag": "0004_add_events_is_active",
+      "breakpoints": true
     }
   ]
 }

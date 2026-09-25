@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import ConfirmModal from '../../components/ui/ConfirmModal'
 import DpAmountModal from '../../components/ui/DpAmountModal'
+import Switch from '../../components/ui/Switch'
 import {
   queryOptions,
   useQuery,
@@ -12,6 +13,7 @@ import {
   ArrowLeft,
   ChevronDown,
   ChevronRight,
+  Info,
   Lock,
   MoreVertical,
   Pencil,
@@ -26,7 +28,12 @@ import AddOrderSheet from '../../components/AddOrderSheet'
 import ProBadge from '../../components/ProBadge'
 import ProLockPrompt from '../../components/ProLockPrompt'
 import { fetchCurrentUser } from '../../lib/auth-functions'
-import { getEventDetail, updateEvent } from '../../lib/events-functions'
+import {
+  deleteEvent,
+  getEventDetail,
+  setEventActive,
+  updateEvent,
+} from '../../lib/events-functions'
 import { listFeeRules } from '../../lib/fee-rules-functions'
 import { getOrderSuggestions } from '../../lib/order-suggestions-functions'
 import { lineTotal, summarizeItems } from '../../lib/order-totals'
@@ -242,6 +249,10 @@ function EventDetailPage() {
   const [dpPromptOrderId, setDpPromptOrderId] = useState<string | null>(null)
   const [isSavingDpAmount, setIsSavingDpAmount] = useState(false)
   const [showEventMenu, setShowEventMenu] = useState(false)
+  // Nonaktifkan/aktifkan event + hapus event (dua-duanya dari menu ⋮).
+  const [isTogglingActive, setIsTogglingActive] = useState(false)
+  const [showDeleteEvent, setShowDeleteEvent] = useState(false)
+  const [isDeletingEvent, setIsDeletingEvent] = useState(false)
   // Fitur PRO yang lagi dicoba dibuka user FREE (null = dialog ketutup).
   const [lockedFeature, setLockedFeature] = useState<ProFeature | null>(null)
 
@@ -250,6 +261,13 @@ function EventDetailPage() {
     queryFn: () => getEventDetail({ data: { id: eventId } }),
   })
   const { data: event } = useSuspenseQuery(query)
+
+  // Jaga-jaga: URL `?addOrder=true` pada event nonaktif tidak boleh membuka form
+  // tambah pesanan (servernya juga sudah menolak `createOrder`-nya) — biar UI
+  // nggak nampilin form yang bakal ditolak.
+  useEffect(() => {
+    if (!event.isActive && sheetMode?.type === 'create') setSheetMode(null)
+  }, [event.isActive, sheetMode])
 
   const { data: currentUser } = useSuspenseQuery(currentUserQuery)
   // Satu tempat hitung status akses; pengecekan mengikat tetap di server.
@@ -477,6 +495,44 @@ function EventDetailPage() {
     await queryClient.invalidateQueries({ queryKey: ['event', eventId] })
   }
 
+  /**
+   * Nonaktifkan / aktifkan lagi event. Nonaktif bukan hapus: event-nya cuma
+   * keluar dari daftar "Event aktif" di beranda dan tidak bisa ditambah pesanan
+   * baru, sementara semua data lama tetap utuh.
+   */
+  async function handleToggleEventActive(isActive: boolean) {
+    if (isTogglingActive) return
+    setIsTogglingActive(true)
+    try {
+      await setEventActive({ data: { id: eventId, isActive } })
+      await queryClient.invalidateQueries({ queryKey: ['event', eventId] })
+      await queryClient.invalidateQueries({ queryKey: ['events'] })
+    } finally {
+      setIsTogglingActive(false)
+    }
+  }
+
+  /**
+   * Hapus event permanen. FK `orders.event_id` / `items.order_id` pakai
+   * ON DELETE CASCADE, jadi semua pesanan + barangnya ikut terhapus. Setelah
+   * selesai langsung balik ke beranda karena halaman ini sudah tidak ada isinya.
+   */
+  async function confirmDeleteEvent() {
+    setIsDeletingEvent(true)
+    try {
+      await deleteEvent({ data: { id: eventId } })
+      await queryClient.invalidateQueries({ queryKey: ['events'] })
+      await queryClient.invalidateQueries({ queryKey: ['finance-summary'] })
+      await navigate({ to: '/' })
+      // Detail event-nya sudah tidak ada di server — buang cache-nya biar
+      // tombol back tidak memicu refetch ke data yang sudah dihapus.
+      queryClient.removeQueries({ queryKey: ['event', eventId] })
+    } finally {
+      setIsDeletingEvent(false)
+      setShowDeleteEvent(false)
+    }
+  }
+
   return (
     <main className="app-shell relative mx-auto max-w-lg px-4 pb-24 pt-6">
       <header className="mb-4 flex items-center justify-between">
@@ -485,7 +541,20 @@ function EventDetailPage() {
             <ArrowLeft size={22} />
           </Link>
           <div>
-            <h1 className="text-lg font-bold">{event.name}</h1>
+            <h1 className="flex items-center gap-2 text-lg font-bold">
+              {event.name}
+              {!event.isActive && (
+                <span
+                  className="app-badge flex-shrink-0"
+                  style={{
+                    background: 'var(--app-border)',
+                    color: 'var(--app-text-soft)',
+                  }}
+                >
+                  Nonaktif
+                </span>
+              )}
+            </h1>
             <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
               Event date{' '}
               {new Date(event.eventDate).toLocaleDateString('id-ID', {
@@ -551,11 +620,74 @@ function EventDetailPage() {
                     ))}
                   </select>
                 </div>
+
+                <div
+                  className="my-4 border-t"
+                  style={{ borderColor: 'var(--app-border)' }}
+                />
+
+                {/* Nonaktifkan / aktifkan event — nonaktif bukan hapus. */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold">Event aktif</p>
+                    <p
+                      className="mt-0.5 text-xs leading-relaxed"
+                      style={{ color: 'var(--app-text-soft)' }}
+                    >
+                      Kalau dinonaktifkan, event ini keluar dari daftar Event
+                      aktif dan tidak bisa ditambah pesanan baru. Datanya tetap
+                      tersimpan dan bisa diaktifkan lagi kapan saja.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={event.isActive}
+                    onChange={handleToggleEventActive}
+                    label="Event aktif"
+                  />
+                </div>
+
+                <div
+                  className="my-4 border-t"
+                  style={{ borderColor: 'var(--app-border)' }}
+                />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEventMenu(false)
+                    setShowDeleteEvent(true)
+                  }}
+                  className="flex w-full items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold"
+                  style={{
+                    borderColor: 'var(--app-danger-soft)',
+                    color: 'var(--app-danger)',
+                  }}
+                >
+                  <Trash2 size={14} />
+                  Hapus event
+                </button>
               </div>
             </>
           )}
         </div>
       </header>
+
+      {!event.isActive && (
+        <div
+          className="mb-4 flex items-start gap-2 rounded-xl border px-4 py-3 text-xs"
+          style={{
+            borderColor: 'var(--app-warning-soft)',
+            background: 'var(--app-warning-soft)',
+            color: 'var(--app-warning)',
+          }}
+        >
+          <Info size={15} className="mt-0.5 flex-shrink-0" />
+          <span>
+            Event ini nonaktif — pesanan baru tidak bisa ditambah. Aktifkan lagi
+            lewat menu ⋮ di kanan atas kalau masih ada pesanan susulan.
+          </span>
+        </div>
+      )}
 
       <section className="mb-4 grid grid-cols-2 gap-3">
         <div className="app-card p-4">
@@ -1155,16 +1287,18 @@ function EventDetailPage() {
           })}
       </div>
 
-      <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 mx-auto flex max-w-lg justify-end px-6">
-        <button
-          onClick={() => setSheetMode({ type: 'create' })}
-          className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg"
-          style={{ background: 'var(--app-accent)' }}
-          aria-label="Tambah Pesanan"
-        >
-          <Plus size={26} />
-        </button>
-      </div>
+      {event.isActive && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 mx-auto flex max-w-lg justify-end px-6">
+          <button
+            onClick={() => setSheetMode({ type: 'create' })}
+            className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg"
+            style={{ background: 'var(--app-accent)' }}
+            aria-label="Tambah Pesanan"
+          >
+            <Plus size={26} />
+          </button>
+        </div>
+      )}
 
       {sheetMode?.type === 'create' && (
         <AddOrderSheet
@@ -1258,6 +1392,20 @@ function EventDetailPage() {
           if (!isSavingDpAmount) setDpPromptOrderId(null)
         }}
         onConfirm={confirmDpAmount}
+      />
+
+      <ConfirmModal
+        open={showDeleteEvent}
+        title="Hapus event ini?"
+        content={`Event, ${event.orders.length} pesanan beserta semua barangnya akan dihapus permanen dan tidak bisa dikembalikan. Kalau cuma mau menutup event tanpa menghapus data, gunakan tombol "Event aktif" di menu.`}
+        okText="Ya, hapus event"
+        cancelText="Batal"
+        danger={true}
+        loading={isDeletingEvent}
+        onOk={confirmDeleteEvent}
+        onCancel={() => {
+          if (!isDeletingEvent) setShowDeleteEvent(false)
+        }}
       />
 
       <ProLockPrompt

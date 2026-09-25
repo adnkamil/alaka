@@ -243,6 +243,13 @@ export const events = pgTable('events', {
   name: varchar().notNull(),
   description: text(),
   eventDate: timestamp('event_date', { mode: 'date' }).notNull(),
+  /**
+   * Event nonaktif = event yang sudah selesai/ditutup: disembunyikan dari daftar
+   * "Event aktif" di beranda dan tidak bisa ditambah pesanan baru, tapi semua
+   * data pesanan/tagihannya tetap utuh dan bisa diaktifkan lagi kapan saja.
+   * Diatur dari menu ⋮ di halaman Detail Event.
+   */
+  isActive: boolean('is_active').notNull().default(true),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })
