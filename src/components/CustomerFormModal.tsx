@@ -4,6 +4,7 @@ import { User, X } from 'lucide-react'
 export interface CustomerFormValue {
   name: string
   phone: string
+  address: string
 }
 
 interface CustomerFormModalProps {
@@ -23,6 +24,7 @@ export default function CustomerFormModal({
 }: CustomerFormModalProps) {
   const [name, setName] = useState(initialValue?.name ?? '')
   const [phone, setPhone] = useState(initialValue?.phone ?? '')
+  const [address, setAddress] = useState(initialValue?.address ?? '')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -31,7 +33,11 @@ export default function CustomerFormModal({
     setError(null)
     setIsSubmitting(true)
     try {
-      await onSubmit({ name: name.trim(), phone: phone.trim() })
+      await onSubmit({
+        name: name.trim(),
+        phone: phone.trim(),
+        address: address.trim(),
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Gagal menyimpan customer')
     } finally {
@@ -99,6 +105,17 @@ export default function CustomerFormModal({
               onChange={(e) => setPhone(e.target.value)}
               className="app-input"
               placeholder="08xxxxxxxxxx"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1 text-sm font-medium">
+            Alamat (opsional)
+            <textarea
+              rows={3}
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              className="app-input resize-y"
+              placeholder="mis. Jl. Merdeka No. 10, RT 02/RW 03, Kel. Sukamaju, Bandung"
             />
           </label>
 

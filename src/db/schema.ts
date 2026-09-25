@@ -144,6 +144,8 @@ export const customers = pgTable('customers', {
     .references(() => users.id, { onDelete: 'cascade' }),
   name: varchar().notNull(),
   phone: varchar(),
+  /** Alamat customer (opsional), diisi manual di Profil → Customer. */
+  address: text('address'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
   deletedAt: timestamp('deleted_at'),

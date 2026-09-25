@@ -22,7 +22,6 @@ import {
   Moon,
   Plus,
   QrCode,
-  ShieldCheck,
   SlidersHorizontal,
   Tag,
   Wallet,

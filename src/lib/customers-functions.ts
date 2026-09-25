@@ -15,6 +15,7 @@ async function requireUser() {
 const customerInputSchema = z.object({
   name: z.string().min(1, 'Nama customer wajib diisi'),
   phone: z.string().trim().optional(),
+  address: z.string().trim().optional(),
 })
 
 export const listCustomers = createServerFn({ method: 'GET' }).handler(
@@ -34,6 +35,7 @@ export const createCustomer = createServerFn({ method: 'POST' })
         userId: user.id,
         name: data.name,
         phone: data.phone || null,
+        address: data.address || null,
       })
       .returning()
     return customer
@@ -57,6 +59,7 @@ export const updateCustomer = createServerFn({ method: 'POST' })
       .set({
         name: data.name,
         phone: data.phone || null,
+        address: data.address || null,
         updatedAt: new Date(),
       })
       .where(eq(customers.id, data.id))

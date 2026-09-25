@@ -195,7 +195,8 @@ Astra Otoshop).
 ### 4.10 Manajemen Customer — `/profil/customers`
 
 - Daftar customer yang pernah ditambahkan oleh jastiper (soft delete via `deleted_at`).
-- Data: nama, nomor HP (opsional).
+- Data: nama, nomor HP (opsional), alamat (opsional).
+- Alamat ikut tersimpan di form Tambah/Edit Customer dan ditampilkan di kartu customer; pencarian di halaman ini mencakup nama, no. HP, dan alamat.
 - Autocomplete nama customer dipakai di form Tambah Pesanan.
 - Tambah customer bisa dilakukan dari halaman Customer atau dari halaman Invoice saat nomor HP belum terdaftar.
 
@@ -443,6 +444,7 @@ customers
   user_id           uuid → users.id (cascade delete)
   name              varchar NOT NULL
   phone             varchar (nullable)
+  address           text (nullable)  -- alamat customer, opsional
   created_at        timestamp
   updated_at        timestamp
   deleted_at        timestamp (nullable)  -- soft delete
@@ -535,7 +537,8 @@ Setiap perubahan skema (tabel, kolom, enum, index, constraint) **wajib lewat fil
 **Catatan operasional:**
 
 - Aplikasi **tidak** menjalankan migrasi otomatis saat start (`src/db/index.ts` cuma membuat koneksi), jadi `pnpm db:migrate` harus dijalankan manual setelah deploy.
-- Nama file bawaan drizzle-kit berupa kode acak (`0000_greedy_thing.sql`); `0002_add_users_is_admin.sql` di-rename manual supaya mudah dibaca. Rename file `*.sql` boleh, asal `tag` pada `drizzle/meta/_journal.json` ikut disesuaikan.
+- Nama file bawaan drizzle-kit berupa kode acak (`0000_greedy_thing.sql`); `0002_add_users_is_admin.sql` dan `0003_add_customers_address.sql` di-rename manual supaya mudah dibaca. Rename file `*.sql` boleh, asal `tag` pada `drizzle/meta/_journal.json` ikut disesuaikan.
+- **Migrasi `0003` menyusul celah lama**: tabel `subscription_settings` (dari commit "feat(admin): implement admin dashboard and subscription management") sebelumnya dibuat langsung di database lewat `db:push` sehingga tidak punya file migrasi — makanya tabel itu ikut ter-generate di `0003`. Statement-nya sengaja dibuat idempotent (`CREATE TABLE IF NOT EXISTS` + cek `pg_constraint`) supaya jalur database yang tabelnya sudah ada (lokal & produksi, sudah berisi data) dan database yang dibangun dari nol dua-duanya aman. Kalau ada DB yang perubahan skemanya sudah ada tapi belum tercatat di `drizzle.__drizzle_migrations`, tandai dulu dengan `pnpm db:baseline --tag=<tag>` (mis. `--tag=0002_add_users_is_admin`) sebelum `pnpm db:migrate`.
 - Untuk database yang skemanya **sudah ada duluan** (dibuat lewat `db:push` sebelum folder `drizzle/` dipakai), jalankan `pnpm db:baseline` (atau `pnpm db:baseline --tag=0000_greedy_thing`) sekali supaya migrasi lama tidak dijalankan ulang dan tabel/data yang sudah ada tidak tersentuh — lihat `scripts/drizzle-baseline.ts`.
 - `pnpm db:studio` tetap boleh dipakai untuk mengubah **data** (mis. menandai `users.is_admin = true`), tapi bukan untuk mengubah skema.
 

@@ -28,6 +28,7 @@ import {
 } from '../../lib/message-template'
 import { lineTotal, summarizeItems } from '../../lib/order-totals'
 import CustomerFormModal from '../../components/CustomerFormModal'
+import type { CustomerFormValue } from '../../components/CustomerFormModal'
 import PaymentInfoCard from '../../components/PaymentInfoCard'
 
 export const Route = createFileRoute('/_app/invoice/$eventId/$orderId')({
@@ -180,7 +181,7 @@ function InvoicePage() {
 
   const phoneValid = isValidIndonesianPhone(phone)
 
-  async function handleAddCustomer(value: { name: string; phone: string }) {
+  async function handleAddCustomer(value: CustomerFormValue) {
     await createCustomer({ data: value })
     await queryClient.invalidateQueries({ queryKey: ['customers'] })
     await queryClient.invalidateQueries({
@@ -454,7 +455,7 @@ function InvoicePage() {
         <CustomerFormModal
           title="Tambah Customer"
           submitLabel="Simpan"
-          initialValue={{ name: suggestedCustomerName, phone }}
+          initialValue={{ name: suggestedCustomerName, phone, address: '' }}
           onClose={() => setShowAddCustomer(false)}
           onSubmit={handleAddCustomer}
         />

@@ -1,9 +1,19 @@
 import { useState } from 'react'
 import { queryOptions, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { ArrowLeft, Pencil, Phone, Plus, Search, Trash2, User } from 'lucide-react'
+import {
+  ArrowLeft,
+  MapPin,
+  Pencil,
+  Phone,
+  Plus,
+  Search,
+  Trash2,
+  User,
+} from 'lucide-react'
 import { formatPhoneNumber } from '../../../../lib/format.ts'
 import CustomerFormModal from '../../../../components/CustomerFormModal'
+import type { CustomerFormValue } from '../../../../components/CustomerFormModal'
 import ConfirmModal from '../../../../components/ui/ConfirmModal'
 import {
   createCustomer,
@@ -29,7 +39,13 @@ function CustomersPage() {
   const [search, setSearch] = useState('')
   const [modalMode, setModalMode] = useState<
     | { type: 'create' }
-    | { type: 'edit'; id: string; name: string; phone: string }
+    | {
+        type: 'edit'
+        id: string
+        name: string
+        phone: string
+        address: string
+      }
     | null
   >(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -43,14 +59,15 @@ function CustomersPage() {
     const phoneMatch =
       digitsQuery.length > 0 &&
       (c.phone ?? '').replace(/\D/g, '').includes(digitsQuery)
-    return nameMatch || phoneMatch
+    const addressMatch = (c.address ?? '').toLowerCase().includes(query)
+    return nameMatch || phoneMatch || addressMatch
   })
 
   async function refresh() {
     await queryClient.invalidateQueries({ queryKey: ['customers'] })
   }
 
-  async function handleSubmit(value: { name: string; phone: string }) {
+  async function handleSubmit(value: CustomerFormValue) {
     if (modalMode?.type === 'edit') {
       await updateCustomer({ data: { id: modalMode.id, ...value } })
     } else {
@@ -91,7 +108,7 @@ function CustomersPage() {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Cari nama atau no. HP customer"
+          placeholder="Cari nama, no. HP, atau alamat customer"
           className="app-input pl-9"
         />
       </div>
@@ -124,6 +141,15 @@ function CustomersPage() {
                   {formatPhoneNumber(customer.phone)}
                 </p>
               )}
+              {customer.address && (
+                <p
+                  className="mt-0.5 flex items-start gap-1 text-xs"
+                  style={{ color: 'var(--app-text-soft)' }}
+                >
+                  <MapPin size={12} className="mt-px flex-shrink-0" />
+                  <span className="line-clamp-2">{customer.address}</span>
+                </p>
+              )}
             </div>
             <button
               type="button"
@@ -133,6 +159,7 @@ function CustomersPage() {
                   id: customer.id,
                   name: customer.name,
                   phone: customer.phone ?? '',
+                  address: customer.address ?? '',
                 })
               }
               className="rounded-full p-1.5"
@@ -178,7 +205,11 @@ function CustomersPage() {
           submitLabel={modalMode.type === 'edit' ? 'Simpan perubahan' : 'Simpan'}
           initialValue={
             modalMode.type === 'edit'
-              ? { name: modalMode.name, phone: modalMode.phone }
+              ? {
+                  name: modalMode.name,
+                  phone: modalMode.phone,
+                  address: modalMode.address,
+                }
               : undefined
           }
           onClose={() => setModalMode(null)}
