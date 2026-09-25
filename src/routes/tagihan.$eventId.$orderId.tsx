@@ -1,7 +1,7 @@
 import { queryOptions, useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import type { ErrorComponentProps } from '@tanstack/react-router'
-import { Landmark, Printer } from 'lucide-react'
+import { Landmark, MapPin, Printer } from 'lucide-react'
 import { getPublicOrderInvoice } from '../lib/orders-functions'
 import { lineTotal, summarizeItems } from '../lib/order-totals'
 import PaymentInfoCard from '../components/PaymentInfoCard'
@@ -150,6 +150,15 @@ function PublicInvoicePage() {
           <p className="text-sm font-semibold">
             Untuk: {data.order.customerName}
           </p>
+          {data.order.customerAddress && (
+            <p
+              className="flex items-start gap-1 text-xs"
+              style={{ color: 'var(--app-text-soft)' }}
+            >
+              <MapPin size={12} className="mt-px flex-shrink-0" />
+              <span>Alamat kirim: {data.order.customerAddress}</span>
+            </p>
+          )}
           <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
             Event: {data.event.name}
           </p>

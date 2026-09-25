@@ -11,6 +11,7 @@ import {
   requireFeature,
 } from './entitlements'
 import { canUseFeature } from './subscription'
+import { findCustomerForOrder } from './customer-matching'
 import { derivePaymentStatus } from './order-totals'
 
 async function requireUser() {
@@ -301,7 +302,9 @@ export const deleteItem = createServerFn({ method: 'POST' })
 // Dipakai buat halaman invoice publik (dibuka customer lewat link WA,
 // TANPA login). Sengaja nggak butuh session, tapi cuma ngasih data yang
 // aman buat dilihat orang luar (nggak ada info user lain, nggak ada nomor
-// HP pelanggan, dll).
+// HP pelanggan, dll). Satu pengecualian: ALAMAT KIRIM pelanggan ikut dikirim
+// (lihat di bawah) karena pelanggan perlu memastikan alamat pengirimannya
+// sendiri sudah benar.
 export const getPublicOrderInvoice = createServerFn({ method: 'GET' })
   .validator(z.object({ eventId: z.uuid(), orderId: z.uuid() }))
   .handler(async ({ data }) => {
@@ -328,10 +331,24 @@ export const getPublicOrderInvoice = createServerFn({ method: 'GET' })
       if (!entitledWhenCreated) throw new FeatureLockedError('billing')
     }
 
+    // Alamat kirim pelanggan. Order nggak punya FK ke tabel `customers`, jadi
+    // dicocokkan lewat nama dengan aturan yang sama seperti halaman Invoice
+    // internal (`customer-matching.ts`). Yang tampil cuma alamat milik pelanggan
+    // order ini sendiri — bukan data pelanggan lain — senada dengan nama
+    // pelanggan yang memang sudah tampil di invoice publik.
+    const savedCustomers = await db.query.customers.findMany({
+      where: and(eq(customers.userId, owner.id), isNull(customers.deletedAt)),
+    })
+    const matchedCustomer = findCustomerForOrder(
+      savedCustomers,
+      order.customerName,
+    )
+
     return {
       order: {
         id: order.id,
         customerName: order.customerName,
+        customerAddress: matchedCustomer?.address ?? null,
         paymentStatus: order.paymentStatus,
         paidAmount: order.paidAmount,
         createdAt: order.createdAt,
@@ -376,16 +393,16 @@ export const getOrderInvoice = createServerFn({ method: 'GET' })
     // Fitur PRO `billing`: halaman tagih + kirim invoice ke pelanggan.
     requireFeature(await getUserEntitlements(user), 'billing')
 
-    // Coba cari nomor HP dari data Customer yang tersimpan, cocokkan
-    // "nama" atau "nama 4digitTerakhir" (format yang keisi dari suggestion
-    // di AddOrderSheet) ke daftar Customer milik user ini.
+    // Cari data Customer yang tersimpan (no. HP + alamat kirim) dengan
+    // mencocokkan "nama" / "nama 4digitTerakhir" (format yang keisi dari saran
+    // di AddOrderSheet) ke daftar Customer milik user ini. Aturannya dipakai
+    // bareng dengan link tagihan publik, lihat `customer-matching.ts`.
     const savedCustomers = await db.query.customers.findMany({
       where: and(eq(customers.userId, user.id), isNull(customers.deletedAt)),
     })
-    const matchedCustomer = savedCustomers.find(
-      (c) =>
-        order.customerName === c.name ||
-        order.customerName.startsWith(`${c.name} `),
+    const matchedCustomer = findCustomerForOrder(
+      savedCustomers,
+      order.customerName,
     )
 
     return {
@@ -394,6 +411,7 @@ export const getOrderInvoice = createServerFn({ method: 'GET' })
         customerName: order.customerName,
         customerPhone: matchedCustomer?.phone ?? order.customerPhone ?? null,
         customerRegistered: Boolean(matchedCustomer),
+        customerAddress: matchedCustomer?.address ?? null,
         paymentStatus: order.paymentStatus,
         paidAmount: order.paidAmount,
         createdAt: order.createdAt,

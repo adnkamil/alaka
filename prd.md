@@ -101,6 +101,7 @@ Astra Otoshop).
 - Halaman untuk jastiper — dilindungi auth.
 - Termasuk fitur PRO `billing`. Datanya diambil lewat server function yang dijaga (`getOrderInvoice`), jadi user FREE ditolak walau URL-nya diketik langsung (lihat 5).
 - Card invoice: nama brand/jastiper, no. invoice (8 karakter UUID), nama pelanggan, nama event, tanggal invoice, daftar item (qty × harga + fee), total tagihan.
+- **Alamat kirim pelanggan**: diambil dari data Customer yang namanya cocok dengan nama pelanggan pesanan ini (aturan pencocokannya di `customer-matching.ts`, lihat 4.10). Kalau alamatnya belum diisi, muncul pengingat singkat untuk melengkapinya lewat Profil → Customer — biar jastiper tahu kenapa alamatnya tidak muncul di link tagihan.
 - Info metode pembayaran aktif milik jastiper (bank, e-wallet, QRIS).
 - Status pembayaran dengan badge warna.
 - **Kirim ke WhatsApp**: input No. HP pelanggan (validasi format nomor Indonesia), tombol generate link `wa.me` dengan pesan dari **Template Chat WA** (lihat 4.8.5). Tombol ini cuma ada di halaman invoice, jadi otomatis ikut terkunci untuk paket FREE.
@@ -112,6 +113,7 @@ Astra Otoshop).
 - Halaman publik tanpa auth — bisa dibagikan ke pelanggan lewat link.
 - Termasuk fitur PRO `billing`, **dengan pengecualian (grandfathering)**: pesanan yang dibuat saat pemiliknya masih punya akses penuh (trial/PRO) tetap bisa dibuka walau sekarang paketnya FREE — link-nya sudah terlanjur dikirim ke pelanggan, jadi tidak boleh mati mendadak. Dicek lewat `hasFullAccessAtForUser(order.createdAt)` (lihat 5).
 - Tampilan mirip Invoice internal tapi tanpa fitur kirim WA dan tanpa info internal.
+- **Alamat kirim pelanggan** ikut ditampilkan (baris "Alamat kirim: ..." di blok pelanggan) supaya pelanggan yang membuka link bisa memastikan alamat pengirimannya sendiri sudah benar. Ini satu-satunya info pelanggan yang dikirim ke link publik selain nama pelanggan — no. HP pelanggan tetap tidak ikut, dan yang tampil cuma alamat milik pelanggan pesanan itu sendiri.
 - Menampilkan info pembayaran (bank/e-wallet/QRIS) milik jastiper jika pesanan **belum lunas**.
 - Status pembayaran.
 - Tombol **Cetak**.
@@ -197,6 +199,7 @@ Astra Otoshop).
 - Daftar customer yang pernah ditambahkan oleh jastiper (soft delete via `deleted_at`).
 - Data: nama, nomor HP (opsional), alamat (opsional).
 - Alamat ikut tersimpan di form Tambah/Edit Customer dan ditampilkan di kartu customer; pencarian di halaman ini mencakup nama, no. HP, dan alamat.
+- Alamatnya dipakai sebagai **alamat kirim** pelanggan di halaman Invoice internal (4.5) dan link Tagihan publik (4.6). Karena order cuma menyimpan nama pelanggan (tidak ada relasi ke tabel `customers`), pencocokannya dilakukan lewat nama pelanggan pesanan dengan aturan di `customer-matching.ts` — sama seperti cara no. HP pelanggan dicari di halaman Invoice.
 - Autocomplete nama customer dipakai di form Tambah Pesanan.
 - Tambah customer bisa dilakukan dari halaman Customer atau dari halaman Invoice saat nomor HP belum terdaftar.
 
@@ -595,6 +598,8 @@ src/
 │   ├── auth.ts                # getSessionUser, session management
 │   ├── auth-functions.ts      # login, register, logout, updateProfile, changePassword
 │   ├── client-bundle-safety.test.ts  # Guard: `db`/`pg` tidak boleh bocor ke bundle client
+│   ├── customer-matching.ts   # Cocokkan order → customer lewat nama (murni, tanpa db)
+│   ├── customer-matching.test.ts  # Unit test pencocokan order → customer
 │   ├── customer-suggestions-functions.ts  # getCustomerSuggestions (gerbang customer_suggestions)
 │   ├── customers-functions.ts # Endpoint CRUD customer
 │   ├── customers-queries.ts   # Query customer aktif (server-only)

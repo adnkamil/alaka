@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Lock, Trash2, User, X } from 'lucide-react'
 import NumberInput from './ui/NumberInput'
+import { customerLabel } from '../lib/customer-matching'
 import { findFeeForPrice } from '../lib/fee-tier-validation'
 import { formatPhoneNumber } from '../lib/format'
 import { lineTotal, summarizeItems } from '../lib/order-totals'
@@ -175,12 +176,6 @@ export default function AddOrderSheet({
         })
         .slice(0, 5)
     : customers.slice(0, 5)
-
-  function customerLabel(customer: CustomerOption) {
-    if (!customer.phone) return customer.name
-    const last4 = customer.phone.replace(/\D/g, '').slice(-4)
-    return last4 ? `${customer.name} ${last4}` : customer.name
-  }
 
   function filteredItemNames(query: string) {
     const trimmed = query.trim().toLowerCase()
