@@ -673,6 +673,40 @@ a {
   transform: translateX(1rem);
 }
 
+/* Alert melayang (toast) buat info sesaat — mis. "pesanan digabung". Diposisikan
+   `fixed` supaya TIDAK mendorong komponen lain, lalu naik dari bawah waktu
+   muncul dan naik + memudar waktu hilang. Durasi transisinya harus sama dengan
+   `LEAVE_MS` di components/ui/Toast.tsx. */
+.app-toast {
+  opacity: 0;
+  transform: translateY(14px) scale(0.98);
+  transition:
+    opacity 200ms ease,
+    transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.app-toast[data-state='visible'] {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.app-toast[data-state='leaving'] {
+  opacity: 0;
+  transform: translateY(-10px) scale(0.98);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-toast {
+    transition: opacity 120ms linear;
+    transform: none;
+  }
+
+  .app-toast[data-state='visible'],
+  .app-toast[data-state='leaving'] {
+    transform: none;
+  }
+}
+
 .site-footer {
   border-top: 1px solid var(--line);
   background: color-mix(in oklab, var(--header-bg) 84%, transparent 16%);

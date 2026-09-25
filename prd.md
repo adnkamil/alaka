@@ -74,7 +74,8 @@ Astra Otoshop).
 - **View toggle**: mode "Per Pelanggan" (accordion customer) dan mode "Ringkasan Barang" (lihat 4.3.1).
 - List pesanan dikelompokkan per customer (accordion), badge status **Belum Lunas / DP / Lunas / Dikirim**.
 - Expand customer → list item + tombol aksi: **Tagih** (→ invoice internal; fitur PRO — di paket FREE tombolnya berubah jadi ikon gembok + badge PRO, dan klik-nya hanya memunculkan dialog upgrade, bukan halaman tagih. Lihat 5), **Tambah**, **Hapus**, **Edit status**.
-- **Floating action button (+)** → buka form Tambah Pesanan.
+- **Floating action button (+)** → buka form Tambah Pesanan (disembunyikan kalau event nonaktif).
+- Kalau pesanan yang baru disimpan barangnya **digabung** ke pesanan pelanggan yang sudah ada (lihat 4.4), muncul alert melayang di atas FAB: naik dari bawah, tampil 4 detik, lalu naik + memudar. Karena posisinya `fixed`, ringkasan keuangan & daftar pesanan di bawahnya **tidak ikut bergeser**.
 - URL search param `?addOrder=true` → otomatis buka sheet Tambah Pesanan saat navigasi dari tab Tambah di bottom nav.
 
 #### 4.3.1 Mode Ringkasan Barang (Checklist Live Shopping)
@@ -94,6 +95,8 @@ Astra Otoshop).
   - **Fee berlaku per unit**: total satu barang = `(harga asli + fee) × qty`. Contoh: barang 30.000 + fee 4.000, qty 2 → (30.000 + 4.000) × 2 = 68.000.
   - **Saran nama barang & harga asli** — saat mengisi nama barang, muncul saran dari barang yang pernah dicatat di event ini (nama + daftar harga), diambil dari server (`getOrderSuggestions`). Ini fitur PRO `order_suggestions`: kalau terkunci, field tetap bisa diisi manual dan di tempat saran muncul keterangan "Saran nama barang & harga dari riwayat pesanan tersedia di paket PRO" — server tidak mengirim data saran sama sekali ke user FREE (lihat 5).
 - **Ringkasan otomatis**: total harga jual (`SUM((harga asli + fee) × qty)`), total fee, total tagihan.
+- **Gabung otomatis (satu pelanggan = satu tagihan per event)**: kalau pelanggan yang sama sudah punya pesanan yang **belum lunas / DP** di event ini, barang yang baru langsung **digabung ke pesanan itu** (tidak bikin pesanan/tagihan kedua). Baris dengan nama, harga asli, dan fee yang sama persis cukup jadi satu baris dengan qty-nya dijumlahkan; nominal terbayar lama dibawa dan status pembayaran dihitung ulang dari total baru. Pesanan yang sudah **Lunas/Dikirim** tidak digabung (barang baru belum tentu ikut lunas), begitu juga kalau status barunya **Dikirim** — dua-duanya bikin pesanan baru. Aturan lengkapnya di `order-merge.ts`.
+  - Setelah tersimpan, kalau barangnya tergabung, halaman Detail Event menampilkan **alert melayang** (komponen `ui/Toast.tsx`) berisi mis. "Barang baru digabung ke pesanan Budi 6608 yang masih belum lunas. Total tagihannya sekarang Rp…". Alert-nya `position: fixed` di atas FAB supaya **tidak mendorong komponen lain**, muncul naik dari bawah, lalu naik + memudar sendiri setelah 4 detik (bisa ditutup manual).
 - **Status pembayaran**: Belum Lunas / DP / Lunas / Dikirim.
   - Jika status **DP**: muncul field input **Nominal DP** yang dibayarkan (`paidAmount`).
   - Jika status **Lunas/Dikirim**: `paidAmount` otomatis diisi = total tagihan.
@@ -594,7 +597,7 @@ src/
 │   ├── SubmitSubscriptionModal.tsx  # Modal upload bukti transfer (member)
 │   ├── ThemeToggle.tsx
 │   ├── UpdateQrisModal.tsx     # Upload / ganti QRIS pembayaran PRO (admin)
-│   └── ui/                    # Komponen primitif (Switch, ConfirmModal, NumberInput)
+│   └── ui/                    # Komponen primitif (Switch, ConfirmModal, NumberInput, Toast)
 ├── db/
 │   ├── index.ts               # Koneksi Drizzle + pg
 │   └── schema.ts              # Definisi semua tabel & relasi (termasuk subscriptions & subscription_settings)
@@ -622,6 +625,8 @@ src/
 │   ├── mailer.ts              # Kirim email reset password
 │   ├── message-template.ts    # DEFAULT_WA_MESSAGE_TEMPLATE, renderMessageTemplate
 │   ├── message-template-functions.ts
+│   ├── order-merge.ts         # Aturan gabung pesanan pelanggan yang sama (murni, tanpa db)
+│   ├── order-merge.test.ts    # Unit test penggabungan pesanan
 │   ├── order-suggestions-functions.ts  # getOrderSuggestions (gerbang order_suggestions)
 │   ├── order-totals.ts        # lineTotal, summarizeItems
 │   ├── orders-functions.ts    # CRUD order & item, invoice, updateItemsObtained (+ gate billing)

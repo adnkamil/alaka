@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import ConfirmModal from '../../components/ui/ConfirmModal'
 import DpAmountModal from '../../components/ui/DpAmountModal'
 import Switch from '../../components/ui/Switch'
+import Toast from '../../components/ui/Toast'
 import {
   queryOptions,
   useQuery,
@@ -249,6 +250,8 @@ function EventDetailPage() {
   const [dpPromptOrderId, setDpPromptOrderId] = useState<string | null>(null)
   const [isSavingDpAmount, setIsSavingDpAmount] = useState(false)
   const [showEventMenu, setShowEventMenu] = useState(false)
+  // Info singkat setelah barang digabung ke pesanan pelanggan yang sudah ada.
+  const [mergeNotice, setMergeNotice] = useState<string | null>(null)
   // Nonaktifkan/aktifkan event + hapus event (dua-duanya dari menu ⋮).
   const [isTogglingActive, setIsTogglingActive] = useState(false)
   const [showDeleteEvent, setShowDeleteEvent] = useState(false)
@@ -383,12 +386,19 @@ function EventDetailPage() {
     paidAmount?: number
     items: Array<OrderItemInput>
   }) {
-    await createOrder({ data: { eventId, ...value } })
+    const result = await createOrder({ data: { eventId, ...value } })
     await queryClient.invalidateQueries({ queryKey: ['event', eventId] })
     await queryClient.invalidateQueries({ queryKey: ['events'] })
     await queryClient.invalidateQueries({ queryKey: ['finance-summary'] })
     setSheetMode(null)
     await navigate({ to: '/events/$eventId', params: { eventId }, search: {} })
+    // Kasih tahu kalau barangnya digabung ke pesanan pelanggan yang sudah ada —
+    // tanpa ini, jastiper bisa bingung kenapa pesanannya jadi cuma satu baris.
+    setMergeNotice(
+      result.merged
+        ? `Barang baru digabung ke pesanan ${result.customerName} yang masih belum lunas. Total tagihannya sekarang ${formatIDR(result.total)}.`
+        : null,
+    )
   }
 
   async function handleUpdateOrder(
@@ -1407,6 +1417,14 @@ function EventDetailPage() {
           if (!isDeletingEvent) setShowDeleteEvent(false)
         }}
       />
+
+      {/* Info sesaat (alert melayang) — nggak ikut mendorong layout. */}
+      {mergeNotice && (
+        <Toast
+          message={mergeNotice}
+          onClose={() => setMergeNotice(null)}
+        />
+      )}
 
       <ProLockPrompt
         feature={lockedFeature}

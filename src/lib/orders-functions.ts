@@ -12,6 +12,7 @@ import {
 } from './entitlements'
 import { canUseFeature } from './subscription'
 import { findCustomerForOrder } from './customer-matching'
+import { findMergeTarget, mergeItemLines, mergePaidAmount } from './order-merge'
 import { derivePaymentStatus } from './order-totals'
 
 async function requireUser() {
@@ -97,7 +98,83 @@ export const createOrder = createServerFn({ method: 'POST' })
     )
     const requestedPaid =
       data.paidAmount ?? (data.paymentStatus === 'unpaid' ? 0 : total)
-    const paidAmount = Math.min(Math.max(requestedPaid, 0), total)
+    // Nominal yang dibayar untuk barang BARU ini saja (uang pesanan lama
+    // dihitung terpisah waktu penggabungan).
+    const paidForNewItems = Math.min(Math.max(requestedPaid, 0), total)
+
+    // Satu pelanggan = satu tagihan per event: kalau pelanggan ini masih punya
+    // pesanan yang belum lunas di event ini, barang barunya digabung ke situ —
+    // aturannya di `order-merge.ts`. Pesanan yang sudah lunas/dikirim dibiarkan
+    // terpisah, dan status `shipped` juga tidak digabung karena pengiriman
+    // (dan barang yang sudah didapat) itu urusannya per pesanan.
+    const mergeTarget =
+      data.paymentStatus === 'shipped'
+        ? undefined
+        : findMergeTarget(
+            await db.query.orders.findMany({
+              where: eq(orders.eventId, data.eventId),
+            }),
+            data.customerName,
+          )
+
+    if (mergeTarget) {
+      // Barang lama dibawa apa adanya (termasuk checklist "sudah didapat"),
+      // baru digabung dengan barang yang baru diinput.
+      const existingItems = await db.query.items.findMany({
+        where: eq(items.orderId, mergeTarget.id),
+      })
+      const mergedItems = mergeItemLines(
+        existingItems.map((item) => ({
+          name: item.name,
+          originalPrice: Number(item.originalPrice),
+          fee: Number(item.fee),
+          qty: item.qty,
+          obtained: item.obtained,
+        })),
+        data.items,
+      )
+      const mergedTotal = mergedItems.reduce(
+        (sum, item) => sum + (item.originalPrice + item.fee) * item.qty,
+        0,
+      )
+      const mergedPaid = mergePaidAmount(
+        mergeTarget.paidAmount,
+        paidForNewItems,
+        mergedTotal,
+      )
+
+      await db
+        .update(orders)
+        .set({
+          paymentStatus: derivePaymentStatus(mergedPaid, mergedTotal),
+          paidAmount: mergedPaid.toString(),
+          updatedAt: new Date(),
+        })
+        .where(eq(orders.id, mergeTarget.id))
+
+      // Sama seperti `updateOrder`: baris barang diganti seluruhnya supaya
+      // qty hasil penggabungan ikut tersimpan di baris yang sudah ada.
+      await db.delete(items).where(eq(items.orderId, mergeTarget.id))
+      await db.insert(items).values(
+        mergedItems.map((item) => ({
+          orderId: mergeTarget.id,
+          name: item.name,
+          originalPrice: item.originalPrice.toString(),
+          fee: item.fee.toString(),
+          qty: item.qty,
+          obtained: Boolean(item.obtained),
+        })),
+      )
+
+      return {
+        orderId: mergeTarget.id,
+        customerName: mergeTarget.customerName,
+        merged: true,
+        total: mergedTotal,
+      }
+    }
+
+    const paidAmount = paidForNewItems
     const paymentStatus =
       data.paymentStatus === 'shipped'
         ? 'shipped'
@@ -124,7 +201,12 @@ export const createOrder = createServerFn({ method: 'POST' })
       })),
     )
 
-    return order
+    return {
+      orderId: order.id,
+      customerName: order.customerName,
+      merged: false,
+      total,
+    }
   })
 
 export const updateOrderPaymentStatus = createServerFn({ method: 'POST' })
