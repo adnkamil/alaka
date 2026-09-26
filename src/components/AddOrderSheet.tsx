@@ -467,7 +467,11 @@ export default function AddOrderSheet({
                     </div>
 
                     {item.bundle ? (
-                      <div className="flex flex-col gap-2">
+                      // `text-xs` disamakan dengan label input tunggal di atas
+                      // (mode tanpa bundling). `.app-input` tidak set font-size
+                      // sendiri, jadi tinggi input ikut warisan: tanpa ini
+                      // inputnya jadi lebih tinggi (±8px) daripada mode biasa.
+                      <div className="flex flex-col gap-2 text-xs">
                         {item.bundleNames.map((bundleName, bundleIndex) => (
                           <div
                             key={bundleIndex}
@@ -500,7 +504,7 @@ export default function AddOrderSheet({
                                 )
                               }
                               autoComplete="off"
-                              className="app-input"
+                              className="app-input min-w-0"
                               aria-label={`Nama barang ${bundleIndex + 1} dalam paket`}
                             />
                             {item.bundleNames.length > 1 && (
@@ -528,12 +532,6 @@ export default function AddOrderSheet({
                             <Plus size={14} />
                             Tambah barang
                           </button>
-                          <span
-                            className="text-xs"
-                            style={{ color: 'var(--app-text-mute)' }}
-                          >
-                            Harga &amp; fee dihitung per paket
-                          </span>
                         </div>
                       </div>
                     ) : (
@@ -582,9 +580,12 @@ export default function AddOrderSheet({
                           )}
                       </label>
                     )}
-                    <div className="grid grid-cols-2 gap-2">
+                    {/* Jarak atas dikasih sendiri: baris nama barang di atasnya
+                        (input tunggal atau daftar paket bundling + tombol
+                        "Tambah barang") tidak punya margin bawah. */}
+                    <div className="mt-3 grid grid-cols-2 gap-2">
                       <label className="relative flex flex-col gap-1 text-xs">
-                        Harga asli
+                        <span className="whitespace-nowrap">Harga asli</span>
                         <NumberInput
                           required
                           value={item.originalPrice}
@@ -627,7 +628,7 @@ export default function AddOrderSheet({
                           )}
                       </label>
                       <label className="flex flex-col gap-1 text-xs">
-                        Fee jastip
+                        <span className="whitespace-nowrap">Fee jastip</span>
                         <NumberInput
                           required
                           value={item.fee}
@@ -683,8 +684,12 @@ export default function AddOrderSheet({
                           +
                         </button>
                       </div>
+                      {/* `shrink-0 whitespace-nowrap` penting: teksnya ada spasi
+                          setelah "=", jadi tanpa ini span-nya boleh menyusut dan
+                          angkanya turun ke baris kedua waktu ruangnya sempit.
+                          Harga harus selalu tampil satu baris. */}
                       <span
-                        className="text-xs font-semibold"
+                        className="shrink-0 whitespace-nowrap text-xs font-semibold"
                         style={{ color: 'var(--app-text-soft)' }}
                       >
                         = {lineTotal(item).toLocaleString('id-ID')}
@@ -713,10 +718,16 @@ export default function AddOrderSheet({
                 + Tambah barang
               </button>
 
+              {/* `whitespace-nowrap`: nominal rupiah harus selalu satu baris,
+                  nggak boleh turun ke baris kedua. */}
               <div className="app-card p-3 text-sm">
-                <p>Total harga jual: {totalPrice.toLocaleString('id-ID')}</p>
-                <p>Total fee: {totalFee.toLocaleString('id-ID')}</p>
-                <p className="font-semibold">
+                <p className="whitespace-nowrap">
+                  Total harga jual: {totalPrice.toLocaleString('id-ID')}
+                </p>
+                <p className="whitespace-nowrap">
+                  Total fee: {totalFee.toLocaleString('id-ID')}
+                </p>
+                <p className="whitespace-nowrap font-semibold">
                   Total tagihan: {totalTagihan.toLocaleString('id-ID')}
                 </p>
                 <p
@@ -757,7 +768,7 @@ export default function AddOrderSheet({
                   />
                   {dpAmount > 0 && dpAmount < totalTagihan && (
                     <span
-                      className="text-xs"
+                      className="whitespace-nowrap text-xs"
                       style={{ color: 'var(--app-text-soft)' }}
                     >
                       Sisa tagihan:{' '}

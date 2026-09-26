@@ -1114,15 +1114,22 @@ function EventDetailPage() {
                     <p className="truncate font-semibold">
                       {order.customerName}
                     </p>
+                    {/* Harga dijaga satu baris: `whitespace-nowrap` bikin
+                        "N item · Rp…" dan "Sisa Rp…" nggak bisa terbelah. */}
                     <p
                       className="text-xs"
                       style={{ color: 'var(--app-text-soft)' }}
                     >
-                      {order.items.length} item · {formatIDR(orderTotal)}
+                      <span className="whitespace-nowrap">
+                        {order.items.length} item · {formatIDR(orderTotal)}
+                      </span>
                       {order.paymentStatus === 'dp' && (
                         <span style={{ color: 'var(--app-warning)' }}>
                           {' '}
-                          · Sisa {formatIDR(remaining)}
+                          ·{' '}
+                          <span className="whitespace-nowrap">
+                            Sisa {formatIDR(remaining)}
+                          </span>
                         </span>
                       )}
                     </p>
@@ -1138,10 +1145,7 @@ function EventDetailPage() {
                       onChange={(e) => {
                         e.stopPropagation()
                         const nextStatus = e.target.value as
-                          | 'unpaid'
-                          | 'dp'
-                          | 'paid'
-                          | 'shipped'
+                          'unpaid' | 'dp' | 'paid' | 'shipped'
                         if (nextStatus === 'dp') {
                           // Nominal DP wajib diisi eksplisit lewat modal —
                           // kalau tidak, backend fallback ke paidAmount lama
@@ -1420,10 +1424,7 @@ function EventDetailPage() {
 
       {/* Info sesaat (alert melayang) — nggak ikut mendorong layout. */}
       {mergeNotice && (
-        <Toast
-          message={mergeNotice}
-          onClose={() => setMergeNotice(null)}
-        />
+        <Toast message={mergeNotice} onClose={() => setMergeNotice(null)} />
       )}
 
       <ProLockPrompt

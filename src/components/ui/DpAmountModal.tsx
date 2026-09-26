@@ -89,8 +89,9 @@ export default function DpAmountModal({
           className="mt-1.5 text-xs leading-relaxed"
           style={{ color: 'var(--app-text-soft)' }}
         >
-          Dari total tagihan {formatIDR(total)}, masukkan nominal yang sudah
-          diterima dari pelanggan.
+          Dari total tagihan{' '}
+          <span className="whitespace-nowrap">{formatIDR(total)}</span>,
+          masukkan nominal yang sudah diterima dari pelanggan.
         </p>
 
         <NumberInput
@@ -102,7 +103,7 @@ export default function DpAmountModal({
         {amount > 0 && !isValid && (
           <p className="mt-1.5 text-xs" style={{ color: 'var(--app-danger)' }}>
             Nominal harus lebih dari 0 dan kurang dari total tagihan (
-            {formatIDR(total)}).
+            <span className="whitespace-nowrap">{formatIDR(total)}</span>).
           </p>
         )}
 
