@@ -1,9 +1,15 @@
 import { useState } from 'react'
-import { Lock, Trash2, User, X } from 'lucide-react'
+import { Lock, Plus, Trash2, User, X } from 'lucide-react'
 import NumberInput from './ui/NumberInput'
+import Switch from './ui/Switch'
 import { customerLabel } from '../lib/customer-matching'
 import { findFeeForPrice } from '../lib/fee-tier-validation'
 import { formatPhoneNumber } from '../lib/format'
+import {
+  cleanBundleNames,
+  isBundleName,
+  splitBundleNames,
+} from '../lib/item-bundle'
 import { lineTotal, summarizeItems } from '../lib/order-totals'
 
 interface FeeTier {
@@ -14,11 +20,31 @@ interface FeeTier {
 
 interface ItemDraft {
   name: string
+  /**
+   * Mode bundling: satu harga & fee untuk beberapa barang sekaligus (mis. paket
+   * "100/3 item"). Waktu aktif, `bundleNames` yang dipakai dan `name` diabaikan.
+   */
+  bundle: boolean
+  /** Nama-nama barang dalam paket (hanya dipakai waktu `bundle` aktif). */
+  bundleNames: Array<string>
   originalPrice: number
   fee: number
   qty: number
   // Checklist belanja; nggak ada inputnya di form, cuma dibawa terus dari pesanan
   // yang lagi di-edit supaya statusnya nggak ke-reset.
+  obtained: boolean
+}
+
+/**
+ * Bentuk item yang keluar-masuk form (dari pesanan lama / ke server). Paket
+ * bundling tetap satu item, namanya digabung jadi satu string — lihat
+ * `lib/item-bundle.ts`.
+ */
+export interface AddOrderSheetItemValue {
+  name: string
+  originalPrice: number
+  fee: number
+  qty: number
   obtained: boolean
 }
 
@@ -32,7 +58,7 @@ export interface AddOrderSheetValue {
   customerName: string
   paymentStatus?: 'unpaid' | 'dp' | 'paid' | 'shipped'
   paidAmount?: number
-  items: Array<ItemDraft>
+  items: Array<AddOrderSheetItemValue>
 }
 
 interface AddOrderSheetProps {
@@ -68,6 +94,8 @@ interface AddOrderSheetProps {
 
 const emptyItem: ItemDraft = {
   name: '',
+  bundle: false,
+  bundleNames: [],
   originalPrice: 0,
   fee: 0,
   qty: 1,
@@ -84,13 +112,26 @@ function normalizeQty(qty: number | undefined) {
   return Number.isFinite(qty) && Number(qty) >= 1 ? Math.floor(Number(qty)) : 1
 }
 
-function toDraft(item: ItemDraft): ItemDraft {
+/**
+ * Pesanan lama yang barangnya paket bundling (nama tersimpan mengandung " + ")
+ * otomatis dibuka sebagai paket — jastiper bisa mengedit nama-nama barangnya
+ * satu per satu, dan waktu disimpan digabung lagi jadi nama yang sama.
+ */
+function toDraft(item: AddOrderSheetItemValue): ItemDraft {
+  const bundle = isBundleName(item.name)
   return {
     ...emptyItem,
     ...item,
+    bundle,
+    bundleNames: bundle ? splitBundleNames(item.name) : [],
     qty: normalizeQty(item.qty),
     obtained: Boolean(item.obtained),
   }
+}
+
+/** Nama item yang dikirim ke server: paket bundling digabung jadi satu nama. */
+function itemNameForSubmit(item: ItemDraft) {
+  return item.bundle ? cleanBundleNames(item.bundleNames) : item.name.trim()
 }
 
 export default function AddOrderSheet({
@@ -114,11 +155,12 @@ export default function AddOrderSheet({
   const [activeItemSuggestionIndex, setActiveItemSuggestionIndex] = useState<
     number | null
   >(null)
-  const [activePriceSuggestionIndex, setActivePriceSuggestionIndex] =
-    useState<number | null>(null)
-  const [paymentStatus, setPaymentStatus] = useState<'unpaid' | 'dp' | 'paid' | 'shipped'>(
-    initialValue?.paymentStatus ?? 'unpaid',
-  )
+  const [activePriceSuggestionIndex, setActivePriceSuggestionIndex] = useState<
+    number | null
+  >(null)
+  const [paymentStatus, setPaymentStatus] = useState<
+    'unpaid' | 'dp' | 'paid' | 'shipped'
+  >(initialValue?.paymentStatus ?? 'unpaid')
   // Nominal DP — hanya relevan saat paymentStatus === 'dp'.
   const [dpAmount, setDpAmount] = useState<number>(
     initialValue?.paidAmount ?? 0,
@@ -159,6 +201,73 @@ export default function AddOrderSheet({
     setItems((prev) => prev.filter((_, i) => i !== index))
   }
 
+  /** Ubah nama barang ke-`segmentIndex` di dalam paket bundling. */
+  function updateBundleName(
+    index: number,
+    segmentIndex: number,
+    value: string,
+  ) {
+    setItems((prev) =>
+      prev.map((item, i) =>
+        i === index
+          ? {
+              ...item,
+              bundleNames: item.bundleNames.map((name, j) =>
+                j === segmentIndex ? value : name,
+              ),
+            }
+          : item,
+      ),
+    )
+  }
+
+  function addBundleName(index: number) {
+    setItems((prev) =>
+      prev.map((item, i) =>
+        i === index
+          ? { ...item, bundleNames: [...item.bundleNames, ''] }
+          : item,
+      ),
+    )
+  }
+
+  function removeBundleName(index: number, segmentIndex: number) {
+    setItems((prev) =>
+      prev.map((item, i) => {
+        if (i !== index) return item
+        const next = item.bundleNames.filter((_, j) => j !== segmentIndex)
+        // Minimal satu slot nama tetap ada biar barisnya nggak kosong melompong.
+        return { ...item, bundleNames: next.length > 0 ? next : [''] }
+      }),
+    )
+  }
+
+  /**
+   * Nyalakan / matikan mode bundling (satu harga & fee untuk beberapa barang).
+   * - Dinyalakan: nama yang sudah diketik jadi barang pertama + satu slot kosong.
+   * - Dimatikan: semua nama digabung jadi satu nama barang, jadi tidak ada yang
+   *   hilang walau salah pencet, dan bisa dinyalakan lagi tanpa ketik ulang.
+   */
+  function toggleBundle(index: number, bundle: boolean) {
+    setItems((prev) =>
+      prev.map((item, i) => {
+        if (i !== index) return item
+        if (bundle) {
+          const filled = splitBundleNames(item.name).filter(
+            (name) => name.trim().length > 0,
+          )
+          return { ...item, bundle: true, bundleNames: [...filled, ''] }
+        }
+        return {
+          ...item,
+          bundle: false,
+          name: cleanBundleNames(item.bundleNames) || item.name,
+          bundleNames: [],
+        }
+      }),
+    )
+  }
+
   const {
     subtotal: totalPrice,
     totalFee,
@@ -171,7 +280,8 @@ export default function AddOrderSheet({
           const query = customerName.trim().toLowerCase()
           return (
             c.name.toLowerCase().includes(query) ||
-            (c.phone && c.phone.replace(/\s+/g, '').includes(query.replace(/\s+/g, '')))
+            (c.phone &&
+              c.phone.replace(/\s+/g, '').includes(query.replace(/\s+/g, '')))
           )
         })
         .slice(0, 5)
@@ -204,7 +314,7 @@ export default function AddOrderSheet({
         paymentStatus,
         paidAmount: paymentStatus === 'dp' ? dpAmount : undefined,
         items: items.map((item) => ({
-          name: item.name,
+          name: itemNameForSubmit(item),
           originalPrice: item.originalPrice,
           fee: item.fee,
           qty: item.qty,
@@ -224,10 +334,7 @@ export default function AddOrderSheet({
         className="app-shell mx-auto flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl"
         style={{ borderTop: '1px solid var(--app-border)' }}
       >
-        <form
-          className="flex min-h-0 flex-1 flex-col"
-          onSubmit={handleSubmit}
-        >
+        <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit}>
           <div className="min-h-0 flex-1 overflow-y-auto p-5">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-bold">{title}</h2>
@@ -340,50 +447,141 @@ export default function AddOrderSheet({
                 )}
                 {items.map((item, index) => (
                   <div key={index} className="app-card p-3">
-                    <label className="relative mb-2 flex flex-col gap-1 text-xs">
-                      Nama barang
-                      <input
-                        required
-                        value={item.name}
-                        onChange={(e) =>
-                          updateItem(index, { name: e.target.value })
-                        }
-                        onFocus={() => setActiveItemSuggestionIndex(index)}
-                        onBlur={() =>
-                          setTimeout(
-                            () => setActiveItemSuggestionIndex(null),
-                            120,
-                          )
-                        }
-                        autoComplete="off"
-                        className="app-input"
-                      />
-                      {activeItemSuggestionIndex === index &&
-                        filteredItemNames(item.name).length > 0 && (
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <span className="text-xs">Nama barang</span>
+                      <span
+                        className="flex items-center gap-1.5 text-xs font-semibold"
+                        style={{
+                          color: item.bundle
+                            ? 'var(--app-accent)'
+                            : 'var(--app-text-soft)',
+                        }}
+                      >
+                        Bundling
+                        <Switch
+                          checked={item.bundle}
+                          onChange={(checked) => toggleBundle(index, checked)}
+                          label="Bundling: satu harga untuk beberapa barang"
+                        />
+                      </span>
+                    </div>
+
+                    {item.bundle ? (
+                      <div className="flex flex-col gap-2">
+                        {item.bundleNames.map((bundleName, bundleIndex) => (
                           <div
-                            className="absolute left-0 right-0 top-full z-10 mt-1 max-h-40 overflow-y-auto rounded-xl border shadow-lg"
-                            style={{
-                              background: 'var(--app-card)',
-                              borderColor: 'var(--app-border)',
-                            }}
+                            key={bundleIndex}
+                            className="flex items-center gap-2"
                           >
-                            {filteredItemNames(item.name).map((name) => (
+                            <span
+                              className="w-3 flex-shrink-0 text-right text-xs"
+                              style={{ color: 'var(--app-text-mute)' }}
+                            >
+                              {bundleIndex + 1}.
+                            </span>
+                            {/* Paket harus punya minimal satu nama barang.
+                                `required` cuma dipasang waktu SEMUA slot masih
+                                kosong, jadi jastiper bebas mengisi slot mana
+                                saja (slot kosong lain otomatis dibuang waktu
+                                disimpan). */}
+                            <input
+                              required={
+                                bundleIndex === 0 &&
+                                item.bundleNames.every(
+                                  (name) => name.trim().length === 0,
+                                )
+                              }
+                              value={bundleName}
+                              onChange={(e) =>
+                                updateBundleName(
+                                  index,
+                                  bundleIndex,
+                                  e.target.value,
+                                )
+                              }
+                              autoComplete="off"
+                              className="app-input"
+                              aria-label={`Nama barang ${bundleIndex + 1} dalam paket`}
+                            />
+                            {item.bundleNames.length > 1 && (
                               <button
-                                key={name}
                                 type="button"
-                                onMouseDown={(e) => {
-                                  e.preventDefault()
-                                  updateItem(index, { name })
-                                  setActiveItemSuggestionIndex(null)
-                                }}
-                                className="block w-full truncate px-3 py-2 text-left text-sm"
+                                onClick={() =>
+                                  removeBundleName(index, bundleIndex)
+                                }
+                                className="flex-shrink-0"
+                                style={{ color: 'var(--app-danger)' }}
+                                aria-label={`Hapus barang ${bundleIndex + 1} dari paket`}
                               >
-                                {name}
+                                <X size={15} />
                               </button>
-                            ))}
+                            )}
                           </div>
-                        )}
-                    </label>
+                        ))}
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <button
+                            type="button"
+                            onClick={() => addBundleName(index)}
+                            className="flex items-center gap-1 text-xs font-semibold"
+                            style={{ color: 'var(--app-accent)' }}
+                          >
+                            <Plus size={14} />
+                            Tambah barang
+                          </button>
+                          <span
+                            className="text-xs"
+                            style={{ color: 'var(--app-text-mute)' }}
+                          >
+                            Harga &amp; fee dihitung per paket
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <label className="relative flex flex-col gap-1 text-xs">
+                        <input
+                          required
+                          value={item.name}
+                          onChange={(e) =>
+                            updateItem(index, { name: e.target.value })
+                          }
+                          onFocus={() => setActiveItemSuggestionIndex(index)}
+                          onBlur={() =>
+                            setTimeout(
+                              () => setActiveItemSuggestionIndex(null),
+                              120,
+                            )
+                          }
+                          autoComplete="off"
+                          className="app-input"
+                          aria-label="Nama barang"
+                        />
+                        {activeItemSuggestionIndex === index &&
+                          filteredItemNames(item.name).length > 0 && (
+                            <div
+                              className="absolute left-0 right-0 top-full z-10 mt-1 max-h-40 overflow-y-auto rounded-xl border shadow-lg"
+                              style={{
+                                background: 'var(--app-card)',
+                                borderColor: 'var(--app-border)',
+                              }}
+                            >
+                              {filteredItemNames(item.name).map((name) => (
+                                <button
+                                  key={name}
+                                  type="button"
+                                  onMouseDown={(e) => {
+                                    e.preventDefault()
+                                    updateItem(index, { name })
+                                    setActiveItemSuggestionIndex(null)
+                                  }}
+                                  className="block w-full truncate px-3 py-2 text-left text-sm"
+                                >
+                                  {name}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                      </label>
+                    )}
                     <div className="grid grid-cols-2 gap-2">
                       <label className="relative flex flex-col gap-1 text-xs">
                         Harga asli
@@ -576,7 +774,6 @@ export default function AddOrderSheet({
                   )}
                 </label>
               )}
-
             </div>
           </div>
 

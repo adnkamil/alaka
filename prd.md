@@ -94,6 +94,10 @@ Astra Otoshop).
   - **Fee auto-terisi** berdasarkan Aturan Fee event ini + harga barang yang diinput (lihat 4.9). Bila harga di luar semua tier, field fee dikosongkan untuk diisi manual.
   - **Fee berlaku per unit**: total satu barang = `(harga asli + fee) × qty`. Contoh: barang 30.000 + fee 4.000, qty 2 → (30.000 + 4.000) × 2 = 68.000.
   - **Saran nama barang & harga asli** — saat mengisi nama barang, muncul saran dari barang yang pernah dicatat di event ini (nama + daftar harga), diambil dari server (`getOrderSuggestions`). Ini fitur PRO `order_suggestions`: kalau terkunci, field tetap bisa diisi manual dan di tempat saran muncul keterangan "Saran nama barang & harga dari riwayat pesanan tersedia di paket PRO" — server tidak mengirim data saran sama sekali ke user FREE (lihat 5).
+  - **Toggle "Bundling" (satu harga untuk beberapa barang)** — untuk paket seperti "100/3 item". Kalau dinyalakan, field "Nama barang" berubah jadi daftar nama bernomor (mis. `Kaos` / `Celana` / `Topi`) dengan tombol **Tambah barang** dan hapus per baris. **Harga asli & fee tetap per paket** — pakai field **Jumlah** untuk berapa paket yang dibeli (mis. 2 paket × (100.000 + fee 5.000) = 210.000). Slot nama yang dikosongkan otomatis dibuang waktu disimpan.
+    - Cara simpannya: nama-nama itu digabung jadi **satu nama** `"Kaos + Celana + Topi"` di satu baris `items.name` — jadi semua halaman (invoice, tagihan, checklist belanja, saran nama) tetap jalan **tanpa perubahan skema**. Aturannya di `lib/item-bundle.ts`.
+    - Pesanan lama yang namanya mengandung `" + "` otomatis dibuka dengan toggle ini **aktif** (nama dipecah lagi jadi beberapa input), dan waktu disimpan digabung lagi jadi string yang sama.
+    - Kalau toggle dimatikan lagi, semua nama digabung jadi satu nama barang (tidak ada yang hilang).
 - **Ringkasan otomatis**: total harga jual (`SUM((harga asli + fee) × qty)`), total fee, total tagihan.
 - **Gabung otomatis (satu pelanggan = satu tagihan per event)**: kalau pelanggan yang sama sudah punya pesanan yang **belum lunas / DP** di event ini, barang yang baru langsung **digabung ke pesanan itu** (tidak bikin pesanan/tagihan kedua). Baris dengan nama, harga asli, dan fee yang sama persis cukup jadi satu baris dengan qty-nya dijumlahkan; nominal terbayar lama dibawa dan status pembayaran dihitung ulang dari total baru. Pesanan yang sudah **Lunas/Dikirim** tidak digabung (barang baru belum tentu ikut lunas), begitu juga kalau status barunya **Dikirim** — dua-duanya bikin pesanan baru. Aturan lengkapnya di `order-merge.ts`.
   - Setelah tersimpan, kalau barangnya tergabung, halaman Detail Event menampilkan **alert melayang** (komponen `ui/Toast.tsx`) berisi mis. "Barang baru digabung ke pesanan Budi 6608 yang masih belum lunas. Total tagihannya sekarang Rp…". Alert-nya `position: fixed` di atas FAB supaya **tidak mendorong komponen lain**, muncul naik dari bawah, lalu naik + memudar sendiri setelah 4 detik (bisa ditutup manual).
@@ -106,7 +110,7 @@ Astra Otoshop).
 
 - Halaman untuk jastiper — dilindungi auth.
 - Termasuk fitur PRO `billing`. Datanya diambil lewat server function yang dijaga (`getOrderInvoice`), jadi user FREE ditolak walau URL-nya diketik langsung (lihat 5).
-- Card invoice: nama brand/jastiper, no. invoice (8 karakter UUID), nama pelanggan, nama event, tanggal invoice, daftar item (qty × harga + fee), total tagihan.
+- Card invoice: nama brand/jastiper, no. invoice (8 karakter UUID), nama pelanggan, nama event, tanggal invoice, daftar item (qty × harga + fee), total tagihan. **Nama barang dibiarkan membungkus (wrap), tidak dipotong dengan elipsis** — supaya nama paket bundling panjang (mis. "Kaos + Celana + Topi") tetap terbaca utuh.
 - **Alamat kirim pelanggan**: diambil dari data Customer yang namanya cocok dengan nama pelanggan pesanan ini (aturan pencocokannya di `customer-matching.ts`, lihat 4.10). Kalau alamatnya belum diisi, muncul pengingat singkat untuk melengkapinya lewat Profil → Customer — biar jastiper tahu kenapa alamatnya tidak muncul di link tagihan.
 - Info metode pembayaran aktif milik jastiper (bank, e-wallet, QRIS).
 - Status pembayaran dengan badge warna.
@@ -522,6 +526,7 @@ activity_logs
 - **Fee disimpan di `items`, bukan dihitung ulang** — supaya histori transaksi tidak berubah kalau `fee_tiers` diedit/dihapus di kemudian hari.
 - **Status `dp`**: pesanan bisa berstatus DP dengan `paid_amount` yang diisi sebagian dari total tagihan. Sisa tagihan = `total - paid_amount`.
 - **`obtained` di `items`**: dipakai untuk checklist live shopping — menandai barang sudah didapat di toko.
+- **Barang bundling disimpan sebagai satu baris `items`**: nama-nama barang dalam satu paket digabung jadi satu string dipisah `" + "` (mis. `"Kaos + Celana + Topi"`), jadi `items.name` tidak perlu kolom baru dan harga/fee tetap per paket (`lib/item-bundle.ts`).
 - **`is_active` di `events`**: nonaktif ≠ hapus. Event nonaktif disembunyikan dari daftar "Event aktif" di beranda dan ditolak saat `createOrder`, tapi barisnya, pesanannya, dan tagihannya tetap ada; diatur dari menu tiga titik di halaman Detail Event. Ringkasan uang (beranda & Keuangan) tetap menghitung event nonaktif karena uangnya nyata.
 - **`password_hash` nullable**: user yang hanya mendaftar via Google tidak punya password; tampilan Profil menyesuaikan.
 - **`wa_message_template` di `users`**: template default ada di `src/lib/message-template.ts`. Jika null, dipakai template default.
@@ -622,6 +627,8 @@ src/
 │   ├── finance-functions.ts   # getFinanceSummary
 │   ├── format.ts              # formatPhoneNumber, formatDate, buildWhatsAppLink, isValidIndonesianPhone
 │   ├── google-auth.ts         # buildGoogleAuthUrl, exchangeGoogleCode
+│   ├── item-bundle.ts         # Gabung/pecah nama barang bundling (murni, tanpa db)
+│   ├── item-bundle.test.ts    # Unit test logika paket bundling
 │   ├── mailer.ts              # Kirim email reset password
 │   ├── message-template.ts    # DEFAULT_WA_MESSAGE_TEMPLATE, renderMessageTemplate
 │   ├── message-template-functions.ts

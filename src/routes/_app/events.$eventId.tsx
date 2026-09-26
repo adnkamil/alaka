@@ -993,7 +993,7 @@ function EventDetailPage() {
                       className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left"
                     >
                       <span className="min-w-0">
-                        <span className="block truncate text-sm font-medium">
+                        <span className="block break-words text-sm font-medium">
                           {item.name}
                         </span>
                         <span

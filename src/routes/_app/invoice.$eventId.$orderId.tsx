@@ -298,7 +298,7 @@ function InvoicePage() {
               className="flex justify-between gap-3 py-1 text-sm"
             >
               <div className="min-w-0 flex-1">
-                <p className="truncate">{item.name}</p>
+                <p className="break-words">{item.name}</p>
                 <p
                   className="text-xs"
                   style={{ color: 'var(--app-text-mute)' }}
