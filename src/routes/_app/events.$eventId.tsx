@@ -1185,9 +1185,16 @@ function EventDetailPage() {
                   style={{ borderColor: 'var(--app-border)' }}
                 >
                   {order.items.map((item) => (
-                    <div key={item.id} className="flex justify-between text-sm">
-                      <span>{item.name}</span>
-                      <span>{formatIDR(lineTotal(item))}</span>
+                    <div
+                      key={item.id}
+                      className="flex items-start justify-between gap-3 text-sm"
+                    >
+                      <span className="min-w-0 flex-1 break-words">
+                        {item.name}
+                      </span>
+                      <span className="flex-shrink-0 whitespace-nowrap">
+                        {formatIDR(lineTotal(item))}
+                      </span>
                     </div>
                   ))}
                   <div
