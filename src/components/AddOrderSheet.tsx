@@ -718,18 +718,27 @@ export default function AddOrderSheet({
                 + Tambah barang
               </button>
 
-              {/* `whitespace-nowrap`: nominal rupiah harus selalu satu baris,
-                  nggak boleh turun ke baris kedua. */}
-              <div className="app-card p-3 text-sm">
-                <p className="whitespace-nowrap">
-                  Total harga jual: {totalPrice.toLocaleString('id-ID')}
-                </p>
-                <p className="whitespace-nowrap">
-                  Total fee: {totalFee.toLocaleString('id-ID')}
-                </p>
-                <p className="whitespace-nowrap font-semibold">
-                  Total tagihan: {totalTagihan.toLocaleString('id-ID')}
-                </p>
+              {/* Label rata kiri, nominal rata kanan (`justify-between`);
+                  `whitespace-nowrap` biar nominal nggak turun ke baris kedua. */}
+              <div className="app-card flex flex-col gap-1 p-3 text-sm">
+                <div className="flex justify-between gap-3">
+                  <span>Total harga jual</span>
+                  <span className="whitespace-nowrap">
+                    {totalPrice.toLocaleString('id-ID')}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span>Total fee</span>
+                  <span className="whitespace-nowrap">
+                    {totalFee.toLocaleString('id-ID')}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-3 font-semibold">
+                  <span>Total tagihan</span>
+                  <span className="whitespace-nowrap">
+                    {totalTagihan.toLocaleString('id-ID')}
+                  </span>
+                </div>
                 <p
                   className="mt-1 text-xs"
                   style={{ color: 'var(--app-text-mute)' }}
