@@ -102,7 +102,7 @@ function AdminSettingsPage() {
         style={{ borderColor: 'var(--app-border)' }}
       >
         <p
-          className="px-4 pt-4 text-xs font-semibold uppercase"
+          className="px-4 pt-4 pb-4 text-xs font-semibold uppercase"
           style={{ color: 'var(--app-text-mute)' }}
         >
           Pengaturan Pembayaran PRO
