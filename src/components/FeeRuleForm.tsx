@@ -101,7 +101,7 @@ export default function FeeRuleForm({
         Nama aturan
         <input
           required
-          placeholder="cth. Fee jastip by Mici"
+          placeholder="cth. Fee jastip by ALAKA"
           value={name}
           onChange={(e) => setName(e.target.value)}
           className="app-input"

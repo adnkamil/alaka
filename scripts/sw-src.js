@@ -1,4 +1,4 @@
-// Service worker Jastip (source untuk workbox-build injectManifest).
+// Service worker ALAKA (source untuk workbox-build injectManifest).
 //
 // Aplikasi ini memakai SSR (TanStack Start) → plugin vite-plugin-pwa nggak bisa
 // generate sw.js sendiri saat `vite build` (cuma manifest + registerSW yang

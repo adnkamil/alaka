@@ -35,11 +35,11 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
         content: 'width=device-width, initial-scale=1',
       },
       {
-        title: 'Jastip',
+        title: 'ALAKA',
       },
       {
         name: 'description',
-        content: 'Aplikasi manajemen jastip (titip beli)',
+        content: 'ALAKA — aplikasi manajemen jastip (titip beli)',
       },
       {
         name: 'theme-color',
@@ -59,7 +59,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
       },
       {
         name: 'apple-mobile-web-app-title',
-        content: 'Jastip',
+        content: 'ALAKA',
       },
     ],
     links: [

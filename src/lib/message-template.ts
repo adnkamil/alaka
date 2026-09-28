@@ -104,7 +104,7 @@ export const MESSAGE_TEMPLATE_SAMPLE: MessageTemplateContext = {
   sisa: 'Rp 1.150.000',
   bank: 'BCA',
   bankAccount: '1234567890',
-  brand: 'Jastip by Mici',
+  brand: 'ALAKA',
 }
 
 export function renderMessageTemplate(

@@ -1,9 +1,9 @@
-# PRD — Aplikasi Jastip Mici (PWA)
+# PRD — ALAKA (PWA)
 
 ## 1. Ringkasan Produk
 
-Aplikasi manajemen jastip (titip beli) berbasis web, mobile-first, dan bisa
-diinstall sebagai PWA. Ditujukan untuk jastiper yang saat ini mengelola
+**ALAKA** adalah aplikasi manajemen jastip (titip beli) berbasis web, mobile-first,
+dan bisa diinstall sebagai PWA. Ditujukan untuk jastiper yang saat ini mengelola
 pesanan secara manual (spreadsheet/chat), agar bisa mengelola event belanja,
 pesanan pelanggan, dan keuangan dalam satu tempat.
 
@@ -57,6 +57,7 @@ Astra Otoshop).
 
 ### 4.2 Beranda
 
+- **Header**: nama brand aplikasi **ALAKA**, dan di bawahnya sapaan **"Halo {nama brand user}"** — diambil dari `users.brand_name` (bukan nama pribadi user), dengan fallback nama user lalu `'Jastiper'` kalau brandnya belum diisi (pola fallback yang sama dipakai di halaman Profil).
 - Ringkasan keuangan singkat (2 kartu: **Uang masuk** = total `paidAmount` seluruh event; **Belum bayar** = sisa tagihan semua pesanan yang belum lunas). Kedua angka ini menghitung **semua** event termasuk yang nonaktif — event ditutup bukan berarti uangnya hilang dari catatan.
 - List **Event aktif** milik user (diurutkan terbaru dulu): card berisi nama, tanggal (format `d MMM`), jumlah pesanan.
 - Event yang **nonaktif** (lihat 4.3) dikeluarkan dari daftar itu dan dipindah ke bagian **Event nonaktif (n)** yang terlipat di bawahnya (buka-tutup), tiap card diberi badge "Nonaktif" dan tampil lebih redup. Datanya tidak dihapus, cuma tidak mengganggu daftar event yang masih jalan.
@@ -185,7 +186,7 @@ Astra Otoshop).
 - User bisa membuat **lebih dari satu aturan fee** (misal beda aturan untuk jastip lokal vs luar negeri).
 - Di Detail Event, user memilih **satu Aturan Fee** yang berlaku untuk event tersebut.
 
-**Contoh data nyata (referensi user, "Fee jastip by Mici"):**
+**Contoh data nyata (referensi user, "Fee jastip by ALAKA"):**
 
 | Rentang Harga     | Fee    |
 | ----------------- | ------ |
@@ -235,7 +236,7 @@ Astra Otoshop).
 
 Halaman terpisah untuk **admin**, di luar `app-shell` member (`src/routes/admin.tsx`
 punya layout sendiri: tanpa bottom nav member, header sendiri yang cuma berisi
-identitas "Admin Jastip", dan navigasi antar halaman admin dipasang sebagai
+identitas "Admin ALAKA", dan navigasi antar halaman admin dipasang sebagai
 **bottom tab** — Dashboard / Customer / Pengaturan — lihat di bawah). Halaman
 dashboard-nya fokus ke **ringkasan user** dan **verifikasi pengajuan**; daftar
 customer pindah ke halaman sendiri (4.15), sedangkan pengaturan pembayaran PRO dan
@@ -431,7 +432,7 @@ Halaman detail (Detail Event, Fee Rules, Customers, Invoice) menyembunyikan bott
 
 Halaman admin tidak ikut skema tab di atas: `/admin` (dan sub-halamannya) memakai
 layout sendiri di luar shell member, **tanpa** bottom nav member, dengan header
-sendiri yang cuma berisi identitas "Admin Jastip". Navigasi antar halaman admin
+sendiri yang cuma berisi identitas "Admin ALAKA". Navigasi antar halaman admin
 dipasang sebagai **bottom tab sendiri** (`AdminBottomNav`, 3 tab: **Dashboard /
 Customer / Pengaturan**, halaman aktif ditandai warna aksen). Tombol **Keluar** ada
 di `/admin/pengaturan`, bukan di header. User dengan `is_admin = true` yang membuka

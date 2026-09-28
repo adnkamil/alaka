@@ -64,7 +64,7 @@ function RegisterPage() {
         <label className="flex flex-col gap-1 text-sm font-medium">
           Nama brand jastip
           <input
-            placeholder="cth. Jastip.nya Aisya"
+            placeholder="cth. Jastip ALAKA"
             value={brandName}
             onChange={(e) => setBrandName(e.target.value)}
             className="app-input"

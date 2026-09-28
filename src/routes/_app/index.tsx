@@ -97,9 +97,12 @@ function BerandaPage() {
     <main className="mx-auto max-w-lg px-4 pb-8 pt-6">
       <header className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-bold">Jastip.ku</h1>
+          <h1 className="text-lg font-bold">ALAKA</h1>
           <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
-            Halo, {user?.name ?? 'Jastiper'}
+            {/* Sapaan pakai nama BRAND user (bukan nama pribadinya). Kalau
+                brandnya belum diisi, jatuh ke nama user — sama seperti fallback
+                di halaman Profil. */}
+            Halo {user?.brandName?.trim() || user?.name || 'Jastiper'}
           </p>
         </div>
         <Link

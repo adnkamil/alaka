@@ -1,5 +1,5 @@
 /**
- * Aturan langganan Jastip: TRIAL 30 hari sejak user dibuat, lalu FREE (fitur
+ * Aturan langganan ALAKA: TRIAL 30 hari sejak user dibuat, lalu FREE (fitur
  * dasar), dan PRO (semua fitur) yang diaktifkan lewat verifikasi pembayaran
  * manual oleh admin.
  *

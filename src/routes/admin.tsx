@@ -41,7 +41,7 @@ function AdminLayout() {
         >
           A
         </span>
-        <span className="text-sm font-bold">Admin Jastip</span>
+        <span className="text-sm font-bold">Admin ALAKA</span>
       </header>
       <Outlet />
       <AdminBottomNav />

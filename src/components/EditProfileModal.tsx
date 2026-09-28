@@ -97,12 +97,9 @@ export default function EditProfileModal({
               value={brandName}
               onChange={(e) => setBrandName(e.target.value)}
               className="app-input"
-              placeholder="cth. Mici Jastip Korea"
+              placeholder="cth. ALAKA Jastip Korea"
             />
-            <span
-              className="text-xs"
-              style={{ color: 'var(--app-text-mute)' }}
-            >
+            <span className="text-xs" style={{ color: 'var(--app-text-mute)' }}>
               Ditampilkan di halaman invoice/tagihan buat pelanggan.
             </span>
           </label>

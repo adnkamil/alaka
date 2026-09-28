@@ -102,7 +102,7 @@ export const requestPasswordReset = createServerFn({ method: 'POST' })
 
     const mail = buildPasswordResetMail({
       name: user.name,
-      brand: user.brandName?.trim() || 'Jastip',
+      brand: user.brandName?.trim() || 'ALAKA',
       resetUrl: `${resolveAppUrl()}/reset-sandi/${token}`,
       expiresMinutes: TOKEN_TTL_MINUTES,
     })

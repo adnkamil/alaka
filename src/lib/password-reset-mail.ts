@@ -52,7 +52,7 @@ export function buildPasswordResetMail({
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;border-collapse:collapse;background:#ffffff;border:1px solid #ecdfd0;border-radius:16px;">
             <tr>
               <td style="padding:28px;">
-                <p style="margin:0 0 16px;font-size:16px;font-weight:700;">Jastip</p>
+                <p style="margin:0 0 16px;font-size:16px;font-weight:700;">ALAKA</p>
                 <p style="margin:0 0 16px;font-size:15px;">Halo ${nameSafe},</p>
                 <p style="margin:0 0 20px;font-size:15px;line-height:1.6;">
                   Kami menerima permintaan untuk mengatur ulang kata sandi akun
