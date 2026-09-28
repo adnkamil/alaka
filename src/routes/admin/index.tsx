@@ -4,11 +4,10 @@ import {
   useQueryClient,
   useSuspenseQuery,
 } from '@tanstack/react-query'
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import {
   Banknote,
   Check,
-  ChevronRight,
   Clock,
   CreditCard,
   Crown,
@@ -217,7 +216,7 @@ function AdminDashboardPage() {
           label="Active Users"
           value={String(metrics.activeUsers)}
           icon={Clock}
-          hint="Login 14 hari terakhir"
+          hint={`Login ${metrics.activeWindowDays} hari terakhir`}
         />
         <MetricCard
           label="PRO Active"
@@ -239,31 +238,6 @@ function AdminDashboardPage() {
           hint="Total dari semua pengajuan yang disetujui"
         />
       </section>
-
-      {/* Pintasan ke daftar lengkap customer (nama, email, status, aktif sampai,
-          revenue) — jalan masuk dari ringkasan "Total Users". */}
-      <Link
-        to="/admin/customers"
-        className="app-card mt-3 flex items-center gap-3 p-4 no-underline"
-        style={{ color: 'var(--app-text)' }}
-      >
-        <span
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
-          style={{
-            background: 'var(--app-accent-soft)',
-            color: 'var(--app-accent)',
-          }}
-        >
-          <Users size={18} />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">Semua Customer</p>
-          <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
-            Daftar {metrics.totalUsers} user: status, aktivitas &amp; revenue.
-          </p>
-        </div>
-        <ChevronRight size={18} style={{ color: 'var(--app-text-mute)' }} />
-      </Link>
 
       {metrics.proPending > 0 && tab !== 'pending' && (
         <button

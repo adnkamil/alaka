@@ -279,17 +279,16 @@ Cara yang sama juga memperlakukan `/admin` dan `/admin/` sebagai satu halaman
 (router memang me-redirect `/admin/` → `/admin`). Karena header sudah bebas dari
 tautan navigasi, tautan "← Dashboard" lama dihapus — pindah halaman cukup lewat tab.
 
-| Kartu        | Isi                                                                                                                                                               |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Total Users  | Jumlah seluruh user terdaftar                                                                                                                                     |
-| Active Users | User yang punya sesi login baru dalam **14 hari** terakhir (`count(distinct user_id)` dari `sessions`), bukan dari `activity_logs` yang belum diisi kode mana pun |
-| PRO Active   | Baris `subscriptions` berstatus `active` **dan** `ends_at`-nya belum lewat                                                                                        |
-| PRO Pending  | Pengajuan berstatus `pending`                                                                                                                                     |
-| PRO Revenue  | `SUM(amount)` dari semua pengajuan yang **pernah disetujui** (`active` + `expired`), diformat Rupiah                                                              |
+| Kartu        | Isi                                                                                                                                                                                                                                                                                                                              |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Total Users  | Jumlah seluruh user terdaftar                                                                                                                                                                                                                                                                                                    |
+| Active Users | User yang punya sesi login baru dalam **7 hari** terakhir (`count(distinct user_id)` dari `sessions`; jendelanya konstanta `ACTIVE_USER_WINDOW_DAYS` dan nilainya ikut dikirim ke client sebagai `activeWindowDays` supaya hint kartu tidak bisa beda dari query-nya), bukan dari `activity_logs` yang belum diisi kode mana pun |
+| PRO Active   | Baris `subscriptions` berstatus `active` **dan** `ends_at`-nya belum lewat                                                                                                                                                                                                                                                       |
+| PRO Pending  | Pengajuan berstatus `pending`                                                                                                                                                                                                                                                                                                    |
+| PRO Revenue  | `SUM(amount)` dari semua pengajuan yang **pernah disetujui** (`active` + `expired`), diformat Rupiah                                                                                                                                                                                                                             |
 
-Di bawah kartu metrik ada pintasan **Semua Customer** — kartu tautan yang menyebut
-jumlah `totalUsers` dari metrik di atas dan membuka daftar lengkapnya (4.15), supaya
-angka "Total Users" bisa langsung ditelusuri ke orangnya.
+Dashboard tidak punya pintasan khusus ke daftar customer: tab **Customer** di bottom
+nav selalu terlihat, jadi angka "Total Users" bisa ditelusuri lewat tab itu (4.15).
 
 **Verifikasi langganan PRO**:
 
@@ -317,9 +316,9 @@ dan daftar pengajuan.
 ### 4.15 Daftar Customer (Admin) — `/admin/customers`
 
 Daftar **semua akun** yang terdaftar di aplikasi (`src/routes/admin/customers.tsx`),
-dibuka lewat **tab Customer** di bottom nav admin atau pintasan "Semua Customer" di
-dashboard (4.13). Fokusnya: siapa orangnya, status langganannya, apakah masih aktif
-login, dan berapa total uang yang sudah masuk dari dia.
+dibuka lewat **tab Customer** di bottom nav admin (4.13). Fokusnya: siapa orangnya,
+status langganannya, apakah masih aktif login, dan berapa total uang yang sudah
+masuk dari dia.
 
 Data datang dari satu server function `fetchAdminUsers` → `listAdminUsers()`
 (`src/lib/admin-queries.ts`, query key `admin-users`, di-`ensureQueryData` di loader
@@ -330,7 +329,7 @@ route). Isi tiap baris:
 | Nama / email      | `users.name`, `users.email`, plus `brand_name` sebagai judul kartu                                                         |
 | Plan + PRO sampai | `resolveEntitlement()` — aturan trial/FREE/PRO **tidak** ditulis ulang di query (lihat 5.1)                                |
 | Pending           | Ada `subscriptions` berstatus `pending` (badge kuning)                                                                     |
-| Status aktif      | Ada sesi login dalam **14 hari** terakhir (`ACTIVE_USER_WINDOW_DAYS`), sama ambangnya dengan kartu "Active Users" di 4.13  |
+| Status aktif      | Ada sesi login dalam **7 hari** terakhir (`ACTIVE_USER_WINDOW_DAYS`), sama ambangnya dengan kartu "Active Users" di 4.13   |
 | Login terakhir    | `max(sessions.created_at)` per user                                                                                        |
 | Total revenue     | `SUM(amount)` dari langganan yang pernah disetujui (`active` + `expired`) — definisi yang sama dengan metrik "PRO Revenue" |
 | Terdaftar         | `users.created_at`                                                                                                         |

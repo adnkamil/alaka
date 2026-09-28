@@ -55,6 +55,12 @@ export interface AdminMetrics {
   totalUsers: number
   /** User dengan sesi login baru dalam `ACTIVE_USER_WINDOW_DAYS` hari terakhir. */
   activeUsers: number
+  /**
+   * Jendela hari yang dipakai `activeUsers` — ikut dikirim ke client supaya
+   * hint kartu ("Login N hari terakhir") dihitung dari nilai yang sama, bukan
+   * angka yang ditulis ulang di halaman.
+   */
+  activeWindowDays: number
   /** Subscription `active` yang `ends_at`-nya belum lewat (bukan cuma cek status). */
   proActive: number
   proPending: number
@@ -62,17 +68,17 @@ export interface AdminMetrics {
   proRevenue: number
 }
 
-const ACTIVE_USER_WINDOW_DAYS = 14
+const ACTIVE_USER_WINDOW_DAYS = 7
 
 /**
  * Metrik ringkas buat dashboard admin.
  *
  * CATATAN soal `activeUsers`: dihitung dari baris `sessions` baru (login)
- * dalam 14 hari terakhir — BUKAN dari tabel `activity_logs`. `activity_logs`
- * sudah ada di schema untuk tracking per-aksi yang lebih presisi, tapi belum
- * ada satu pun kode yang menulis ke sana, jadi kalau dipakai sekarang
- * hasilnya akan selalu 0. Proxy login ini gampang diganti begitu
- * `activity_logs` mulai diisi.
+ * dalam `ACTIVE_USER_WINDOW_DAYS` hari terakhir — BUKAN dari tabel
+ * `activity_logs`. `activity_logs` sudah ada di schema untuk tracking per-aksi
+ * yang lebih presisi, tapi belum ada satu pun kode yang menulis ke sana, jadi
+ * kalau dipakai sekarang hasilnya akan selalu 0. Proxy login ini gampang
+ * diganti begitu `activity_logs` mulai diisi.
  */
 export async function getAdminMetrics(
   now: Date = new Date(),
@@ -115,6 +121,7 @@ export async function getAdminMetrics(
   return {
     totalUsers: Number(totalUsersRow.value),
     activeUsers: Number(activeUsersRow.value),
+    activeWindowDays: ACTIVE_USER_WINDOW_DAYS,
     proActive: Number(proActiveRow.value),
     proPending: Number(proPendingRow.value),
     proRevenue: Number(revenueRow.value),
