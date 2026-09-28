@@ -1,11 +1,6 @@
-import {
-  Outlet,
-  createFileRoute,
-  redirect,
-  useNavigate,
-} from '@tanstack/react-router'
-import { LogOut } from 'lucide-react'
-import { fetchCurrentUser, logoutUser } from '../lib/auth-functions'
+import { Outlet, createFileRoute, redirect } from '@tanstack/react-router'
+import AdminBottomNav from '../components/AdminBottomNav'
+import { fetchCurrentUser } from '../lib/auth-functions'
 
 // Proteksi di sini cuma buat UX (redirect kalau bukan admin). Proteksi yang
 // beneran mengikat ada di server lewat `requireAdminUser()` — lihat
@@ -25,44 +20,31 @@ export const Route = createFileRoute('/admin')({
   component: AdminLayout,
 })
 
+/**
+ * Layout admin: header cuma identitas, navigasi antar halaman admin ada di
+ * `AdminBottomNav` (Dashboard / Customer / Pengaturan). `app-shell--with-nav`
+ * menyediakan ruang di bawah supaya isi terakhir tidak tertutup nav yang fixed.
+ */
 function AdminLayout() {
-  const navigate = useNavigate()
-
-  async function handleLogout() {
-    await logoutUser()
-    await navigate({ to: '/login' })
-  }
-
   return (
-    <div className="app-shell mx-auto min-h-screen max-w-2xl">
+    <div className="app-shell app-shell--with-nav">
       <header
-        className="sticky top-0 z-10 flex items-center justify-between border-b px-4 py-3"
+        className="sticky top-0 z-10 flex items-center gap-2 border-b px-4 py-3"
         style={{
           borderColor: 'var(--app-border)',
           background: 'var(--app-card)',
         }}
       >
-        <div className="flex items-center gap-2">
-          <span
-            className="app-icon-tile h-8 w-8"
-            style={{ fontSize: '0.75rem', fontWeight: 700 }}
-          >
-            A
-          </span>
-          <span className="text-sm font-bold">Admin Jastip</span>
-        </div>
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="flex items-center gap-1.5 text-xs font-semibold"
-          style={{ color: 'var(--app-danger)' }}
-          aria-label="Keluar"
+        <span
+          className="app-icon-tile h-8 w-8"
+          style={{ fontSize: '0.75rem', fontWeight: 700 }}
         >
-          <LogOut size={15} />
-          Keluar
-        </button>
+          A
+        </span>
+        <span className="text-sm font-bold">Admin Jastip</span>
       </header>
       <Outlet />
+      <AdminBottomNav />
     </div>
   )
 }

@@ -8,6 +8,7 @@ import {
   findSubscriptionById,
   getAdminMetrics,
   listAdminSubscriptions,
+  listAdminUsers,
 } from './admin-queries'
 import { nextProWindow } from './subscription'
 import {
@@ -20,6 +21,14 @@ export const fetchAdminMetrics = createServerFn({ method: 'GET' }).handler(
   async () => {
     await requireAdminUser()
     return getAdminMetrics()
+  },
+)
+
+/** Admin lihat daftar semua customer (user aplikasi) + status langganan & revenue. */
+export const fetchAdminUsers = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    await requireAdminUser()
+    return listAdminUsers()
   },
 )
 
@@ -132,7 +141,9 @@ async function upsertSubscriptionSettings(
       .set({ ...patch, updatedAt: new Date(), updatedBy: adminId })
       .where(eq(subscriptionSettings.id, existing.id))
   } else {
-    await db.insert(subscriptionSettings).values({ ...patch, updatedBy: adminId })
+    await db
+      .insert(subscriptionSettings)
+      .values({ ...patch, updatedBy: adminId })
   }
 }
 

@@ -1,7 +1,12 @@
-import { and, desc, eq, gte, sql } from 'drizzle-orm'
+import { and, desc, eq, gte, max, sql } from 'drizzle-orm'
 import { db } from '../db'
 import { sessions, subscriptions, users } from '../db/schema'
-import type { SubscriptionStatus } from './subscription'
+import { resolveEntitlement } from './subscription'
+import type {
+  PlanKey,
+  SubscriptionStatus,
+  SubscriptionWindow,
+} from './subscription'
 
 /**
  * Akses data admin (server-side), sama polanya dengan `subscription-queries.ts`:
@@ -114,4 +119,136 @@ export async function getAdminMetrics(
     proPending: Number(proPendingRow.value),
     proRevenue: Number(revenueRow.value),
   }
+}
+
+export interface AdminUserRow {
+  id: string
+  name: string
+  email: string
+  brandName: string | null
+  isAdmin: boolean
+  /** Tanggal daftar (buat urutan & kolom "Terdaftar"). */
+  createdAt: Date
+  /** Plan hasil `resolveEntitlement()`: `pro`, `trial`, atau `free`. */
+  plan: PlanKey
+  /** Akhir masa PRO — cuma terisi kalau `plan === 'pro'` (lihat "Aktif sampai"). */
+  proUntil: Date | null
+  /** Ada pengajuan upgrade yang masih menunggu verifikasi admin. */
+  hasPending: boolean
+  /** Login terakhir (baris `sessions` terbaru). `null` kalau belum pernah login. */
+  lastLoginAt: Date | null
+  /** Login dalam `ACTIVE_USER_WINDOW_DAYS` hari terakhir — definisi sama dengan metrik "Active Users". */
+  isActive: boolean
+  /** `SUM(amount)` pengajuan yang PERNAH disetujui (active + expired) — sama dengan metrik "PRO Revenue". */
+  revenue: number
+}
+
+/**
+ * Semua user (customer aplikasi) + status langganan, aktivitas login, dan total
+ * revenue — dipakai halaman Customer admin (`/admin/customers`).
+ *
+ * Status plan sengaja dihitung lewat `resolveEntitlement()` — satu-satunya
+ * tempat aturan PRO/trial/FREE ditulis — bukan dicek ulang di query. Datanya
+ * diambil dengan query agregat terpisah lalu digabung di memori: jumlah baris
+ * `subscriptions` & `sessions` per user kecil, dan cara ini menghindari join
+ * yang bikin baris user terduplikasi (harga bayar: satu peta per metrik).
+ */
+export async function listAdminUsers(
+  now: Date = new Date(),
+): Promise<Array<AdminUserRow>> {
+  const activeSince = new Date(
+    now.getTime() - ACTIVE_USER_WINDOW_DAYS * 24 * 60 * 60 * 1000,
+  )
+
+  const [userRows, activeRows, pendingRows, revenueRows, lastLoginRows] =
+    await Promise.all([
+      db.select().from(users).orderBy(desc(users.createdAt), desc(users.id)),
+      // Cuma baris yang masa berlakunya belum lewat; `resolveEntitlement()`
+      // tetap penentu akhir lewat `ends_at` (pola sama dengan metrik PRO Active).
+      db
+        .select({
+          userId: subscriptions.userId,
+          status: subscriptions.status,
+          startedAt: subscriptions.startedAt,
+          endsAt: subscriptions.endsAt,
+        })
+        .from(subscriptions)
+        .where(
+          and(
+            eq(subscriptions.status, 'active'),
+            sql`${subscriptions.endsAt} > ${now}`,
+          ),
+        ),
+      db
+        .select({ userId: subscriptions.userId })
+        .from(subscriptions)
+        .where(eq(subscriptions.status, 'pending')),
+      db
+        .select({
+          userId: subscriptions.userId,
+          total: sql<string>`coalesce(sum(${subscriptions.amount}), 0)`,
+        })
+        .from(subscriptions)
+        .where(sql`${subscriptions.status} in ('active', 'expired')`)
+        .groupBy(subscriptions.userId),
+      // `group by` bikin user yang belum pernah login tidak muncul di hasil —
+      // itu memang yang diinginkan (`lastLoginAt` jadi null). Pakai helper
+      // `max()` dari drizzle (bukan `sql` mentah) supaya hasilnya dipetakan
+      // lewat tipe kolomnya: driver mengembalikan timestamp sebagai string, dan
+      // mapping itu yang mengubahnya jadi Date — sama seperti `users.createdAt`.
+      db
+        .select({
+          userId: sessions.userId,
+          lastLoginAt: max(sessions.createdAt),
+        })
+        .from(sessions)
+        .groupBy(sessions.userId),
+    ])
+
+  const windowsByUser = new Map<string, Array<SubscriptionWindow>>()
+  for (const row of activeRows) {
+    const windows = windowsByUser.get(row.userId) ?? []
+    windows.push({
+      status: row.status,
+      startedAt: row.startedAt,
+      endsAt: row.endsAt,
+    })
+    windowsByUser.set(row.userId, windows)
+  }
+
+  const pendingUserIds = new Set(pendingRows.map((row) => row.userId))
+  const revenueByUser = new Map<string, number>(
+    revenueRows.map((row) => [row.userId, Number(row.total)]),
+  )
+  const lastLoginByUser = new Map<string, Date | null>(
+    lastLoginRows.map((row) => [row.userId, row.lastLoginAt]),
+  )
+
+  return userRows.map((user) => {
+    const entitlement = resolveEntitlement(
+      {
+        trialStartedAt: user.trialStartedAt,
+        trialEndsAt: user.trialEndsAt,
+        subscriptions: windowsByUser.get(user.id) ?? [],
+      },
+      now,
+    )
+    const lastLoginAt = lastLoginByUser.get(user.id) ?? null
+
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      brandName: user.brandName,
+      isAdmin: user.isAdmin,
+      createdAt: user.createdAt,
+      plan: entitlement.plan,
+      proUntil: entitlement.proUntil,
+      hasPending: pendingUserIds.has(user.id),
+      lastLoginAt,
+      isActive:
+        lastLoginAt !== null && lastLoginAt.getTime() >= activeSince.getTime(),
+      revenue: revenueByUser.get(user.id) ?? 0,
+    }
+  })
 }

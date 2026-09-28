@@ -17,6 +17,8 @@ import { Route as RegisterRouteImport } from './routes/register'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppKeuanganRouteImport } from './routes/_app/keuangan'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as AdminCustomersRouteImport } from './routes/admin/customers'
+import { Route as AdminPengaturanRouteImport } from './routes/admin/pengaturan'
 import { Route as ResetSandiTokenRouteImport } from './routes/reset-sandi.$token'
 import { Route as AppEventsEventIdRouteImport } from './routes/_app/events.$eventId'
 import { Route as AppEventsNewRouteImport } from './routes/_app/events.new'
@@ -70,6 +72,16 @@ const AppKeuanganRoute = AppKeuanganRouteImport.update({
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminCustomersRoute = AdminCustomersRouteImport.update({
+  id: '/customers',
+  path: '/customers',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminPengaturanRoute = AdminPengaturanRouteImport.update({
+  id: '/pengaturan',
+  path: '/pengaturan',
   getParentRoute: () => AdminRoute,
 } as any)
 const ResetSandiTokenRoute = ResetSandiTokenRouteImport.update({
@@ -157,6 +169,8 @@ export interface FileRoutesByFullPath {
   '/lupa-sandi': typeof LupaSandiRoute
   '/register': typeof RegisterRoute
   '/keuangan': typeof AppKeuanganRoute
+  '/admin/customers': typeof AdminCustomersRoute
+  '/admin/pengaturan': typeof AdminPengaturanRoute
   '/reset-sandi/$token': typeof ResetSandiTokenRoute
   '/admin/': typeof AdminIndexRoute
   '/events/$eventId': typeof AppEventsEventIdRoute
@@ -179,6 +193,8 @@ export interface FileRoutesByTo {
   '/lupa-sandi': typeof LupaSandiRoute
   '/register': typeof RegisterRoute
   '/keuangan': typeof AppKeuanganRoute
+  '/admin/customers': typeof AdminCustomersRoute
+  '/admin/pengaturan': typeof AdminPengaturanRoute
   '/reset-sandi/$token': typeof ResetSandiTokenRoute
   '/': typeof AppIndexRoute
   '/admin': typeof AdminIndexRoute
@@ -205,6 +221,8 @@ export interface FileRoutesById {
   '/lupa-sandi': typeof LupaSandiRoute
   '/register': typeof RegisterRoute
   '/_app/keuangan': typeof AppKeuanganRoute
+  '/admin/customers': typeof AdminCustomersRoute
+  '/admin/pengaturan': typeof AdminPengaturanRoute
   '/reset-sandi/$token': typeof ResetSandiTokenRoute
   '/_app/': typeof AppIndexRoute
   '/admin/': typeof AdminIndexRoute
@@ -232,6 +250,8 @@ export interface FileRouteTypes {
     | '/lupa-sandi'
     | '/register'
     | '/keuangan'
+    | '/admin/customers'
+    | '/admin/pengaturan'
     | '/reset-sandi/$token'
     | '/admin/'
     | '/events/$eventId'
@@ -254,6 +274,8 @@ export interface FileRouteTypes {
     | '/lupa-sandi'
     | '/register'
     | '/keuangan'
+    | '/admin/customers'
+    | '/admin/pengaturan'
     | '/reset-sandi/$token'
     | '/'
     | '/admin'
@@ -279,6 +301,8 @@ export interface FileRouteTypes {
     | '/lupa-sandi'
     | '/register'
     | '/_app/keuangan'
+    | '/admin/customers'
+    | '/admin/pengaturan'
     | '/reset-sandi/$token'
     | '/_app/'
     | '/admin/'
@@ -366,6 +390,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/customers': {
+      id: '/admin/customers'
+      path: '/customers'
+      fullPath: '/admin/customers'
+      preLoaderRoute: typeof AdminCustomersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/pengaturan': {
+      id: '/admin/pengaturan'
+      path: '/pengaturan'
+      fullPath: '/admin/pengaturan'
+      preLoaderRoute: typeof AdminPengaturanRouteImport
       parentRoute: typeof AdminRoute
     }
     '/reset-sandi/$token': {
@@ -511,10 +549,14 @@ const AppRouteChildren: AppRouteChildren = {
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 interface AdminRouteChildren {
+  AdminCustomersRoute: typeof AdminCustomersRoute
+  AdminPengaturanRoute: typeof AdminPengaturanRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminCustomersRoute: AdminCustomersRoute,
+  AdminPengaturanRoute: AdminPengaturanRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
 

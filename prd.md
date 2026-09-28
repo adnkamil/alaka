@@ -12,8 +12,9 @@ user memiliki data (event, pesanan, aturan fee) yang terisolasi dari user
 lain. Semua user memiliki role yang sama sebagai jastiper (tidak ada role
 customer terpisah), dengan satu pengecualian: **admin** — ditandai kolom
 `users.is_admin` (default `false`, diaktifkan manual lewat DB) — yang punya
-dashboard sendiri di `/admin` untuk mengatur harga & QRIS pembayaran PRO
-serta memverifikasi pengajuan langganan (lihat 4.13).
+dashboard sendiri di `/admin` untuk memverifikasi pengajuan langganan, daftar
+customer di `/admin/customers`, serta halaman pengaturan di `/admin/pengaturan`
+untuk harga & QRIS pembayaran PRO (lihat 4.13–4.15).
 
 Model bisnisnya langganan (lihat 5): setiap user baru otomatis dapat **trial
 30 hari** dengan semua fitur terbuka, lalu turun ke paket **FREE** (fitur
@@ -233,7 +234,12 @@ Astra Otoshop).
 ### 4.13 Dashboard Admin — `/admin`
 
 Halaman terpisah untuk **admin**, di luar `app-shell` member (`src/routes/admin.tsx`
-punya layout sendiri: tanpa bottom nav member, header sendiri + tombol **Keluar**).
+punya layout sendiri: tanpa bottom nav member, header sendiri yang cuma berisi
+identitas "Admin Jastip", dan navigasi antar halaman admin dipasang sebagai
+**bottom tab** — Dashboard / Customer / Pengaturan — lihat di bawah). Halaman
+dashboard-nya fokus ke **ringkasan user** dan **verifikasi pengajuan**; daftar
+customer pindah ke halaman sendiri (4.15), sedangkan pengaturan pembayaran PRO dan
+tombol **Keluar** ada di 4.14.
 User biasa yang membuka `/admin` di-redirect ke `/`; sebaliknya user admin yang
 membuka halaman member (`_app`) langsung dipindahkan ke `/admin`, dan login / callback
 Google admin juga mendarat di `/admin`.
@@ -243,11 +249,6 @@ mengikat ada di server — **setiap** server function admin memanggil
 `requireAdminUser()` (`src/lib/admin.ts`) di baris pertama handler-nya dan melempar
 `AdminRequiredError` (`code = 'ADMIN_REQUIRED'`) kalau bukan admin.
 
-**Pengaturan pembayaran PRO** (kartu teratas):
-
-- **QRIS Pembayaran** — upload / ganti gambar QRIS yang dipakai member saat mengajukan upgrade (`UpdateQrisModal`), maks 1.5MB (PNG/JPEG/WEBP). Kalau belum ada QRIS, kartunya memberi tahu bahwa member belum bisa mengajukan upgrade.
-- **Harga Membership** — nominal yang wajib ditransfer member, bisa diubah inline. Perubahan harga **hanya berlaku untuk pengajuan baru** (lihat 5.7).
-
 **Kartu metrik** (`getAdminMetrics`) — selalu **2 kartu per baris**, bukan menumpuk
 satu-satu. Grid-nya sengaja memakai `grid grid-cols-2` polos, **bukan**
 `sm:grid-cols-2`: `sm:` itu breakpoint **viewport**, bukan lebar container. Karena
@@ -256,10 +257,27 @@ paling sering dipakai — selalu di bawah 640px, sehingga `sm:grid-cols-2` tidak
 aktif dan kartunya jatuh menumpuk satu per baris walau sebenarnya 480px cukup untuk
 dua kartu. Dengan `grid-cols-2` polos, dua kartu per baris berlaku di semua ukuran.
 
-Layout admin memakai kelas `app-shell` + `max-w-2xl`, tapi `max-w-2xl` tidak menang:
-`.app-shell { max-width: 480px }` di `src/styles.css` ditulis **tanpa `@layer`**,
-sedangkan utility Tailwind ada di `@layer utilities` — aturan tanpa layer selalu
-menang, jadi lebar efektif halaman admin tetap 480px (sama seperti shell member).
+Layout admin memakai kelas `app-shell app-shell--with-nav`: lebar tetap dihitung
+`.app-shell` di `src/styles.css` (maks 480px, sama seperti shell member), sedangkan
+`--with-nav` menyediakan `padding-bottom: calc(6rem + env(safe-area-inset-bottom))`
+supaya isi paling bawah (mis. tombol **Keluar** di Pengaturan) tidak tertutup nav
+yang `fixed` di mobile.
+
+**Navigasi admin = bottom tab** (`src/components/AdminBottomNav.tsx`, bentuknya
+meniru `BottomNav.tsx` member: fixed, maks 480px, aman dari safe-area):
+
+| Tab        | Route               | Isi                                     |
+| ---------- | ------------------- | --------------------------------------- |
+| Dashboard  | `/admin`            | Ringkasan metrik + verifikasi           |
+| Customer   | `/admin/customers`  | Daftar semua customer (4.15)            |
+| Pengaturan | `/admin/pengaturan` | Harga & QRIS PRO + tombol Keluar (4.14) |
+
+Halaman aktif ditentukan dari `pathname` yang trailing slash-nya dirapikan, bukan
+lewat `activeProps`: kecocokan route bawaan TanStack Router itu berawalan (prefix),
+jadi tab Dashboard (`/admin`) ikut menyala saat admin sedang di `/admin/customers`.
+Cara yang sama juga memperlakukan `/admin` dan `/admin/` sebagai satu halaman
+(router memang me-redirect `/admin/` → `/admin`). Karena header sudah bebas dari
+tautan navigasi, tautan "← Dashboard" lama dihapus — pindah halaman cukup lewat tab.
 
 | Kartu        | Isi                                                                                                                                                               |
 | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -269,6 +287,10 @@ menang, jadi lebar efektif halaman admin tetap 480px (sama seperti shell member)
 | PRO Pending  | Pengajuan berstatus `pending`                                                                                                                                     |
 | PRO Revenue  | `SUM(amount)` dari semua pengajuan yang **pernah disetujui** (`active` + `expired`), diformat Rupiah                                                              |
 
+Di bawah kartu metrik ada pintasan **Semua Customer** — kartu tautan yang menyebut
+jumlah `totalUsers` dari metrik di atas dan membuka daftar lengkapnya (4.15), supaya
+angka "Total Users" bisa langsung ditelusuri ke orangnya.
+
 **Verifikasi langganan PRO**:
 
 - Daftar pengajuan **lintas semua user**, terbaru dulu, difilter dengan tab **Pending / PRO Aktif / Semua** (filter di client). Kalau ada pengajuan menggantung sementara tab aktif bukan Pending, muncul tombol pintasan "Tinjau N pengajuan pending".
@@ -276,6 +298,58 @@ menang, jadi lebar efektif halaman admin tetap 480px (sama seperti shell member)
 - **Setujui** (`approveSubscription`): baris `pending` jadi `active` dengan jendela masa aktif dihitung `nextProWindow()` — perpanjangan menyambung dari `ends_at` yang masih berlaku, bukan dari hari ini — plus `reviewed_by`, `reviewed_at`, dan catatan review.
 - **Tolak** (`rejectSubscription`): status jadi `rejected` + catatan review.
 - Pengajuan yang sudah pernah diproses tidak bisa diproses ulang (server menolak dengan "Pengajuan ini sudah diproses sebelumnya"). Catatan review diisi lewat `ReviewSubscriptionModal` (mode approve / reject).
+
+### 4.14 Pengaturan Admin — `/admin/pengaturan`
+
+Halaman terpisah di dalam layout admin yang sama (`src/routes/admin/pengaturan.tsx`),
+dibuka lewat **tab Pengaturan** di bottom nav admin. Isinya semua yang bukan
+aktivitas harian admin:
+
+- **Pengaturan Pembayaran PRO** (kartu utama, pindahan dari dashboard):
+  - **QRIS Pembayaran** — upload / ganti gambar QRIS yang dipakai member saat mengajukan upgrade (`UpdateQrisModal`), maks 1.5MB (PNG/JPEG/WEBP). Kalau belum ada QRIS, kartunya memberi tahu bahwa member belum bisa mengajukan upgrade.
+  - **Harga Membership** — nominal yang wajib ditransfer member, bisa diubah inline lewat `subscriptionSettingsQuery` (query key `admin-subscription-settings`, di-load di loader route ini). Perubahan harga **hanya berlaku untuk pengajuan baru** (lihat 5.7).
+- **Tombol Keluar** di bawah kartu — dulu ada di header layout admin, sekarang tinggal di sini (`logoutUser()` → redirect `/login`).
+
+Karena halaman ini yang membaca `fetchSubscriptionSettingsAdmin()`, dashboard tidak
+lagi menyentuh pengaturan pembayaran sama sekali — loader `/admin` cuma butuh metrik
+dan daftar pengajuan.
+
+### 4.15 Daftar Customer (Admin) — `/admin/customers`
+
+Daftar **semua akun** yang terdaftar di aplikasi (`src/routes/admin/customers.tsx`),
+dibuka lewat **tab Customer** di bottom nav admin atau pintasan "Semua Customer" di
+dashboard (4.13). Fokusnya: siapa orangnya, status langganannya, apakah masih aktif
+login, dan berapa total uang yang sudah masuk dari dia.
+
+Data datang dari satu server function `fetchAdminUsers` → `listAdminUsers()`
+(`src/lib/admin-queries.ts`, query key `admin-users`, di-`ensureQueryData` di loader
+route). Isi tiap baris:
+
+| Kolom             | Sumber                                                                                                                     |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Nama / email      | `users.name`, `users.email`, plus `brand_name` sebagai judul kartu                                                         |
+| Plan + PRO sampai | `resolveEntitlement()` — aturan trial/FREE/PRO **tidak** ditulis ulang di query (lihat 5.1)                                |
+| Pending           | Ada `subscriptions` berstatus `pending` (badge kuning)                                                                     |
+| Status aktif      | Ada sesi login dalam **14 hari** terakhir (`ACTIVE_USER_WINDOW_DAYS`), sama ambangnya dengan kartu "Active Users" di 4.13  |
+| Login terakhir    | `max(sessions.created_at)` per user                                                                                        |
+| Total revenue     | `SUM(amount)` dari langganan yang pernah disetujui (`active` + `expired`) — definisi yang sama dengan metrik "PRO Revenue" |
+| Terdaftar         | `users.created_at`                                                                                                         |
+
+Detail teknis:
+
+- **Digabung di memori, bukan lewat `join`.** Semua user diambil sekali, lalu jumlah
+  langganan / revenue / login terakhir diambil sebagai query agregat terpisah
+  (per user) dan dipetakan ke peta (`Map`) — join langsung ke `users` akan
+  menggandakan baris user dan bikin `SUM`-nya salah. Alasan yang sama dipakai di
+  metrik dashboard.
+- **`last_login_at` wajib lewat helper `max()` dari drizzle**, bukan `sql` mentah:
+  driver `pg` di sini dikonfigurasi drizzle untuk mengembalikan kolom tanggal sebagai
+  **string**, dan mapping tipe kolom itulah yang mengubahnya jadi `Date`. `sql\`max(...)\``mentah tidak dipetakan, sehingga`isActive` gagal (`getTime is not a function`).
+- **Tab & urutan di client** (tanpa round-trip server): tab **Semua / PRO / Trial /
+  Pending / FREE** dengan jumlah per tab, kotak cari nama/email, dan pengurutan
+  **Terbaru** (default, `created_at` menurun) ↔ **Revenue tertinggi**. Tab Pending
+  sengaja terpisah dari tab plan karena pengajuan bisa nempel di plan apa pun.
+- Halaman ini **read-only**: tindakan admin (setujui/tolak) tetap di dashboard 4.13.
 
 ## 5. Paket & Entitlement (Trial / FREE / PRO)
 
@@ -338,7 +412,7 @@ Label & deskripsi tiap kunci (`PRO_FEATURE_INFO`), label/deskripsi plan (`PLAN_I
 
 ### 5.7 Pengaturan pembayaran PRO (admin)
 
-- Harga membership PRO **bukan konstanta di kode**: disimpan di tabel singleton `subscription_settings` (`pro_price`) dan diubah admin dari `/admin`. Durasi PRO tetap konstanta `PRO_DURATION_DAYS` (30 hari).
+- Harga membership PRO **bukan konstanta di kode**: disimpan di tabel singleton `subscription_settings` (`pro_price`) dan diubah admin dari `/admin/pengaturan` (lihat 4.14). Durasi PRO tetap konstanta `PRO_DURATION_DAYS` (30 hari).
 - Gambar QRIS pembayaran ada di tabel yang sama (`qris_image`, data URL base64, maks 1.5MB) — dibaca member lewat `fetchSubscriptionPaymentInfo()` dan ditulis admin lewat `updateSubscriptionQris()`. Barisnya cuma satu: `getSubscriptionSettings()` ambil baris pertama dan update-nya selalu upsert.
 - `subscriptions.amount` di-snapshot dari harga tersebut **saat pengajuan dibuat**, jadi mengubah harga tidak mengubah nominal pengajuan yang sudah masuk (dan sebaliknya, nominal lama tidak berubah walau harga dinaikkan).
 
@@ -357,10 +431,13 @@ Bottom tab bar (5 slot), fixed, dengan `padding-bottom: env(safe-area-inset-bott
 Halaman detail (Detail Event, Fee Rules, Customers, Invoice) menyembunyikan bottom nav dan menggunakan header dengan tombol back. Path prefix yang menyembunyikan bottom nav: `/events/`, `/profil/fee-rules`, `/profil/customers`, `/invoice/`.
 
 Halaman admin tidak ikut skema tab di atas: `/admin` (dan sub-halamannya) memakai
-layout sendiri di luar `app-shell` member — tanpa bottom nav, header sendiri dengan
-identitas "Admin Jastip" + tombol Keluar. User dengan `is_admin = true` yang membuka
+layout sendiri di luar shell member, **tanpa** bottom nav member, dengan header
+sendiri yang cuma berisi identitas "Admin Jastip". Navigasi antar halaman admin
+dipasang sebagai **bottom tab sendiri** (`AdminBottomNav`, 3 tab: **Dashboard /
+Customer / Pengaturan**, halaman aktif ditandai warna aksen). Tombol **Keluar** ada
+di `/admin/pengaturan`, bukan di header. User dengan `is_admin = true` yang membuka
 halaman member otomatis dipindahkan ke `/admin`, dan login / callback Google admin
-mendarat di `/admin` (lihat 4.13).
+mendarat di `/admin` (lihat 4.13–4.15).
 
 ## 7. Skema Database
 
@@ -588,6 +665,7 @@ Setiap perubahan skema (tabel, kolom, enum, index, constraint) **wajib lewat fil
 src/
 ├── components/           # Komponen UI reusable
 │   ├── AddOrderSheet.tsx       # Bottom sheet tambah/edit pesanan
+│   ├── AdminBottomNav.tsx      # Bottom tab admin (Dashboard/Customer/Pengaturan)
 │   ├── BottomNav.tsx           # Bottom tab navigation
 │   ├── ChangePasswordModal.tsx
 │   ├── CustomerFormModal.tsx
@@ -608,8 +686,8 @@ src/
 │   └── schema.ts              # Definisi semua tabel & relasi (termasuk subscriptions & subscription_settings)
 ├── lib/                  # Server functions (createServerFn) + modul murni
 │   ├── admin.ts               # requireAdminUser + AdminRequiredError (pagar admin)
-│   ├── admin-functions.ts     # Metrik, daftar pengajuan, approve/reject, QRIS & harga PRO
-│   ├── admin-queries.ts       # Query metrik admin + pengajuan lintas user (server)
+│   ├── admin-functions.ts     # Metrik, daftar customer & pengajuan, approve/reject, QRIS & harga PRO
+│   ├── admin-queries.ts       # Query metrik admin + daftar customer + pengajuan lintas user (server)
 │   ├── auth.ts                # getSessionUser, session management
 │   ├── auth-functions.ts      # login, register, logout, updateProfile, changePassword
 │   ├── client-bundle-safety.test.ts  # Guard: `db`/`pg` tidak boleh bocor ke bundle client
@@ -664,9 +742,11 @@ src/
 │   │       ├── fee-rules/index.tsx
 │   │       ├── fee-rules/new.tsx
 │   │       └── fee-rules/$feeRuleId.tsx
-│   ├── admin.tsx              # Layout admin (guard is_admin + header Keluar, tanpa BottomNav)
+│   ├── admin.tsx              # Layout admin (guard is_admin + AdminBottomNav, header identitas)
 │   ├── admin/
-│   │   └── index.tsx          # Dashboard admin (metrik, pengaturan PRO, verifikasi pengajuan)
+│   │   ├── index.tsx          # Dashboard admin (metrik user, verifikasi pengajuan)
+│   │   ├── customers.tsx      # Daftar semua customer (plan, aktivitas, revenue)
+│   │   └── pengaturan.tsx     # Pengaturan pembayaran PRO (QRIS + harga) + tombol Keluar
 │   ├── api/auth/google/
 │   │   ├── index.ts           # Redirect ke Google OAuth
 │   │   └── callback.ts        # Callback Google OAuth
