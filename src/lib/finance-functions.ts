@@ -14,7 +14,9 @@ export const getFinanceSummary = createServerFn({ method: 'GET' }).handler(
   async () => {
     const user = await requireUser()
 
-    const [totals] = await db
+    // Kelima query di bawah saling independen (semuanya cuma butuh user.id),
+    // jadi dijalankan paralel — bukan berurutan satu per satu.
+    const totalsQuery = db
       .select({
         totalOut: sql<string>`coalesce(sum(case when ${orders.paymentStatus} in ('paid', 'shipped') then ${items.originalPrice} * ${items.qty} else 0 end), 0)`,
         netProfit: sql<string>`coalesce(sum(case when ${orders.paymentStatus} in ('paid', 'shipped') then ${items.fee} * ${items.qty} else 0 end), 0)`,
@@ -27,14 +29,14 @@ export const getFinanceSummary = createServerFn({ method: 'GET' }).handler(
     // Uang masuk = nominal yang sudah dibayar (DP ikut kehitung). Dihitung
     // langsung dari `orders.paid_amount`, TANPA join items — kalau lewat join
     // items, nominal per pesanan bakal terkali jumlah barangnya.
-    const [paidTotals] = await db
+    const paidTotalsQuery = db
       .select({ totalIn: sql<string>`coalesce(sum(${orders.paidAmount}), 0)` })
       .from(events)
       .innerJoin(orders, eq(orders.eventId, events.id))
       .where(eq(events.userId, user.id))
 
     // Monthly revenue chart counts orders that are paid or shipped.
-    const monthly = await db
+    const monthlyQuery = db
       .select({
         month: sql<string>`to_char(${orders.createdAt}, 'YYYY-MM')`,
         revenue: sql<string>`coalesce(sum((${items.originalPrice} + ${items.fee}) * ${items.qty}), 0)`,
@@ -52,21 +54,17 @@ export const getFinanceSummary = createServerFn({ method: 'GET' }).handler(
       .orderBy(sql`to_char(${orders.createdAt}, 'YYYY-MM')`)
 
     // "Masuk" per event juga dari paid_amount (tanpa join items).
-    const paidPerEvent = new Map(
-      (
-        await db
-          .select({
-            eventId: events.id,
-            amountIn: sql<string>`coalesce(sum(${orders.paidAmount}), 0)`,
-          })
-          .from(events)
-          .innerJoin(orders, eq(orders.eventId, events.id))
-          .where(eq(events.userId, user.id))
-          .groupBy(events.id)
-      ).map((row) => [row.eventId, row.amountIn]),
-    )
+    const paidPerEventQuery = db
+      .select({
+        eventId: events.id,
+        amountIn: sql<string>`coalesce(sum(${orders.paidAmount}), 0)`,
+      })
+      .from(events)
+      .innerJoin(orders, eq(orders.eventId, events.id))
+      .where(eq(events.userId, user.id))
+      .groupBy(events.id)
 
-    const perEvent = await db
+    const perEventQuery = db
       .select({
         eventId: events.id,
         eventName: events.name,
@@ -79,6 +77,18 @@ export const getFinanceSummary = createServerFn({ method: 'GET' }).handler(
       .leftJoin(items, eq(items.orderId, orders.id))
       .where(eq(events.userId, user.id))
       .groupBy(events.id)
+
+    const [[totals], [paidTotals], monthly, paidPerEventRows, perEvent] =
+      await Promise.all([
+        totalsQuery,
+        paidTotalsQuery,
+        monthlyQuery,
+        paidPerEventQuery,
+        perEventQuery,
+      ])
+    const paidPerEvent = new Map(
+      paidPerEventRows.map((row) => [row.eventId, row.amountIn]),
+    )
 
     return {
       totals: { ...totals, totalIn: paidTotals.totalIn },

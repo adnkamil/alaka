@@ -3,6 +3,7 @@ import { routeTree } from './routeTree.gen'
 
 import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query'
 import { getContext } from './integrations/tanstack-query/root-provider'
+import PageSkeleton from './components/PageSkeleton'
 
 export function getRouter() {
   const context = getContext()
@@ -13,6 +14,12 @@ export function getRouter() {
     scrollRestoration: true,
     defaultPreload: 'intent',
     defaultPreloadStaleTime: 0,
+    // Tampilkan skeleton di halaman tujuan kalau data belum siap dalam 150ms,
+    // alih-alih membiarkan halaman lama bertahan. Default router: 1000ms +
+    // minimal 500ms, sehingga delay 600-800ms tidak pernah menampilkan apa pun.
+    defaultPendingComponent: PageSkeleton,
+    defaultPendingMs: 150,
+    defaultPendingMinMs: 0,
   })
 
   setupRouterSsrQueryIntegration({ router, queryClient: context.queryClient })

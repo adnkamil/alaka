@@ -49,6 +49,9 @@ function AdminSettingsPage() {
   async function handleLogout() {
     await logoutUser()
     await navigate({ to: '/login' })
+    // Setelah halaman lama di-unmount: kosongkan cache supaya akun berikutnya
+    // di tab yang sama tidak melihat 'current-user'/data akun sebelumnya.
+    queryClient.clear()
   }
 
   async function handleUpdateQris(qrisImage: string) {

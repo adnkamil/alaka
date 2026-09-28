@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Eye, EyeOff, ShoppingBag } from 'lucide-react'
 import { z } from 'zod'
@@ -21,6 +22,7 @@ const GOOGLE_ERROR_MESSAGES: Record<string, string> = {
 
 function LoginPage() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { error: googleError } = Route.useSearch()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -35,6 +37,8 @@ function LoginPage() {
     setIsSubmitting(true)
     try {
       const result = await loginUser({ data: { email, password } })
+      // Buang cache sesi/akun sebelumnya (guard `_app` membaca 'current-user').
+      queryClient.clear()
       await navigate({ to: result.isAdmin ? '/admin' : '/' })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Gagal masuk')

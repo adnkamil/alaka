@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Eye, EyeOff, ShoppingBag } from 'lucide-react'
 import { registerUser } from '../lib/auth-functions'
@@ -9,6 +10,7 @@ export const Route = createFileRoute('/register')({
 
 function RegisterPage() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [name, setName] = useState('')
   const [brandName, setBrandName] = useState('')
   const [email, setEmail] = useState('')
@@ -30,6 +32,7 @@ function RegisterPage() {
     setIsSubmitting(true)
     try {
       await registerUser({ data: { name, brandName, email, password } })
+      queryClient.clear()
       await navigate({ to: '/' })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Gagal mendaftar')

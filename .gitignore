@@ -13,3 +13,6 @@ dev-dist
 .vinxi
 __unconfig*
 todos.json
+
+# Local Netlify folder
+.netlify

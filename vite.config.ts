@@ -21,7 +21,9 @@ const config = defineConfig({
     devtools(),
     tailwindcss(),
     tanstackStart(),
-    netlify(),
+    netlify({
+      dev: { edgeFunctions: { enabled: false } },
+    }),
     viteReact(),
     VitePWA({
       registerType: 'autoUpdate',
