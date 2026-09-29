@@ -46,6 +46,20 @@ export function validateFeeTiers(
   return errors
 }
 
+/**
+ * Harga min untuk tier baru pada form Tambah/Edit aturan fee: lanjutan dari
+ * tier terakhir (`harga maks tier terakhir + 1`), sesuai rekomendasi di
+ * prd.md §4.9 supaya tier baru tidak tumpang tindih dan user tidak perlu
+ * menghitung sendiri. Kalau belum ada tier sama sekali, mulai dari 0.
+ *
+ * "Tier terakhir" = baris terakhir di daftar form, karena urutan tier di form
+ * itulah yang dibaca user ("tier sebelumnya" = kartu di atasnya).
+ */
+export function nextTierMinPrice(tiers: Array<FeeTierInput>): number {
+  if (tiers.length === 0) return 0
+  return tiers[tiers.length - 1].maxPrice + 1
+}
+
 export function findFeeForPrice(
   tiers: Array<FeeTierInput>,
   price: number,

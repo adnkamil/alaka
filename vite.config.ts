@@ -28,9 +28,9 @@ const config = defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'ALAKA',
-        short_name: 'ALAKA',
-        description: 'ALAKA — aplikasi manajemen jastip (titip beli)',
+        name: 'Alaka',
+        short_name: 'Alaka',
+        description: 'Alaka — aplikasi manajemen jastip (titip beli)',
         lang: 'id',
         theme_color: '#b6584b',
         background_color: '#fdf9ef',

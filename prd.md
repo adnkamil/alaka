@@ -203,7 +203,7 @@ Astra Otoshop).
 **Validasi tier (wajib):**
 
 - Tier baru tidak boleh **tumpang tindih** dengan tier lain dalam aturan yang sama.
-- Rekomendasi: tier berikutnya harus mulai dari `tier_sebelumnya.max + 1`.
+- Rekomendasi: tier berikutnya harus mulai dari `tier_sebelumnya.max + 1`. Di form Tambah/Edit, tombol **Tambah tier** otomatis mengisi harga min tier baru = `harga maks tier terakhir + 1` (helper `nextTierMinPrice` di `fee-tier-validation.ts`), jadi user tinggal mengisi harga maks & fee.
 - Validasi dilakukan **real-time di form** (border merah + pesan error spesifik, tombol simpan disabled selama masih overlap) **dan divalidasi ulang di server** sebelum data disimpan.
 
 ### 4.10 Manajemen Customer — `/profil/customers`
