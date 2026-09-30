@@ -25,7 +25,7 @@ function FeeRulesListPage() {
   const { data: rules } = useSuspenseQuery(feeRulesQuery)
 
   return (
-    <main className="mx-auto max-w-lg px-4 pb-8 pt-6">
+    <main className="mx-auto flex min-h-[100dvh] max-w-lg flex-col px-4 pb-16 pt-6">
       <header className="mb-6 flex items-center gap-3">
         <Link to="/profil" style={{ color: 'var(--app-text)' }}>
           <ArrowLeft size={22} />
@@ -33,7 +33,13 @@ function FeeRulesListPage() {
         <h1 className="text-xl font-bold">Manajemen fee</h1>
       </header>
 
-      <div className="mb-4 flex flex-col gap-3">
+      <div
+        className={
+          rules.length === 0
+            ? 'flex flex-1 flex-col items-center justify-center pb-16 text-center'
+            : 'mb-4 flex flex-col gap-3'
+        }
+      >
         {rules.length === 0 && (
           <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
             Belum ada aturan fee.
@@ -110,13 +116,22 @@ function FeeRulesListPage() {
         })}
       </div>
 
-      <Link
-        to="/profil/fee-rules/new"
-        className="app-btn-primary w-full no-underline"
+      <div
+        className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-lg border-t px-4 pt-3"
+        style={{
+          borderColor: 'var(--app-border)',
+          background: 'var(--app-card)',
+          paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))',
+        }}
       >
-        <Plus size={18} />
-        Tambah aturan fee
-      </Link>
+        <Link
+          to="/profil/fee-rules/new"
+          className="app-btn-primary w-full no-underline"
+        >
+          <Plus size={18} />
+          Tambah aturan fee
+        </Link>
+      </div>
     </main>
   )
 }

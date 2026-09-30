@@ -90,7 +90,7 @@ function CustomersPage() {
   }
 
   return (
-    <main className="mx-auto max-w-lg px-4 pb-16 pt-6">
+    <main className="mx-auto flex min-h-[100dvh] max-w-lg flex-col px-4 pb-16 pt-6">
       <header className="mb-4 flex items-center gap-3">
         <Link to="/profil" style={{ color: 'var(--app-text)' }}>
           <ArrowLeft size={22} />
@@ -113,7 +113,13 @@ function CustomersPage() {
         />
       </div>
 
-      <div className="mb-4 flex flex-col gap-3">
+      <div
+        className={
+          customers.length === 0
+            ? 'flex flex-1 flex-col items-center justify-center pb-16 text-center'
+            : 'mb-4 flex flex-col gap-3'
+        }
+      >
         {customers.length === 0 && (
           <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
             Belum ada customer. Tambahkan supaya muncul jadi saran saat isi
