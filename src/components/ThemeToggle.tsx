@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-
-type ThemeMode = 'light' | 'dark' | 'auto'
+import { DEFAULT_THEME_MODE } from '../lib/theme'
+import type { ThemeMode } from '../lib/theme'
 
 function getInitialMode(): ThemeMode {
   if (typeof window === 'undefined') {
-    return 'auto'
+    return DEFAULT_THEME_MODE
   }
 
   const stored = window.localStorage.getItem('theme')
@@ -12,7 +12,7 @@ function getInitialMode(): ThemeMode {
     return stored
   }
 
-  return 'auto'
+  return DEFAULT_THEME_MODE
 }
 
 function applyThemeMode(mode: ThemeMode) {
@@ -32,7 +32,7 @@ function applyThemeMode(mode: ThemeMode) {
 }
 
 export default function ThemeToggle() {
-  const [mode, setMode] = useState<ThemeMode>('auto')
+  const [mode, setMode] = useState<ThemeMode>(DEFAULT_THEME_MODE)
 
   useEffect(() => {
     const initialMode = getInitialMode()

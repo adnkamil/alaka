@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { User, X } from 'lucide-react'
+import { useBackToClose } from '../lib/back-to-close'
 
 export interface CustomerFormValue {
   name: string
@@ -27,6 +28,10 @@ export default function CustomerFormModal({
   const [address, setAddress] = useState(initialValue?.address ?? '')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Komponen ini cuma dirender waktu modalnya terbuka, jadi back selalu
+  // ditutupin ke sini. Tombol back nutup dialog, bukan ninggalin halaman.
+  useBackToClose(true, onClose)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

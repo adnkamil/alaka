@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Lock, Plus, Sparkles, Trash2 } from 'lucide-react'
 import NumberInput from './ui/NumberInput'
-import { validateFeeTiers } from '../lib/fee-tier-validation'
+import { nextTierMinPrice, validateFeeTiers } from '../lib/fee-tier-validation'
 import type { FeeTierInput } from '../lib/fee-tier-validation'
 import type { FeeSuggestion } from '../lib/fee-suggestions'
 
@@ -53,8 +53,13 @@ export default function FeeRuleForm({
     )
   }
 
+  // Harga min tier baru diisi otomatis = harga maks tier sebelumnya + 1
+  // (prd.md §4.9) supaya user tinggal isi harga maks & fee-nya.
   function addTier() {
-    setTiers((prev) => [...prev, { ...emptyTier }])
+    setTiers((prev) => [
+      ...prev,
+      { ...emptyTier, minPrice: nextTierMinPrice(prev) },
+    ])
   }
 
   function removeTier(index: number) {

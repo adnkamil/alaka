@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { AlertTriangle, X } from 'lucide-react'
+import { useBackToClose } from '../../lib/back-to-close'
 
 interface ConfirmModalProps {
   open: boolean
@@ -35,6 +36,9 @@ export default function ConfirmModal({
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [open, loading, onCancel])
+
+  // Tombol back HP/browser nutup dialog, bukan ninggalin halaman.
+  useBackToClose(open, onCancel)
 
   if (!open) return null
 

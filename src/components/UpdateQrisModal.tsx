@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { QrCode, X } from 'lucide-react'
+import { useBackToClose } from '../lib/back-to-close'
 
 interface UpdateQrisModalProps {
   currentQris: string | null
@@ -28,6 +29,10 @@ export default function UpdateQrisModal({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Komponen ini cuma dirender waktu modalnya terbuka, jadi back selalu
+  // ditutupin ke sini. Tombol back nutup dialog, bukan ninggalin halaman.
+  useBackToClose(true, onClose)
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -93,7 +98,9 @@ export default function UpdateQrisModal({
             <span className="app-icon-tile h-10 w-10">
               <QrCode size={18} />
             </span>
-            <h3 className="text-base font-bold leading-tight">QRIS Pembayaran PRO</h3>
+            <h3 className="text-base font-bold leading-tight">
+              QRIS Pembayaran PRO
+            </h3>
           </div>
           <button
             type="button"
@@ -129,7 +136,10 @@ export default function UpdateQrisModal({
             ) : (
               <>
                 <QrCode size={28} style={{ color: 'var(--app-text-mute)' }} />
-                <span className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
+                <span
+                  className="text-xs"
+                  style={{ color: 'var(--app-text-soft)' }}
+                >
                   Tap untuk upload gambar QRIS
                 </span>
               </>

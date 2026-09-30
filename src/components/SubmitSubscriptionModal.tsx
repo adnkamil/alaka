@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { QrCode, X } from 'lucide-react'
 import { fetchSubscriptionPaymentInfo } from '../lib/subscription-functions'
+import { useBackToClose } from '../lib/back-to-close'
 
 export type SubmitSubscriptionValue = {
   paymentProofImage: string
@@ -47,6 +48,10 @@ export default function SubmitSubscriptionModal({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Komponen ini cuma dirender waktu modalnya terbuka, jadi back selalu
+  // ditutupin ke sini. Tombol back nutup dialog, bukan ninggalin halaman.
+  useBackToClose(true, onClose)
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -113,7 +118,9 @@ export default function SubmitSubscriptionModal({
             <span className="app-icon-tile h-10 w-10">
               <QrCode size={18} />
             </span>
-            <h3 className="text-base font-bold leading-tight">Ajukan Upgrade PRO</h3>
+            <h3 className="text-base font-bold leading-tight">
+              Ajukan Upgrade PRO
+            </h3>
           </div>
           <button
             type="button"
@@ -133,7 +140,10 @@ export default function SubmitSubscriptionModal({
         >
           {infoLoading ? (
             <div className="flex h-40 w-40 items-center justify-center">
-              <span className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
+              <span
+                className="text-xs"
+                style={{ color: 'var(--app-text-soft)' }}
+              >
                 Memuat...
               </span>
             </div>
@@ -146,18 +156,27 @@ export default function SubmitSubscriptionModal({
           ) : (
             <div className="flex h-40 w-40 flex-col items-center justify-center gap-1 text-center">
               <QrCode size={22} style={{ color: 'var(--app-text-mute)' }} />
-              <span className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
+              <span
+                className="text-xs"
+                style={{ color: 'var(--app-text-soft)' }}
+              >
                 QRIS belum tersedia, hubungi admin.
               </span>
             </div>
           )}
 
           {!infoLoading && (
-            <p className="text-lg font-bold" style={{ color: 'var(--app-accent)' }}>
+            <p
+              className="text-lg font-bold"
+              style={{ color: 'var(--app-accent)' }}
+            >
               {formatIDR(proPrice)}
             </p>
           )}
-          <p className="text-center text-xs" style={{ color: 'var(--app-accent)' }}>
+          <p
+            className="text-center text-xs"
+            style={{ color: 'var(--app-accent)' }}
+          >
             Scan lalu transfer sesuai nominal di atas, upload buktinya di bawah.
           </p>
         </div>
@@ -181,7 +200,10 @@ export default function SubmitSubscriptionModal({
               ) : (
                 <>
                   <span className="text-2xl">📎</span>
-                  <span className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
+                  <span
+                    className="text-xs"
+                    style={{ color: 'var(--app-text-soft)' }}
+                  >
                     Tap untuk upload screenshot transfer
                   </span>
                 </>
