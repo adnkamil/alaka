@@ -26,6 +26,7 @@ import { Route as AppPesananIndexRouteImport } from './routes/_app/pesanan/index
 import { Route as AppPesananNewRouteImport } from './routes/_app/pesanan/new'
 import { Route as AppProfilIndexRouteImport } from './routes/_app/profil/index'
 import { Route as AppProfilLanggananRouteImport } from './routes/_app/profil/langganan'
+import { Route as AppProfilTemplateChatRouteImport } from './routes/_app/profil/template-chat'
 import { Route as TagihanEventIdOrderIdRouteImport } from './routes/tagihan.$eventId.$orderId'
 import { Route as AppInvoiceEventIdOrderIdRouteImport } from './routes/_app/invoice.$eventId.$orderId'
 import { Route as AppProfilCustomersIndexRouteImport } from './routes/_app/profil/customers/index'
@@ -119,6 +120,11 @@ const AppProfilLanggananRoute = AppProfilLanggananRouteImport.update({
   path: '/profil/langganan',
   getParentRoute: () => AppRoute,
 } as any)
+const AppProfilTemplateChatRoute = AppProfilTemplateChatRouteImport.update({
+  id: '/profil/template-chat',
+  path: '/profil/template-chat',
+  getParentRoute: () => AppRoute,
+} as any)
 const TagihanEventIdOrderIdRoute = TagihanEventIdOrderIdRouteImport.update({
   id: '/tagihan/$eventId/$orderId',
   path: '/tagihan/$eventId/$orderId',
@@ -177,6 +183,7 @@ export interface FileRoutesByFullPath {
   '/events/new': typeof AppEventsNewRoute
   '/pesanan/new': typeof AppPesananNewRoute
   '/profil/langganan': typeof AppProfilLanggananRoute
+  '/profil/template-chat': typeof AppProfilTemplateChatRoute
   '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
   '/pesanan/': typeof AppPesananIndexRoute
   '/profil/': typeof AppProfilIndexRoute
@@ -202,6 +209,7 @@ export interface FileRoutesByTo {
   '/events/new': typeof AppEventsNewRoute
   '/pesanan/new': typeof AppPesananNewRoute
   '/profil/langganan': typeof AppProfilLanggananRoute
+  '/profil/template-chat': typeof AppProfilTemplateChatRoute
   '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
   '/pesanan': typeof AppPesananIndexRoute
   '/profil': typeof AppProfilIndexRoute
@@ -230,6 +238,7 @@ export interface FileRoutesById {
   '/_app/events/new': typeof AppEventsNewRoute
   '/_app/pesanan/new': typeof AppPesananNewRoute
   '/_app/profil/langganan': typeof AppProfilLanggananRoute
+  '/_app/profil/template-chat': typeof AppProfilTemplateChatRoute
   '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
   '/_app/pesanan/': typeof AppPesananIndexRoute
   '/_app/profil/': typeof AppProfilIndexRoute
@@ -258,6 +267,7 @@ export interface FileRouteTypes {
     | '/events/new'
     | '/pesanan/new'
     | '/profil/langganan'
+    | '/profil/template-chat'
     | '/tagihan/$eventId/$orderId'
     | '/pesanan/'
     | '/profil/'
@@ -283,6 +293,7 @@ export interface FileRouteTypes {
     | '/events/new'
     | '/pesanan/new'
     | '/profil/langganan'
+    | '/profil/template-chat'
     | '/tagihan/$eventId/$orderId'
     | '/pesanan'
     | '/profil'
@@ -310,6 +321,7 @@ export interface FileRouteTypes {
     | '/_app/events/new'
     | '/_app/pesanan/new'
     | '/_app/profil/langganan'
+    | '/_app/profil/template-chat'
     | '/tagihan/$eventId/$orderId'
     | '/_app/pesanan/'
     | '/_app/profil/'
@@ -455,6 +467,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProfilLanggananRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/profil/template-chat': {
+      id: '/_app/profil/template-chat'
+      path: '/profil/template-chat'
+      fullPath: '/profil/template-chat'
+      preLoaderRoute: typeof AppProfilTemplateChatRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/tagihan/$eventId/$orderId': {
       id: '/tagihan/$eventId/$orderId'
       path: '/tagihan/$eventId/$orderId'
@@ -521,6 +540,7 @@ interface AppRouteChildren {
   AppEventsNewRoute: typeof AppEventsNewRoute
   AppPesananNewRoute: typeof AppPesananNewRoute
   AppProfilLanggananRoute: typeof AppProfilLanggananRoute
+  AppProfilTemplateChatRoute: typeof AppProfilTemplateChatRoute
   AppPesananIndexRoute: typeof AppPesananIndexRoute
   AppProfilIndexRoute: typeof AppProfilIndexRoute
   AppInvoiceEventIdOrderIdRoute: typeof AppInvoiceEventIdOrderIdRoute
@@ -537,6 +557,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppEventsNewRoute: AppEventsNewRoute,
   AppPesananNewRoute: AppPesananNewRoute,
   AppProfilLanggananRoute: AppProfilLanggananRoute,
+  AppProfilTemplateChatRoute: AppProfilTemplateChatRoute,
   AppPesananIndexRoute: AppPesananIndexRoute,
   AppProfilIndexRoute: AppProfilIndexRoute,
   AppInvoiceEventIdOrderIdRoute: AppInvoiceEventIdOrderIdRoute,

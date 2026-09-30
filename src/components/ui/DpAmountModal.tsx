@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 import NumberInput from './NumberInput'
+import { useBackToClose } from '../../lib/back-to-close'
 
 function formatIDR(value: string | number) {
   return new Intl.NumberFormat('id-ID', {
@@ -44,6 +45,9 @@ export default function DpAmountModal({
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [open, loading, onCancel])
+
+  // Tombol back HP/browser nutup dialog, bukan ninggalin halaman.
+  useBackToClose(open, onCancel)
 
   if (!open) return null
 

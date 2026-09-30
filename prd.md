@@ -78,7 +78,7 @@ Astra Otoshop).
 - Expand customer → list item + tombol aksi: **Tagih** (→ invoice internal; fitur PRO — di paket FREE tombolnya berubah jadi ikon gembok + badge PRO, dan klik-nya hanya memunculkan dialog upgrade, bukan halaman tagih. Lihat 5), **Tambah**, **Hapus**, **Edit status**.
 - **Floating action button (+)** → buka form Tambah Pesanan (disembunyikan kalau event nonaktif).
 - Kalau pesanan yang baru disimpan barangnya **digabung** ke pesanan pelanggan yang sudah ada (lihat 4.4), muncul alert melayang di atas FAB: naik dari bawah, tampil 4 detik, lalu naik + memudar. Karena posisinya `fixed`, ringkasan keuangan & daftar pesanan di bawahnya **tidak ikut bergeser**.
-- URL search param `?addOrder=true` → otomatis buka sheet Tambah Pesanan saat navigasi dari tab Tambah di bottom nav.
+- URL search param buka/tutup sheet dipakai sebagai **sumber kebenaran** (bukan state lokal), supaya tombol **back** menutup sheet dan tetap di halaman event: `?addOrder=true` (Tambah Pesanan — juga dipakai navigasi dari tab Tambah di bottom nav), `?editOrder=<orderId>` (Edit Pesanan), `?duplicateOrder=<orderId>` (ulang pesanan; nama pelanggannya diambil dari data order). Kontrak param-nya ada di `lib/order-sheet-search.ts`. Tombol X/Simpan menutup sheet dengan mem-pop entry history yang tadi di-push (jadi back berikutnya tidak membuka sheet lagi); kalau sheet datang dari link/URL langsung, URL-nya cukup di-replace supaya user tetap di halaman event.
 
 #### 4.3.1 Mode Ringkasan Barang (Checklist Live Shopping)
 
@@ -167,8 +167,8 @@ Astra Otoshop).
 
 #### 4.8.5 Section Preferensi
 
-- **Mode gelap** — toggle, disimpan di `localStorage` + `data-theme` attribute.
-- **Template Chat WA** (modal `MessageTemplateModal`) — template pesan WhatsApp untuk tagih pelanggan, dengan variabel `{customer}`, `{event}`, `{link}`, `{subtotal}`, `{fee}`, `{total}`, `{bank}`, `{bankAccount}`, `{brand}`. Bisa dikembalikan ke default.
+- **Mode gelap** — toggle, disimpan di `localStorage` + `data-theme` attribute. **Default terang**: kalau user belum pernah memilih (belum ada nilai `localStorage.theme`), app dibuka terang walaupun HP-nya mode gelap — auto gelap (ikut `prefers-color-scheme`) tidak dipakai sebagai default. Script inline `buildThemeInitScript` (`src/lib/theme.ts`, dipasang `__root.tsx`) yang menentukan tema sebelum hydrate, dan `ThemeToggle.tsx` memakai konstanta `DEFAULT_THEME_MODE` yang sama.
+- **Template Chat WA** (halaman `/profil/template-chat`, form `MessageTemplateForm`) — template pesan WhatsApp untuk tagih pelanggan, dengan variabel `{customer}`, `{event}`, `{link}`, `{subtotal}`, `{fee}`, `{total}`, `{bank}`, `{bankAccount}`, `{brand}`. Bisa dikembalikan ke default. Dulu form ini modal; dipindah jadi halaman sendiri (header + tombol back, bottom nav tetap tampil seperti `/profil/langganan`) karena di sebagian HP tinggi kontennya — textarea + chips variabel + preview — bikin tombol Simpan ketutup.
 - **Notifikasi** — placeholder (belum fungsional).
 - **Tambahkan ke layar utama** — PWA install prompt (`beforeinstallprompt`); jika sudah terpasang, tombol berubah jadi "Terpasang di perangkat".
 
@@ -430,6 +430,21 @@ Bottom tab bar (5 slot), fixed, dengan `padding-bottom: env(safe-area-inset-bott
 
 Halaman detail (Detail Event, Fee Rules, Customers, Invoice) menyembunyikan bottom nav dan menggunakan header dengan tombol back. Path prefix yang menyembunyikan bottom nav: `/events/`, `/profil/fee-rules`, `/profil/customers`, `/invoice/`.
 
+### 6.1 Tombol back: modal & bottom sheet
+
+Tombol back (hardware/browser, termasuk swipe-back) dipakai buat **menutup overlay**, bukan ninggalin halaman. Ada dua mekanisme, dipilih sesuai sumber state overlay-nya:
+
+- **Overlay yang punya URL sendiri** — sheet Tambah/Edit Pesanan di halaman event. Buka/tutupnya ditentukan search param (`?addOrder` / `?editOrder` / `?duplicateOrder`, lihat 4.3 dan `lib/order-sheet-search.ts`), jadi back cukup mem-pop history dan sheet-nya ketutup sendiri tanpa kode tambahan.
+- **Modal lain** (semua dialog: konfirmasi hapus, konfirmasi hapus event, nominal DP, edit profil, ubah kata sandi, form customer, edit/tambah metode pembayaran, ajukan upgrade & verifikasi langganan, QRIS pembayaran, dialog fitur PRO) — state-nya lokal per halaman, jadi ditangani hook `useBackToClose(open, onClose)` (`src/lib/back-to-close.ts`). Hook ini dipasang **di dalam komponen modalnya**, bukan di halaman pemanggil, supaya semua pemakaian ikut kebagian tanpa baris tambahan di tiap halaman.
+
+Cara kerja `useBackToClose`: pakai `useBlocker` TanStack Router — selama modal terbuka, navigasi `BACK` **ditahan** (URL & history tetap di halaman yang sama) lalu `onClose()` dipanggil. Yang **tidak** diganggu: navigasi `PUSH`/`REPLACE` (pindah halaman sesudah menyimpan, tombol upgrade PRO) dan `history.go()` dari kode. Prompt "yakin mau keluar?" waktu tab di-refresh/ditutup juga dimatikan (`enableBeforeUnload: false`) — yang ditangani cuma tombol back.
+
+Detail perilaku lain:
+
+- Modal bertumpuk: **cuma modal paling atas** yang mengambil alih back (daftar LIFO di `back-to-close.ts`, diuji `back-to-close.test.ts`), jadi back menutup satu per satu dari yang paling atas.
+- Waktu modal sedang sibuk (mis. tombol hapus lagi loading), `onClose` di halaman pemanggil memang di-guard — sama seperti tap backdrop / Esc, back tidak melakukan apa-apa sampai prosesnya selesai.
+- Sheet Tambah/Edit Pesanan **tidak** pakai hook ini (dobel dengan mekanisme URL di atas); tutup lewat X/Simpan mem-pop entry history yang tadi di-push, sedangkan kalau sheet datang dari link langsung URL-nya cukup di-replace supaya user tetap di halaman event.
+
 Halaman admin tidak ikut skema tab di atas: `/admin` (dan sub-halamannya) memakai
 layout sendiri di luar shell member, **tanpa** bottom nav member, dengan header
 sendiri yang cuma berisi identitas "Admin ALAKA". Navigasi antar halaman admin
@@ -671,7 +686,7 @@ src/
 │   ├── CustomerFormModal.tsx
 │   ├── EditProfileModal.tsx
 │   ├── FeeRuleForm.tsx         # Form tambah/edit aturan fee + tier
-│   ├── MessageTemplateModal.tsx
+│   ├── MessageTemplateForm.tsx  # Form Template Chat WA (halaman /profil/template-chat)
 │   ├── PaymentInfoCard.tsx     # Info metode pembayaran di invoice
 │   ├── PaymentMethodModal.tsx
 │   ├── ProBadge.tsx            # Badge "PRO" untuk kontrol yang terkunci
@@ -690,6 +705,8 @@ src/
 │   ├── admin-queries.ts       # Query metrik admin + daftar customer + pengajuan lintas user (server)
 │   ├── auth.ts                # getSessionUser, session management
 │   ├── auth-functions.ts      # login, register, logout, updateProfile, changePassword
+│   ├── back-to-close.ts       # Hook `useBackToClose`: tombol back menutup modal (TanStack useBlocker)
+│   ├── back-to-close.test.ts  # Unit test daftar modal terbuka (LIFO: cuma yang paling atas ambil back)
 │   ├── client-bundle-safety.test.ts  # Guard: `db`/`pg` tidak boleh bocor ke bundle client
 │   ├── customer-matching.ts   # Cocokkan order → customer lewat nama (murni, tanpa db)
 │   ├── customer-matching.test.ts  # Unit test pencocokan order → customer
@@ -712,6 +729,8 @@ src/
 │   ├── message-template-functions.ts
 │   ├── order-merge.ts         # Aturan gabung pesanan pelanggan yang sama (murni, tanpa db)
 │   ├── order-merge.test.ts    # Unit test penggabungan pesanan
+│   ├── order-sheet-search.ts  # Kontrak URL sheet Tambah/Edit Pesanan (back = tutup sheet)
+│   ├── order-sheet-search.test.ts  # Unit test kontrak URL sheet
 │   ├── order-suggestions-functions.ts  # getOrderSuggestions (gerbang order_suggestions)
 │   ├── order-totals.ts        # lineTotal, summarizeItems
 │   ├── orders-functions.ts    # CRUD order & item, invoice, updateItemsObtained (+ gate billing)
@@ -722,7 +741,9 @@ src/
 │   ├── subscription.test.ts   # Unit test aturan plan & entitlement
 │   ├── subscription-functions.ts  # Pengajuan upgrade + status langganan milik member
 │   ├── subscription-queries.ts # Baca histori & pengajuan subscription (server)
-│   └── subscription-settings-queries.ts  # Harga & QRIS PRO — baris tunggal (server)
+│   ├── subscription-settings-queries.ts  # Harga & QRIS PRO — baris tunggal (server)
+│   ├── theme.ts               # DEFAULT_THEME_MODE (terang) + buildThemeInitScript (murni)
+│   └── theme.test.ts          # Unit test default tema & script init (sandbox node:vm)
 ├── routes/
 │   ├── __root.tsx             # Root layout (theme init, QueryClient provider)
 │   ├── _app.tsx               # Auth-protected layout (session check + BottomNav)
@@ -738,6 +759,7 @@ src/
 │   │   └── profil/
 │   │       ├── index.tsx      # Halaman profil
 │   │       ├── langganan.tsx  # Paket & Langganan (status trial/FREE/PRO)
+│   │       ├── template-chat.tsx  # Template Chat WA (dulu modal)
 │   │       ├── customers/index.tsx
 │   │       ├── fee-rules/index.tsx
 │   │       ├── fee-rules/new.tsx

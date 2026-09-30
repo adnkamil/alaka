@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import ConfirmModal from '../../components/ui/ConfirmModal'
 import DpAmountModal from '../../components/ui/DpAmountModal'
 import Switch from '../../components/ui/Switch'
@@ -9,7 +9,12 @@ import {
   useQueryClient,
   useSuspenseQuery,
 } from '@tanstack/react-query'
-import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
+import {
+  Link,
+  createFileRoute,
+  useNavigate,
+  useRouter,
+} from '@tanstack/react-router'
 import {
   ArrowLeft,
   ChevronDown,
@@ -38,6 +43,11 @@ import {
 import { listFeeRules } from '../../lib/fee-rules-functions'
 import { getOrderSuggestions } from '../../lib/order-suggestions-functions'
 import { lineTotal, summarizeItems } from '../../lib/order-totals'
+import {
+  orderSheetModeFromSearch,
+  orderSheetSearch,
+} from '../../lib/order-sheet-search'
+import type { OrderSheetMode } from '../../lib/order-sheet-search'
 import { canUseFeature } from '../../lib/subscription'
 import type { ProFeature } from '../../lib/subscription'
 import {
@@ -51,6 +61,8 @@ import { getCustomerSuggestions } from '#/lib/customer-suggestions-functions'
 
 const searchSchema = z.object({
   addOrder: z.boolean().optional(),
+  duplicateOrder: z.string().optional(),
+  editOrder: z.string().optional(),
 })
 
 /** Status akses user (trial/FREE/PRO) — satu sumber, dipakai juga di Profil. */
@@ -220,15 +232,52 @@ function summarizeItemQty(
 
 function EventDetailPage() {
   const { eventId } = Route.useParams()
-  const { addOrder } = Route.useSearch()
+  const searchParams = Route.useSearch()
   const navigate = useNavigate()
+  const router = useRouter()
   const queryClient = useQueryClient()
-  const [sheetMode, setSheetMode] = useState<
-    | { type: 'create' }
-    | { type: 'duplicate'; customerName: string }
-    | { type: 'edit'; orderId: string }
-    | null
-  >(addOrder ? { type: 'create' } : null)
+  // Sheet diturunkan dari URL (bukan state lokal) supaya tombol back HP/browser
+  // menutup sheet — bukan keluar dari halaman event. Lihat
+  // `lib/order-sheet-search.ts` buat kontrak param-nya.
+  const sheetMode = orderSheetModeFromSearch(searchParams)
+  // Penanda sheet dibuka dari halaman ini (jadi entry history-nya di-push),
+  // dipakai `closeSheet` buat mutusin cara menutupnya.
+  const sheetPushedRef = useRef(false)
+
+  /** Buka sheet lewat URL: back berikutnya otomatis menutup sheet. */
+  function openSheet(mode: OrderSheetMode) {
+    sheetPushedRef.current = true
+    void navigate({
+      to: '/events/$eventId',
+      params: { eventId },
+      search: orderSheetSearch(mode),
+    })
+  }
+
+  /**
+   * Tutup sheet. Kalau sheet dibuka dari halaman ini, entry history-nya di-pop
+   * balik supaya URL bersih dan back berikutnya tidak membuka sheet lagi. Kalau
+   * sheet datang dari URL/link (mis. `?addOrder=true` dari halaman pilih event),
+   * URL-nya cukup di-replace — user tetap di halaman event.
+   *
+   * `ignoreBlocker: true` penting: penutupan ini aksi sadar dari kode (tombol
+   * X/Simpan), jadi nggak boleh ketahan blocker modal yang kebetulan lagi
+   * terbuka di atas sheet (lihat `lib/back-to-close.ts`).
+   */
+  function closeSheet() {
+    if (sheetPushedRef.current) {
+      sheetPushedRef.current = false
+      router.history.back({ ignoreBlocker: true })
+      return
+    }
+    void navigate({
+      to: '/events/$eventId',
+      params: { eventId },
+      search: {},
+      replace: true,
+    })
+  }
+
   const [search, setSearch] = useState('')
   const [viewMode, setViewMode] = useState<'perCustomer' | 'perItem'>(
     'perCustomer',
@@ -269,8 +318,22 @@ function EventDetailPage() {
   // tambah pesanan (servernya juga sudah menolak `createOrder`-nya) — biar UI
   // nggak nampilin form yang bakal ditolak.
   useEffect(() => {
-    if (!event.isActive && sheetMode?.type === 'create') setSheetMode(null)
-  }, [event.isActive, sheetMode])
+    if (event.isActive || sheetMode?.type !== 'create') return
+    // Bersihkan URL-nya tanpa push: form memang tidak boleh dibuka.
+    void navigate({
+      to: '/events/$eventId',
+      params: { eventId },
+      search: {},
+      replace: true,
+    })
+  }, [event.isActive, sheetMode, navigate, eventId])
+
+  // Sheet tertutup bukan lewat `closeSheet` (mis. user menekan back sendiri waktu
+  // form masih menyimpan) → entry push-nya sudah tidak ada, jadi penanda di-reset
+  // supaya penutupan berikutnya tidak mundur satu halaman lagi.
+  useEffect(() => {
+    if (!sheetMode) sheetPushedRef.current = false
+  }, [sheetMode])
 
   const { data: currentUser } = useSuspenseQuery(currentUserQuery)
   // Satu tempat hitung status akses; pengecekan mengikat tetap di server.
@@ -372,6 +435,12 @@ function EventDetailPage() {
     sheetMode?.type === 'edit'
       ? event.orders.find((o) => o.id === sheetMode.orderId)
       : undefined
+  // Pesanan sumber buat mode "ulang pesanan" (nama pelanggannya diambil dari
+  // data order, bukan dari URL).
+  const duplicateSourceOrder =
+    sheetMode?.type === 'duplicate'
+      ? event.orders.find((o) => o.id === sheetMode.orderId)
+      : undefined
 
   const dpPromptOrder = dpPromptOrderId
     ? event.orders.find((o) => o.id === dpPromptOrderId)
@@ -390,8 +459,7 @@ function EventDetailPage() {
     await queryClient.invalidateQueries({ queryKey: ['event', eventId] })
     await queryClient.invalidateQueries({ queryKey: ['events'] })
     await queryClient.invalidateQueries({ queryKey: ['finance-summary'] })
-    setSheetMode(null)
-    await navigate({ to: '/events/$eventId', params: { eventId }, search: {} })
+    closeSheet()
     // Kasih tahu kalau barangnya digabung ke pesanan pelanggan yang sudah ada —
     // tanpa ini, jastiper bisa bingung kenapa pesanannya jadi cuma satu baris.
     setMergeNotice(
@@ -414,7 +482,7 @@ function EventDetailPage() {
     await queryClient.invalidateQueries({ queryKey: ['event', eventId] })
     await queryClient.invalidateQueries({ queryKey: ['events'] })
     await queryClient.invalidateQueries({ queryKey: ['finance-summary'] })
-    setSheetMode(null)
+    closeSheet()
   }
 
   async function handlePaymentStatusChange(
@@ -1275,7 +1343,7 @@ function EventDetailPage() {
                       type="button"
                       onClick={(e) => {
                         e.preventDefault()
-                        setSheetMode({ type: 'edit', orderId: order.id })
+                        openSheet({ type: 'edit', orderId: order.id })
                       }}
                       className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-2 text-xs font-semibold"
                       style={{
@@ -1311,7 +1379,7 @@ function EventDetailPage() {
       {event.isActive && (
         <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 mx-auto flex max-w-lg justify-end px-6">
           <button
-            onClick={() => setSheetMode({ type: 'create' })}
+            onClick={() => openSheet({ type: 'create' })}
             className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg"
             style={{ background: 'var(--app-accent)' }}
             aria-label="Tambah Pesanan"
@@ -1330,12 +1398,12 @@ function EventDetailPage() {
           itemPriceSuggestions={itemPriceSuggestions}
           suggestionsLocked={!orderSuggestionsUnlocked}
           customerSuggestionsLocked={!customerSuggestionsUnlocked}
-          onClose={() => setSheetMode(null)}
+          onClose={() => closeSheet()}
           onSubmit={handleCreateOrder}
         />
       )}
 
-      {sheetMode?.type === 'duplicate' && (
+      {sheetMode?.type === 'duplicate' && duplicateSourceOrder && (
         <AddOrderSheet
           eventName={event.name}
           feeTiers={event.feeRule?.tiers ?? []}
@@ -1347,11 +1415,11 @@ function EventDetailPage() {
           title="Tambah Pesanan"
           submitLabel="Simpan pesanan"
           initialValue={{
-            customerName: sheetMode.customerName,
+            customerName: duplicateSourceOrder.customerName,
             paymentStatus: 'unpaid',
             items: [],
           }}
-          onClose={() => setSheetMode(null)}
+          onClose={() => closeSheet()}
           onSubmit={handleCreateOrder}
         />
       )}
@@ -1381,7 +1449,7 @@ function EventDetailPage() {
               obtained: item.obtained,
             })),
           }}
-          onClose={() => setSheetMode(null)}
+          onClose={() => closeSheet()}
           onSubmit={(value) => handleUpdateOrder(editingOrder.id, value)}
         />
       )}

@@ -28,7 +28,6 @@ import {
 } from 'lucide-react'
 import ChangePasswordModal from '../../../components/ChangePasswordModal'
 import EditProfileModal from '../../../components/EditProfileModal'
-import MessageTemplateModal from '../../../components/MessageTemplateModal'
 import type { PaymentMethodFormValue } from '../../../components/PaymentMethodModal'
 import PaymentMethodModal from '../../../components/PaymentMethodModal'
 import ProBadge from '../../../components/ProBadge'
@@ -47,8 +46,6 @@ import {
   setPaymentMethodActive,
   updatePaymentMethod,
 } from '../../../lib/payment-methods-functions'
-import { updateMessageTemplate } from '../../../lib/message-template-functions'
-import { DEFAULT_WA_MESSAGE_TEMPLATE } from '../../../lib/message-template'
 import {
   canUseFeature,
   hasFullAccess,
@@ -168,7 +165,6 @@ function ProfilPage() {
     { mode: 'create' } | { mode: 'edit'; id: string } | null
   >(null)
   const [showProfileModal, setShowProfileModal] = useState(false)
-  const [showTemplateModal, setShowTemplateModal] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [lockedFeature, setLockedFeature] = useState<ProFeature | null>(null)
   const [deferredPrompt, setDeferredPrompt] =
@@ -276,12 +272,6 @@ function ProfilPage() {
     paymentModal?.mode === 'edit'
       ? paymentMethods.find((method) => method.id === paymentModal.id)
       : undefined
-
-  async function handleSaveTemplate(template: string) {
-    await updateMessageTemplate({ data: { template } })
-    await queryClient.invalidateQueries({ queryKey: ['current-user'] })
-    setShowTemplateModal(false)
-  }
 
   async function handleChangePassword(data: {
     currentPassword: string
@@ -586,9 +576,8 @@ function ProfilPage() {
             <span className="flex-1">Mode gelap</span>
             <Switch checked={isDark} onChange={toggleDark} label="Mode gelap" />
           </div>
-          <button
-            type="button"
-            onClick={() => setShowTemplateModal(true)}
+          <Link
+            to="/profil/template-chat"
             className="flex w-full items-center gap-3 border-b px-4 py-3 text-left no-underline"
             style={{
               borderColor: 'var(--app-border)',
@@ -610,7 +599,7 @@ function ProfilPage() {
               </span>
             </span>
             <ChevronRight size={18} style={{ color: 'var(--app-text-mute)' }} />
-          </button>
+          </Link>
           <div
             className="border-b"
             style={{ borderColor: 'var(--app-border)' }}
@@ -726,16 +715,6 @@ function ProfilPage() {
           }}
           onClose={() => setShowProfileModal(false)}
           onSubmit={handleSaveProfile}
-        />
-      )}
-
-      {showTemplateModal && (
-        <MessageTemplateModal
-          title="Template Chat WA"
-          submitLabel="Simpan"
-          initialValue={user?.waMessageTemplate ?? DEFAULT_WA_MESSAGE_TEMPLATE}
-          onClose={() => setShowTemplateModal(false)}
-          onSubmit={handleSaveTemplate}
         />
       )}
 

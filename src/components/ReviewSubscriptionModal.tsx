@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Check, X, XCircle } from 'lucide-react'
+import { useBackToClose } from '../lib/back-to-close'
 
 interface ReviewSubscriptionModalProps {
   open: boolean
@@ -33,6 +34,9 @@ export default function ReviewSubscriptionModal({
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [open, loading, onCancel])
+
+  // Tombol back HP/browser nutup dialog, bukan ninggalin halaman.
+  useBackToClose(open, onCancel)
 
   if (!open) return null
 

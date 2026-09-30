@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { Landmark, QrCode, Trash2, Wallet, X } from 'lucide-react'
 import Switch from './ui/Switch'
+import { useBackToClose } from '../lib/back-to-close'
 
 export type PaymentMethodType = 'bank' | 'wallet' | 'qris'
 
@@ -102,6 +103,10 @@ export default function PaymentMethodModal({
   const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Komponen ini cuma dirender waktu modalnya terbuka, jadi back selalu
+  // ditutupin ke sini. Tombol back nutup dialog, bukan ninggalin halaman.
+  useBackToClose(true, onClose)
 
   const busy = isSubmitting || isDeleting
   const options = type === 'wallet' ? WALLET_OPTIONS : BANK_OPTIONS
