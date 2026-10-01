@@ -35,9 +35,29 @@ export function toWhatsAppNumber(phone: string | null | undefined) {
   return digits
 }
 
+export function buildWhatsAppBusinessLink(phone: string, message: string) {
+  const number = toWhatsAppNumber(phone)
+  const text = encodeURIComponent(message)
+
+  // Fallback kalau WA Business tidak terpasang
+  const fallback = encodeURIComponent(`https://wa.me/${number}?text=${text}`)
+
+  return (
+    `intent://send?phone=${number}&text=${text}` +
+    `#Intent;scheme=whatsapp;package=com.whatsapp.w4b;` +
+    `S.browser_fallback_url=${fallback};end`
+  )
+}
 export function buildWhatsAppLink(phone: string, message: string) {
   const number = toWhatsAppNumber(phone)
   return `https://wa.me/${number}?text=${encodeURIComponent(message)}`
+}
+export function openWhatsApp(phone: string, message: string) {
+  const isAndroid = /android/i.test(navigator.userAgent)
+
+  window.location.href = isAndroid
+    ? buildWhatsAppBusinessLink(phone, message)
+    : buildWhatsAppLink(phone, message)
 }
 
 /**
