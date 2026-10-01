@@ -190,20 +190,21 @@ Buat jastiper yang sudah punya catatan pesanan di Excel/CSV (mis. hasil rekap ch
 
 - **Mode gelap** — toggle, disimpan di `localStorage` + `data-theme` attribute. **Default terang**: kalau user belum pernah memilih (belum ada nilai `localStorage.theme`), app dibuka terang walaupun HP-nya mode gelap — auto gelap (ikut `prefers-color-scheme`) tidak dipakai sebagai default. Script inline `buildThemeInitScript` (`src/lib/theme.ts`, dipasang `__root.tsx`) yang menentukan tema sebelum hydrate, dan `ThemeToggle.tsx` memakai konstanta `DEFAULT_THEME_MODE` yang sama.
 - **Template Chat WA** (halaman `/profil/template-chat`, form `MessageTemplateForm`) — template pesan WhatsApp untuk tagih pelanggan, dengan variabel `{customer}`, `{event}`, `{link}`, `{subtotal}`, `{fee}`, `{total}`, `{bank}`, `{bankAccount}`, `{brand}`. Bisa dikembalikan ke default. Dulu form ini modal; dipindah jadi halaman sendiri (header + tombol back, bottom nav tetap tampil seperti `/profil/langganan`) karena di sebagian HP tinggi kontennya — textarea + chips variabel + preview — bikin tombol Simpan ketutup.
-- **Notifikasi** — placeholder (belum fungsional).
-- **Tambahkan ke layar utama** — PWA install prompt (`beforeinstallprompt`); jika sudah terpasang, tombol berubah jadi "Terpasang di perangkat".
+- Item **Notifikasi** dan **Tambahkan ke layar utama** (prompt install PWA) sudah **dihapus** dari section ini: yang pertama cuma placeholder tanpa isi, yang kedua dianggap tidak perlu karena install tetap bisa dari menu browser (Chrome: ikon Install di address bar; iPhone: Share → "Tambahkan ke layar utama").
 
-#### 4.8.6 Section Lainnya
+#### 4.8.6 Tombol Keluar
 
-- Bantuan (placeholder).
-- Tentang aplikasi (versi `v1.0.0`).
-- Tombol **Keluar** (logout).
+- Tombol **Keluar** (logout) — satu-satunya isi bagian bawah halaman profil.
+- Item **Bantuan** dan **Tentang aplikasi** (versi `v1.0.0`) sudah **dihapus** dari halaman profil beserta judul section "Lainnya": dua-duanya cuma placeholder tanpa isi, jadi cuma menambah tinggi halaman.
 
 ### 4.9 Manajemen Fee — `/profil/fee-rules`
 
 - List aturan fee: card per aturan — nama, jumlah tier, rentang harga, preview tier. Tombol "Tambah aturan fee".
 - **Tambah / Edit Aturan Fee** — nama aturan + list tier (bisa tambah/hapus baris). Tiap tier: harga min, harga maks, fee jastip.
 - **Saran tier otomatis** (dipakai di form Tambah **dan** Edit aturan fee) — dari harga dan fee barang yang pernah dicatat user, sistem mengelompokkan harga ke rentang (band) lalu menyarankan satu tier per rentang dengan fee = nilai tengah rentang tersebut (dibulatkan). Ini fitur PRO `fee_suggestions`: di paket FREE panel saran diganti keterangan "Saran tier otomatis dari riwayat harga & fee barang tersedia di paket PRO", dan server (`getFeeSuggestions`) cuma mengirim `unlocked: false` tanpa data (lihat 5.2).
+
+> **Pembaruan:** panel saran ini sekarang **hanya ada di form Tambah aturan fee**. Di halaman **Edit aturan fee** sudah dihapus — tier-nya toh sudah terisi dari aturan yang sedang diedit, jadi daftar saran cuma jadi noise (dan bikin ragu tier mana yang sebenarnya berlaku). Halaman edit juga tidak lagi memanggil `getFeeSuggestions`.
+
 - User bisa membuat **lebih dari satu aturan fee** (misal beda aturan untuk jastip lokal vs luar negeri).
 - Di Detail Event, user memilih **satu Aturan Fee** yang berlaku untuk event tersebut.
 
@@ -397,7 +398,7 @@ Tiga status akses. Seluruh aturannya ditulis di `src/lib/subscription.ts` (modul
 | `billing`              | Tagih: halaman invoice internal, kirim WA, dan link tagihan publik | `requireFeature(getUserEntitlements(user), 'billing')` di `getOrderInvoice`; di `getPublicOrderInvoice` ada aturan grandfathering (5.5) |
 | `payment_methods`      | Tambah / edit / hapus / aktif-nonaktif metode pembayaran           | `requireUserFeature('payment_methods')` di 4 server function tulis — baca daftar tetap terbuka                                          |
 | `order_suggestions`    | Saran nama barang & harga asli di form Tambah/Edit Pesanan         | `getOrderSuggestions` mengembalikan `unlocked: false` + data kosong (tidak melempar error)                                              |
-| `fee_suggestions`      | Saran tier aturan fee di form Tambah/Edit Aturan Fee               | `getFeeSuggestions` mengembalikan `unlocked: false` + data kosong                                                                       |
+| `fee_suggestions`      | Saran tier aturan fee di form Tambah Aturan Fee                    | `getFeeSuggestions` mengembalikan `unlocked: false` + data kosong                                                                       |
 | `customer_suggestions` | Saran nama & no. HP pelanggan di form Tambah/Edit Pesanan          | `getCustomerSuggestions` mengembalikan `unlocked: false` + data kosong (tidak melempar error)                                           |
 
 Label & deskripsi tiap kunci (`PRO_FEATURE_INFO`), label/deskripsi plan (`PLAN_INFO`, `planLabel()`), dan pesan seragam `featureLockedMessage()` juga tinggal di `src/lib/subscription.ts` — jadi teks UI dan pesan server tidak bisa beda.
@@ -413,7 +414,7 @@ Label & deskripsi tiap kunci (`PRO_FEATURE_INFO`), label/deskripsi plan (`PLAN_I
 
 - `ProBadge` — penanda kecil "PRO" pada kontrol yang terkunci.
 - `ProLockPrompt` — dialog seragam untuk fitur terkunci: penjelasan fiturnya, isi paket PRO, status plan user saat ini, lalu tombol **"Upgrade ke PRO"** (menuju `/profil/langganan`) dan "Nanti saja".
-- Kontrol yang tampil terkunci di paket FREE: tombol **Tagih** di Detail Event (gembok + badge PRO; klik = dialog upgrade), tombol "Tambah metode pembayaran" serta toggle aktif-nonaktif metode (semua aksi tulis dialihkan ke dialog upgrade), lalu keterangan pengganti saran di form pesanan ("Saran nama barang & harga dari riwayat pesanan tersedia di paket PRO"), di form aturan fee ("Saran tier otomatis dari riwayat harga & fee barang tersedia di paket PRO"), dan untuk saran pelanggan ("Saran nama & no. HP pelanggan dari data customer tersedia di paket PRO").
+- Kontrol yang tampil terkunci di paket FREE: tombol **Tagih** di Detail Event (gembok + badge PRO; klik = dialog upgrade), tombol "Tambah metode pembayaran" serta toggle aktif-nonaktif metode (semua aksi tulis dialihkan ke dialog upgrade), lalu keterangan pengganti saran di form pesanan ("Saran nama barang & harga dari riwayat pesanan tersedia di paket PRO"), di form Tambah aturan fee ("Saran tier otomatis dari riwayat harga & fee barang tersedia di paket PRO"; halaman Edit aturan fee tidak lagi memakai saran ini), dan untuk saran pelanggan ("Saran nama & no. HP pelanggan dari data customer tersedia di paket PRO").
 - Baris **Langganan** di Profil menampilkan status paket + chip **Upgrade** (khusus FREE) sebagai jalan masuk ke halaman Paket & Langganan.
 - Semua kunci di UI dibaca dari `canUseFeature(entitlements, '<kunci fitur>')` — komponen tidak menghitung status plan sendiri.
 

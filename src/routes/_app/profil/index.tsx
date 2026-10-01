@@ -6,14 +6,10 @@ import {
 } from '@tanstack/react-query'
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import {
-  Bell,
   ChevronRight,
-  CircleHelp,
   Contact,
   Crown,
-  Download,
   History,
-  Info,
   KeyRound,
   Landmark,
   Lock,
@@ -89,12 +85,6 @@ function paymentMethodSubtitle(method: PaymentMethod) {
   return `${owner}${method.accountNumber ?? ''}`
 }
 
-// Event dari browser yang dipakai buat menampilkan prompt install PWA.
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
-}
-
 export const Route = createFileRoute('/_app/profil/')({
   loader: ({ context }) =>
     Promise.all([
@@ -167,9 +157,6 @@ function ProfilPage() {
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [lockedFeature, setLockedFeature] = useState<ProFeature | null>(null)
-  const [deferredPrompt, setDeferredPrompt] =
-    useState<BeforeInstallPromptEvent | null>(null)
-  const [isInstalled, setIsInstalled] = useState(false)
 
   // Akses fitur PRO diambil dari entitlement user (satu sumber). Server tetap
   // jadi penentu akhir — kalau UI-nya ke-bypass, server function-nya menolak.
@@ -193,29 +180,6 @@ function ProfilPage() {
     }
     setLockedFeature('payment_methods')
   }
-
-  useEffect(() => {
-    function onBeforeInstallPrompt(e: Event) {
-      e.preventDefault()
-      setDeferredPrompt(e as unknown as BeforeInstallPromptEvent)
-    }
-    window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt)
-    return () =>
-      window.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt)
-  }, [])
-
-  useEffect(() => {
-    function computeInstalled() {
-      const standalone =
-        window.matchMedia('(display-mode: standalone)').matches ||
-        (navigator as { standalone?: boolean }).standalone === true
-      setIsInstalled(standalone)
-    }
-    computeInstalled()
-    const media = window.matchMedia('(display-mode: standalone)')
-    media.addEventListener('change', computeInstalled)
-    return () => media.removeEventListener('change', computeInstalled)
-  }, [])
 
   async function handleLogout() {
     await logoutUser()
@@ -279,19 +243,6 @@ function ProfilPage() {
   }) {
     await changePassword({ data })
     setShowPasswordModal(false)
-  }
-
-  async function handleInstallClick() {
-    if (isInstalled) return
-    if (!deferredPrompt) {
-      window.alert(
-        'Browser ini tidak menampilkan tombol install otomatis. Di iPhone gunakan menu Share lalu "Tambahkan ke layar utama", di Chrome desktop klik ikon Install di address bar.',
-      )
-      return
-    }
-    await deferredPrompt.prompt()
-    await deferredPrompt.userChoice
-    setDeferredPrompt(null)
   }
 
   return (
@@ -600,64 +551,6 @@ function ProfilPage() {
             </span>
             <ChevronRight size={18} style={{ color: 'var(--app-text-mute)' }} />
           </Link>
-          <div
-            className="border-b"
-            style={{ borderColor: 'var(--app-border)' }}
-          >
-            <RowLink
-              to="/profil"
-              icon={<Bell size={18} />}
-              label="Notifikasi"
-            />
-          </div>
-          <button
-            type="button"
-            onClick={handleInstallClick}
-            className="flex items-center gap-3 px-4 py-3 text-left no-underline"
-          >
-            <Download size={18} style={{ color: 'var(--app-accent)' }} />
-            <span
-              className="flex-1 font-medium"
-              style={{ color: 'var(--app-accent)' }}
-            >
-              {isInstalled
-                ? 'Terpasang di perangkat'
-                : deferredPrompt
-                  ? 'Install aplikasi sekarang'
-                  : 'Tambahkan ke layar utama'}
-            </span>
-          </button>
-        </div>
-      </section>
-
-      <section className="mb-6">
-        <h2
-          className="mb-2 text-xs font-semibold uppercase"
-          style={{ color: 'var(--app-text-mute)' }}
-        >
-          Lainnya
-        </h2>
-        <div
-          className="app-card flex flex-col divide-y"
-          style={{ borderColor: 'var(--app-border)' }}
-        >
-          <div
-            className="border-b"
-            style={{ borderColor: 'var(--app-border)' }}
-          >
-            <RowLink
-              to="/profil"
-              icon={<CircleHelp size={18} />}
-              label="Bantuan"
-            />
-          </div>
-          <div className="flex items-center gap-3 px-4 py-3">
-            <Info size={18} style={{ color: 'var(--app-text-soft)' }} />
-            <span className="flex-1">Tentang aplikasi</span>
-            <span className="text-sm" style={{ color: 'var(--app-text-mute)' }}>
-              v1.0.0
-            </span>
-          </div>
         </div>
       </section>
 
