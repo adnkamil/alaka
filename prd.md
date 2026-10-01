@@ -44,6 +44,7 @@ Astra Otoshop).
 | Validasi            | Zod (client & server)                                                                                                            |
 | Testing             | `node:test` (dijalankan via `tsx --test`, lihat `npm test`)                                                                      |
 | Icons               | Lucide React                                                                                                                     |
+| Baca file Excel     | `read-excel-file` (build `/browser`, di-`import()` dinamis waktu import data — lihat 4.3.2)                                      |
 
 ## 4. Fitur & Halaman
 
@@ -67,7 +68,7 @@ Astra Otoshop).
 
 ### 4.3 Detail Event (`/events/:eventId`)
 
-- **Header**: tombol back, nama event (+ badge **Nonaktif** kalau event sudah ditutup), menu tiga titik berisi: pilih **Aturan Fee** event (lihat 4.9), toggle **Event aktif**, dan **Hapus event** (dengan konfirmasi).
+- **Header**: tombol back, nama event (+ badge **Nonaktif** kalau event sudah ditutup), menu tiga titik berisi: pilih **Aturan Fee** event (lihat 4.9), **Import data (Excel/CSV)** (lihat 4.3.2), toggle **Event aktif**, dan **Hapus event** (dengan konfirmasi).
 - **Nonaktifkan event** (toggle di menu tiga titik) = menutup event tanpa menghapus data: muncul banner "Event ini nonaktif", tombol **+ (Tambah Pesanan)** disembunyikan, dan `createOrder` di server ikut menolak. Pesanan lama tetap bisa dibuka, diedit, dihapus, dan ditagih seperti biasa. Bisa diaktifkan lagi kapan saja.
 - **Hapus event**: konfirmasi menyebut jumlah pesanan yang ikut terhapus (FK `orders` → `events` dan `items` → `orders` pakai `ON DELETE CASCADE`), sekaligus menyarankan pakai **nonaktifkan** kalau cuma mau menutup event. Setelah terhapus, user dibalikkan ke Beranda.
 - **Ringkasan keuangan event**: uang masuk, outstanding, estimasi untung bersih.
@@ -86,6 +87,26 @@ Astra Otoshop).
 - Tiap barang: nama, total qty diorder, jumlah pelanggan yang mesan, dan daftar siapa + berapa qty masing-masing.
 - **Checkbox "obtained"** per pelanggan per barang — menandai barang sudah didapat/dibeli di toko saat live shopping.
 - Update `obtained` langsung ke server (optimistic update).
+
+#### 4.3.2 Import Data Pesanan dari Excel/CSV
+
+Buat jastiper yang sudah punya catatan pesanan di Excel/CSV (mis. hasil rekap chat) — daripada diketik ulang satu-satu.
+
+- **Masuknya cuma dari menu tiga titik (⋮)** di halaman Detail Event: item **"Import data (Excel/CSV)"**. Sengaja tidak ada tombol di badan halaman supaya alur normal (Tambah Pesanan) tetap yang paling menonjol. Item ini **nonaktif** waktu eventnya nonaktif (sama seperti FAB +, dan `importOrders` di server juga menolak) — kalau eventnya nonaktif, keterangannya berubah jadi ajakan mengaktifkan event dulu.
+- **Format file**: `.xlsx` (Excel modern) atau `.csv` (pemisah `,` maupun `;`, deteksi otomatis dari baris pertama). File `.xls` lama belum didukung dan ditolak dengan pesan yang menjelaskan cara menyimpannya ulang.
+- **Kolom yang dibaca**: `No urut`, `Nama-no wa`, `item`, `harga`. **Urutan kolom bebas** dan kolom yang tidak dipakai (mis. `No urut`) boleh ada di mana saja — pencocokannya lewat **nama header**, bukan posisi:
+  - `harga`/`price` → harga asli barang. Nilai `15.000`, `15000`, `Rp 15.000`, dan angka asli dari Excel dua-duanya diterima.
+  - `item`/`barang`/`produk` → nama barang.
+  - `nama` + `wa`/`hp`/`telp`/`nomor` dalam satu header (mis. `Nama-no wa`) → nama pelanggan dan nomor WA dipisah dari satu sel (pemisah `-`, `|`, atau tanda kurung). Kalau header nama & nomor dipisah jadi dua kolom, itu juga dikenali. Header `Nama Barang` sengaja dibaca sebagai kolom **barang**, bukan nama pelanggan.
+  - Baris header boleh tidak di baris pertama (mis. ada judul di atasnya) — header pertama yang memuat minimal kolom `item` + `harga` yang dipakai.
+- **Satu pelanggan = satu tagihan**: baris-baris dengan nama pelanggan yang sama (dicocokkan tanpa membedakan huruf besar/kecil) dikumpulkan jadi satu pesanan. Baris dengan nama barang, harga, dan fee yang sama persis digabung jadi satu baris dengan qty dijumlahkan.
+- **Fee jastip tidak diambil dari file** — selalu dihitung dari **Aturan Fee event ini** pakai rumus yang sama dengan form Tambah Pesanan (harga asli dicocokkan ke tier, lihat _Logika auto-fill fee_ di §7). Kalau event belum punya Aturan Fee, atau harganya di luar semua tier, fee-nya **0** (bukan dikosongkan, karena di import tidak ada yang bisa mengisi manual). Fee berlaku per barang dan ikut dikalikan qty: total = `(harga asli + fee) × qty`.
+- **Semua hasil import masuk sebagai Belum Lunas** (`paidAmount = 0`); status pembayarannya ditandai setelahnya seperti pesanan biasa. Pelanggan yang sudah punya pesanan **belum lunas/DP** di event ini tidak dibikin tagihan baru — barangnya **digabung** ke pesanan itu pakai aturan gabung yang sama (`order-merge.ts`), termasuk membawa nominal DP yang sudah masuk dan checklist `obtained` barang lama.
+- **Preview dulu, baru import**: setelah file dipilih, file-nya dibaca **di browser** (isinya tidak diupload) dan yang tampil adalah ringkasan (jumlah pelanggan, jumlah barang, total tagihan, nama file), keterangan fee dari aturan mana, peringatan berapa pelanggan yang bakal digabung, lalu daftar pesanan beserta barang + fee-nya. Tombol **Import** baru aktif kalau tidak ada masalah.
+- **Baris bermasalah tidak dibuang diam-diam**: baris yang tidak bisa dibaca (mis. nama pelanggan/barang kosong, harga bukan angka atau negatif) dicatat **per nomor baris seperti di Excel** dan **memblokir seluruh import** — user diminta memperbaiki filenya lalu memilih ulang. Jadi tidak ada data yang "hilang sebagian" tanpa disadari.
+- **Batas**: maksimal **2.000 baris** dan **500 pelanggan** sekali import (`MAX_IMPORT_ROWS` / `MAX_IMPORT_ORDERS` di `lib/order-import.ts`, sekaligus jadi batas validator di server). Lewat dari itu, file-nya ditolak dengan saran dipecah jadi beberapa file — pesannya menyebut angka batasnya.
+- **Satu transaksi**: seluruh pesanan ditulis dalam satu `db.transaction` di `importOrders`, jadi tidak ada import yang masuk setengah jalan. Setelah selesai, halaman event menyegarkan datanya dan menampilkan alert melayang yang sama seperti penggabungan pesanan (mis. "Import selesai: 12 pesanan baru, 3 pelanggan digabung ke pesanan yang belum lunas (27 barang).").
+- **Back menutup modal ini**, bukan meninggalkan halaman (modal state lokal, pakai `useBackToClose`, lihat 6.1).
 
 ### 4.4 Tambah / Edit Pesanan (Bottom Sheet)
 
@@ -169,20 +190,21 @@ Astra Otoshop).
 
 - **Mode gelap** — toggle, disimpan di `localStorage` + `data-theme` attribute. **Default terang**: kalau user belum pernah memilih (belum ada nilai `localStorage.theme`), app dibuka terang walaupun HP-nya mode gelap — auto gelap (ikut `prefers-color-scheme`) tidak dipakai sebagai default. Script inline `buildThemeInitScript` (`src/lib/theme.ts`, dipasang `__root.tsx`) yang menentukan tema sebelum hydrate, dan `ThemeToggle.tsx` memakai konstanta `DEFAULT_THEME_MODE` yang sama.
 - **Template Chat WA** (halaman `/profil/template-chat`, form `MessageTemplateForm`) — template pesan WhatsApp untuk tagih pelanggan, dengan variabel `{customer}`, `{event}`, `{link}`, `{subtotal}`, `{fee}`, `{total}`, `{bank}`, `{bankAccount}`, `{brand}`. Bisa dikembalikan ke default. Dulu form ini modal; dipindah jadi halaman sendiri (header + tombol back, bottom nav tetap tampil seperti `/profil/langganan`) karena di sebagian HP tinggi kontennya — textarea + chips variabel + preview — bikin tombol Simpan ketutup.
-- **Notifikasi** — placeholder (belum fungsional).
-- **Tambahkan ke layar utama** — PWA install prompt (`beforeinstallprompt`); jika sudah terpasang, tombol berubah jadi "Terpasang di perangkat".
+- Item **Notifikasi** dan **Tambahkan ke layar utama** (prompt install PWA) sudah **dihapus** dari section ini: yang pertama cuma placeholder tanpa isi, yang kedua dianggap tidak perlu karena install tetap bisa dari menu browser (Chrome: ikon Install di address bar; iPhone: Share → "Tambahkan ke layar utama").
 
-#### 4.8.6 Section Lainnya
+#### 4.8.6 Tombol Keluar
 
-- Bantuan (placeholder).
-- Tentang aplikasi (versi `v1.0.0`).
-- Tombol **Keluar** (logout).
+- Tombol **Keluar** (logout) — satu-satunya isi bagian bawah halaman profil.
+- Item **Bantuan** dan **Tentang aplikasi** (versi `v1.0.0`) sudah **dihapus** dari halaman profil beserta judul section "Lainnya": dua-duanya cuma placeholder tanpa isi, jadi cuma menambah tinggi halaman.
 
 ### 4.9 Manajemen Fee — `/profil/fee-rules`
 
 - List aturan fee: card per aturan — nama, jumlah tier, rentang harga, preview tier. Tombol "Tambah aturan fee".
 - **Tambah / Edit Aturan Fee** — nama aturan + list tier (bisa tambah/hapus baris). Tiap tier: harga min, harga maks, fee jastip.
 - **Saran tier otomatis** (dipakai di form Tambah **dan** Edit aturan fee) — dari harga dan fee barang yang pernah dicatat user, sistem mengelompokkan harga ke rentang (band) lalu menyarankan satu tier per rentang dengan fee = nilai tengah rentang tersebut (dibulatkan). Ini fitur PRO `fee_suggestions`: di paket FREE panel saran diganti keterangan "Saran tier otomatis dari riwayat harga & fee barang tersedia di paket PRO", dan server (`getFeeSuggestions`) cuma mengirim `unlocked: false` tanpa data (lihat 5.2).
+
+> **Pembaruan:** panel saran ini sekarang **hanya ada di form Tambah aturan fee**. Di halaman **Edit aturan fee** sudah dihapus — tier-nya toh sudah terisi dari aturan yang sedang diedit, jadi daftar saran cuma jadi noise (dan bikin ragu tier mana yang sebenarnya berlaku). Halaman edit juga tidak lagi memanggil `getFeeSuggestions`.
+
 - User bisa membuat **lebih dari satu aturan fee** (misal beda aturan untuk jastip lokal vs luar negeri).
 - Di Detail Event, user memilih **satu Aturan Fee** yang berlaku untuk event tersebut.
 
@@ -376,7 +398,7 @@ Tiga status akses. Seluruh aturannya ditulis di `src/lib/subscription.ts` (modul
 | `billing`              | Tagih: halaman invoice internal, kirim WA, dan link tagihan publik | `requireFeature(getUserEntitlements(user), 'billing')` di `getOrderInvoice`; di `getPublicOrderInvoice` ada aturan grandfathering (5.5) |
 | `payment_methods`      | Tambah / edit / hapus / aktif-nonaktif metode pembayaran           | `requireUserFeature('payment_methods')` di 4 server function tulis — baca daftar tetap terbuka                                          |
 | `order_suggestions`    | Saran nama barang & harga asli di form Tambah/Edit Pesanan         | `getOrderSuggestions` mengembalikan `unlocked: false` + data kosong (tidak melempar error)                                              |
-| `fee_suggestions`      | Saran tier aturan fee di form Tambah/Edit Aturan Fee               | `getFeeSuggestions` mengembalikan `unlocked: false` + data kosong                                                                       |
+| `fee_suggestions`      | Saran tier aturan fee di form Tambah Aturan Fee                    | `getFeeSuggestions` mengembalikan `unlocked: false` + data kosong                                                                       |
 | `customer_suggestions` | Saran nama & no. HP pelanggan di form Tambah/Edit Pesanan          | `getCustomerSuggestions` mengembalikan `unlocked: false` + data kosong (tidak melempar error)                                           |
 
 Label & deskripsi tiap kunci (`PRO_FEATURE_INFO`), label/deskripsi plan (`PLAN_INFO`, `planLabel()`), dan pesan seragam `featureLockedMessage()` juga tinggal di `src/lib/subscription.ts` — jadi teks UI dan pesan server tidak bisa beda.
@@ -392,7 +414,7 @@ Label & deskripsi tiap kunci (`PRO_FEATURE_INFO`), label/deskripsi plan (`PLAN_I
 
 - `ProBadge` — penanda kecil "PRO" pada kontrol yang terkunci.
 - `ProLockPrompt` — dialog seragam untuk fitur terkunci: penjelasan fiturnya, isi paket PRO, status plan user saat ini, lalu tombol **"Upgrade ke PRO"** (menuju `/profil/langganan`) dan "Nanti saja".
-- Kontrol yang tampil terkunci di paket FREE: tombol **Tagih** di Detail Event (gembok + badge PRO; klik = dialog upgrade), tombol "Tambah metode pembayaran" serta toggle aktif-nonaktif metode (semua aksi tulis dialihkan ke dialog upgrade), lalu keterangan pengganti saran di form pesanan ("Saran nama barang & harga dari riwayat pesanan tersedia di paket PRO"), di form aturan fee ("Saran tier otomatis dari riwayat harga & fee barang tersedia di paket PRO"), dan untuk saran pelanggan ("Saran nama & no. HP pelanggan dari data customer tersedia di paket PRO").
+- Kontrol yang tampil terkunci di paket FREE: tombol **Tagih** di Detail Event (gembok + badge PRO; klik = dialog upgrade), tombol "Tambah metode pembayaran" serta toggle aktif-nonaktif metode (semua aksi tulis dialihkan ke dialog upgrade), lalu keterangan pengganti saran di form pesanan ("Saran nama barang & harga dari riwayat pesanan tersedia di paket PRO"), di form Tambah aturan fee ("Saran tier otomatis dari riwayat harga & fee barang tersedia di paket PRO"; halaman Edit aturan fee tidak lagi memakai saran ini), dan untuk saran pelanggan ("Saran nama & no. HP pelanggan dari data customer tersedia di paket PRO").
 - Baris **Langganan** di Profil menampilkan status paket + chip **Upgrade** (khusus FREE) sebagai jalan masuk ke halaman Paket & Langganan.
 - Semua kunci di UI dibaca dari `canUseFeature(entitlements, '<kunci fitur>')` — komponen tidak menghitung status plan sendiri.
 
@@ -435,7 +457,7 @@ Halaman detail (Detail Event, Fee Rules, Customers, Invoice) menyembunyikan bott
 Tombol back (hardware/browser, termasuk swipe-back) dipakai buat **menutup overlay**, bukan ninggalin halaman. Ada dua mekanisme, dipilih sesuai sumber state overlay-nya:
 
 - **Overlay yang punya URL sendiri** — sheet Tambah/Edit Pesanan di halaman event. Buka/tutupnya ditentukan search param (`?addOrder` / `?editOrder` / `?duplicateOrder`, lihat 4.3 dan `lib/order-sheet-search.ts`), jadi back cukup mem-pop history dan sheet-nya ketutup sendiri tanpa kode tambahan.
-- **Modal lain** (semua dialog: konfirmasi hapus, konfirmasi hapus event, nominal DP, edit profil, ubah kata sandi, form customer, edit/tambah metode pembayaran, ajukan upgrade & verifikasi langganan, QRIS pembayaran, dialog fitur PRO) — state-nya lokal per halaman, jadi ditangani hook `useBackToClose(open, onClose)` (`src/lib/back-to-close.ts`). Hook ini dipasang **di dalam komponen modalnya**, bukan di halaman pemanggil, supaya semua pemakaian ikut kebagian tanpa baris tambahan di tiap halaman.
+- **Modal lain** (semua dialog: konfirmasi hapus, konfirmasi hapus event, nominal DP, import data Excel/CSV, edit profil, ubah kata sandi, form customer, edit/tambah metode pembayaran, ajukan upgrade & verifikasi langganan, QRIS pembayaran, dialog fitur PRO) — state-nya lokal per halaman, jadi ditangani hook `useBackToClose(open, onClose)` (`src/lib/back-to-close.ts`). Hook ini dipasang **di dalam komponen modalnya**, bukan di halaman pemanggil, supaya semua pemakaian ikut kebagian tanpa baris tambahan di tiap halaman.
 
 Cara kerja `useBackToClose`: pakai `useBlocker` TanStack Router — selama modal terbuka, navigasi `BACK` **ditahan** (URL & history tetap di halaman yang sama) lalu `onClose()` dipanggil. Yang **tidak** diganggu: navigasi `PUSH`/`REPLACE` (pindah halaman sesudah menyimpan, tombol upgrade PRO) dan `history.go()` dari kode. Prompt "yakin mau keluar?" waktu tab di-refresh/ditutup juga dimatikan (`enableBeforeUnload: false`) — yang ditangani cuma tombol back.
 
@@ -664,6 +686,10 @@ Setiap perubahan skema (tabel, kolom, enum, index, constraint) **wajib lewat fil
    diisi manual oleh user.
 ```
 
+Aturan yang sama dipakai **import data pesanan dari Excel/CSV** (§4.3.2), tapi
+karena di sana tidak ada yang bisa mengisi manual, harga di luar semua tier
+(tidak ketemu) atau event yang belum punya aturan fee menghasilkan **fee 0**.
+
 ### Logika dashboard keuangan
 
 - **Uang masuk** = `SUM(paidAmount)` dari seluruh orders milik user (termasuk DP).
@@ -686,6 +712,7 @@ src/
 │   ├── CustomerFormModal.tsx
 │   ├── EditProfileModal.tsx
 │   ├── FeeRuleForm.tsx         # Form tambah/edit aturan fee + tier
+│   ├── ImportOrdersModal.tsx   # Modal import pesanan dari Excel/CSV (menu ⋮ halaman event)
 │   ├── MessageTemplateForm.tsx  # Form Template Chat WA (halaman /profil/template-chat)
 │   ├── PaymentInfoCard.tsx     # Info metode pembayaran di invoice
 │   ├── PaymentMethodModal.tsx
@@ -727,6 +754,9 @@ src/
 │   ├── mailer.ts              # Kirim email reset password
 │   ├── message-template.ts    # DEFAULT_WA_MESSAGE_TEMPLATE, renderMessageTemplate
 │   ├── message-template-functions.ts
+│   ├── order-import.ts        # Baca file import Excel/CSV → preview (murni, tanpa db)
+│   ├── order-import.test.ts   # Unit test parsing file, deteksi header, fee & batas import
+│   ├── order-import-functions.ts  # importOrders: tulis hasil import (satu transaksi)
 │   ├── order-merge.ts         # Aturan gabung pesanan pelanggan yang sama (murni, tanpa db)
 │   ├── order-merge.test.ts    # Unit test penggabungan pesanan
 │   ├── order-sheet-search.ts  # Kontrak URL sheet Tambah/Edit Pesanan (back = tutup sheet)
@@ -786,6 +816,7 @@ src/
 - Query yang butuh `db` ditaruh di file `*-queries.ts` (server-only, tidak pernah di-import client): `admin-queries.ts`, `customers-queries.ts`, `subscription-queries.ts`, `subscription-settings-queries.ts`. Urutannya: halaman → `*-functions.ts` (pagar auth/entitlement + validasi zod) → `*-queries.ts` (query murni).
 - Aturan di atas dijaga otomatis oleh `src/lib/client-bundle-safety.test.ts`: satu test menolak `export function` biasa di file `*-functions.ts`, satu test lagi menolak halaman/komponen yang meng-import `src/db`. Jalankan `npm test` setelah menambah server function baru.
 - Aturan langganan/trial/PRO yang murni (tanpa `db`) tinggal di `subscription.ts`, pagar admin di `admin.ts`, pagar PRO di `entitlements.ts` — supaya tidak ada pengecekan plan/admin yang ditulis ulang di tempat lain.
+- Library yang **khusus browser** di-`import()` dinamis di dalam handler-nya, bukan di-import di level modul, supaya tidak ikut bundle awal dan tidak pernah jalan saat SSR — contohnya `read-excel-file/browser` di `ImportOrdersModal.tsx` (file-nya di-parse di client, server cuma menerima hasil parse-nya).
 
 ## 9. Di Luar Cakupan MVP (Next Phase)
 
@@ -795,6 +826,6 @@ src/
 - Payment gateway (pembayaran online) — untuk MVP masih manual/transfer.
 - Verifikasi email saat register.
 - Aplikasi mobile native — MVP web/PWA saja.
-- Import Excel / Ekspor Data.
+- Ekspor Data (kebalikannya: unduh data event/pesanan jadi file). Import dari Excel/CSV **sudah ada** (lihat 4.3.2).
 - Master Control & Activity Logs (tabel `activity_logs` sudah ada di DB, tapi belum ada UI maupun kode yang menulis ke sana — karena itu metrik "Active Users" di dashboard admin sementara dihitung dari baris `sessions`).
 - Notifikasi push (service worker sudah ada via Workbox, tapi belum diimplementasi).
