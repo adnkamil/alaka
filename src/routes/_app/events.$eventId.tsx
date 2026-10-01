@@ -19,6 +19,7 @@ import {
   ArrowLeft,
   ChevronDown,
   ChevronRight,
+  FileSpreadsheet,
   Info,
   Lock,
   MoreVertical,
@@ -31,6 +32,7 @@ import {
 } from 'lucide-react'
 import { z } from 'zod'
 import AddOrderSheet from '../../components/AddOrderSheet'
+import ImportOrdersModal from '../../components/ImportOrdersModal'
 import ProBadge from '../../components/ProBadge'
 import ProLockPrompt from '../../components/ProLockPrompt'
 import { fetchCurrentUser } from '../../lib/auth-functions'
@@ -57,6 +59,8 @@ import {
   updateOrder,
   updateOrderPaymentStatus,
 } from '../../lib/orders-functions'
+import { importOrders } from '../../lib/order-import-functions'
+import type { ImportOrderInput } from '../../lib/order-import'
 import { getCustomerSuggestions } from '#/lib/customer-suggestions-functions'
 
 const searchSchema = z.object({
@@ -304,6 +308,8 @@ function EventDetailPage() {
   // Nonaktifkan/aktifkan event + hapus event (dua-duanya dari menu ⋮).
   const [isTogglingActive, setIsTogglingActive] = useState(false)
   const [showDeleteEvent, setShowDeleteEvent] = useState(false)
+  // Modal import data pesanan dari file Excel/CSV (dibuka dari menu ⋮).
+  const [showImportOrders, setShowImportOrders] = useState(false)
   const [isDeletingEvent, setIsDeletingEvent] = useState(false)
   // Fitur PRO yang lagi dicoba dibuka user FREE (null = dialog ketutup).
   const [lockedFeature, setLockedFeature] = useState<ProFeature | null>(null)
@@ -466,6 +472,26 @@ function EventDetailPage() {
       result.merged
         ? `Barang baru digabung ke pesanan ${result.customerName} yang masih belum lunas. Total tagihannya sekarang ${formatIDR(result.total)}.`
         : null,
+    )
+  }
+
+  /**
+   * Import pesanan dari file Excel/CSV yang dipilih di menu ⋮. Servernya
+   * menulis semuanya dalam satu transaksi, jadi hasilnya bisa langsung
+   * dilaporkan lewat alert melayang yang sama dengan info penggabungan pesanan.
+   */
+  async function handleImportOrders(orders: Array<ImportOrderInput>) {
+    const result = await importOrders({ data: { eventId, orders } })
+    await queryClient.invalidateQueries({ queryKey: ['event', eventId] })
+    await queryClient.invalidateQueries({ queryKey: ['events'] })
+    await queryClient.invalidateQueries({ queryKey: ['finance-summary'] })
+    setShowImportOrders(false)
+    setMergeNotice(
+      `Import selesai: ${result.created} pesanan baru` +
+        (result.merged > 0
+          ? `, ${result.merged} pelanggan digabung ke pesanan yang belum lunas`
+          : '') +
+        ` (${result.itemCount} barang).`,
     )
   }
 
@@ -698,6 +724,38 @@ function EventDetailPage() {
                     ))}
                   </select>
                 </div>
+
+                <div
+                  className="my-4 border-t"
+                  style={{ borderColor: 'var(--app-border)' }}
+                />
+
+                {/* Import data pesanan dari file Excel/CSV. Masukannya cuma di
+                    menu ini — di halaman event nggak ada tombol terpisah. */}
+                <button
+                  type="button"
+                  disabled={!event.isActive}
+                  onClick={() => {
+                    setShowEventMenu(false)
+                    setShowImportOrders(true)
+                  }}
+                  className="flex w-full items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold disabled:opacity-50"
+                  style={{
+                    borderColor: 'var(--app-border)',
+                    color: 'var(--app-text)',
+                  }}
+                >
+                  <FileSpreadsheet size={14} />
+                  Import data (Excel/CSV)
+                </button>
+                <p
+                  className="mt-2 text-xs leading-relaxed"
+                  style={{ color: 'var(--app-text-soft)' }}
+                >
+                  {event.isActive
+                    ? 'Kolom file: No urut, Nama-no wa, item, harga. Fee jastip diisi otomatis dari aturan fee event ini.'
+                    : 'Event nonaktif — aktifkan dulu untuk menambah pesanan lewat import.'}
+                </p>
 
                 <div
                   className="my-4 border-t"
@@ -1451,6 +1509,17 @@ function EventDetailPage() {
           }}
           onClose={() => closeSheet()}
           onSubmit={(value) => handleUpdateOrder(editingOrder.id, value)}
+        />
+      )}
+
+      {showImportOrders && (
+        <ImportOrdersModal
+          eventName={event.name}
+          feeTiers={event.feeRule?.tiers ?? []}
+          feeRuleName={event.feeRule?.name ?? null}
+          existingOrders={event.orders}
+          onClose={() => setShowImportOrders(false)}
+          onSubmit={handleImportOrders}
         />
       )}
 
