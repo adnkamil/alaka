@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import {
+  IMPORT_TEMPLATE_HEADER,
   buildImportPreview,
+  buildImportTemplateRows,
   findImportHeader,
   normalizePhoneNumber,
   parseCsvRows,
@@ -365,5 +367,56 @@ describe('buildImportPreview', () => {
 
     const preview = buildImportPreview(rows, TIERS)
     assert.match(preview.fatalError ?? '', /melebihi batas/)
+  })
+})
+
+describe('buildImportTemplateRows', () => {
+  it('berisi header yang dikenali + 4 baris data bernomor 1-4', () => {
+    const rows = buildImportTemplateRows()
+    assert.deepEqual(rows[0], [...IMPORT_TEMPLATE_HEADER])
+    assert.equal(rows.length, 5)
+    assert.deepEqual(
+      rows.slice(1).map((row) => row[0]),
+      [1, 2, 3, 4],
+    )
+  })
+
+  it('tiap baris jumlah kolomnya sama dengan header', () => {
+    const rows = buildImportTemplateRows()
+    const width = IMPORT_TEMPLATE_HEADER.length
+    assert.ok(rows.every((row) => row.length === width))
+  })
+
+  it('template bisa dibaca balik: 2 pelanggan, 4 baris, tanpa error', () => {
+    const preview = buildImportPreview(buildImportTemplateRows(), TIERS)
+
+    assert.equal(preview.fatalError, null)
+    assert.deepEqual(preview.errors, [])
+    assert.equal(preview.dataRows, 4)
+    assert.equal(preview.orders.length, 2)
+    assert.deepEqual(
+      preview.orders.map((order) => [
+        order.customerName,
+        order.customerPhone,
+        order.items.length,
+      ]),
+      [
+        ['Nia', '08123456789', 2],
+        ['Budi', '081298765432', 2],
+      ],
+    )
+  })
+
+  it('fee contohnya mengikuti aturan tier event (di luar tier = 0)', () => {
+    const preview = buildImportPreview(buildImportTemplateRows(), TIERS)
+    const [nia] = preview.orders
+
+    // Kaos 15.000 -> tier 0..19.900 (fee 4.000); Sepatu 250.000 -> di luar semua tier (fee 0).
+    assert.deepEqual(
+      nia.items.map((item) => item.fee),
+      [4_000, 0],
+    )
+    assert.equal(nia.subtotal, 265_000)
+    assert.equal(nia.total, 269_000)
   })
 })

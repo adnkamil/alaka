@@ -45,6 +45,7 @@ Astra Otoshop).
 | Testing             | `node:test` (dijalankan via `tsx --test`, lihat `npm test`)                                                                      |
 | Icons               | Lucide React                                                                                                                     |
 | Baca file Excel     | `read-excel-file` (build `/browser`, di-`import()` dinamis waktu import data — lihat 4.3.2)                                      |
+| Tulis file Excel    | `xlsx` (SheetJS — `utils.aoa_to_sheet` + `writeFile`, di-`import()` dinamis waktu unduh template — lihat 4.3.2)                  |
 
 ## 4. Fitur & Halaman
 
@@ -94,6 +95,7 @@ Buat jastiper yang sudah punya catatan pesanan di Excel/CSV (mis. hasil rekap ch
 
 - **Masuknya cuma dari menu tiga titik (⋮)** di halaman Detail Event: item **"Import data (Excel/CSV)"**. Sengaja tidak ada tombol di badan halaman supaya alur normal (Tambah Pesanan) tetap yang paling menonjol. Item ini **nonaktif** waktu eventnya nonaktif (sama seperti FAB +, dan `importOrders` di server juga menolak) — kalau eventnya nonaktif, keterangannya berubah jadi ajakan mengaktifkan event dulu.
 - **Format file**: `.xlsx` (Excel modern) atau `.csv` (pemisah `,` maupun `;`, deteksi otomatis dari baris pertama). File `.xls` lama belum didukung dan ditolak dengan pesan yang menjelaskan cara menyimpannya ulang.
+- **Download template**: di layar awal modal (sebelum file dipilih) ada tombol **Download template** yang mengunduh contoh file **`.xlsx`** (`template-import-pesanan.xlsx`) siap isi. Isinya datang dari `buildImportTemplateRows()` di `lib/order-import.ts` (murni — cuma data, tanpa library Excel), lalu dibentuk jadi sheet pakai SheetJS `xlsx`: `XLSX.utils.aoa_to_sheet()` → `XLSX.utils.book_new()` → `XLSX.utils.book_append_sheet()` → `XLSX.writeFile()` (SheetJS yang menyiapkan file & memicu unduhannya di browser). Library `xlsx` di-`import()` **dinamis di dalam handler** (lihat 6.4) supaya tidak ikut bundle awal dan tidak pernah jalan saat SSR. Isinya **4 baris contoh untuk 2 pelanggan** (masing-masing 2 barang; pelanggan pertama sengaja muncul di dua baris supaya kelihatan bahwa baris dengan nama pelanggan sama digabung jadi satu tagihan) dan header-nya persis nama kolom yang dibaca. Kolom `No urut` & `harga` ditulis sebagai angka (bukan teks) supaya Excel memperlakukannya sebagai bilangan. Tombol yang sama juga muncul di layar "file belum bisa dipakai" dan "baris belum benar", biar user bisa langsung memakai format yang benar.
 - **Kolom yang dibaca**: `No urut`, `Nama-no wa`, `item`, `harga`. **Urutan kolom bebas** dan kolom yang tidak dipakai (mis. `No urut`) boleh ada di mana saja — pencocokannya lewat **nama header**, bukan posisi:
   - `harga`/`price` → harga asli barang. Nilai `15.000`, `15000`, `Rp 15.000`, dan angka asli dari Excel dua-duanya diterima.
   - `item`/`barang`/`produk` → nama barang.
@@ -754,8 +756,8 @@ src/
 │   ├── mailer.ts              # Kirim email reset password
 │   ├── message-template.ts    # DEFAULT_WA_MESSAGE_TEMPLATE, renderMessageTemplate
 │   ├── message-template-functions.ts
-│   ├── order-import.ts        # Baca file import Excel/CSV → preview (murni, tanpa db)
-│   ├── order-import.test.ts   # Unit test parsing file, deteksi header, fee & batas import
+│   ├── order-import.ts        # Baca file import Excel/CSV + isi template .xlsx (murni, tanpa db)
+│   ├── order-import.test.ts   # Unit test parsing file, deteksi header, fee, batas & template import
 │   ├── order-import-functions.ts  # importOrders: tulis hasil import (satu transaksi)
 │   ├── order-merge.ts         # Aturan gabung pesanan pelanggan yang sama (murni, tanpa db)
 │   ├── order-merge.test.ts    # Unit test penggabungan pesanan
@@ -816,7 +818,7 @@ src/
 - Query yang butuh `db` ditaruh di file `*-queries.ts` (server-only, tidak pernah di-import client): `admin-queries.ts`, `customers-queries.ts`, `subscription-queries.ts`, `subscription-settings-queries.ts`. Urutannya: halaman → `*-functions.ts` (pagar auth/entitlement + validasi zod) → `*-queries.ts` (query murni).
 - Aturan di atas dijaga otomatis oleh `src/lib/client-bundle-safety.test.ts`: satu test menolak `export function` biasa di file `*-functions.ts`, satu test lagi menolak halaman/komponen yang meng-import `src/db`. Jalankan `npm test` setelah menambah server function baru.
 - Aturan langganan/trial/PRO yang murni (tanpa `db`) tinggal di `subscription.ts`, pagar admin di `admin.ts`, pagar PRO di `entitlements.ts` — supaya tidak ada pengecekan plan/admin yang ditulis ulang di tempat lain.
-- Library yang **khusus browser** di-`import()` dinamis di dalam handler-nya, bukan di-import di level modul, supaya tidak ikut bundle awal dan tidak pernah jalan saat SSR — contohnya `read-excel-file/browser` di `ImportOrdersModal.tsx` (file-nya di-parse di client, server cuma menerima hasil parse-nya).
+- Library yang **khusus browser** di-`import()` dinamis di dalam handler-nya, bukan di-import di level modul, supaya tidak ikut bundle awal dan tidak pernah jalan saat SSR — contohnya `read-excel-file/browser` (baca file import) dan `xlsx`/SheetJS (bikin file template) di `ImportOrdersModal.tsx` (file-nya di-parse/dibuat di client, server cuma menerima hasil parse-nya).
 
 ## 9. Di Luar Cakupan MVP (Next Phase)
 

@@ -1,11 +1,20 @@
 import { useRef, useState } from 'react'
-import { AlertTriangle, FileSpreadsheet, Info, Upload, X } from 'lucide-react'
+import {
+  AlertTriangle,
+  Download,
+  FileSpreadsheet,
+  Info,
+  Upload,
+  X,
+} from 'lucide-react'
 import { useBackToClose } from '../lib/back-to-close'
 import { formatPhoneNumber } from '../lib/format'
 import {
+  IMPORT_TEMPLATE_FILE_NAME,
   MAX_IMPORT_ORDERS,
   MAX_IMPORT_ROWS,
   buildImportPreview,
+  buildImportTemplateRows,
   readRowsFromFile,
 } from '../lib/order-import'
 import type { ImportOrderInput, ImportPreview } from '../lib/order-import'
@@ -44,6 +53,13 @@ function formatIDR(value: string | number) {
 }
 
 /**
+ * Lebar kolom tabel contoh di layar awal (template dibagi header & isinya):
+ * "No urut" dipatok sempit karena cuma nomor, "Nama-no wa" ambil sisa lebar
+ * supaya nama + nomornya nggak kepotong, "item"/"harga" cukup seukuran isinya.
+ */
+const EXAMPLE_TABLE_COLS = 'grid-cols-[3.25rem_minmax(0,1fr)_4.5rem_3.75rem]'
+
+/**
  * Import pesanan dari file Excel/CSV: pilih file → preview apa yang bakal masuk
  * → import. Dipakai dari menu tiga titik di halaman Detail Event.
  *
@@ -63,6 +79,7 @@ export default function ImportOrdersModal({
   const [fileName, setFileName] = useState<string | null>(null)
   const [isReading, setIsReading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isPreparingTemplate, setIsPreparingTemplate] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -116,6 +133,43 @@ export default function ImportOrdersModal({
       setIsSubmitting(false)
     }
   }
+
+  /**
+   * Unduh contoh file import (.xlsx, 4 baris untuk 2 pelanggan) supaya user
+   * tinggal mengisi datanya.
+   *
+   * SheetJS (`xlsx`) di-`import()` **dinamis di dalam handler** — bukan di level
+   * modul — supaya tidak ikut bundle awal dan tidak pernah jalan saat SSR,
+   * sama seperti `read-excel-file/browser` waktu membaca file.
+   */
+  async function handleDownloadTemplate() {
+    setError(null)
+    setIsPreparingTemplate(true)
+    try {
+      const XLSX = await import('xlsx')
+      const worksheet = XLSX.utils.aoa_to_sheet(buildImportTemplateRows())
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Pesanan')
+      // SheetJS yang menyiapkan file & memicu unduhannya di browser.
+      XLSX.writeFile(workbook, IMPORT_TEMPLATE_FILE_NAME)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Gagal membuat template')
+    } finally {
+      setIsPreparingTemplate(false)
+    }
+  }
+
+  const downloadTemplateButton = (
+    <button
+      type="button"
+      onClick={() => void handleDownloadTemplate()}
+      disabled={isSubmitting || isPreparingTemplate}
+      className="app-btn-outline w-full disabled:opacity-50"
+    >
+      <Download size={16} />
+      {isPreparingTemplate ? 'Menyiapkan...' : 'Download template'}
+    </button>
+  )
 
   const importable =
     Boolean(preview) &&
@@ -189,7 +243,7 @@ export default function ImportOrdersModal({
                   style={{ background: 'var(--app-card-hover)' }}
                 >
                   <div
-                    className="grid grid-cols-4 gap-2 border-b px-3 py-2 font-semibold"
+                    className={`grid ${EXAMPLE_TABLE_COLS} gap-2 border-b px-3 py-2 font-semibold`}
                     style={{ borderColor: 'var(--app-border)' }}
                   >
                     <span>No urut</span>
@@ -198,7 +252,7 @@ export default function ImportOrdersModal({
                     <span>harga</span>
                   </div>
                   <div
-                    className="grid grid-cols-4 gap-2 px-3 py-2"
+                    className={`grid ${EXAMPLE_TABLE_COLS} gap-2 px-3 py-2`}
                     style={{ color: 'var(--app-text-soft)' }}
                   >
                     <span>1</span>
@@ -212,6 +266,7 @@ export default function ImportOrdersModal({
                   pelanggan boleh muncul di beberapa baris — barangnya otomatis
                   dikumpulkan jadi satu tagihan.
                 </p>
+                {downloadTemplateButton}
               </div>
             )}
 
@@ -236,6 +291,7 @@ export default function ImportOrdersModal({
                 >
                   {preview.fatalError}
                 </p>
+                <div className="mt-3">{downloadTemplateButton}</div>
               </div>
             )}
 
@@ -329,6 +385,7 @@ export default function ImportOrdersModal({
                         …dan {preview.errors.length - 15} baris lainnya.
                       </p>
                     )}
+                    <div className="mt-3">{downloadTemplateButton}</div>
                   </div>
                 )}
 
