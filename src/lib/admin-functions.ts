@@ -16,6 +16,7 @@ import {
   listActiveSubscriptions,
 } from './subscription-queries'
 import { getSubscriptionSettings } from './subscription-settings-queries'
+import { isStaticQris, isValidQris } from './qris'
 
 export const fetchAdminMetrics = createServerFn({ method: 'GET' }).handler(
   async () => {
@@ -130,7 +131,7 @@ const qrisImageSchema = z
 
 /** Upsert baris singleton `subscription_settings` — dipakai QRIS & harga. */
 async function upsertSubscriptionSettings(
-  patch: Partial<{ qrisImage: string; proPrice: string }>,
+  patch: Partial<{ qrisImage: string; qrisString: string; proPrice: string }>,
   adminId: string,
 ) {
   const existing = await getSubscriptionSettings()
@@ -157,10 +158,23 @@ export const fetchSubscriptionSettingsAdmin = createServerFn({
 
 /** Admin upload/ganti QRIS pembayaran PRO. */
 export const updateSubscriptionQris = createServerFn({ method: 'POST' })
-  .validator(z.object({ qrisImage: qrisImageSchema }))
+  .validator(
+    z.object({
+      qrisImage: qrisImageSchema,
+      qrisString: z
+        .string()
+        .max(1000)
+        .refine((v) => isValidQris(v) && isStaticQris(v), {
+          message: 'Bukan QRIS statis yang valid',
+        }),
+    }),
+  )
   .handler(async ({ data }) => {
     const admin = await requireAdminUser()
-    await upsertSubscriptionSettings({ qrisImage: data.qrisImage }, admin.id)
+    await upsertSubscriptionSettings(
+      { qrisImage: data.qrisImage, qrisString: data.qrisString },
+      admin.id,
+    )
     return { success: true }
   })
 

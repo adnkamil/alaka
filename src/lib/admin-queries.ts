@@ -33,7 +33,12 @@ export async function listAdminSubscriptions(
     })
     .from(subscriptions)
     .innerJoin(users, eq(subscriptions.userId, users.id))
-    .where(status ? eq(subscriptions.status, status) : undefined)
+    .where(
+      and(
+        status ? eq(subscriptions.status, status) : undefined,
+        eq(users.isAdmin, false),
+      ),
+    )
     .orderBy(desc(subscriptions.createdAt), desc(subscriptions.id))
 
   return rows.map(({ subscription, userName, userEmail, userBrandName }) => ({
@@ -94,28 +99,45 @@ export async function getAdminMetrics(
     [proPendingRow],
     [revenueRow],
   ] = await Promise.all([
-    db.select({ value: sql<string>`count(*)` }).from(users),
+    db
+      .select({ value: sql<string>`count(*)` })
+      .from(users)
+      .where(eq(users.isAdmin, false)),
     db
       .select({ value: sql<string>`count(distinct ${sessions.userId})` })
       .from(sessions)
-      .where(gte(sessions.createdAt, activeSince)),
+      .innerJoin(users, eq(sessions.userId, users.id))
+      .where(
+        and(gte(sessions.createdAt, activeSince), eq(users.isAdmin, false)),
+      ),
     db
       .select({ value: sql<string>`count(*)` })
       .from(subscriptions)
+      .innerJoin(users, eq(subscriptions.userId, users.id))
       .where(
         and(
           eq(subscriptions.status, 'active'),
           sql`${subscriptions.endsAt} > ${now}`,
+          eq(users.isAdmin, false),
         ),
       ),
     db
       .select({ value: sql<string>`count(*)` })
       .from(subscriptions)
-      .where(eq(subscriptions.status, 'pending')),
+      .innerJoin(users, eq(subscriptions.userId, users.id))
+      .where(
+        and(eq(subscriptions.status, 'pending'), eq(users.isAdmin, false)),
+      ),
     db
       .select({ value: sql<string>`coalesce(sum(${subscriptions.amount}), 0)` })
       .from(subscriptions)
-      .where(sql`${subscriptions.status} in ('active', 'expired')`),
+      .innerJoin(users, eq(subscriptions.userId, users.id))
+      .where(
+        and(
+          sql`${subscriptions.status} in ('active', 'expired')`,
+          eq(users.isAdmin, false),
+        ),
+      ),
   ])
 
   return {
@@ -169,7 +191,11 @@ export async function listAdminUsers(
 
   const [userRows, activeRows, pendingRows, revenueRows, lastLoginRows] =
     await Promise.all([
-      db.select().from(users).orderBy(desc(users.createdAt), desc(users.id)),
+      db
+        .select()
+        .from(users)
+        .where(eq(users.isAdmin, false))
+        .orderBy(desc(users.createdAt), desc(users.id)),
       // Cuma baris yang masa berlakunya belum lewat; `resolveEntitlement()`
       // tetap penentu akhir lewat `ends_at` (pola sama dengan metrik PRO Active).
       db
