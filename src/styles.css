@@ -62,7 +62,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
+  :root:not([data-theme]) {
     --brand-bg: #140f0c;
     --brand-bg-soft: #1c1512;
     --brand-surface: #201613;
