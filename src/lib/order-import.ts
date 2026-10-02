@@ -24,8 +24,15 @@
  * dilewati diam-diam: barisnya dicatat di `errors` dan UI menolak import
  * selama masih ada error, supaya tidak ada data yang hilang tanpa disadari.
  *
- * Modul ini SENGAJA murni (tanpa `db` dan tanpa API browser) supaya aturannya
- * bisa diuji tanpa database (`pnpm test`) — sama seperti `order-merge.ts`.
+ * Modul ini juga menyiapkan **isi template Excel siap isi** yang dipakai tombol
+ * "Download template" di modal import (`buildImportTemplateRows` — dipakai
+ * `ImportOrdersModal` buat bikin file `.xlsx` lewat SheetJS). Contoh isinya 4
+ * baris untuk 2 pelanggan, dan header-nya sengaja memakai nama kolom yang sama
+ * seperti di atas — jadi file hasil unduhan pasti kebaca oleh `findImportHeader`.
+ *
+ * Modul ini SENGAJA murni (tanpa `db`, tanpa API browser, dan tanpa library
+ * Excel) supaya aturannya bisa diuji tanpa database (`pnpm test`) — sama
+ * seperti `order-merge.ts`.
  */
 
 import { findFeeForPrice } from './fee-tier-validation'
@@ -37,6 +44,29 @@ import { summarizeItems } from './order-totals'
 /** Batas aman sekali import, biar payload & transaksinya tidak kebangetan. */
 export const MAX_IMPORT_ROWS = 2000
 export const MAX_IMPORT_ORDERS = 500
+
+/** Nama file template yang diunduh dari tombol "Download template". */
+export const IMPORT_TEMPLATE_FILE_NAME = 'template-import-pesanan.xlsx'
+
+/**
+ * Header template — sengaja sama persis dengan nama kolom yang dikenali
+ * pembaca (`classifyHeader`), biar file hasil unduhan langsung kebaca.
+ */
+export const IMPORT_TEMPLATE_HEADER = ['No urut', 'Nama-no wa', 'item', 'harga']
+
+/**
+ * Contoh isi template: **4 baris data untuk 2 pelanggan** (masing-masing 2
+ * barang). Pelanggan pertama sengaja muncul di dua baris supaya kelihatan
+ * bahwa baris dengan nama pelanggan sama digabung jadi satu tagihan.
+ * `No urut` & `harga` ditulis sebagai angka (bukan teks) supaya Excel
+ * memperlakukannya sebagai bilangan, bukan tulisan.
+ */
+export const IMPORT_TEMPLATE_ROWS: Array<Array<string | number>> = [
+  [1, 'Nia - 08123456789', 'Kaos', 15000],
+  [2, 'Nia - 08123456789', 'Sepatu', 250000],
+  [3, 'Budi - 081298765432', 'Tas', 120000],
+  [4, 'Budi - 081298765432', 'Topi', 45000],
+]
 
 export interface ImportPreviewItem {
   name: string
@@ -349,6 +379,21 @@ export function parseCsvRows(text: string): Array<Array<string>> {
   const last = rows[rows.length - 1]
   if (last.every((cell) => cell.trim() === '')) rows.pop()
 
+  return rows
+}
+
+/**
+ * Isi template dalam bentuk array-of-arrays — tinggal diumpankan ke
+ * `XLSX.utils.aoa_to_sheet()` di `ImportOrdersModal` buat bikin file `.xlsx`.
+ *
+ * Tetap murni (cuma data, tanpa library Excel) supaya isinya bisa diuji tanpa
+ * database: hasilnya harus lolos `buildImportPreview` tanpa error.
+ */
+export function buildImportTemplateRows(): Array<Array<string | number>> {
+  const rows: Array<Array<string | number>> = [
+    IMPORT_TEMPLATE_HEADER,
+    ...IMPORT_TEMPLATE_ROWS,
+  ]
   return rows
 }
 

@@ -19,6 +19,7 @@ import {
   ArrowLeft,
   ChevronDown,
   ChevronRight,
+  Download,
   FileSpreadsheet,
   Info,
   Lock,
@@ -61,6 +62,10 @@ import {
 } from '../../lib/orders-functions'
 import { importOrders } from '../../lib/order-import-functions'
 import type { ImportOrderInput } from '../../lib/order-import'
+import {
+  buildOrderExportRows,
+  orderExportFileName,
+} from '../../lib/order-export'
 import { getCustomerSuggestions } from '#/lib/customer-suggestions-functions'
 
 const searchSchema = z.object({
@@ -303,13 +308,16 @@ function EventDetailPage() {
   const [dpPromptOrderId, setDpPromptOrderId] = useState<string | null>(null)
   const [isSavingDpAmount, setIsSavingDpAmount] = useState(false)
   const [showEventMenu, setShowEventMenu] = useState(false)
-  // Info singkat setelah barang digabung ke pesanan pelanggan yang sudah ada.
+  // Info singkat setelah aksi pesanan: barang digabung, hasil import, atau
+  // hasil export (semua pakai alert melayang yang sama).
   const [mergeNotice, setMergeNotice] = useState<string | null>(null)
   // Nonaktifkan/aktifkan event + hapus event (dua-duanya dari menu ⋮).
   const [isTogglingActive, setIsTogglingActive] = useState(false)
   const [showDeleteEvent, setShowDeleteEvent] = useState(false)
   // Modal import data pesanan dari file Excel/CSV (dibuka dari menu ⋮).
   const [showImportOrders, setShowImportOrders] = useState(false)
+  // Export semua pesanan event ini ke Excel (tombol di menu ⋮).
+  const [isExportingOrders, setIsExportingOrders] = useState(false)
   const [isDeletingEvent, setIsDeletingEvent] = useState(false)
   // Fitur PRO yang lagi dicoba dibuka user FREE (null = dialog ketutup).
   const [lockedFeature, setLockedFeature] = useState<ProFeature | null>(null)
@@ -493,6 +501,35 @@ function EventDetailPage() {
           : '') +
         ` (${result.itemCount} barang).`,
     )
+  }
+
+  /**
+   * Export semua pesanan event ini ke satu file Excel (.xlsx) dari menu ⋮ —
+   * satu baris per barang. Isinya disusun `buildOrderExportRows()` (murni, tanpa
+   * db/browser), lalu file-nya dibikin SheetJS yang di-`import()` dinamis di
+   * dalam handler — pola yang sama dengan unduh template di modal import.
+   */
+  async function handleExportOrders() {
+    setShowEventMenu(false)
+    if (event.orders.length === 0) return
+
+    setIsExportingOrders(true)
+    try {
+      const XLSX = await import('xlsx')
+      const rows = buildOrderExportRows(event.orders)
+      const worksheet = XLSX.utils.aoa_to_sheet(rows)
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Pesanan')
+      // SheetJS yang menyiapkan file & memicu unduhannya di browser.
+      XLSX.writeFile(workbook, orderExportFileName(event.name))
+      setMergeNotice(
+        `Export selesai: ${rows.length - 1} baris barang dari ${event.orders.length} pesanan.`,
+      )
+    } catch (err) {
+      setMergeNotice(err instanceof Error ? err.message : 'Gagal export data')
+    } finally {
+      setIsExportingOrders(false)
+    }
   }
 
   async function handleUpdateOrder(
@@ -755,6 +792,31 @@ function EventDetailPage() {
                   {event.isActive
                     ? 'Kolom file: No urut, Nama-no wa, item, harga. Fee jastip diisi otomatis dari aturan fee event ini.'
                     : 'Event nonaktif — aktifkan dulu untuk menambah pesanan lewat import.'}
+                </p>
+
+                {/* Export semua pesanan event ini ke Excel: satu baris per barang. */}
+                <button
+                  type="button"
+                  disabled={event.orders.length === 0 || isExportingOrders}
+                  onClick={() => void handleExportOrders()}
+                  className="mt-3 flex w-full items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold disabled:opacity-50"
+                  style={{
+                    borderColor: 'var(--app-border)',
+                    color: 'var(--app-text)',
+                  }}
+                >
+                  <Download size={14} />
+                  {isExportingOrders
+                    ? 'Menyiapkan file...'
+                    : 'Export data (Excel)'}
+                </button>
+                <p
+                  className="mt-2 text-xs leading-relaxed"
+                  style={{ color: 'var(--app-text-soft)' }}
+                >
+                  {event.orders.length === 0
+                    ? 'Belum ada pesanan untuk diexport.'
+                    : 'Semua pesanan event ini diunduh jadi satu file Excel — satu baris per barang: No urut, Nama, No WA, Item, Harga, Fee, Qty, Total.'}
                 </p>
 
                 <div

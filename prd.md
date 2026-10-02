@@ -45,6 +45,7 @@ Astra Otoshop).
 | Testing             | `node:test` (dijalankan via `tsx --test`, lihat `npm test`)                                                                      |
 | Icons               | Lucide React                                                                                                                     |
 | Baca file Excel     | `read-excel-file` (build `/browser`, di-`import()` dinamis waktu import data — lihat 4.3.2)                                      |
+| Tulis file Excel    | `xlsx` (SheetJS — `utils.aoa_to_sheet` + `writeFile`, di-`import()` dinamis: unduh template import 4.3.2 & export pesanan 4.3.3) |
 
 ## 4. Fitur & Halaman
 
@@ -68,7 +69,7 @@ Astra Otoshop).
 
 ### 4.3 Detail Event (`/events/:eventId`)
 
-- **Header**: tombol back, nama event (+ badge **Nonaktif** kalau event sudah ditutup), menu tiga titik berisi: pilih **Aturan Fee** event (lihat 4.9), **Import data (Excel/CSV)** (lihat 4.3.2), toggle **Event aktif**, dan **Hapus event** (dengan konfirmasi).
+- **Header**: tombol back, nama event (+ badge **Nonaktif** kalau event sudah ditutup), menu tiga titik berisi: pilih **Aturan Fee** event (lihat 4.9), **Import data (Excel/CSV)** (lihat 4.3.2), **Export data (Excel)** (lihat 4.3.3), toggle **Event aktif**, dan **Hapus event** (dengan konfirmasi).
 - **Nonaktifkan event** (toggle di menu tiga titik) = menutup event tanpa menghapus data: muncul banner "Event ini nonaktif", tombol **+ (Tambah Pesanan)** disembunyikan, dan `createOrder` di server ikut menolak. Pesanan lama tetap bisa dibuka, diedit, dihapus, dan ditagih seperti biasa. Bisa diaktifkan lagi kapan saja.
 - **Hapus event**: konfirmasi menyebut jumlah pesanan yang ikut terhapus (FK `orders` → `events` dan `items` → `orders` pakai `ON DELETE CASCADE`), sekaligus menyarankan pakai **nonaktifkan** kalau cuma mau menutup event. Setelah terhapus, user dibalikkan ke Beranda.
 - **Ringkasan keuangan event**: uang masuk, outstanding, estimasi untung bersih.
@@ -94,6 +95,7 @@ Buat jastiper yang sudah punya catatan pesanan di Excel/CSV (mis. hasil rekap ch
 
 - **Masuknya cuma dari menu tiga titik (⋮)** di halaman Detail Event: item **"Import data (Excel/CSV)"**. Sengaja tidak ada tombol di badan halaman supaya alur normal (Tambah Pesanan) tetap yang paling menonjol. Item ini **nonaktif** waktu eventnya nonaktif (sama seperti FAB +, dan `importOrders` di server juga menolak) — kalau eventnya nonaktif, keterangannya berubah jadi ajakan mengaktifkan event dulu.
 - **Format file**: `.xlsx` (Excel modern) atau `.csv` (pemisah `,` maupun `;`, deteksi otomatis dari baris pertama). File `.xls` lama belum didukung dan ditolak dengan pesan yang menjelaskan cara menyimpannya ulang.
+- **Download template**: di layar awal modal (sebelum file dipilih) ada tombol **Download template** yang mengunduh contoh file **`.xlsx`** (`template-import-pesanan.xlsx`) siap isi. Isinya datang dari `buildImportTemplateRows()` di `lib/order-import.ts` (murni — cuma data, tanpa library Excel), lalu dibentuk jadi sheet pakai SheetJS `xlsx`: `XLSX.utils.aoa_to_sheet()` → `XLSX.utils.book_new()` → `XLSX.utils.book_append_sheet()` → `XLSX.writeFile()` (SheetJS yang menyiapkan file & memicu unduhannya di browser). Library `xlsx` di-`import()` **dinamis di dalam handler** (lihat 6.4) supaya tidak ikut bundle awal dan tidak pernah jalan saat SSR. Isinya **4 baris contoh untuk 2 pelanggan** (masing-masing 2 barang; pelanggan pertama sengaja muncul di dua baris supaya kelihatan bahwa baris dengan nama pelanggan sama digabung jadi satu tagihan) dan header-nya persis nama kolom yang dibaca. Kolom `No urut` & `harga` ditulis sebagai angka (bukan teks) supaya Excel memperlakukannya sebagai bilangan. Tombol yang sama juga muncul di layar "file belum bisa dipakai" dan "baris belum benar", biar user bisa langsung memakai format yang benar.
 - **Kolom yang dibaca**: `No urut`, `Nama-no wa`, `item`, `harga`. **Urutan kolom bebas** dan kolom yang tidak dipakai (mis. `No urut`) boleh ada di mana saja — pencocokannya lewat **nama header**, bukan posisi:
   - `harga`/`price` → harga asli barang. Nilai `15.000`, `15000`, `Rp 15.000`, dan angka asli dari Excel dua-duanya diterima.
   - `item`/`barang`/`produk` → nama barang.
@@ -107,6 +109,18 @@ Buat jastiper yang sudah punya catatan pesanan di Excel/CSV (mis. hasil rekap ch
 - **Batas**: maksimal **2.000 baris** dan **500 pelanggan** sekali import (`MAX_IMPORT_ROWS` / `MAX_IMPORT_ORDERS` di `lib/order-import.ts`, sekaligus jadi batas validator di server). Lewat dari itu, file-nya ditolak dengan saran dipecah jadi beberapa file — pesannya menyebut angka batasnya.
 - **Satu transaksi**: seluruh pesanan ditulis dalam satu `db.transaction` di `importOrders`, jadi tidak ada import yang masuk setengah jalan. Setelah selesai, halaman event menyegarkan datanya dan menampilkan alert melayang yang sama seperti penggabungan pesanan (mis. "Import selesai: 12 pesanan baru, 3 pelanggan digabung ke pesanan yang belum lunas (27 barang).").
 - **Back menutup modal ini**, bukan meninggalkan halaman (modal state lokal, pakai `useBackToClose`, lihat 6.1).
+
+#### 4.3.3 Export Data Pesanan per Event
+
+Buat jastiper yang butuh rekap pesanan satu event di luar aplikasi (mis. dikirim ke pemasok atau diolah lagi di Excel).
+
+- **Masuknya dari menu tiga titik (⋮)** di halaman Detail Event: item **"Export data (Excel)"**, tepat di bawah Import data. Tombolnya **nonaktif** kalau event belum punya pesanan (dengan keterangan pengganti "Belum ada pesanan untuk diexport."); event yang sudah **nonaktif** tetap bisa diexport karena export cuma membaca data.
+- **Satu baris = satu barang**. Kolomnya, urut seperti di file: `No urut`, `Nama`, `No WA`, `Item`, `Harga`, `Fee`, `Qty`, `Total`. `No urut` = nomor baris 1..N di dalam file (pelanggan yang barangnya lebih dari satu muncul di beberapa baris). `Nama`/`No WA` diulang di setiap baris supaya file-nya enak difilter di Excel; `No WA` jadi sel kosong kalau pelanggannya belum punya nomor.
+- **Angka, bukan teks**: `Harga`, `Fee`, `Qty`, dan `Total` ditulis sebagai bilangan asli sehingga bisa langsung dijumlahkan di Excel. `Total` = `(Harga + Fee) × Qty` — rumus `lineTotal()` yang sama dipakai di form pesanan, detail event, dan invoice.
+- **Isinya disusun `buildOrderExportRows()` di `lib/order-export.ts`** (murni: cuma array-of-arrays, tanpa db/browser/library Excel), lalu file-nya dibikin SheetJS `xlsx` (`utils.aoa_to_sheet()` → `book_new()` → `book_append_sheet()` → `writeFile()`) dengan sheet bernama **`Pesanan`**. Library `xlsx` di-`import()` **dinamis di dalam handler** — pola yang sama dengan unduh template import (lihat 4.3.2 & 6.4).
+- **Urutan baris**: dikelompokkan per nama pelanggan (diurutkan tanpa membedakan huruf besar/kecil) supaya hasil export-nya stabil dan tidak ikut urutan yang dikirim database; urutan barang **di dalam** satu pesanan dibiarkan apa adanya.
+- **Nama file**: `pesanan-<nama-event>.xlsx`, dengan nama event dibersihkan jadi huruf kecil & tanda hubung (`orderExportFileName()`); nama yang isinya cuma simbol/jarak jatuh ke `pesanan-event.xlsx`. Setelah file terunduh muncul alert melayang: "Export selesai: N baris barang dari M pesanan."
+- Tidak ada gerbang paket di fitur ini: datanya sudah tersedia di halaman event, jadi export bisa dipakai semua user (server tidak dipanggil sama sekali).
 
 ### 4.4 Tambah / Edit Pesanan (Bottom Sheet)
 
@@ -754,9 +768,11 @@ src/
 │   ├── mailer.ts              # Kirim email reset password
 │   ├── message-template.ts    # DEFAULT_WA_MESSAGE_TEMPLATE, renderMessageTemplate
 │   ├── message-template-functions.ts
-│   ├── order-import.ts        # Baca file import Excel/CSV → preview (murni, tanpa db)
-│   ├── order-import.test.ts   # Unit test parsing file, deteksi header, fee & batas import
+│   ├── order-import.ts        # Baca file import Excel/CSV + isi template .xlsx (murni, tanpa db)
+│   ├── order-import.test.ts   # Unit test parsing file, deteksi header, fee, batas & template import
 │   ├── order-import-functions.ts  # importOrders: tulis hasil import (satu transaksi)
+│   ├── order-export.ts        # Susun baris export pesanan per event (murni, tanpa db)
+│   ├── order-export.test.ts   # Unit test isi file & nama file export pesanan
 │   ├── order-merge.ts         # Aturan gabung pesanan pelanggan yang sama (murni, tanpa db)
 │   ├── order-merge.test.ts    # Unit test penggabungan pesanan
 │   ├── order-sheet-search.ts  # Kontrak URL sheet Tambah/Edit Pesanan (back = tutup sheet)
@@ -816,7 +832,7 @@ src/
 - Query yang butuh `db` ditaruh di file `*-queries.ts` (server-only, tidak pernah di-import client): `admin-queries.ts`, `customers-queries.ts`, `subscription-queries.ts`, `subscription-settings-queries.ts`. Urutannya: halaman → `*-functions.ts` (pagar auth/entitlement + validasi zod) → `*-queries.ts` (query murni).
 - Aturan di atas dijaga otomatis oleh `src/lib/client-bundle-safety.test.ts`: satu test menolak `export function` biasa di file `*-functions.ts`, satu test lagi menolak halaman/komponen yang meng-import `src/db`. Jalankan `npm test` setelah menambah server function baru.
 - Aturan langganan/trial/PRO yang murni (tanpa `db`) tinggal di `subscription.ts`, pagar admin di `admin.ts`, pagar PRO di `entitlements.ts` — supaya tidak ada pengecekan plan/admin yang ditulis ulang di tempat lain.
-- Library yang **khusus browser** di-`import()` dinamis di dalam handler-nya, bukan di-import di level modul, supaya tidak ikut bundle awal dan tidak pernah jalan saat SSR — contohnya `read-excel-file/browser` di `ImportOrdersModal.tsx` (file-nya di-parse di client, server cuma menerima hasil parse-nya).
+- Library yang **khusus browser** di-`import()` dinamis di dalam handler-nya, bukan di-import di level modul, supaya tidak ikut bundle awal dan tidak pernah jalan saat SSR — contohnya `read-excel-file/browser` (baca file import) dan `xlsx`/SheetJS (bikin file template) di `ImportOrdersModal.tsx` (file-nya di-parse/dibuat di client, server cuma menerima hasil parse-nya).
 
 ## 9. Di Luar Cakupan MVP (Next Phase)
 
