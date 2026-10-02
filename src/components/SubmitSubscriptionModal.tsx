@@ -1,7 +1,9 @@
-import { useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import QRCode from 'qrcode'
 import { QrCode, X } from 'lucide-react'
 import { fetchSubscriptionPaymentInfo } from '../lib/subscription-functions'
+import { buildDynamicQrisPayload } from '../lib/qris-display'
 import { useBackToClose } from '../lib/back-to-close'
 
 export type SubmitSubscriptionValue = {
@@ -14,7 +16,19 @@ interface SubmitSubscriptionModalProps {
 }
 
 const MAX_BYTES = 1_500_000 // ~1.5MB, sama dengan validasi di server
-const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp']
+const ACCEPTED_TYPES = [
+  'image/png',
+  'image/jpeg',
+  'image/jpg',
+  'image/pjpeg',
+  'image/webp',
+]
+
+function isAcceptedImage(file: File): boolean {
+  if (ACCEPTED_TYPES.includes(file.type)) return true
+  const ext = file.name.split('.').pop()?.toLowerCase()
+  return ext === 'png' || ext === 'jpg' || ext === 'jpeg' || ext === 'webp'
+}
 
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -42,7 +56,44 @@ export default function SubmitSubscriptionModal({
     queryFn: () => fetchSubscriptionPaymentInfo(),
   })
   const qrisImage = paymentInfo?.qrisImage ?? null
+  const qrisString = paymentInfo?.qrisString ?? null
   const proPrice = paymentInfo?.proPrice ?? '0'
+
+  const dynamicPayload = useMemo(
+    () => buildDynamicQrisPayload(qrisString, proPrice),
+    [qrisString, proPrice],
+  )
+
+  const [dynamicQrUrl, setDynamicQrUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    if (!dynamicPayload) {
+      setDynamicQrUrl(null)
+      return
+    }
+
+    QRCode.toDataURL(dynamicPayload, { margin: 1, width: 320 })
+      .then((url) => {
+        if (!cancelled) {
+          setDynamicQrUrl(url)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setDynamicQrUrl(null)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [dynamicPayload])
+
+  // FALLBACK: kalau QR dinamis belum/tidak tersedia, pakai qrisImage statis lama
+  const displayQrisImage = dynamicQrUrl || qrisImage
+  const isDynamicActive = Boolean(dynamicQrUrl)
 
   const [proofImage, setProofImage] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -58,8 +109,8 @@ export default function SubmitSubscriptionModal({
     if (!file) return
     setError(null)
 
-    if (!ACCEPTED_TYPES.includes(file.type)) {
-      setError('Format harus PNG, JPEG, atau WEBP')
+    if (!isAcceptedImage(file)) {
+      setError('Format harus PNG, JPG, JPEG, atau WEBP')
       return
     }
     if (file.size > MAX_BYTES) {
@@ -147,9 +198,9 @@ export default function SubmitSubscriptionModal({
                 Memuat...
               </span>
             </div>
-          ) : qrisImage ? (
+          ) : displayQrisImage ? (
             <img
-              src={qrisImage}
+              src={displayQrisImage}
               alt="QRIS pembayaran PRO"
               className="h-40 w-40 rounded-lg bg-white object-contain p-1"
             />
@@ -177,7 +228,9 @@ export default function SubmitSubscriptionModal({
             className="text-center text-xs"
             style={{ color: 'var(--app-accent)' }}
           >
-            Scan lalu transfer sesuai nominal di atas, upload buktinya di bawah.
+            {isDynamicActive
+              ? 'Scan, nominal terisi otomatis, lalu upload buktinya di bawah'
+              : 'Scan lalu transfer sesuai nominal di atas, upload buktinya di bawah.'}
           </p>
         </div>
 
@@ -212,7 +265,7 @@ export default function SubmitSubscriptionModal({
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/png,image/jpeg,image/webp"
+              accept="image/png,image/jpeg,image/jpg,image/webp,.png,.jpg,.jpeg,.webp"
               onChange={handleFileChange}
               className="hidden"
             />
@@ -254,7 +307,7 @@ export default function SubmitSubscriptionModal({
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || !qrisImage}
+              disabled={isSubmitting || !displayQrisImage}
               className="rounded-xl px-4 py-2 text-xs font-semibold text-white shadow-sm hover:opacity-90 disabled:opacity-50"
               style={{ background: 'var(--app-accent)' }}
             >

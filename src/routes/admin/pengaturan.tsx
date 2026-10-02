@@ -54,8 +54,8 @@ function AdminSettingsPage() {
     queryClient.clear()
   }
 
-  async function handleUpdateQris(qrisImage: string) {
-    await updateSubscriptionQris({ data: { qrisImage } })
+  async function handleUpdateQris(qrisImage: string, qrisString: string) {
+    await updateSubscriptionQris({ data: { qrisImage, qrisString } })
     await queryClient.invalidateQueries({
       queryKey: ['admin-subscription-settings'],
     })
@@ -139,6 +139,16 @@ function AdminSettingsPage() {
                 ? 'Ditampilkan ke member saat mengajukan upgrade.'
                 : 'Belum ada QRIS — member belum bisa mengajukan upgrade.'}
             </p>
+            {subscriptionSettings?.qrisImage &&
+              !subscriptionSettings.qrisString && (
+                <p
+                  className="mt-1 text-[11px]"
+                  style={{ color: 'var(--app-warning)' }}
+                >
+                  Upload ulang QRIS agar fitur nominal otomatis (QRIS dinamis)
+                  aktif.
+                </p>
+              )}
           </div>
           <button
             type="button"

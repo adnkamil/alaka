@@ -4,7 +4,10 @@ import { db } from '../db'
 import { subscriptions } from '../db/schema'
 import { getSessionUser } from './auth'
 import { PRO_DURATION_DAYS, PRO_PLAN_CODE } from './subscription'
-import { findPendingSubscription, getSubscriptionState } from './subscription-queries'
+import {
+  findPendingSubscription,
+  getSubscriptionState,
+} from './subscription-queries'
 import { getSubscriptionSettings } from './subscription-settings-queries'
 
 /**
@@ -79,15 +82,16 @@ export const fetchSubscriptionPaymentInfo = createServerFn({
   const settings = await getSubscriptionSettings()
   return {
     qrisImage: settings?.qrisImage ?? null,
+    qrisString: settings?.qrisString ?? null,
     proPrice: settings?.proPrice ?? '0',
   }
 })
 
 /** Status akses + pengajuan pending + riwayat langganan milik user yang login. */
-export const fetchMySubscriptionState = createServerFn({ method: 'GET' }).handler(
-  async () => {
-    const user = await getSessionUser()
-    if (!user) throw new Error('Belum login')
-    return getSubscriptionState(user)
-  },
-)
+export const fetchMySubscriptionState = createServerFn({
+  method: 'GET',
+}).handler(async () => {
+  const user = await getSessionUser()
+  if (!user) throw new Error('Belum login')
+  return getSubscriptionState(user)
+})

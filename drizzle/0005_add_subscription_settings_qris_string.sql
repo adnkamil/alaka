@@ -1,0 +1,1 @@
+ALTER TABLE "subscription_settings" ADD COLUMN "qris_string" text;

@@ -389,8 +389,17 @@ export const customersRelations = relations(customers, ({ one }) => ({
 export const subscriptionSettings = pgTable('subscription_settings', {
   id: uuid().primaryKey().defaultRandom(),
   qrisImage: text('qris_image'), // data URL base64, sama pola dengan payment_methods.qris_image
+  /**
+   * Payload QRIS statis mentah (string EMVCo MPM), disimpan agar bisa dikonversi
+   * ke QRIS dinamis dengan nominal `proPrice` di sisi client saat member membuka
+   * modal upgrade. Nullable: admin lama yang belum upload ulang tetap jalan lewat
+   * fallback qrisImage statis.
+   */
+  qrisString: text('qris_string'),
   /** Harga membership PRO saat ini. Di-snapshot ke subscriptions.amount tiap kali ada pengajuan baru. */
-  proPrice: decimal('pro_price', { precision: 12, scale: 2 }).notNull().default('0'),
+  proPrice: decimal('pro_price', { precision: 12, scale: 2 })
+    .notNull()
+    .default('0'),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
   updatedBy: uuid('updated_by').references(() => users.id, {
     onDelete: 'set null',
