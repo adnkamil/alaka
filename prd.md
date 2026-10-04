@@ -679,6 +679,38 @@ Setiap perubahan skema (tabel, kolom, enum, index, constraint) **wajib lewat fil
 5. Migrasi yang **sudah** di-commit tidak boleh diubah lagi — hash isinya dipakai Drizzle untuk menandai sudah/belum dijalankan. Kalau ada yang salah, buat migrasi perbaikan baru.
 6. `pnpm db:push` hanya untuk eksperimen sekali pakai di DB scratch yang datanya boleh hilang. **Jangan** dipakai di database yang berisi data user atau dipakai bersama.
 
+> **⚠️ ATURAN PRODUKSI — jangan migrasi Neon tanpa konfirmasi.**
+>
+> `pnpm db:migrate:neon` mengubah database **produksi** yang sudah dipakai user
+> nyata. Jangan pernah menjalankannya atas inisiatif sendiri, termasuk sebagai
+> langkah "sekalian" di tengah tugas lain:
+>
+> 1. **Minta konfirmasi dulu** ke pemilik aplikasi. Tunjukkan file migrasinya, jelaskan dampaknya ke data & kode, baru jalankan setelah diizinkan.
+> 2. **Produksi harus maju bersamaan dengan deploy kode — bukan mendahuluinya.** Kalau DB berubah tapi kode yang live masih versi lama, terjadi ketidakcocokan skema yang membingungkan user. Contoh nyata: DB sudah kolom `timestamptz`, sementara kode live masih menganggapnya `timestamp` / belum pakai `APP_TIME_ZONE`.
+> 3. Aplikasi **tidak** menjalankan migrasi otomatis saat start, jadi migrasi produksi = **langkah rilis yang disengaja**, bukan bagian dari "supaya tes saya lewat".
+> 4. Migrasi lokal (`jastip_dev`) bebas dilakukan kapan saja — batasannya khusus database produksi.
+>
+> **Insiden `0006_timestamps_to_timestamptz` (dicatat agar tidak terulang):**
+> migrasi ini sudah diterapkan ke Neon (`neondb`) — 31 kolom `timestamp` →
+> `timestamptz` + `ALTER DATABASE neondb SET timezone TO 'Asia/Jakarta'` —
+> **sebelum** kode-nya naik ke produksi, sehingga produksi sempat berjalan
+> dengan DB di depan kode. Data sendiri **tidak bergeser** (min/max epoch
+> identik sebelum vs sesudah, 7 tabel, lokal & Neon), jadi yang salah murni
+> **urutan rilisnya**, bukan isinya.
+>
+> Kalau perlu dikembalikan ke keadaan sebelum `0006` (tanpa menggeser data —
+> ini kebalikan eksak dari `USING ... AT TIME ZONE 'UTC'`):
+>
+> ```sql
+> ALTER TABLE "orders" ALTER COLUMN "created_at"
+>   SET DATA TYPE timestamp USING "created_at" AT TIME ZONE 'UTC';
+> -- ...ulangi untuk 30 kolom lainnya...
+> ALTER DATABASE neondb RESET timezone;
+> ```
+>
+> Setelah produksi di-rollback, `src/db/schema.ts` juga harus ikut dikembalikan
+> ke `timestamp` (tanpa `withTimezone`) supaya skema kode dan DB tidak mismatch.
+
 **Catatan operasional:**
 
 - Aplikasi **tidak** menjalankan migrasi otomatis saat start (`src/db/index.ts` cuma membuat koneksi), jadi `pnpm db:migrate` harus dijalankan manual setelah deploy.
@@ -686,6 +718,7 @@ Setiap perubahan skema (tabel, kolom, enum, index, constraint) **wajib lewat fil
 - **Migrasi `0003` menyusul celah lama**: tabel `subscription_settings` (dari commit "feat(admin): implement admin dashboard and subscription management") sebelumnya dibuat langsung di database lewat `db:push` sehingga tidak punya file migrasi — makanya tabel itu ikut ter-generate di `0003`. Statement-nya sengaja dibuat idempotent (`CREATE TABLE IF NOT EXISTS` + cek `pg_constraint`) supaya jalur database yang tabelnya sudah ada (lokal & produksi, sudah berisi data) dan database yang dibangun dari nol dua-duanya aman. Kalau ada DB yang perubahan skemanya sudah ada tapi belum tercatat di `drizzle.__drizzle_migrations`, tandai dulu dengan `pnpm db:baseline --tag=<tag>` (mis. `--tag=0002_add_users_is_admin`) sebelum `pnpm db:migrate`.
 - Untuk database yang skemanya **sudah ada duluan** (dibuat lewat `db:push` sebelum folder `drizzle/` dipakai), jalankan `pnpm db:baseline` (atau `pnpm db:baseline --tag=0000_greedy_thing`) sekali supaya migrasi lama tidak dijalankan ulang dan tabel/data yang sudah ada tidak tersentuh — lihat `scripts/drizzle-baseline.ts`.
 - `pnpm db:studio` tetap boleh dipakai untuk mengubah **data** (mis. menandai `users.is_admin = true`), tapi bukan untuk mengubah skema.
+- **Neon = produksi, dan migrasi ke sana butuh izin dulu.** Lihat blok "⚠️ ATURAN PRODUKSI" di atas. Status `0006_timestamps_to_timestamptz` saat catatan ini ditulis: sudah ter-apply di lokal (`jastip_dev`) **dan** di Neon (`neondb`), sedangkan perubahan kode pendampingnya (`src/db/schema.ts` → `withTimezone: true`, `src/lib/timezone.ts`, pemakaian `timeZone: APP_TIME_ZONE`) belum di-deploy.
 
 ### Logika auto-fill fee
 

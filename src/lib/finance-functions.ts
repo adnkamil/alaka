@@ -10,6 +10,22 @@ async function requireUser() {
   return user
 }
 
+/**
+ * Bulan (`YYYY-MM`) untuk grafik omzet, dihitung dalam zona WIB.
+ *
+ * `orders.created_at` bertipe `timestamptz`, jadi `to_char` polos mengikuti
+ * TimeZone sesi koneksi — di Neon itu UTC, jadi transaksi tanggal 1 pagi WIB
+ * bisa nyasar ke bulan sebelumnya. Karena itu instant-nya dikonversi eksplisit
+ * dulu ke `Asia/Jakarta`.
+ *
+ * Zona ditulis sebagai literal (bukan `${APP_TIME_ZONE}`/bind parameter): kalau
+ * jadi `$n`, tiap kemunculan dapat nomor parameter berbeda dan Postgres
+ * menganggap ekspresi di SELECT vs GROUP BY berbeda -> error "must appear in the
+ * GROUP BY clause". Dijadikan satu konstanta supaya teks SELECT, GROUP BY, dan
+ * ORDER BY-nya pasti identik. Lihat juga `src/lib/timezone.ts`.
+ */
+const monthInJakarta = sql<string>`to_char(${orders.createdAt} at time zone 'Asia/Jakarta', 'YYYY-MM')`
+
 export const getFinanceSummary = createServerFn({ method: 'GET' }).handler(
   async () => {
     const user = await requireUser()
@@ -38,7 +54,7 @@ export const getFinanceSummary = createServerFn({ method: 'GET' }).handler(
     // Monthly revenue chart counts orders that are paid or shipped.
     const monthlyQuery = db
       .select({
-        month: sql<string>`to_char(${orders.createdAt}, 'YYYY-MM')`,
+        month: monthInJakarta,
         revenue: sql<string>`coalesce(sum((${items.originalPrice} + ${items.fee}) * ${items.qty}), 0)`,
       })
       .from(events)
@@ -50,8 +66,8 @@ export const getFinanceSummary = createServerFn({ method: 'GET' }).handler(
           inArray(orders.paymentStatus, ['paid', 'shipped']),
         ),
       )
-      .groupBy(sql`to_char(${orders.createdAt}, 'YYYY-MM')`)
-      .orderBy(sql`to_char(${orders.createdAt}, 'YYYY-MM')`)
+      .groupBy(monthInJakarta)
+      .orderBy(monthInJakarta)
 
     // "Masuk" per event juga dari paid_amount (tanpa join items).
     const paidPerEventQuery = db

@@ -2,6 +2,7 @@ import { queryOptions, useSuspenseQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { ChevronRight, ShoppingBag } from 'lucide-react'
 import { listEvents } from '../../../lib/events-functions'
+import { APP_TIME_ZONE } from '../../../lib/timezone'
 
 const eventsQuery = queryOptions({
   queryKey: ['events'],
@@ -49,7 +50,9 @@ function PickEventPage() {
             <span className="min-w-0 flex-1">
               <p className="truncate font-semibold">{event.name}</p>
               <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
-                {new Date(event.eventDate).toLocaleDateString('id-ID')}
+                {new Date(event.eventDate).toLocaleDateString('id-ID', {
+                  timeZone: APP_TIME_ZONE,
+                })}
               </p>
             </span>
             <ChevronRight size={18} style={{ color: 'var(--app-text-mute)' }} />

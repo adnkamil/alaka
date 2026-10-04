@@ -28,6 +28,7 @@ import {
   renderMessageTemplate,
 } from '../../lib/message-template'
 import { lineTotal, summarizeItems } from '../../lib/order-totals'
+import { APP_TIME_ZONE } from '../../lib/timezone'
 import CustomerFormModal from '../../components/CustomerFormModal'
 import type { CustomerFormValue } from '../../components/CustomerFormModal'
 import PaymentInfoCard from '../../components/PaymentInfoCard'
@@ -134,6 +135,7 @@ function InvoicePage() {
       day: 'numeric',
       month: 'long',
       year: 'numeric',
+      timeZone: APP_TIME_ZONE,
     },
   )
   // Bank/e-wallet aktif pertama dipakai buat variabel {bank}/{bankAccount} di chat WA.
