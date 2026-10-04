@@ -8,6 +8,7 @@ import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { ArrowLeft, Tag } from 'lucide-react'
 import { createEvent } from '../../lib/events-functions'
 import { listFeeRules } from '../../lib/fee-rules-functions'
+import { todayIsoDateInAppTimeZone } from '../../lib/timezone'
 
 const feeRulesQuery = queryOptions({
   queryKey: ['fee-rules'],
@@ -19,10 +20,6 @@ export const Route = createFileRoute('/_app/events/new')({
   component: NewEventPage,
 })
 
-function todayIsoDate() {
-  return new Date().toISOString().slice(0, 10)
-}
-
 function NewEventPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -30,7 +27,7 @@ function NewEventPage() {
 
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [eventDate, setEventDate] = useState(todayIsoDate())
+  const [eventDate, setEventDate] = useState(todayIsoDateInAppTimeZone())
   const [feeRuleId, setFeeRuleId] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)

@@ -4,6 +4,7 @@ import { Link, createFileRoute } from '@tanstack/react-router'
 import { ChevronDown, ChevronRight, Plus, ShoppingBag } from 'lucide-react'
 import { listEvents } from '../../lib/events-functions'
 import { fetchCurrentUser } from '../../lib/auth-functions'
+import { APP_TIME_ZONE } from '../../lib/timezone'
 
 const eventsQuery = queryOptions({
   queryKey: ['events'],
@@ -71,6 +72,7 @@ function EventCard({ event }: { event: EventRow }) {
           {new Date(event.eventDate).toLocaleDateString('id-ID', {
             day: 'numeric',
             month: 'short',
+            timeZone: APP_TIME_ZONE,
           })}{' '}
           · {event.orderCount} pesanan
         </span>

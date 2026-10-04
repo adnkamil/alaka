@@ -3,6 +3,7 @@ import { queryOptions, useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { DollarSign, TrendingDown, TrendingUp } from 'lucide-react'
 import { getFinanceSummary } from '../../lib/finance-functions'
+import { APP_TIME_ZONE } from '../../lib/timezone'
 
 const financeQuery = queryOptions({
   queryKey: ['finance-summary'],
@@ -192,6 +193,7 @@ function KeuanganPage() {
                   day: 'numeric',
                   month: 'long',
                   year: 'numeric',
+                  timeZone: APP_TIME_ZONE,
                 })}
               </p>
               <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>

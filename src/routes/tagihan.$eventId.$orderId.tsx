@@ -4,6 +4,7 @@ import type { ErrorComponentProps } from '@tanstack/react-router'
 import { Landmark, MapPin, Printer } from 'lucide-react'
 import { getPublicOrderInvoice } from '../lib/orders-functions'
 import { lineTotal, summarizeItems } from '../lib/order-totals'
+import { APP_TIME_ZONE } from '../lib/timezone'
 import PaymentInfoCard from '../components/PaymentInfoCard'
 
 export const Route = createFileRoute('/tagihan/$eventId/$orderId')({
@@ -82,7 +83,7 @@ function PublicInvoicePage() {
   const invoiceNo = data.order.id.slice(0, 8).toUpperCase()
   const invoiceDate = new Date(data.order.createdAt).toLocaleDateString(
     'id-ID',
-    { day: 'numeric', month: 'long', year: 'numeric' },
+    { day: 'numeric', month: 'long', year: 'numeric', timeZone: APP_TIME_ZONE },
   )
   const completed =
     data.order.paymentStatus === 'paid' ||

@@ -1,3 +1,5 @@
+import { APP_TIME_ZONE } from './timezone'
+
 /**
  * Format nomor HP Indonesia jadi kelompok 4 digit untuk tampilan,
  * misal "085397356608" -> "0853-9735-6608" dan
@@ -69,6 +71,9 @@ export function openWhatsApp(phone: string, message: string) {
  * Tanggal panjang bahasa Indonesia, mis. "12 Agustus 2026". Terima `Date`,
  * string ISO (hasil serialisasi server function), atau null — null jadi string
  * kosong supaya aman dipakai langsung di JSX.
+ *
+ * Zona waktu dipatok ke `APP_TIME_ZONE` (WIB), bukan zona perangkat: tanggalnya
+ * tanggal bisnis, jadi harus sama walau HP user lagi di luar negeri.
  */
 export function formatDate(date: Date | string | null | undefined) {
   if (!date) return ''
@@ -76,6 +81,7 @@ export function formatDate(date: Date | string | null | undefined) {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
+    timeZone: APP_TIME_ZONE,
   })
 }
 

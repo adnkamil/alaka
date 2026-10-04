@@ -43,6 +43,13 @@
       "when": 1790913476148,
       "tag": "0005_add_subscription_settings_qris_string",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791044688486,
+      "tag": "0006_timestamps_to_timestamptz",
+      "breakpoints": true
     }
   ]
 }

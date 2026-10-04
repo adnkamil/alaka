@@ -45,6 +45,7 @@ import {
 } from '../../lib/events-functions'
 import { listFeeRules } from '../../lib/fee-rules-functions'
 import { getOrderSuggestions } from '../../lib/order-suggestions-functions'
+import { APP_TIME_ZONE } from '../../lib/timezone'
 import { lineTotal, summarizeItems } from '../../lib/order-totals'
 import {
   orderSheetModeFromSearch,
@@ -702,6 +703,7 @@ function EventDetailPage() {
                 day: 'numeric',
                 month: 'long',
                 year: 'numeric',
+                timeZone: APP_TIME_ZONE,
               })}
             </p>
           </div>

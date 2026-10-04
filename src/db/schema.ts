@@ -70,13 +70,19 @@ export const users = pgTable(
      */
     isAdmin: boolean('is_admin').notNull().default(false),
     /** Awal masa trial (= waktu user dibuat). */
-    trialStartedAt: timestamp('trial_started_at').notNull().defaultNow(),
+    trialStartedAt: timestamp('trial_started_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
     /** Akhir masa trial (trial_started_at + TRIAL_DAYS hari). */
-    trialEndsAt: timestamp('trial_ends_at')
+    trialEndsAt: timestamp('trial_ends_at', { withTimezone: true })
       .notNull()
       .default(sql`now() + interval '${sql.raw(String(TRIAL_DAYS))} days'`),
-    createdAt: timestamp('created_at').notNull().defaultNow(),
-    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (table) => [
     check(
@@ -92,8 +98,10 @@ export const sessions = pgTable('sessions', {
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
   token: varchar().notNull().unique(),
-  expiresAt: timestamp('expires_at').notNull(),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 })
 
 // PASSWORD RESET
@@ -106,11 +114,13 @@ export const passwordResetTokens = pgTable('password_reset_tokens', {
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
   tokenHash: varchar('token_hash').notNull().unique(),
-  expiresAt: timestamp('expires_at').notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   // Diisi kalau token sudah dipakai buat ganti kata sandi, ATAU dihanguskan
   // karena user minta link baru (yang berlaku cuma token terbaru).
-  usedAt: timestamp('used_at'),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
+  usedAt: timestamp('used_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 })
 
 // FEE RULES (Manajemen Fee)
@@ -120,8 +130,12 @@ export const feeRules = pgTable('fee_rules', {
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
   name: varchar().notNull(),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 })
 
 // Overlap between tiers of the same fee_rule is validated in the application/server layer.
@@ -133,7 +147,9 @@ export const feeTiers = pgTable('fee_tiers', {
   minPrice: decimal('min_price', { precision: 12, scale: 2 }).notNull(),
   maxPrice: decimal('max_price', { precision: 12, scale: 2 }).notNull(),
   feeAmount: decimal('fee_amount', { precision: 12, scale: 2 }).notNull(),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 })
 
 // CUSTOMERS (untuk autocomplete Nama Pelanggan saat tambah pesanan)
@@ -146,9 +162,13 @@ export const customers = pgTable('customers', {
   phone: varchar(),
   /** Alamat customer (opsional), diisi manual di Profil → Customer. */
   address: text('address'),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
-  deletedAt: timestamp('deleted_at'),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
 })
 
 // PAYMENT METHODS (Profil → Pembayaran): bank, e-wallet, atau QRIS.
@@ -166,8 +186,12 @@ export const paymentMethods = pgTable('payment_methods', {
   accountName: varchar('account_name'), // atas nama (opsional)
   qrisImage: text('qris_image'), // data URL base64 (image/png|jpeg|webp)
   isActive: boolean('is_active').notNull().default(true),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 })
 
 // SUBSCRIPTIONS (histori langganan PRO) — pembayaran manual, diverifikasi admin.
@@ -188,8 +212,8 @@ export const subscriptions = pgTable(
     /** Durasi yang dibeli, disimpan sebagai snapshot (30 hari = PRO_DURATION_DAYS). */
     durationDays: integer('duration_days').notNull().default(PRO_DURATION_DAYS),
     /** Diisi saat status jadi `active`: awal & akhir masa PRO. */
-    startedAt: timestamp('started_at'),
-    endsAt: timestamp('ends_at'),
+    startedAt: timestamp('started_at', { withTimezone: true }),
+    endsAt: timestamp('ends_at', { withTimezone: true }),
     // --- Info pembayaran (diisi user saat mengajukan) ---
     amount: decimal({ precision: 12, scale: 2 }).notNull().default('0'),
     /** Cara bayar yang dipakai user: bank, e-wallet, atau QRIS. */
@@ -205,15 +229,19 @@ export const subscriptions = pgTable(
     /** Catatan dari user, mis. "transfer dari rekening istri". */
     paymentNote: text('payment_note'),
     /** Tanggal user mengaku transfer. */
-    paidAt: timestamp('paid_at'),
+    paidAt: timestamp('paid_at', { withTimezone: true }),
     // --- Hasil verifikasi manual admin (diisi di fase admin) ---
     reviewedBy: uuid('reviewed_by').references(() => users.id, {
       onDelete: 'set null',
     }),
-    reviewedAt: timestamp('reviewed_at'),
+    reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
     reviewNote: text('review_note'),
-    createdAt: timestamp('created_at').notNull().defaultNow(),
-    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (table) => [
     index('subscriptions_user_created_idx').on(table.userId, table.createdAt),
@@ -242,7 +270,10 @@ export const events = pgTable('events', {
   }),
   name: varchar().notNull(),
   description: text(),
-  eventDate: timestamp('event_date', { mode: 'date' }).notNull(),
+  eventDate: timestamp('event_date', {
+    mode: 'date',
+    withTimezone: true,
+  }).notNull(),
   /**
    * Event nonaktif = event yang sudah selesai/ditutup: disembunyikan dari daftar
    * "Event aktif" di beranda dan tidak bisa ditambah pesanan baru, tapi semua
@@ -250,8 +281,12 @@ export const events = pgTable('events', {
    * Diatur dari menu ⋮ di halaman Detail Event.
    */
   isActive: boolean('is_active').notNull().default(true),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 })
 
 // ORDERS & ITEMS
@@ -269,8 +304,12 @@ export const orders = pgTable('orders', {
   paidAmount: decimal('paid_amount', { precision: 12, scale: 2 })
     .notNull()
     .default('0'),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 })
 
 // Fee is stored per-item (not recalculated) so past transactions stay
@@ -290,7 +329,9 @@ export const items = pgTable('items', {
   qty: integer().notNull().default(1),
   // Checklist belanja (live shopping): true = barang sudah didapat/dibeli di toko.
   obtained: boolean().notNull().default(false),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 })
 
 // ACTIVITY LOGS
@@ -303,7 +344,9 @@ export const activityLogs = pgTable('activity_logs', {
   entityType: varchar('entity_type').notNull(),
   entityId: uuid('entity_id').notNull(),
   metadata: jsonb(),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 })
 
 // RELATIONS
@@ -400,7 +443,9 @@ export const subscriptionSettings = pgTable('subscription_settings', {
   proPrice: decimal('pro_price', { precision: 12, scale: 2 })
     .notNull()
     .default('0'),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
   updatedBy: uuid('updated_by').references(() => users.id, {
     onDelete: 'set null',
   }),
