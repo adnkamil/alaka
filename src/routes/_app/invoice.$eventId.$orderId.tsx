@@ -151,13 +151,13 @@ function InvoicePage() {
 
   const defaultTemplate = isDp
     ? [
-        'Halo kak {customer}, ini invoice belanja di *{event}* ya kak, bisa dicek detailnya di link ini: {link}',
+        'Halo kak {customer}, ini invoice belanja di *{event}* ya kak, bisa dicek detailnya di link ini:',
+        '{link}',
         '',
-        'Subtotal: {subtotal}',
-        'Fee jastip: {fee}',
-        'Total Tagihan: {total}',
-        'DP Dibayar: {dp}',
-        '*Sisa Tagihan: {sisa}*',
+        'Tagihan: {total}',
+        'DP: {dp}',
+        `*Tagihan Akhir: {sisa}*`,
+        '',
         '{bankLine}',
         'mohon dikirim bukti transfernya ya kak',
         '',
