@@ -33,6 +33,8 @@ import {
 } from 'lucide-react'
 import { z } from 'zod'
 import AddOrderSheet from '../../components/AddOrderSheet'
+import EditEventModal from '../../components/EditEventModal'
+import type { EditEventValue } from '../../components/EditEventModal'
 import ImportOrdersModal from '../../components/ImportOrdersModal'
 import ProBadge from '../../components/ProBadge'
 import ProLockPrompt from '../../components/ProLockPrompt'
@@ -45,7 +47,7 @@ import {
 } from '../../lib/events-functions'
 import { listFeeRules } from '../../lib/fee-rules-functions'
 import { getOrderSuggestions } from '../../lib/order-suggestions-functions'
-import { APP_TIME_ZONE } from '../../lib/timezone'
+import { APP_TIME_ZONE, todayIsoDateInAppTimeZone } from '../../lib/timezone'
 import { lineTotal, summarizeItems } from '../../lib/order-totals'
 import {
   orderSheetModeFromSearch,
@@ -309,6 +311,8 @@ function EventDetailPage() {
   const [dpPromptOrderId, setDpPromptOrderId] = useState<string | null>(null)
   const [isSavingDpAmount, setIsSavingDpAmount] = useState(false)
   const [showEventMenu, setShowEventMenu] = useState(false)
+  // Modal ubah nama/tanggal/deskripsi event (dari menu ⋮ atau tap judul).
+  const [showEditEvent, setShowEditEvent] = useState(false)
   // Info singkat setelah aksi pesanan: barang digabung, hasil import, atau
   // hasil export (semua pakai alert melayang yang sama).
   const [mergeNotice, setMergeNotice] = useState<string | null>(null)
@@ -637,6 +641,22 @@ function EventDetailPage() {
     await queryClient.invalidateQueries({ queryKey: ['event', eventId] })
   }
 
+  async function handleEditEvent(value: EditEventValue) {
+    await updateEvent({
+      data: {
+        id: eventId,
+        name: value.name,
+        description: value.description || undefined,
+        eventDate: new Date(value.eventDate).toISOString(),
+        // Aturan fee dipertahankan — modal ini nggak mengubahnya.
+        feeRuleId: event.feeRule?.id ?? null,
+      },
+    })
+    await queryClient.invalidateQueries({ queryKey: ['event', eventId] })
+    await queryClient.invalidateQueries({ queryKey: ['events'] })
+    setShowEditEvent(false)
+  }
+
   /**
    * Nonaktifkan / aktifkan lagi event. Nonaktif bukan hapus: event-nya cuma
    * keluar dari daftar "Event aktif" di beranda dan tidak bisa ditambah pesanan
@@ -682,7 +702,19 @@ function EventDetailPage() {
           <Link to="/" style={{ color: 'var(--app-text)' }}>
             <ArrowLeft size={22} />
           </Link>
-          <div>
+          <div
+            role="button"
+            tabIndex={0}
+            aria-label="Ubah event"
+            onClick={() => setShowEditEvent(true)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                setShowEditEvent(true)
+              }
+            }}
+            className="min-w-0 cursor-pointer"
+          >
             <h1 className="flex items-center gap-2 text-lg font-bold">
               {event.name}
               {!event.isActive && (
@@ -1573,6 +1605,18 @@ function EventDetailPage() {
           }}
           onClose={() => closeSheet()}
           onSubmit={(value) => handleUpdateOrder(editingOrder.id, value)}
+        />
+      )}
+
+      {showEditEvent && (
+        <EditEventModal
+          initialValue={{
+            name: event.name,
+            eventDate: todayIsoDateInAppTimeZone(new Date(event.eventDate)),
+            description: event.description ?? '',
+          }}
+          onClose={() => setShowEditEvent(false)}
+          onSubmit={handleEditEvent}
         />
       )}
 

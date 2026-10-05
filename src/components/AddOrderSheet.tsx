@@ -629,11 +629,14 @@ export default function AddOrderSheet({
                       </label>
                       <label className="flex flex-col gap-1 text-xs">
                         <span className="whitespace-nowrap">Fee jastip</span>
+                        {/* Tidak wajib diisi: kalau dibiarkan kosong, fee
+                            dianggap 0 — jadi barang titipan tanpa fee tetap
+                            bisa disimpan tanpa harus mengetik angka dulu. */}
                         <NumberInput
-                          required
                           value={item.fee}
                           onChange={(fee) => updateItem(index, { fee })}
                           className="app-input"
+                          placeholder="0"
                         />
                       </label>
                     </div>
