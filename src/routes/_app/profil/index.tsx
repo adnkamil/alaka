@@ -6,6 +6,7 @@ import {
 } from '@tanstack/react-query'
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import {
+  Camera,
   ChevronRight,
   Contact,
   Crown,
@@ -23,12 +24,15 @@ import {
   Wallet,
 } from 'lucide-react'
 import ChangePasswordModal from '../../../components/ChangePasswordModal'
+import EditAvatarModal from '../../../components/EditAvatarModal'
 import EditProfileModal from '../../../components/EditProfileModal'
 import type { PaymentMethodFormValue } from '../../../components/PaymentMethodModal'
 import PaymentMethodModal from '../../../components/PaymentMethodModal'
 import ProBadge from '../../../components/ProBadge'
 import ProLockPrompt from '../../../components/ProLockPrompt'
+import UserAvatar from '../../../components/UserAvatar'
 import Switch from '../../../components/ui/Switch'
+import { removeAvatar, uploadAvatar } from '../../../lib/avatar-functions'
 import {
   changePassword,
   fetchCurrentUser,
@@ -155,6 +159,7 @@ function ProfilPage() {
     { mode: 'create' } | { mode: 'edit'; id: string } | null
   >(null)
   const [showProfileModal, setShowProfileModal] = useState(false)
+  const [showAvatarModal, setShowAvatarModal] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [lockedFeature, setLockedFeature] = useState<ProFeature | null>(null)
 
@@ -187,6 +192,18 @@ function ProfilPage() {
     // Setelah halaman lama di-unmount: kosongkan cache supaya akun berikutnya
     // di tab yang sama tidak melihat 'current-user'/data akun sebelumnya.
     queryClient.clear()
+  }
+
+  async function handleUploadAvatar(dataUrl: string) {
+    await uploadAvatar({ data: { dataUrl } })
+    await queryClient.invalidateQueries({ queryKey: ['current-user'] })
+    setShowAvatarModal(false)
+  }
+
+  async function handleRemoveAvatar() {
+    await removeAvatar()
+    await queryClient.invalidateQueries({ queryKey: ['current-user'] })
+    setShowAvatarModal(false)
   }
 
   async function handleSaveProfile(data: { name: string; brandName: string }) {
@@ -249,22 +266,45 @@ function ProfilPage() {
     <main className="mx-auto max-w-lg px-4 pb-8 pt-6">
       <h1 className="mb-6 text-xl font-bold">Profil</h1>
 
-      <button
-        type="button"
-        onClick={() => setShowProfileModal(true)}
-        className="app-card mb-6 flex w-full items-center gap-3 p-4 text-left"
-      >
-        <div className="app-avatar h-14 w-14 text-xl">
-          {user?.name.at(0)?.toUpperCase() ?? '?'}
-        </div>
-        <div className="flex-1">
-          <p className="font-semibold">{user?.name}</p>
-          <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
-            {user?.brandName || 'Belum ada nama brand'}
-          </p>
-        </div>
-        <ChevronRight size={18} style={{ color: 'var(--app-text-mute)' }} />
-      </button>
+      <div className="app-card mb-6 flex w-full items-center gap-3 p-4">
+        <button
+          type="button"
+          onClick={() => setShowAvatarModal(true)}
+          className="relative shrink-0 rounded-full"
+          aria-label="Ubah foto brand"
+        >
+          <UserAvatar
+            userId={user?.id}
+            name={user?.name}
+            avatarUpdatedAt={user?.avatarUpdatedAt}
+            className="h-14 w-14 text-xl"
+          />
+          <span
+            className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border"
+            style={{
+              background: 'var(--app-card)',
+              borderColor: 'var(--app-border)',
+              color: 'var(--app-text-soft)',
+            }}
+            aria-hidden="true"
+          >
+            <Camera size={11} />
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowProfileModal(true)}
+          className="flex min-w-0 flex-1 items-center gap-3 text-left"
+        >
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold">{user?.name}</p>
+            <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
+              {user?.brandName || 'Belum ada nama brand'}
+            </p>
+          </div>
+          <ChevronRight size={18} style={{ color: 'var(--app-text-mute)' }} />
+        </button>
+      </div>
 
       <section className="mb-6">
         <h2
@@ -595,6 +635,17 @@ function ProfilPage() {
               ? () => handleDeletePaymentMethod(paymentModal.id)
               : undefined
           }
+        />
+      )}
+
+      {showAvatarModal && (
+        <EditAvatarModal
+          userId={user?.id}
+          name={user?.name}
+          avatarUpdatedAt={user?.avatarUpdatedAt}
+          onSubmit={handleUploadAvatar}
+          onRemove={handleRemoveAvatar}
+          onClose={() => setShowAvatarModal(false)}
         />
       )}
 

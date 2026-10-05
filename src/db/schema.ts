@@ -59,6 +59,13 @@ export const users = pgTable(
     id: uuid().primaryKey().defaultRandom(),
     name: varchar().notNull(),
     brandName: varchar('brand_name'),
+    /**
+     * Kapan foto brand terakhir diganti. Fotonya sendiri TIDAK disimpan di DB
+     * (ada di Netlify Blobs, lihat `src/lib/storage.ts`) — kolom ini cuma
+     * penanda "user punya foto" (null = belum ada) sekaligus cache-buster
+     * (`?v=`) di URL gambar.
+     */
+    avatarUpdatedAt: timestamp('avatar_updated_at', { withTimezone: true }),
     waMessageTemplate: text('wa_message_template'),
     email: varchar().notNull().unique(),
     passwordHash: varchar('password_hash'),
