@@ -148,6 +148,8 @@ export const fetchCurrentUser = createServerFn({ method: 'GET' }).handler(
       name: user.name,
       email: user.email,
       brandName: user.brandName,
+      // Cuma penanda + cache-buster; fotonya diambil lewat `/api/avatar/:id`.
+      avatarUpdatedAt: user.avatarUpdatedAt?.toISOString() ?? null,
       waMessageTemplate: user.waMessageTemplate,
       // Dipakai di halaman Profil: akun Google-only belum punya kata sandi,
       // jadi menu "Ubah Kata Sandi" ditampilkan sebagai info, bukan aksi.

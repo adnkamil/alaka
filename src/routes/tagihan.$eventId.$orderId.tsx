@@ -5,6 +5,7 @@ import { Landmark, MapPin, Printer } from 'lucide-react'
 import { getPublicOrderInvoice } from '../lib/orders-functions'
 import { lineTotal, summarizeItems } from '../lib/order-totals'
 import { APP_TIME_ZONE } from '../lib/timezone'
+import InvoiceBrandMark from '../components/InvoiceBrandMark'
 import PaymentInfoCard from '../components/PaymentInfoCard'
 
 export const Route = createFileRoute('/tagihan/$eventId/$orderId')({
@@ -136,12 +137,11 @@ function PublicInvoicePage() {
               INVOICE · {invoiceNo}
             </p>
           </div>
-          <span
-            className="app-icon-tile h-11 w-11"
-            style={{ borderRadius: 999 }}
-          >
-            <Landmark size={20} />
-          </span>
+          <InvoiceBrandMark
+            userId={data.user.id}
+            name={data.user.brandName || data.user.name}
+            avatarUpdatedAt={data.user.avatarUpdatedAt}
+          />
         </div>
 
         <div

@@ -456,8 +456,13 @@ export const getPublicOrderInvoice = createServerFn({ method: 'GET' })
         qty: item.qty,
       })),
       user: {
+        // `id` + `avatarUpdatedAt` dipakai buat URL foto brand
+        // (`/api/avatar/:id?v=`). Id-nya UUID acak dan memang harus ada di URL
+        // gambar publik itu; bukan kredensial (sesi pakai token terpisah).
+        id: owner.id,
         name: owner.name,
         brandName: owner.brandName,
+        avatarUpdatedAt: owner.avatarUpdatedAt?.toISOString() ?? null,
       },
       // Cuma metode pembayaran yang aktif — ini yang ditampilkan ke pelanggan.
       paymentMethods: await listActivePaymentMethods(owner.id),
@@ -519,8 +524,10 @@ export const getOrderInvoice = createServerFn({ method: 'GET' })
         qty: item.qty,
       })),
       user: {
+        id: user.id,
         name: user.name,
         brandName: user.brandName,
+        avatarUpdatedAt: user.avatarUpdatedAt?.toISOString() ?? null,
         waMessageTemplate: user.waMessageTemplate,
       },
       // Cuma metode pembayaran yang aktif — ini yang ditampilkan ke pelanggan.

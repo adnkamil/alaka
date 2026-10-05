@@ -50,6 +50,13 @@
       "when": 1791044688486,
       "tag": "0006_timestamps_to_timestamptz",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791188729493,
+      "tag": "0007_add_users_avatar_updated_at",
+      "breakpoints": true
     }
   ]
 }

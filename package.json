@@ -26,6 +26,7 @@
     "check": "prettier --check ."
   },
   "dependencies": {
+    "@netlify/blobs": "^11.1.1",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-devtools": "latest",
     "@tanstack/react-query": "latest",

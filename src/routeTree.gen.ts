@@ -27,6 +27,7 @@ import { Route as AppPesananNewRouteImport } from './routes/_app/pesanan/new'
 import { Route as AppProfilIndexRouteImport } from './routes/_app/profil/index'
 import { Route as AppProfilLanggananRouteImport } from './routes/_app/profil/langganan'
 import { Route as AppProfilTemplateChatRouteImport } from './routes/_app/profil/template-chat'
+import { Route as ApiAvatarUserIdRouteImport } from './routes/api/avatar/$userId'
 import { Route as TagihanEventIdOrderIdRouteImport } from './routes/tagihan.$eventId.$orderId'
 import { Route as AppInvoiceEventIdOrderIdRouteImport } from './routes/_app/invoice.$eventId.$orderId'
 import { Route as AppProfilCustomersIndexRouteImport } from './routes/_app/profil/customers/index'
@@ -125,6 +126,11 @@ const AppProfilTemplateChatRoute = AppProfilTemplateChatRouteImport.update({
   path: '/profil/template-chat',
   getParentRoute: () => AppRoute,
 } as any)
+const ApiAvatarUserIdRoute = ApiAvatarUserIdRouteImport.update({
+  id: '/api/avatar/$userId',
+  path: '/api/avatar/$userId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TagihanEventIdOrderIdRoute = TagihanEventIdOrderIdRouteImport.update({
   id: '/tagihan/$eventId/$orderId',
   path: '/tagihan/$eventId/$orderId',
@@ -184,6 +190,7 @@ export interface FileRoutesByFullPath {
   '/pesanan/new': typeof AppPesananNewRoute
   '/profil/langganan': typeof AppProfilLanggananRoute
   '/profil/template-chat': typeof AppProfilTemplateChatRoute
+  '/api/avatar/$userId': typeof ApiAvatarUserIdRoute
   '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
   '/pesanan/': typeof AppPesananIndexRoute
   '/profil/': typeof AppProfilIndexRoute
@@ -210,6 +217,7 @@ export interface FileRoutesByTo {
   '/pesanan/new': typeof AppPesananNewRoute
   '/profil/langganan': typeof AppProfilLanggananRoute
   '/profil/template-chat': typeof AppProfilTemplateChatRoute
+  '/api/avatar/$userId': typeof ApiAvatarUserIdRoute
   '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
   '/pesanan': typeof AppPesananIndexRoute
   '/profil': typeof AppProfilIndexRoute
@@ -239,6 +247,7 @@ export interface FileRoutesById {
   '/_app/pesanan/new': typeof AppPesananNewRoute
   '/_app/profil/langganan': typeof AppProfilLanggananRoute
   '/_app/profil/template-chat': typeof AppProfilTemplateChatRoute
+  '/api/avatar/$userId': typeof ApiAvatarUserIdRoute
   '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
   '/_app/pesanan/': typeof AppPesananIndexRoute
   '/_app/profil/': typeof AppProfilIndexRoute
@@ -268,6 +277,7 @@ export interface FileRouteTypes {
     | '/pesanan/new'
     | '/profil/langganan'
     | '/profil/template-chat'
+    | '/api/avatar/$userId'
     | '/tagihan/$eventId/$orderId'
     | '/pesanan/'
     | '/profil/'
@@ -294,6 +304,7 @@ export interface FileRouteTypes {
     | '/pesanan/new'
     | '/profil/langganan'
     | '/profil/template-chat'
+    | '/api/avatar/$userId'
     | '/tagihan/$eventId/$orderId'
     | '/pesanan'
     | '/profil'
@@ -322,6 +333,7 @@ export interface FileRouteTypes {
     | '/_app/pesanan/new'
     | '/_app/profil/langganan'
     | '/_app/profil/template-chat'
+    | '/api/avatar/$userId'
     | '/tagihan/$eventId/$orderId'
     | '/_app/pesanan/'
     | '/_app/profil/'
@@ -341,6 +353,7 @@ export interface RootRouteChildren {
   LupaSandiRoute: typeof LupaSandiRoute
   RegisterRoute: typeof RegisterRoute
   ResetSandiTokenRoute: typeof ResetSandiTokenRoute
+  ApiAvatarUserIdRoute: typeof ApiAvatarUserIdRoute
   TagihanEventIdOrderIdRoute: typeof TagihanEventIdOrderIdRoute
   ApiAuthGoogleCallbackRoute: typeof ApiAuthGoogleCallbackRoute
   ApiAuthGoogleIndexRoute: typeof ApiAuthGoogleIndexRoute
@@ -474,6 +487,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProfilTemplateChatRouteImport
       parentRoute: typeof AppRoute
     }
+    '/api/avatar/$userId': {
+      id: '/api/avatar/$userId'
+      path: '/api/avatar/$userId'
+      fullPath: '/api/avatar/$userId'
+      preLoaderRoute: typeof ApiAvatarUserIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tagihan/$eventId/$orderId': {
       id: '/tagihan/$eventId/$orderId'
       path: '/tagihan/$eventId/$orderId'
@@ -590,6 +610,7 @@ const rootRouteChildren: RootRouteChildren = {
   LupaSandiRoute: LupaSandiRoute,
   RegisterRoute: RegisterRoute,
   ResetSandiTokenRoute: ResetSandiTokenRoute,
+  ApiAvatarUserIdRoute: ApiAvatarUserIdRoute,
   TagihanEventIdOrderIdRoute: TagihanEventIdOrderIdRoute,
   ApiAuthGoogleCallbackRoute: ApiAuthGoogleCallbackRoute,
   ApiAuthGoogleIndexRoute: ApiAuthGoogleIndexRoute,

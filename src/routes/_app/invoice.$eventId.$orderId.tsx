@@ -9,7 +9,6 @@ import type { ErrorComponentProps } from '@tanstack/react-router'
 import {
   AlertTriangle,
   ArrowLeft,
-  Landmark,
   Lock,
   MapPin,
   MessageCircle,
@@ -31,6 +30,7 @@ import { lineTotal, summarizeItems } from '../../lib/order-totals'
 import { APP_TIME_ZONE } from '../../lib/timezone'
 import CustomerFormModal from '../../components/CustomerFormModal'
 import type { CustomerFormValue } from '../../components/CustomerFormModal'
+import InvoiceBrandMark from '../../components/InvoiceBrandMark'
 import PaymentInfoCard from '../../components/PaymentInfoCard'
 
 export const Route = createFileRoute('/_app/invoice/$eventId/$orderId')({
@@ -247,12 +247,11 @@ function InvoicePage() {
               INVOICE · {invoiceNo}
             </p>
           </div>
-          <span
-            className="app-icon-tile h-11 w-11"
-            style={{ borderRadius: 999 }}
-          >
-            <Landmark size={20} />
-          </span>
+          <InvoiceBrandMark
+            userId={data.user.id}
+            name={data.user.brandName || data.user.name}
+            avatarUpdatedAt={data.user.avatarUpdatedAt}
+          />
         </div>
 
         {/* Info order */}
