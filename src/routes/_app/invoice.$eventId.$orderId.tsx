@@ -317,39 +317,39 @@ function InvoicePage() {
 
         {/* Total */}
         <div
-          className="flex items-center justify-between border-t p-5 pt-3"
+          className="border-t p-5 pt-3"
           style={{ borderColor: 'var(--app-border)' }}
         >
-          <span className="font-bold">Total Tagihan</span>
-          <span
-            className="text-lg font-bold"
-            style={{ color: 'var(--app-accent)' }}
-          >
-            {formatIDR(total)}
-          </span>
-        </div>
-
-        {isDp && (
-          <div
-            className="flex flex-col gap-1 border-t px-5 py-3 text-sm"
-            style={{
-              borderColor: 'var(--app-border)',
-              background: 'var(--app-accent-soft)',
-            }}
-          >
-            <div className="flex justify-between">
-              <span>DP sudah dibayar</span>
-              <span className="font-semibold">{formatIDR(paidAmount)}</span>
-            </div>
+          {isDp && (
             <div
-              className="flex justify-between font-bold"
-              style={{ color: 'var(--app-warning)' }}
+              className="mb-3 flex flex-col gap-1 border-b pb-3 text-sm"
+              style={{
+                borderColor: 'var(--app-border)',
+                color: 'var(--app-text-mute)',
+              }}
             >
-              <span>Sisa yang harus dibayar</span>
-              <span>{formatIDR(remaining)}</span>
+              <div className="flex justify-between">
+                <span>Subtotal</span>
+                <span>{formatIDR(total)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>DP</span>
+                <span>-{formatIDR(paidAmount)}</span>
+              </div>
             </div>
+          )}
+          <div className="flex items-center justify-between">
+            <span className="text-lg font-bold">
+              Total
+            </span>
+            <span
+              className="text-lg font-bold"
+              style={{ color: 'var(--app-accent)' }}
+            >
+              {formatIDR(isDp ? remaining : total)}
+            </span>
           </div>
-        )}
+        </div>
       </div>
       {/* ====== PEMBAYARAN ====== */}
       {!completed && (
