@@ -24,6 +24,7 @@ import {
 } from '../../lib/format'
 import {
   DEFAULT_WA_MESSAGE_TEMPLATE,
+  buildItemList,
   renderMessageTemplate,
 } from '../../lib/message-template'
 import { lineTotal, summarizeItems } from '../../lib/order-totals'
@@ -179,6 +180,7 @@ function InvoicePage() {
       bank: primaryTransfer?.provider ?? '',
       bankAccount: primaryTransfer?.accountNumber ?? '',
       brand: data.user.brandName || data.user.name,
+      itemList: buildItemList(data.items),
     },
   )
 
@@ -339,9 +341,7 @@ function InvoicePage() {
             </div>
           )}
           <div className="flex items-center justify-between">
-            <span className="text-lg font-bold">
-              Total
-            </span>
+            <span className="text-lg font-bold">Total</span>
             <span
               className="text-lg font-bold"
               style={{ color: 'var(--app-accent)' }}
