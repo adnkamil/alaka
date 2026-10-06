@@ -4,15 +4,20 @@
  * Tiap user bisa bikin template sendiri (disimpan di `users.wa_message_template`).
  * Template pakai placeholder `{variabel}` yang otomatis disubstitui dengan data
  * asli saat pesan dirender. Kalau user belum pernah set template, dipakai
- * DEFAULT_WA_MESSAGE_TEMPLATE (format pesan yang lama).
+ * DEFAULT_WA_MESSAGE_TEMPLATE.
+ *
+ * Variabel {tagihan} adalah blok ringkasan tagihan yang otomatis menyesuaikan
+ * status DP — tidak perlu variabel terpisah {subtotal}, {fee}, {total}, {dp},
+ * {sisa}. Variabel-variabel lama itu masih dirender untuk backward compat
+ * template kustom yang sudah ada, tapi tidak ditampilkan di chips UI.
  */
 
 export const DEFAULT_WA_MESSAGE_TEMPLATE = [
-  'Halo kak {customer}, ini invoice belanja di *{event}* ya kak, bisa dicek detailnya di link ini: {link}',
+  'Halo kak {customer}, ini invoice belanja di *{event}* ya kak, bisa dicek detailnya di link ini:',
+  '{link}',
   '',
-  'Subtotal: {subtotal}',
-  'Fee jastip: {fee}',
-  '*Total Tagihan: {total}*',
+  '{tagihan}',
+  '',
   '{bankLine}',
   'mohon dikirim bukti transfernya ya kak',
   '',
@@ -23,14 +28,19 @@ export interface MessageTemplateContext {
   customer: string
   event: string
   link: string
+  /** Dipakai untuk backward compat {subtotal}. */
   subtotal: string
+  /** Dipakai untuk backward compat {fee}. */
   fee: string
+  /** Total tagihan (subtotal + fee). Dipakai untuk {tagihan} dan backward compat {total}. */
   total: string
   bank: string
   bankAccount: string
   brand: string
-  dp?: string
-  sisa?: string
+  /** Nominal DP yang sudah dibayar. "Rp 0" jika belum DP. */
+  dp: string
+  /** Sisa tagihan setelah DP. Sama dengan total jika belum DP. */
+  sisa: string
 }
 
 export interface MessageTemplateVariable {
@@ -39,7 +49,11 @@ export interface MessageTemplateVariable {
   description: string
 }
 
-/** Daftar variabel yang didukung — dipakai juga buat chips di UI modal. */
+/**
+ * Daftar variabel yang ditampilkan sebagai chips di UI.
+ * {subtotal}, {fee}, {total}, {dp}, {sisa} sudah digabung ke {tagihan}
+ * supaya template lebih ringkas dan otomatis handle status DP.
+ */
 export const MESSAGE_TEMPLATE_VARIABLES: MessageTemplateVariable[] = [
   { key: '{customer}', label: '{customer}', description: 'Nama pelanggan' },
   { key: '{event}', label: '{event}', description: 'Nama event belanja' },
@@ -49,25 +63,10 @@ export const MESSAGE_TEMPLATE_VARIABLES: MessageTemplateVariable[] = [
     description: 'Link halaman tagih/invoice',
   },
   {
-    key: '{subtotal}',
-    label: '{subtotal}',
-    description: 'Total harga barang',
-  },
-  { key: '{fee}', label: '{fee}', description: 'Total fee jastip' },
-  {
-    key: '{total}',
-    label: '{total}',
-    description: 'Total tagihan (subtotal + fee)',
-  },
-  {
-    key: '{dp}',
-    label: '{dp}',
-    description: 'Nominal DP yang sudah dibayar',
-  },
-  {
-    key: '{sisa}',
-    label: '{sisa}',
-    description: 'Sisa tagihan yang harus dibayar',
+    key: '{tagihan}',
+    label: '{tagihan}',
+    description:
+      'Blok tagihan otomatis: total, DP, dan tagihan akhir — menyesuaikan status DP secara otomatis',
   },
   {
     key: '{bank}',
@@ -83,7 +82,7 @@ export const MESSAGE_TEMPLATE_VARIABLES: MessageTemplateVariable[] = [
     key: '{bankLine}',
     label: '{bankLine}',
     description:
-      'Baris "Transfer ke ..." — otomatis hupar bila bank belum diatur',
+      'Baris "Transfer ke ..." — otomatis hilang bila bank belum diatur',
   },
   {
     key: '{brand}',
@@ -92,7 +91,7 @@ export const MESSAGE_TEMPLATE_VARIABLES: MessageTemplateVariable[] = [
   },
 ]
 
-/** Contoh data untat live-preview di modal template. */
+/** Contoh data untuk live-preview di halaman template (pakai contoh status DP). */
 export const MESSAGE_TEMPLATE_SAMPLE: MessageTemplateContext = {
   customer: 'Nia',
   event: 'Event Shopping 2026',
@@ -116,29 +115,41 @@ export function renderMessageTemplate(
       ? `Transfer ke ${context.bank.trim()} ${context.bankAccount.trim()}`
       : ''
 
+  // Blok {tagihan}: selalu tampilkan tiga baris supaya customer jelas
+  // berapa total, sudah bayar berapa, dan sisa yang harus ditransfer.
+  // Kalau belum DP, dp = "Rp 0" dan sisa = total — tetap konsisten.
+  const tagihanBlock = [
+    `Tagihan: ${context.total}`,
+    `DP: ${context.dp}`,
+    `*Tagihan akhir: ${context.sisa}*`,
+  ].join('\n')
+
   const values: Record<string, string> = {
     '{customer}': context.customer,
     '{event}': context.event,
     '{link}': context.link,
+    // Backward compat — template lama yang masih pakai variabel individual.
     '{subtotal}': context.subtotal,
     '{fee}': context.fee,
     '{total}': context.total,
-    '{dp}': context.dp ?? '',
-    '{sisa}': context.sisa ?? '',
+    '{dp}': context.dp,
+    '{sisa}': context.sisa,
     '{bank}': context.bank,
     '{bankAccount}': context.bankAccount,
     '{bankLine}': bankLine,
     '{brand}': context.brand,
+    '{tagihan}': tagihanBlock,
   }
 
   let result = template
   for (const [key, value] of Object.entries(values)) {
-    // Fungsi replacement supaya karakter $ \ dalam value diterbaliter
-    // (nggak diinterpretasi as special replacement pattern).
+    // Fungsi replacement supaya karakter $ \ dalam value tidak
+    // diinterpretasi sebagai special replacement pattern.
     result = result.replaceAll(key, () => value)
   }
 
-  // Normalisasi baris kosong: maksimun satu baris kosong sa disebelahan
-  // (WA tampil baris kosong multiple sama saja satu).
+  // Normalisasi baris kosong: maksimal satu baris kosong berurutan
+  // (WA menampilkan baris kosong multiple sama seperti satu).
   return result.replace(/\n{3,}/g, '\n\n').trim()
 }
+
