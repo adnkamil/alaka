@@ -6,7 +6,6 @@ import {
 } from '@tanstack/react-query'
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import {
-  Camera,
   ChevronRight,
   Contact,
   Crown,
@@ -24,8 +23,8 @@ import {
   Wallet,
 } from 'lucide-react'
 import ChangePasswordModal from '../../../components/ChangePasswordModal'
-import EditAvatarModal from '../../../components/EditAvatarModal'
 import EditProfileModal from '../../../components/EditProfileModal'
+import type { ProfileFormValue } from '../../../components/EditProfileModal'
 import type { PaymentMethodFormValue } from '../../../components/PaymentMethodModal'
 import PaymentMethodModal from '../../../components/PaymentMethodModal'
 import ProBadge from '../../../components/ProBadge'
@@ -159,7 +158,6 @@ function ProfilPage() {
     { mode: 'create' } | { mode: 'edit'; id: string } | null
   >(null)
   const [showProfileModal, setShowProfileModal] = useState(false)
-  const [showAvatarModal, setShowAvatarModal] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [lockedFeature, setLockedFeature] = useState<ProFeature | null>(null)
 
@@ -194,23 +192,21 @@ function ProfilPage() {
     queryClient.clear()
   }
 
-  async function handleUploadAvatar(dataUrl: string) {
-    await uploadAvatar({ data: { dataUrl } })
-    await queryClient.invalidateQueries({ queryKey: ['current-user'] })
-    setShowAvatarModal(false)
-  }
-
-  async function handleRemoveAvatar() {
-    await removeAvatar()
-    await queryClient.invalidateQueries({ queryKey: ['current-user'] })
-    setShowAvatarModal(false)
-  }
-
-  async function handleSaveProfile(data: { name: string; brandName: string }) {
-    await updateProfile({
-      data: { name: data.name, brandName: data.brandName },
-    })
-    await queryClient.invalidateQueries({ queryKey: ['current-user'] })
+  async function handleSaveProfile(data: ProfileFormValue) {
+    try {
+      await updateProfile({
+        data: { name: data.name, brandName: data.brandName },
+      })
+      if (data.avatarChange?.type === 'upload') {
+        await uploadAvatar({ data: { dataUrl: data.avatarChange.dataUrl } })
+      } else if (data.avatarChange?.type === 'remove') {
+        await removeAvatar()
+      }
+    } finally {
+      // Segarkan tampilan walau salah satu langkah gagal (mis. profil sudah
+      // tersimpan tapi foto gagal), supaya data di belakang modal tidak usang.
+      await queryClient.invalidateQueries({ queryKey: ['current-user'] })
+    }
     setShowProfileModal(false)
   }
 
@@ -266,45 +262,26 @@ function ProfilPage() {
     <main className="mx-auto max-w-lg px-4 pb-8 pt-6">
       <h1 className="mb-6 text-xl font-bold">Profil</h1>
 
-      <div className="app-card mb-6 flex w-full items-center gap-3 p-4">
-        <button
-          type="button"
-          onClick={() => setShowAvatarModal(true)}
-          className="relative shrink-0 rounded-full"
-          aria-label="Ubah foto brand"
-        >
-          <UserAvatar
-            userId={user?.id}
-            name={user?.name}
-            avatarUpdatedAt={user?.avatarUpdatedAt}
-            className="h-14 w-14 text-xl"
-          />
-          <span
-            className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border"
-            style={{
-              background: 'var(--app-card)',
-              borderColor: 'var(--app-border)',
-              color: 'var(--app-text-soft)',
-            }}
-            aria-hidden="true"
-          >
-            <Camera size={11} />
-          </span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowProfileModal(true)}
-          className="flex min-w-0 flex-1 items-center gap-3 text-left"
-        >
-          <div className="min-w-0 flex-1">
-            <p className="font-semibold">{user?.name}</p>
-            <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
-              {user?.brandName || 'Belum ada nama brand'}
-            </p>
-          </div>
-          <ChevronRight size={18} style={{ color: 'var(--app-text-mute)' }} />
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={() => setShowProfileModal(true)}
+        className="app-card mb-6 flex w-full items-center gap-3 p-4 text-left"
+        aria-label="Edit profil"
+      >
+        <UserAvatar
+          userId={user?.id}
+          name={user?.name}
+          avatarUpdatedAt={user?.avatarUpdatedAt}
+          className="h-14 w-14 text-xl"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold">{user?.name}</p>
+          <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
+            {user?.brandName || 'Belum ada nama brand'}
+          </p>
+        </div>
+        <ChevronRight size={18} style={{ color: 'var(--app-text-mute)' }} />
+      </button>
 
       <section className="mb-6">
         <h2
@@ -638,17 +615,6 @@ function ProfilPage() {
         />
       )}
 
-      {showAvatarModal && (
-        <EditAvatarModal
-          userId={user?.id}
-          name={user?.name}
-          avatarUpdatedAt={user?.avatarUpdatedAt}
-          onSubmit={handleUploadAvatar}
-          onRemove={handleRemoveAvatar}
-          onClose={() => setShowAvatarModal(false)}
-        />
-      )}
-
       {showProfileModal && (
         <EditProfileModal
           title="Edit Profil"
@@ -656,6 +622,10 @@ function ProfilPage() {
           initialValue={{
             name: user?.name ?? '',
             brandName: user?.brandName ?? '',
+          }}
+          avatar={{
+            userId: user?.id,
+            avatarUpdatedAt: user?.avatarUpdatedAt,
           }}
           onClose={() => setShowProfileModal(false)}
           onSubmit={handleSaveProfile}

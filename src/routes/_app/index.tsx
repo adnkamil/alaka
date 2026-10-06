@@ -5,6 +5,7 @@ import { ChevronDown, ChevronRight, Plus, ShoppingBag } from 'lucide-react'
 import { listEvents } from '../../lib/events-functions'
 import { fetchCurrentUser } from '../../lib/auth-functions'
 import { APP_TIME_ZONE } from '../../lib/timezone'
+import UserAvatar from '../../components/UserAvatar'
 
 const eventsQuery = queryOptions({
   queryKey: ['events'],
@@ -99,19 +100,21 @@ function BerandaPage() {
     <main className="mx-auto max-w-lg px-4 pb-8 pt-6">
       <header className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-bold">ALAKA</h1>
+          <h1 className="text-lg font-bold">{user?.brandName?.trim() || 'ALAKA'}</h1>
           <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
             {/* Sapaan pakai nama BRAND user (bukan nama pribadinya). Kalau
                 brandnya belum diisi, jatuh ke nama user — sama seperti fallback
                 di halaman Profil. */}
-            Halo {user?.brandName?.trim() || user?.name || 'Jastiper'}
+            Halo {user?.name || 'Jastiper'}
           </p>
         </div>
-        <Link
-          to="/profil"
-          className="app-avatar flex h-10 w-10 items-center justify-center"
-        >
-          {user?.name.at(0)?.toUpperCase() ?? '?'}
+        <Link to="/profil" className="shrink-0" aria-label="Buka profil">
+          <UserAvatar
+            userId={user?.id}
+            name={user?.name}
+            avatarUpdatedAt={user?.avatarUpdatedAt}
+            className="h-10 w-10"
+          />
         </Link>
       </header>
 
