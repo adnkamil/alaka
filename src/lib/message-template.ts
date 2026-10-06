@@ -10,6 +10,9 @@
  * status DP — tidak perlu variabel terpisah {subtotal}, {fee}, {total}, {dp},
  * {sisa}. Variabel-variabel lama itu masih dirender untuk backward compat
  * template kustom yang sudah ada, tapi tidak ditampilkan di chips UI.
+ *
+ * Variabel {listItem} berisi daftar barang yang dipesan, satu baris per
+ * barang dengan bullet "•" (tanpa "Rp", pakai pemisah ribuan titik).
  */
 
 export const DEFAULT_WA_MESSAGE_TEMPLATE = [
@@ -23,6 +26,38 @@ export const DEFAULT_WA_MESSAGE_TEMPLATE = [
   '',
   'Terima kasih sudah berbelanja di {brand}!',
 ].join('\n')
+
+/** Bentuk minimal satu barang pesanan untuk {listItem}. */
+export interface MessageTemplateItem {
+  name: string
+  qty: number
+  originalPrice: string | number
+  fee: string | number
+}
+
+/** Angka dengan pemisah ribuan titik, tanpa \"Rp\" (100000 -> \"100.000\"). */
+function formatNumber(value: string | number) {
+  return new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(
+    Number(value),
+  )
+}
+
+/**
+ * Daftar barang untuk variabel {listItem}. Satu baris per barang:
+ *   • Nama barang (harga + fee)
+ *   • Nama barang x2 (harga + fee)   <- \"xN\" hanya muncul kalau qty > 1
+ * Harga dan fee adalah nilai PER UNIT (sama seperti di invoice).
+ */
+export function buildItemList(items: Array<MessageTemplateItem>): string {
+  return items
+    .map((item) => {
+      // Nama satu baris saja supaya satu barang = satu bullet di WhatsApp.
+      const name = item.name.replace(/\s+/g, ' ').trim()
+      const qty = item.qty > 1 ? ` x${item.qty}` : ''
+      return `• ${name}${qty} (${formatNumber(item.originalPrice)} + ${formatNumber(item.fee)})`
+    })
+    .join('\n')
+}
 
 export interface MessageTemplateContext {
   customer: string
@@ -41,6 +76,8 @@ export interface MessageTemplateContext {
   dp: string
   /** Sisa tagihan setelah DP. Sama dengan total jika belum DP. */
   sisa: string
+  /** Daftar barang hasil `buildItemList`, untuk {listItem}. */
+  itemList: string
 }
 
 export interface MessageTemplateVariable {
@@ -67,6 +104,12 @@ export const MESSAGE_TEMPLATE_VARIABLES: MessageTemplateVariable[] = [
     label: '{tagihan}',
     description:
       'Blok tagihan otomatis: total, DP, dan tagihan akhir — menyesuaikan status DP secara otomatis',
+  },
+  {
+    key: '{listItem}',
+    label: '{listItem}',
+    description:
+      'Daftar barang yang dipesan, satu baris per barang: • nama (harga + fee)',
   },
   {
     key: '{bank}',
@@ -104,6 +147,15 @@ export const MESSAGE_TEMPLATE_SAMPLE: MessageTemplateContext = {
   bank: 'BCA',
   bankAccount: '1234567890',
   brand: 'ALAKA',
+  itemList: buildItemList([
+    {
+      name: 'Tas Charles & Keith',
+      qty: 1,
+      originalPrice: 1000000,
+      fee: 100000,
+    },
+    { name: 'Sunscreen Biore', qty: 2, originalPrice: 250000, fee: 25000 },
+  ]),
 }
 
 export function renderMessageTemplate(
@@ -139,6 +191,7 @@ export function renderMessageTemplate(
     '{bankLine}': bankLine,
     '{brand}': context.brand,
     '{tagihan}': tagihanBlock,
+    '{listItem}': context.itemList,
   }
 
   let result = template
@@ -152,4 +205,3 @@ export function renderMessageTemplate(
   // (WA menampilkan baris kosong multiple sama seperti satu).
   return result.replace(/\n{3,}/g, '\n\n').trim()
 }
-
