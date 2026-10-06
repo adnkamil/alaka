@@ -20,9 +20,13 @@ function avatarStore() {
     // Foto yang baru diganti harus langsung terbaca. Mode default (eventual)
     // bisa menyajikan foto lama sampai 60 detik setelah ditimpa.
     consistency: 'strong',
-    // Singapura = region terdekat dengan user Indonesia. Region tidak
-    // mengubah data yang sudah ada, jadi aman diganti belakangan.
-    region: 'ap-southeast-1',
+    // Samakan dengan region Functions (cmh, Ohio) dan Neon (us-east-2, Ohio)
+    // supaya jarak function -> storage paling dekat. us-east-2 juga default
+    // Netlify untuk store site-wide, jadi store ini tampil di dashboard Blobs.
+    // PENTING: data TIDAK ikut pindah kalau region diganti. Store di region
+    // lain akan terlihat kosong oleh app ini; salin dulu datanya (lihat
+    // scripts/list-blobs.mjs untuk melihat isinya) sebelum mengganti.
+    region: 'us-east-2',
   })
 }
 
