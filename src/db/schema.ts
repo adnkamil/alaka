@@ -288,6 +288,13 @@ export const events = pgTable('events', {
    * Diatur dari menu ⋮ di halaman Detail Event.
    */
   isActive: boolean('is_active').notNull().default(true),
+  /**
+   * Kalau aktif, invoice/tagihan ke pelanggan tidak menampilkan rincian fee:
+   * daftar barang cukup menampilkan qty + harga nett (harga asli + fee) per
+   * unit, tanpa memecah "harga + fee". Total tagihan tetap sama, hanya cara
+   * menampilkannya yang berubah. Diatur dari menu ⋮ di halaman Detail Event.
+   */
+  hideFee: boolean('hide_fee').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),

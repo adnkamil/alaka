@@ -447,6 +447,8 @@ export const getPublicOrderInvoice = createServerFn({ method: 'GET' })
         id: order.event.id,
         name: order.event.name,
         eventDate: order.event.eventDate,
+        // Kalau true, tagihan ini tidak memecah harga jadi "harga + fee".
+        hideFee: order.event.hideFee,
       },
       items: order.items.map((item) => ({
         id: item.id,
@@ -515,6 +517,8 @@ export const getOrderInvoice = createServerFn({ method: 'GET' })
         id: order.event.id,
         name: order.event.name,
         eventDate: order.event.eventDate,
+        // Kalau true, tagihan ini tidak memecah harga jadi "harga + fee".
+        hideFee: order.event.hideFee,
       },
       items: order.items.map((item) => ({
         id: item.id,

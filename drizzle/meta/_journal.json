@@ -57,6 +57,13 @@
       "when": 1791188729493,
       "tag": "0007_add_users_avatar_updated_at",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791439902427,
+      "tag": "0008_zippy_gertrude_yorkes",
+      "breakpoints": true
     }
   ]
 }

@@ -27,7 +27,7 @@ import {
   buildItemList,
   renderMessageTemplate,
 } from '../../lib/message-template'
-import { lineTotal, summarizeItems } from '../../lib/order-totals'
+import { lineTotal, summarizeItems, unitNetPrice } from '../../lib/order-totals'
 import { APP_TIME_ZONE } from '../../lib/timezone'
 import CustomerFormModal from '../../components/CustomerFormModal'
 import type { CustomerFormValue } from '../../components/CustomerFormModal'
@@ -125,6 +125,9 @@ function InvoicePage() {
   const suggestedCustomerName = data.order.customerName.replace(/\s\d{4}$/, '')
 
   const { subtotal, totalFee, total } = summarizeItems(data.items)
+  // Event bisa menyembunyikan rincian fee: kalau aktif, daftar barang cuma
+  // menampilkan qty + harga nett per unit (harga asli + fee).
+  const hideFee = data.event.hideFee
   const isDp = data.order.paymentStatus === 'dp'
   const paidAmount = Number(data.order.paidAmount)
   const remaining = Math.max(0, total - paidAmount)
@@ -180,7 +183,7 @@ function InvoicePage() {
       bank: primaryTransfer?.provider ?? '',
       bankAccount: primaryTransfer?.accountNumber ?? '',
       brand: data.user.brandName || data.user.name,
-      itemList: buildItemList(data.items),
+      itemList: buildItemList(data.items, { hideFee }),
     },
   )
 
@@ -306,10 +309,16 @@ function InvoicePage() {
                   className="text-xs"
                   style={{ color: 'var(--app-text-mute)' }}
                 >
-                  <>
-                    {item.qty} × ({formatIDR(item.originalPrice)} + Fee{' '}
-                    {formatIDR(item.fee)})
-                  </>
+                  {hideFee ? (
+                    <>
+                      {item.qty} × {formatIDR(unitNetPrice(item))}
+                    </>
+                  ) : (
+                    <>
+                      {item.qty} × ({formatIDR(item.originalPrice)} + Fee{' '}
+                      {formatIDR(item.fee)})
+                    </>
+                  )}
                 </p>
               </div>
               <p className="font-medium">{formatIDR(lineTotal(item))}</p>

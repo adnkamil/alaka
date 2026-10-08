@@ -13,9 +13,20 @@ export interface OrderItemLike {
   qty: number
 }
 
+/**
+ * Harga nett per unit: harga asli + fee.
+ * Dipakai waktu invoice menyembunyikan rincian fee (`events.hide_fee`) — yang
+ * ditampilkan cukup harga nett, bukan pecahan "harga + fee".
+ */
+export function unitNetPrice(
+  item: Pick<OrderItemLike, 'originalPrice' | 'fee'>,
+) {
+  return Number(item.originalPrice) + Number(item.fee)
+}
+
 /** Total satu baris item: (harga asli + fee) * qty. */
 export function lineTotal(item: OrderItemLike) {
-  return (Number(item.originalPrice) + Number(item.fee)) * item.qty
+  return unitNetPrice(item) * item.qty
 }
 
 /** Ringkasan pesanan: subtotal (harga barang), total fee, dan grand total. */
@@ -53,9 +64,6 @@ export function derivePaymentStatus(
 }
 
 /** Sisa tagihan (tidak pernah minus). */
-export function remainingAmount(
-  paidAmount: string | number,
-  total: number,
-) {
+export function remainingAmount(paidAmount: string | number, total: number) {
   return Math.max(0, total - Number(paidAmount))
 }

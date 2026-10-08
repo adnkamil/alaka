@@ -3,7 +3,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import type { ErrorComponentProps } from '@tanstack/react-router'
 import { Landmark, MapPin, Printer } from 'lucide-react'
 import { getPublicOrderInvoice } from '../lib/orders-functions'
-import { lineTotal, summarizeItems } from '../lib/order-totals'
+import { lineTotal, summarizeItems, unitNetPrice } from '../lib/order-totals'
 import { APP_TIME_ZONE } from '../lib/timezone'
 import InvoiceBrandMark from '../components/InvoiceBrandMark'
 import PaymentInfoCard from '../components/PaymentInfoCard'
@@ -77,6 +77,9 @@ function PublicInvoicePage() {
   const { data } = useSuspenseQuery(query)
 
   const { total } = summarizeItems(data.items)
+  // Event bisa menyembunyikan rincian fee: kalau aktif, daftar barang cuma
+  // menampilkan qty + harga nett per unit (harga asli + fee).
+  const hideFee = data.event.hideFee
   const isDp = data.order.paymentStatus === 'dp'
   const paidAmount = Number(data.order.paidAmount)
   const remaining = Math.max(0, total - paidAmount)
@@ -187,8 +190,9 @@ function PublicInvoicePage() {
                   className="text-xs"
                   style={{ color: 'var(--app-text-mute)' }}
                 >
-                  {item.qty} × ({formatIDR(item.originalPrice)} + Fee{' '}
-                  {formatIDR(item.fee)})
+                  {hideFee
+                    ? `${item.qty} × ${formatIDR(unitNetPrice(item))}`
+                    : `${item.qty} × (${formatIDR(item.originalPrice)} + Fee ${formatIDR(item.fee)})`}
                 </p>
               </div>
               <p className="font-medium">{formatIDR(lineTotal(item))}</p>
@@ -219,10 +223,8 @@ function PublicInvoicePage() {
               </div>
             </div>
           )}
-          <div className="flex items-center justify-between"> 
-            <span className="text-lg font-bold">
-              Total
-            </span>
+          <div className="flex items-center justify-between">
+            <span className="text-lg font-bold">Total</span>
             <span
               className="text-lg font-bold"
               style={{ color: 'var(--app-accent)' }}
