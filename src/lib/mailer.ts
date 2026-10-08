@@ -10,6 +10,9 @@
  *   dites tanpa domain/akun Resend.
  * - `resend`            => dikirim lewat API Resend. Butuh domain terverifikasi
  *   + RESEND_API_KEY + MAIL_FROM.
+ * - `smtp`              => dikirim lewat server SMTP (mis. SumoPod). Butuh
+ *   SMTP_HOST, SMTP_PORT (default 465), SMTP_USER, SMTP_PASS + MAIL_FROM.
+ *   MAIL_REPLY_TO opsional (alamat tujuan kalau penerima menekan "balas").
  *
  * Jadi waktu domainnya sudah dibeli, yang berubah cuma isi .env — bukan kode.
  */
@@ -36,6 +39,20 @@ function requireResendEnv() {
   return { apiKey, from }
 }
 
+function requireSmtpEnv() {
+  const host = process.env.SMTP_HOST?.trim()
+  const port = Number(process.env.SMTP_PORT?.trim() || 465)
+  const user = process.env.SMTP_USER?.trim()
+  const pass = process.env.SMTP_PASS?.trim()
+  const from = process.env.MAIL_FROM?.trim()
+  if (!host || !user || !pass || !from) {
+    throw new Error(
+      'SMTP_HOST / SMTP_USER / SMTP_PASS / MAIL_FROM belum di-set di .env.local',
+    )
+  }
+  return { host, port, user, pass, from }
+}
+
 export function mailMode() {
   return process.env.MAIL_MODE?.trim() || 'console'
 }
@@ -49,10 +66,32 @@ export async function sendMail({
 }: MailInput) {
   const mode = mailMode()
 
-  if (mode !== 'resend') {
+  if (mode !== 'resend' && mode !== 'smtp') {
     console.log(
       `\n[mail:${mode}] → ${to}\nSubjek: ${subject}\n${'-'.repeat(60)}\n${text}\n${'-'.repeat(60)}\n`,
     )
+    return
+  }
+
+  if (mode === 'smtp') {
+    const { host, port, user, pass, from } = requireSmtpEnv()
+    // Import dinamis: nodemailer cuma dimuat saat mode smtp benar-benar dipakai.
+    const { default: nodemailer } = await import('nodemailer')
+    const transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure: port === 465, // 465 = SSL langsung; 587 = STARTTLS
+      auth: { user, pass },
+    })
+    const replyTo = process.env.MAIL_REPLY_TO?.trim()
+    await transporter.sendMail({
+      from,
+      to,
+      subject,
+      html,
+      text,
+      ...(replyTo ? { replyTo } : {}),
+    })
     return
   }
 
