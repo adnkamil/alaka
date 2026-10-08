@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { queryOptions, useSuspenseQuery } from '@tanstack/react-query'
 import { ArrowLeft, Eye, EyeOff, LinkIcon, ShoppingBag } from 'lucide-react'
+import { getErrorMessage } from '../lib/error-message'
 import {
   resetPassword,
   validateResetToken,
@@ -45,9 +46,7 @@ function ResetSandiPage() {
       // resetPassword sudah bikin session baru, jadi langsung masuk ke app.
       await navigate({ to: '/' })
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Gagal menyimpan kata sandi',
-      )
+      setError(getErrorMessage(err, 'Gagal menyimpan kata sandi'))
     } finally {
       setIsSubmitting(false)
     }

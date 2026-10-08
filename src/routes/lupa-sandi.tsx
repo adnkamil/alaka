@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { ArrowLeft, MailCheck, ShoppingBag } from 'lucide-react'
+import { getErrorMessage } from '../lib/error-message'
 import { requestPasswordReset } from '../lib/password-reset-functions'
 
 export const Route = createFileRoute('/lupa-sandi')({
@@ -20,7 +21,7 @@ function LupaSandiPage() {
       await requestPasswordReset({ data: { email } })
       setIsSent(true)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Gagal mengirim link')
+      setError(getErrorMessage(err, 'Gagal mengirim link'))
     } finally {
       setIsSubmitting(false)
     }
@@ -42,7 +43,7 @@ function LupaSandiPage() {
         </h1>
         <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
           {isSent
-            ? 'Kalau email itu terdaftar, kami sudah mengirim link atur ulang kata sandi. Link berlaku 1 jam dan cuma bisa dipakai sekali.'
+            ? `Kami sudah mengirim link atur ulang kata sandi ke ${email}. Link berlaku 1 jam dan cuma bisa dipakai sekali.`
             : 'Masukkan email yang dipakai untuk daftar, kami kirim link buat bikin kata sandi baru.'}
         </p>
       </div>

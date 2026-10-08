@@ -42,21 +42,29 @@ function resolveAppUrl() {
 /**
  * Minta link atur ulang kata sandi.
  *
- * PENTING (anti-enumeration): semua cabang — email tidak terdaftar, kena rate
- * limit, sampai provider email-nya error — tetap balas `{ ok: true }` dengan
- * pesan yang sama di UI. Jadi endpoint ini nggak bisa dipakai buat menebak
- * email mana yang punya akun.
+ * Keputusan produk: endpoint ini SENGAJA memberi tahu user kalau emailnya
+ * belum terdaftar atau terdaftar lewat Google, supaya mereka tidak menunggu
+ * email yang tidak akan datang. Konsekuensinya, endpoint ini bisa dipakai untuk
+ * menebak email mana yang punya akun — itu sebabnya rate limit per akun di
+ * bawah tetap dipertahankan.
  */
 export const requestPasswordReset = createServerFn({ method: 'POST' })
   .validator(z.object({ email: z.string().email('Email tidak valid') }))
   .handler(async ({ data }) => {
     const email = data.email.trim().toLowerCase()
-    const ok = { ok: true }
 
     const user = await db.query.users.findFirst({
       where: sql`lower(${users.email}) = ${email}`,
     })
-    if (!user) return ok
+    if (!user) throw new Error('Email ini belum terdaftar')
+
+    // Akun Google tidak punya kata sandi: tidak ada yang bisa diatur ulang.
+    // (Akun Google yang sudah punya kata sandi tetap boleh atur ulang.)
+    if (!user.passwordHash && user.googleId) {
+      throw new Error(
+        'Email ini terdaftar sebagai akun Google. Silakan masuk dengan Google.',
+      )
+    }
 
     const [recent] = await db
       .select({ count: sql<number>`count(*)::int` })
@@ -70,7 +78,11 @@ export const requestPasswordReset = createServerFn({ method: 'POST' })
           ),
         ),
       )
-    if (recent.count >= MAX_REQUESTS_PER_WINDOW) return ok
+    if (recent.count >= MAX_REQUESTS_PER_WINDOW) {
+      throw new Error(
+        'Terlalu banyak permintaan. Coba lagi dalam beberapa menit.',
+      )
+    }
 
     // Token lama dihanguskan, BUKAN dihapus: kalau dihapus, hitungan rate limit
     // di atas ikut ter-reset (baris lama lenyap) sehingga email bisa diminta
@@ -114,12 +126,12 @@ export const requestPasswordReset = createServerFn({ method: 'POST' })
         idempotencyKey: `password-reset/${tokenHash}`,
       })
     } catch (err) {
-      // Error dikonsumsi di server: kalau diteruskan ke client, beda pesan
-      // error bisa jadi bocoran soal keberadaan akun.
+      // Detail error cukup di log server; ke user cuma pesan umum.
       console.error('Gagal mengirim email atur ulang kata sandi:', err)
+      throw new Error('Gagal mengirim email. Coba lagi sebentar lagi.')
     }
 
-    return ok
+    return { ok: true }
   })
 
 /** Cek token dulu sebelum formnya ditampilkan (biar link mati bisa langsung kelihatan). */
