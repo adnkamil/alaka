@@ -43,6 +43,7 @@ import {
   deleteEvent,
   getEventDetail,
   setEventActive,
+  setEventHideFee,
   updateEvent,
 } from '../../lib/events-functions'
 import { listFeeRules } from '../../lib/fee-rules-functions'
@@ -318,6 +319,8 @@ function EventDetailPage() {
   const [mergeNotice, setMergeNotice] = useState<string | null>(null)
   // Nonaktifkan/aktifkan event + hapus event (dua-duanya dari menu ⋮).
   const [isTogglingActive, setIsTogglingActive] = useState(false)
+  // Sembunyikan rincian fee di invoice/tagihan (juga dari menu ⋮).
+  const [isTogglingHideFee, setIsTogglingHideFee] = useState(false)
   const [showDeleteEvent, setShowDeleteEvent] = useState(false)
   // Modal import data pesanan dari file Excel/CSV (dibuka dari menu ⋮).
   const [showImportOrders, setShowImportOrders] = useState(false)
@@ -675,6 +678,22 @@ function EventDetailPage() {
   }
 
   /**
+   * Aktifkan / matikan "sembunyikan rincian fee". Kalau aktif, invoice/tagihan
+   * ke pelanggan cuma menampilkan qty + harga nett (harga asli + fee) tanpa
+   * memecah fee. Total tagihan tetap dihitung sama.
+   */
+  async function handleToggleHideFee(hideFee: boolean) {
+    if (isTogglingHideFee) return
+    setIsTogglingHideFee(true)
+    try {
+      await setEventHideFee({ data: { id: eventId, hideFee } })
+      await queryClient.invalidateQueries({ queryKey: ['event', eventId] })
+    } finally {
+      setIsTogglingHideFee(false)
+    }
+  }
+
+  /**
    * Hapus event permanen. FK `orders.event_id` / `items.order_id` pakai
    * ON DELETE CASCADE, jadi semua pesanan + barangnya ikut terhapus. Setelah
    * selesai langsung balik ke beranda karena halaman ini sudah tidak ada isinya.
@@ -794,6 +813,33 @@ function EventDetailPage() {
                       </option>
                     ))}
                   </select>
+                </div>
+
+                <div
+                  className="my-4 border-t"
+                  style={{ borderColor: 'var(--app-border)' }}
+                />
+
+                {/* Sembunyikan rincian fee di invoice/tagihan ke pelanggan. */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold">
+                      Sembunyikan rincian fee
+                    </p>
+                    <p
+                      className="mt-0.5 text-xs leading-relaxed"
+                      style={{ color: 'var(--app-text-soft)' }}
+                    >
+                      Kalau aktif, invoice/tagihan ke pelanggan cuma menampilkan
+                      qty dan harga nett-nya (harga asli + fee), tanpa memecah
+                      fee. Total tagihan tetap sama.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={event.hideFee}
+                    onChange={handleToggleHideFee}
+                    label="Sembunyikan rincian fee"
+                  />
                 </div>
 
                 <div

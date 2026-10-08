@@ -42,19 +42,35 @@ function formatNumber(value: string | number) {
   )
 }
 
+export interface BuildItemListOptions {
+  /**
+   * Kalau true, fee tidak dipecah dari harga: satu baris cuma menampilkan
+   * harga nett (harga asli + fee). Dipakai waktu event menyalakan
+   * `hide_fee` (lihat `events.hide_fee`).
+   */
+  hideFee?: boolean
+}
+
 /**
  * Daftar barang untuk variabel {listItem}. Satu baris per barang:
  *   • Nama barang (harga + fee)
- *   • Nama barang x2 (harga + fee)   <- \"xN\" hanya muncul kalau qty > 1
+ *   • Nama barang x2 (harga + fee)   <- "xN" hanya muncul kalau qty > 1
  * Harga dan fee adalah nilai PER UNIT (sama seperti di invoice).
+ * Dengan `hideFee`, yang tampil cuma harga nett tanpa rincian fee.
  */
-export function buildItemList(items: Array<MessageTemplateItem>): string {
+export function buildItemList(
+  items: Array<MessageTemplateItem>,
+  options: BuildItemListOptions = {},
+): string {
   return items
     .map((item) => {
       // Nama satu baris saja supaya satu barang = satu bullet di WhatsApp.
       const name = item.name.replace(/\s+/g, ' ').trim()
       const qty = item.qty > 1 ? ` x${item.qty}` : ''
-      return `• ${name}${qty} (${formatNumber(item.originalPrice)} + ${formatNumber(item.fee)})`
+      const price = options.hideFee
+        ? formatNumber(Number(item.originalPrice) + Number(item.fee))
+        : `${formatNumber(item.originalPrice)} + ${formatNumber(item.fee)}`
+      return `• ${name}${qty} (${price})`
     })
     .join('\n')
 }
@@ -109,7 +125,7 @@ export const MESSAGE_TEMPLATE_VARIABLES: MessageTemplateVariable[] = [
     key: '{listItem}',
     label: '{listItem}',
     description:
-      'Daftar barang yang dipesan, satu baris per barang: • nama (harga + fee)',
+      'Daftar barang yang dipesan, satu baris per barang: • nama (harga + fee). Kalau event menyembunyikan rincian fee, yang tampil harga nett-nya saja',
   },
   {
     key: '{bank}',

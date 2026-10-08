@@ -19,9 +19,10 @@ export const listEvents = createServerFn({ method: 'GET' }).handler(
     const orderTotals = db
       .select({
         orderId: items.orderId,
-        total: sql<string>`coalesce(sum((${items.originalPrice} + ${items.fee}) * ${items.qty}), 0)`.as(
-          'total',
-        ),
+        total:
+          sql<string>`coalesce(sum((${items.originalPrice} + ${items.fee}) * ${items.qty}), 0)`.as(
+            'total',
+          ),
       })
       .from(items)
       .groupBy(items.orderId)
@@ -112,6 +113,25 @@ export const setEventActive = createServerFn({ method: 'POST' })
     const updated = await db
       .update(events)
       .set({ isActive: data.isActive, updatedAt: new Date() })
+      .where(and(eq(events.id, data.id), eq(events.userId, user.id)))
+      .returning({ id: events.id })
+
+    if (updated.length === 0) throw new Error('Event tidak ditemukan')
+  })
+
+/**
+ * Aktifkan / matikan "sembunyikan rincian fee" untuk event ini. Kalau aktif,
+ * invoice/tagihan ke pelanggan tidak memecah harga jadi "harga + fee" —
+ * daftar barang cukup menampilkan qty + harga nett per unit. Total tagihan
+ * tetap sama. Diatur dari menu ⋮ di halaman Detail Event.
+ */
+export const setEventHideFee = createServerFn({ method: 'POST' })
+  .validator(z.object({ id: z.uuid(), hideFee: z.boolean() }))
+  .handler(async ({ data }) => {
+    const user = await requireUser()
+    const updated = await db
+      .update(events)
+      .set({ hideFee: data.hideFee, updatedAt: new Date() })
       .where(and(eq(events.id, data.id), eq(events.userId, user.id)))
       .returning({ id: events.id })
 
