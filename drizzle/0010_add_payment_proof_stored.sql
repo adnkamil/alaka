@@ -1,0 +1,1 @@
+ALTER TABLE "subscriptions" ADD COLUMN "payment_proof_stored" boolean DEFAULT false NOT NULL;

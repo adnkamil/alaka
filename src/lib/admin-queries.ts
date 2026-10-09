@@ -1,6 +1,7 @@
 import { and, desc, eq, gte, max, sql } from 'drizzle-orm'
 import { db } from '../db'
 import { sessions, subscriptions, users } from '../db/schema'
+import { stripProofData } from './payment-proof'
 import { resolveEntitlement } from './subscription'
 import type {
   PlanKey,
@@ -14,7 +15,11 @@ import type {
  * `src/lib/admin-functions.ts`, file ini cuma query.
  */
 
-export type AdminSubscriptionRow = typeof subscriptions.$inferSelect & {
+// Tanpa isi bukti transfer (base64): admin memuat gambarnya lewat
+// `paymentProofUrl(id)` hanya saat menekan "Lihat bukti transfer".
+export type AdminSubscriptionRow = ReturnType<
+  typeof stripProofData<typeof subscriptions.$inferSelect>
+> & {
   userName: string
   userEmail: string
   userBrandName: string | null
@@ -42,7 +47,7 @@ export async function listAdminSubscriptions(
     .orderBy(desc(subscriptions.createdAt), desc(subscriptions.id))
 
   return rows.map(({ subscription, userName, userEmail, userBrandName }) => ({
-    ...subscription,
+    ...stripProofData(subscription),
     userName,
     userEmail,
     userBrandName,

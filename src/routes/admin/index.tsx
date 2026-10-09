@@ -12,12 +12,12 @@ import {
   CreditCard,
   Crown,
   Hourglass,
-  Image as ImageIcon,
   Inbox,
   ShieldCheck,
   Users,
   X,
 } from 'lucide-react'
+import PaymentProofViewer from '../../components/PaymentProofViewer'
 import ReviewSubscriptionModal from '../../components/ReviewSubscriptionModal'
 import {
   approveSubscription,
@@ -26,6 +26,7 @@ import {
   rejectSubscription,
 } from '../../lib/admin-functions'
 import { formatDate } from '../../lib/format'
+import { paymentProofUrl } from '../../lib/payment-proof'
 import type { AdminSubscriptionRow } from '../../lib/admin-queries'
 import type { LucideIcon } from 'lucide-react'
 
@@ -413,17 +414,8 @@ function SubscriptionCard({
         </p>
       )}
 
-      {sub.paymentProofImage && (
-        <a
-          href={sub.paymentProofImage}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-3 flex items-center gap-1.5 text-xs font-semibold no-underline"
-          style={{ color: 'var(--app-accent)' }}
-        >
-          <ImageIcon size={14} />
-          Lihat bukti transfer
-        </a>
+      {sub.hasPaymentProof && (
+        <PaymentProofViewer src={paymentProofUrl(sub.id)} />
       )}
 
       {sub.status === 'pending' && (

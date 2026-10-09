@@ -17,7 +17,7 @@
  */
 
 export const EMAIL_NOT_VERIFIED_MESSAGE =
-  'Verifikasi email kamu dulu untuk memakai fitur ini. Cek inbox (dan folder spam) atau kirim ulang email verifikasi dari banner di atas.'
+  'Verifikasi email kamu dulu untuk memakai fitur ini. Cek inbox (dan folder spam), atau kirim ulang email verifikasi dari halaman Profil.'
 
 /** Dilempar waktu fitur terkunci karena email belum diverifikasi. */
 export class EmailNotVerifiedError extends Error {

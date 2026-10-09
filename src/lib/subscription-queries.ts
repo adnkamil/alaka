@@ -1,6 +1,7 @@
 import { and, desc, eq } from 'drizzle-orm'
 import { db } from '../db'
 import { subscriptions } from '../db/schema'
+import { stripProofData } from './payment-proof'
 import { resolveEntitlement } from './subscription'
 import type { users } from '../db/schema'
 import type { Entitlement, SubscriptionStatus } from './subscription'
@@ -24,12 +25,21 @@ export type TrialFields = Pick<
   'id' | 'trialStartedAt' | 'trialEndsAt'
 >
 
+/**
+ * Baris langganan versi yang aman dikirim ke browser: tanpa isi bukti transfer
+ * (base64), diganti penanda `hasPaymentProof`. Gambarnya dimuat lewat
+ * `paymentProofUrl(id)` (route `/api/subscription-proof/$id`, wajib login).
+ */
+export type ClientSubscription = ReturnType<
+  typeof stripProofData<SubscriptionRow>
+>
+
 export interface SubscriptionState {
   entitlement: Entitlement
   /** Semua histori langganan user, terbaru dulu. */
-  subscriptions: Array<SubscriptionRow>
+  subscriptions: Array<ClientSubscription>
   /** Pengajuan yang menunggu verifikasi admin, kalau ada. */
-  pending: SubscriptionRow | null
+  pending: ClientSubscription | null
 }
 
 /** Histori langganan milik satu user (terbaru dulu). */
@@ -81,6 +91,7 @@ export async function getSubscriptionState(
   now: Date = new Date(),
 ): Promise<SubscriptionState> {
   const rows = await listSubscriptions(user.id)
+  const pendingRow = rows.find((row) => row.status === 'pending')
 
   return {
     entitlement: resolveEntitlement(
@@ -91,8 +102,8 @@ export async function getSubscriptionState(
       },
       now,
     ),
-    subscriptions: rows,
-    pending: rows.find((row) => row.status === 'pending') ?? null,
+    subscriptions: rows.map(stripProofData),
+    pending: pendingRow ? stripProofData(pendingRow) : null,
   }
 }
 

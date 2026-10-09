@@ -1,9 +1,16 @@
+import { randomUUID } from 'node:crypto'
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { db } from '../db'
 import { subscriptions } from '../db/schema'
 import { getSessionUser } from './auth'
 import { requireVerifiedEmail } from './email-verified'
+import {
+  PAYMENT_PROOF_MAX_DATA_URL_LENGTH,
+  parsePaymentProofDataUrl,
+  stripProofData,
+} from './payment-proof'
+import { deletePaymentProof, putPaymentProof } from './storage'
 import { PRO_DURATION_DAYS, PRO_PLAN_CODE } from './subscription'
 import {
   findPendingSubscription,
@@ -15,28 +22,22 @@ import { getSubscriptionSettings } from './subscription-settings-queries'
  * Sisi MEMBER dari alur langganan PRO — pengajuan upgrade + baca status/riwayat
  * milik sendiri. Verifikasinya (approve/reject) ada di `src/lib/admin-functions.ts`.
  *
- * Bukti transfer disimpan sebagai base64 data URL langsung di kolom
- * `subscriptions.payment_proof_image` — pola yang sama dengan `qrisImage` di
- * `payment-methods-functions.ts` — karena belum ada object storage.
+ * Bukti transfer disimpan di Netlify Blobs (lihat `storage.ts`, store
+ * `payment-proofs`, key = id pengajuan) dan disajikan lewat route
+ * `/api/subscription-proof/$id` yang wajib login. Kolom lama
+ * `subscriptions.payment_proof_image` (base64) hanya tersisa untuk pengajuan
+ * sebelum pindah ke Blobs.
  */
 
-const MAX_PROOF_BYTES = 1_500_000 // ~1.5MB, sama dengan validasi bukti QRIS
-
-const paymentProofSchema = z
-  .string()
-  .refine((v) => /^data:image\/(png|jpe?g|webp);base64,/.test(v), {
-    message: 'Format bukti transfer harus PNG, JPEG, atau WEBP',
-  })
-  .refine(
-    (v) => {
-      const base64 = v.split(',')[1] ?? ''
-      return (base64.length * 3) / 4 <= MAX_PROOF_BYTES
-    },
-    { message: 'Ukuran bukti transfer maksimal 1.5MB' },
-  )
-
 const submitSubscriptionSchema = z.object({
-  paymentProofImage: paymentProofSchema,
+  // Panjang dibatasi dulu sebelum di-decode; tipe + isi file dicek ulang di
+  // `parsePaymentProofDataUrl` (client tidak dipercaya).
+  paymentProofImage: z
+    .string()
+    .max(
+      PAYMENT_PROOF_MAX_DATA_URL_LENGTH,
+      'Ukuran bukti transfer maksimal 1.5MB',
+    ),
 })
 
 export const submitSubscriptionRequest = createServerFn({ method: 'POST' })
@@ -46,6 +47,9 @@ export const submitSubscriptionRequest = createServerFn({ method: 'POST' })
     if (!user) throw new Error('Belum login')
     // Pembayaran terkait identitas akun: email harus sudah terbukti milik user.
     requireVerifiedEmail(user)
+
+    // Cek isi gambar dulu (tipe asli + ukuran) sebelum menyentuh storage.
+    const proof = parsePaymentProofDataUrl(data.paymentProofImage)
 
     // Jaring pengaman di level aplikasi — batas sebenarnya tetap dijaga unique
     // index `subscriptions_pending_per_user_unique` di DB.
@@ -58,22 +62,38 @@ export const submitSubscriptionRequest = createServerFn({ method: 'POST' })
     // harga besok, pengajuan yang sudah masuk hari ini tetap kepakai harga lama.
     const settings = await getSubscriptionSettings()
 
-    const [request] = await db
-      .insert(subscriptions)
-      .values({
-        userId: user.id,
-        planCode: PRO_PLAN_CODE,
-        status: 'pending',
-        durationDays: PRO_DURATION_DAYS,
-        amount: settings?.proPrice ?? '0',
-        paymentMethod: 'qris',
-        paymentProvider: 'QRIS',
-        paymentProofImage: data.paymentProofImage,
-        paidAt: new Date(),
-      })
-      .returning()
+    // Id dibuat di sini karena jadi key file di Blobs. File disimpan DULU, baru
+    // barisnya; kalau insert gagal (mis. kena unique index pending), file
+    // dihapus lagi supaya tidak jadi file yatim.
+    const id = randomUUID()
+    await putPaymentProof(id, proof.bytes, proof.contentType)
 
-    return request
+    try {
+      const [request] = await db
+        .insert(subscriptions)
+        .values({
+          id,
+          userId: user.id,
+          planCode: PRO_PLAN_CODE,
+          status: 'pending',
+          durationDays: PRO_DURATION_DAYS,
+          amount: settings?.proPrice ?? '0',
+          paymentMethod: 'qris',
+          paymentProvider: 'QRIS',
+          paymentProofStored: true,
+          paidAt: new Date(),
+        })
+        .returning()
+
+      return stripProofData(request)
+    } catch (err) {
+      try {
+        await deletePaymentProof(id)
+      } catch (cleanupErr) {
+        console.error('Gagal membersihkan bukti transfer yatim:', cleanupErr)
+      }
+      throw err
+    }
   })
 
 /** QRIS + harga membership PRO buat ditampilkan di form pengajuan. */

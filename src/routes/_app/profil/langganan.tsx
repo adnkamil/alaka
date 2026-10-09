@@ -2,10 +2,12 @@ import { useState } from 'react'
 import { queryOptions, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { ArrowLeft, Check, Clock, Crown, Lock } from 'lucide-react'
+import PaymentProofViewer from '../../../components/PaymentProofViewer'
 import SubmitSubscriptionModal from '../../../components/SubmitSubscriptionModal'
 import type { SubmitSubscriptionValue } from '../../../components/SubmitSubscriptionModal'
 import { fetchCurrentUser } from '../../../lib/auth-functions'
 import { formatDate } from '../../../lib/format'
+import { paymentProofUrl } from '../../../lib/payment-proof'
 import {
   fetchMySubscriptionState,
   submitSubscriptionRequest,
@@ -193,16 +195,12 @@ function SubscriptionPage() {
                 <span style={{ color: 'var(--app-text-mute)' }}>Nominal</span>
                 <span className="font-semibold">{formatIDR(pending.amount)}</span>
               </div>
-              {pending.paymentProofImage && (
-                <a
-                  href={pending.paymentProofImage}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-1.5 text-xs font-semibold no-underline"
-                  style={{ color: 'var(--app-accent)' }}
-                >
-                  📎 Lihat bukti transfer yang kamu kirim
-                </a>
+              {pending.hasPaymentProof && (
+                <PaymentProofViewer
+                  src={paymentProofUrl(pending.id)}
+                  label="Lihat bukti transfer yang kamu kirim"
+                  className="flex items-center gap-1.5 text-xs font-semibold"
+                />
               )}
               <p className="mt-3 text-xs leading-relaxed" style={{ color: 'var(--app-text-mute)' }}>
                 Admin akan memverifikasi bukti transfer ini, biasanya 1x24 jam. Status

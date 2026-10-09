@@ -45,7 +45,25 @@ export async function createSession(userId: string) {
 }
 
 export async function getSessionUser() {
-  const token = getCookie(SESSION_COOKIE_NAME)
+  return getSessionUserByToken(getCookie(SESSION_COOKIE_NAME))
+}
+
+/**
+ * Versi untuk route API mentah (`src/routes/api/*`): baca token dari header
+ * `Cookie` request, tanpa bergantung pada konteks server function.
+ */
+export async function getSessionUserFromRequest(request: Request) {
+  const header = request.headers.get('cookie') ?? ''
+  for (const part of header.split(';')) {
+    const [name, ...rest] = part.trim().split('=')
+    if (name === SESSION_COOKIE_NAME) {
+      return getSessionUserByToken(rest.join('='))
+    }
+  }
+  return null
+}
+
+async function getSessionUserByToken(token: string | undefined) {
   if (!token) return null
 
   const rows = await db

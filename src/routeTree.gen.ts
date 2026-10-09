@@ -29,6 +29,7 @@ import { Route as AppProfilIndexRouteImport } from './routes/_app/profil/index'
 import { Route as AppProfilLanggananRouteImport } from './routes/_app/profil/langganan'
 import { Route as AppProfilTemplateChatRouteImport } from './routes/_app/profil/template-chat'
 import { Route as ApiAvatarUserIdRouteImport } from './routes/api/avatar/$userId'
+import { Route as ApiSubscriptionProofIdRouteImport } from './routes/api/subscription-proof/$id'
 import { Route as TagihanEventIdOrderIdRouteImport } from './routes/tagihan.$eventId.$orderId'
 import { Route as AppInvoiceEventIdOrderIdRouteImport } from './routes/_app/invoice.$eventId.$orderId'
 import { Route as AppProfilCustomersIndexRouteImport } from './routes/_app/profil/customers/index'
@@ -137,6 +138,11 @@ const ApiAvatarUserIdRoute = ApiAvatarUserIdRouteImport.update({
   path: '/api/avatar/$userId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSubscriptionProofIdRoute = ApiSubscriptionProofIdRouteImport.update({
+  id: '/api/subscription-proof/$id',
+  path: '/api/subscription-proof/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TagihanEventIdOrderIdRoute = TagihanEventIdOrderIdRouteImport.update({
   id: '/tagihan/$eventId/$orderId',
   path: '/tagihan/$eventId/$orderId',
@@ -198,6 +204,7 @@ export interface FileRoutesByFullPath {
   '/profil/langganan': typeof AppProfilLanggananRoute
   '/profil/template-chat': typeof AppProfilTemplateChatRoute
   '/api/avatar/$userId': typeof ApiAvatarUserIdRoute
+  '/api/subscription-proof/$id': typeof ApiSubscriptionProofIdRoute
   '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
   '/pesanan/': typeof AppPesananIndexRoute
   '/profil/': typeof AppProfilIndexRoute
@@ -226,6 +233,7 @@ export interface FileRoutesByTo {
   '/profil/langganan': typeof AppProfilLanggananRoute
   '/profil/template-chat': typeof AppProfilTemplateChatRoute
   '/api/avatar/$userId': typeof ApiAvatarUserIdRoute
+  '/api/subscription-proof/$id': typeof ApiSubscriptionProofIdRoute
   '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
   '/pesanan': typeof AppPesananIndexRoute
   '/profil': typeof AppProfilIndexRoute
@@ -257,6 +265,7 @@ export interface FileRoutesById {
   '/_app/profil/langganan': typeof AppProfilLanggananRoute
   '/_app/profil/template-chat': typeof AppProfilTemplateChatRoute
   '/api/avatar/$userId': typeof ApiAvatarUserIdRoute
+  '/api/subscription-proof/$id': typeof ApiSubscriptionProofIdRoute
   '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
   '/_app/pesanan/': typeof AppPesananIndexRoute
   '/_app/profil/': typeof AppProfilIndexRoute
@@ -288,6 +297,7 @@ export interface FileRouteTypes {
     | '/profil/langganan'
     | '/profil/template-chat'
     | '/api/avatar/$userId'
+    | '/api/subscription-proof/$id'
     | '/tagihan/$eventId/$orderId'
     | '/pesanan/'
     | '/profil/'
@@ -316,6 +326,7 @@ export interface FileRouteTypes {
     | '/profil/langganan'
     | '/profil/template-chat'
     | '/api/avatar/$userId'
+    | '/api/subscription-proof/$id'
     | '/tagihan/$eventId/$orderId'
     | '/pesanan'
     | '/profil'
@@ -346,6 +357,7 @@ export interface FileRouteTypes {
     | '/_app/profil/langganan'
     | '/_app/profil/template-chat'
     | '/api/avatar/$userId'
+    | '/api/subscription-proof/$id'
     | '/tagihan/$eventId/$orderId'
     | '/_app/pesanan/'
     | '/_app/profil/'
@@ -367,6 +379,7 @@ export interface RootRouteChildren {
   ResetSandiTokenRoute: typeof ResetSandiTokenRoute
   VerifikasiEmailTokenRoute: typeof VerifikasiEmailTokenRoute
   ApiAvatarUserIdRoute: typeof ApiAvatarUserIdRoute
+  ApiSubscriptionProofIdRoute: typeof ApiSubscriptionProofIdRoute
   TagihanEventIdOrderIdRoute: typeof TagihanEventIdOrderIdRoute
   ApiAuthGoogleCallbackRoute: typeof ApiAuthGoogleCallbackRoute
   ApiAuthGoogleIndexRoute: typeof ApiAuthGoogleIndexRoute
@@ -514,6 +527,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAvatarUserIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/subscription-proof/$id': {
+      id: '/api/subscription-proof/$id'
+      path: '/api/subscription-proof/$id'
+      fullPath: '/api/subscription-proof/$id'
+      preLoaderRoute: typeof ApiSubscriptionProofIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tagihan/$eventId/$orderId': {
       id: '/tagihan/$eventId/$orderId'
       path: '/tagihan/$eventId/$orderId'
@@ -632,6 +652,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetSandiTokenRoute: ResetSandiTokenRoute,
   VerifikasiEmailTokenRoute: VerifikasiEmailTokenRoute,
   ApiAvatarUserIdRoute: ApiAvatarUserIdRoute,
+  ApiSubscriptionProofIdRoute: ApiSubscriptionProofIdRoute,
   TagihanEventIdOrderIdRoute: TagihanEventIdOrderIdRoute,
   ApiAuthGoogleCallbackRoute: ApiAuthGoogleCallbackRoute,
   ApiAuthGoogleIndexRoute: ApiAuthGoogleIndexRoute,

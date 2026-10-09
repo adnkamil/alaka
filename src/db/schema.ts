@@ -253,8 +253,15 @@ export const subscriptions = pgTable(
     paymentSenderName: varchar('payment_sender_name'),
     /** No. referensi/berita transfer atau 4 digit terakhir, opsional. */
     paymentReference: varchar('payment_reference'),
-    /** Bukti transfer sebagai data URL base64 (pola sama dengan qris_image). */
+    /**
+     * Bukti transfer LAMA sebagai data URL base64. Pengajuan baru TIDAK mengisi
+     * kolom ini: filenya di Netlify Blobs (store `payment-proofs`, key = id
+     * baris ini) dan `paymentProofStored` = true. Kolom ini dipertahankan supaya
+     * bukti lama tetap terbaca.
+     */
     paymentProofImage: text('payment_proof_image'),
+    /** true = bukti transfer ada di Blobs (lihat `src/lib/storage.ts`). */
+    paymentProofStored: boolean('payment_proof_stored').notNull().default(false),
     /** Catatan dari user, mis. "transfer dari rekening istri". */
     paymentNote: text('payment_note'),
     /** Tanggal user mengaku transfer. */

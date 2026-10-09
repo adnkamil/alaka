@@ -291,6 +291,12 @@ export default function SubmitSubscriptionModal({
             </p>
           )}
 
+          {!proofImage && !error && (
+            <p className="text-xs" style={{ color: 'var(--app-text-mute)' }}>
+              Tombol kirim aktif setelah bukti transfer berhasil dipilih.
+            </p>
+          )}
+
           <div className="mt-1 flex items-center justify-end gap-2.5">
             <button
               type="button"
@@ -307,7 +313,7 @@ export default function SubmitSubscriptionModal({
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || !displayQrisImage}
+              disabled={isSubmitting || !displayQrisImage || !proofImage}
               className="rounded-xl px-4 py-2 text-xs font-semibold text-white shadow-sm hover:opacity-90 disabled:opacity-50"
               style={{ background: 'var(--app-accent)' }}
             >
