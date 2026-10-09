@@ -25,7 +25,7 @@ import {
   fetchAdminSubscriptions,
   rejectSubscription,
 } from '../../lib/admin-functions'
-import { formatDate } from '../../lib/format'
+import { formatDateTime } from '../../lib/format'
 import { paymentProofUrl } from '../../lib/payment-proof'
 import type { AdminSubscriptionRow } from '../../lib/admin-queries'
 import type { LucideIcon } from 'lucide-react'
@@ -226,10 +226,11 @@ function AdminDashboardPage() {
           tone="success"
         />
         <MetricCard
-          label="PRO Pending"
-          value={String(metrics.proPending)}
+          label="User Trial"
+          value={String(metrics.trialUsers)}
           icon={Hourglass}
           tone="warning"
+          hint="Masa trial masih berjalan"
         />
         <MetricCard
           label="PRO Revenue"
@@ -378,15 +379,13 @@ function SubscriptionCard({
         )}
         <Field
           label="Diajukan"
-          value={
-            sub.paidAt ? formatDate(sub.paidAt) : formatDate(sub.createdAt)
-          }
+          value={formatDateTime(sub.paidAt ?? sub.createdAt)}
         />
         {sub.status === 'active' && sub.endsAt && (
-          <Field label="Aktif sampai" value={formatDate(sub.endsAt)} />
+          <Field label="Aktif sampai" value={formatDateTime(sub.endsAt)} />
         )}
         {sub.reviewedAt && (
-          <Field label="Direview" value={formatDate(sub.reviewedAt)} />
+          <Field label="Diapproved" value={formatDateTime(sub.reviewedAt)} />
         )}
       </div>
 

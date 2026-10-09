@@ -3,7 +3,7 @@ import { queryOptions, useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { ArrowUpDown, Inbox, Search } from 'lucide-react'
 import { fetchAdminUsers } from '../../lib/admin-functions'
-import { formatDate } from '../../lib/format'
+import { formatDateTime } from '../../lib/format'
 import type { AdminUserRow } from '../../lib/admin-queries'
 import type { PlanKey } from '../../lib/subscription'
 
@@ -229,19 +229,19 @@ function CustomerCard({ user }: { user: AdminUserRow }) {
           label="Login terakhir"
           value={
             user.lastLoginAt
-              ? formatDate(user.lastLoginAt)
+              ? formatDateTime(user.lastLoginAt)
               : 'Belum pernah login'
           }
         />
+        <Field label="Total revenue" value={formatIDR(user.revenue)} />
+        <Field label="Terdaftar" value={formatDateTime(user.createdAt)} />
         {/* "Aktif sampai" cuma ditampilkan buat yang sedang PRO. */}
         {user.plan === 'pro' && (
           <Field
             label="Aktif sampai"
-            value={user.proUntil ? formatDate(user.proUntil) : '-'}
+            value={user.proUntil ? formatDateTime(user.proUntil) : '-'}
           />
         )}
-        <Field label="Total revenue" value={formatIDR(user.revenue)} />
-        <Field label="Terdaftar" value={formatDate(user.createdAt)} />
       </div>
     </div>
   )
