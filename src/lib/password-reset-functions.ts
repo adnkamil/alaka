@@ -1,10 +1,10 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { createServerFn } from '@tanstack/react-start'
-import { getRequest } from '@tanstack/react-start/server'
 import { and, eq, gt, isNull, lt, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '../db'
 import { passwordResetTokens, users } from '../db/schema'
+import { resolveAppUrl } from './app-url'
 import { createSession, hashPassword, revokeAllSessions } from './auth'
 import { sendMail } from './mailer'
 import { buildPasswordResetMail } from './password-reset-mail'
@@ -27,16 +27,6 @@ function findValidResetToken(token: string) {
       gt(passwordResetTokens.expiresAt, new Date()),
     ),
   })
-}
-
-/**
- * Basis URL buat link di email. APP_URL dipakai kalau di-set (wajib di
- * produksi); kalau tidak, ambil origin dari request — praktis buat dev.
- */
-function resolveAppUrl() {
-  const configured = process.env.APP_URL?.trim()
-  if (configured) return configured.replace(/\/+$/, '')
-  return new URL(getRequest().url).origin
 }
 
 /**
@@ -159,7 +149,12 @@ export const resetPassword = createServerFn({ method: 'POST' })
     const passwordHash = await hashPassword(data.password)
     await db
       .update(users)
-      .set({ passwordHash, updatedAt: new Date() })
+      .set({
+        passwordHash,
+        // Berhasil buka link yang dikirim ke email = email itu memang miliknya.
+        emailVerifiedAt: sql`coalesce(${users.emailVerifiedAt}, now())`,
+        updatedAt: new Date(),
+      })
       .where(eq(users.id, row.userId))
 
     // Sekali pakai.

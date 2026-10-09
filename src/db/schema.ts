@@ -71,6 +71,13 @@ export const users = pgTable(
     passwordHash: varchar('password_hash'),
     googleId: varchar('google_id').unique(),
     /**
+     * Kapan email terbukti milik user (klik link verifikasi, login Google yang
+     * email-nya sudah diverifikasi Google, atau berhasil atur ulang kata sandi
+     * lewat link email). null = belum terverifikasi. Akun yang sudah ada
+     * sebelum fitur ini di-backfill di migrasinya.
+     */
+    emailVerifiedAt: timestamp('email_verified_at', { withTimezone: true }),
+    /**
      * Akses ke `/admin` (verifikasi pembayaran PRO, metrik). Default false —
      * cuma diaktifkan manual lewat DB (`pnpm db:studio`) oleh pemilik app,
      * bukan lewat UI, supaya nggak ada jalur self-service jadi admin.
@@ -124,6 +131,21 @@ export const passwordResetTokens = pgTable('password_reset_tokens', {
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   // Diisi kalau token sudah dipakai buat ganti kata sandi, ATAU dihanguskan
   // karena user minta link baru (yang berlaku cuma token terbaru).
+  usedAt: timestamp('used_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+})
+
+// Token verifikasi email. Polanya sama dengan password_reset_tokens: yang
+// disimpan cuma hash-nya, sekali pakai (used_at), dan punya masa berlaku.
+export const emailVerificationTokens = pgTable('email_verification_tokens', {
+  id: uuid().primaryKey().defaultRandom(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  tokenHash: varchar('token_hash').notNull().unique(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   usedAt: timestamp('used_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
@@ -368,6 +390,7 @@ export const activityLogs = pgTable('activity_logs', {
 export const usersRelations = relations(users, ({ many }) => ({
   sessions: many(sessions),
   passwordResetTokens: many(passwordResetTokens),
+  emailVerificationTokens: many(emailVerificationTokens),
   feeRules: many(feeRules),
   events: many(events),
   activityLogs: many(activityLogs),
@@ -470,6 +493,16 @@ export const subscriptionSettingsRelations = relations(
   ({ one }) => ({
     updatedByUser: one(users, {
       fields: [subscriptionSettings.updatedBy],
+      references: [users.id],
+    }),
+  }),
+)
+
+export const emailVerificationTokensRelations = relations(
+  emailVerificationTokens,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [emailVerificationTokens.userId],
       references: [users.id],
     }),
   }),
