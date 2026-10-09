@@ -27,7 +27,7 @@ export default function VerifyEmailBanner({ email }: { email: string }) {
   return (
     <div
       role="status"
-      className="mx-4 mt-3 flex items-start gap-3 rounded-2xl p-3 text-sm"
+      className="mt-3 flex items-start gap-3 rounded-2xl p-3 text-sm"
       style={{
         background: 'var(--app-warning-soft)',
         color: 'var(--app-warning)',

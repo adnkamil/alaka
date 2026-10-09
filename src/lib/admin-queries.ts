@@ -1,6 +1,7 @@
 import { and, desc, eq, gte, max, sql } from 'drizzle-orm'
 import { db } from '../db'
 import { sessions, subscriptions, users } from '../db/schema'
+import { stripProofData } from './payment-proof'
 import { resolveEntitlement } from './subscription'
 import type {
   PlanKey,
@@ -14,7 +15,11 @@ import type {
  * `src/lib/admin-functions.ts`, file ini cuma query.
  */
 
-export type AdminSubscriptionRow = typeof subscriptions.$inferSelect & {
+// Tanpa isi bukti transfer (base64): admin memuat gambarnya lewat
+// `paymentProofUrl(id)` hanya saat menekan "Lihat bukti transfer".
+export type AdminSubscriptionRow = ReturnType<
+  typeof stripProofData<typeof subscriptions.$inferSelect>
+> & {
   userName: string
   userEmail: string
   userBrandName: string | null
@@ -42,7 +47,7 @@ export async function listAdminSubscriptions(
     .orderBy(desc(subscriptions.createdAt), desc(subscriptions.id))
 
   return rows.map(({ subscription, userName, userEmail, userBrandName }) => ({
-    ...subscription,
+    ...stripProofData(subscription),
     userName,
     userEmail,
     userBrandName,
@@ -69,6 +74,12 @@ export interface AdminMetrics {
   /** Subscription `active` yang `ends_at`-nya belum lewat (bukan cuma cek status). */
   proActive: number
   proPending: number
+  /**
+   * User yang sedang dalam masa trial: `trial_ends_at` belum lewat dan TIDAK
+   * punya PRO aktif (urutan prioritas sama dengan `resolveEntitlement()`:
+   * PRO > TRIAL > FREE).
+   */
+  trialUsers: number
   /** Total `amount` dari semua pengajuan yang PERNAH disetujui admin (active + expired). */
   proRevenue: number
 }
@@ -97,6 +108,7 @@ export async function getAdminMetrics(
     [activeUsersRow],
     [proActiveRow],
     [proPendingRow],
+    [trialUsersRow],
     [revenueRow],
   ] = await Promise.all([
     db
@@ -129,6 +141,21 @@ export async function getAdminMetrics(
         and(eq(subscriptions.status, 'pending'), eq(users.isAdmin, false)),
       ),
     db
+      .select({ value: sql<string>`count(*)` })
+      .from(users)
+      .where(
+        and(
+          eq(users.isAdmin, false),
+          sql`${users.trialEndsAt} > ${now}`,
+          sql`not exists (
+            select 1 from ${subscriptions}
+            where ${subscriptions.userId} = ${users.id}
+              and ${subscriptions.status} = 'active'
+              and ${subscriptions.endsAt} > ${now}
+          )`,
+        ),
+      ),
+    db
       .select({ value: sql<string>`coalesce(sum(${subscriptions.amount}), 0)` })
       .from(subscriptions)
       .innerJoin(users, eq(subscriptions.userId, users.id))
@@ -146,6 +173,7 @@ export async function getAdminMetrics(
     activeWindowDays: ACTIVE_USER_WINDOW_DAYS,
     proActive: Number(proActiveRow.value),
     proPending: Number(proPendingRow.value),
+    trialUsers: Number(trialUsersRow.value),
     proRevenue: Number(revenueRow.value),
   }
 }

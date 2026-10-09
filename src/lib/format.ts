@@ -79,10 +79,27 @@ export function formatDate(date: Date | string | null | undefined) {
   if (!date) return ''
   return new Date(date).toLocaleDateString('id-ID', {
     day: 'numeric',
-    month: 'long',
+    month: 'short',
     year: 'numeric',
     timeZone: APP_TIME_ZONE,
   })
+}
+
+/**
+ * Tanggal + jam bahasa Indonesia, mis. "12 Agustus 2026, 14.35 WIB".
+ * Zona waktu dipatok ke `APP_TIME_ZONE` (WIB), sama seperti `formatDate`.
+ */
+export function formatDateTime(date: Date | string | null | undefined) {
+  if (!date) return ''
+  const d = new Date(date)
+  const day = formatDate(d)
+  const time = d.toLocaleTimeString('id-ID', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    timeZone: APP_TIME_ZONE,
+  })
+  return `${day}, ${time}`
 }
 
 export function isValidIndonesianPhone(phone: string | null | undefined) {

@@ -51,6 +51,7 @@ import {
   planLabel,
 } from '../../../lib/subscription'
 import type { Entitlement, ProFeature } from '../../../lib/subscription'
+import VerifyEmailBanner from '#/components/VerifyEmailBanner'
 
 // Fitur "Master Control" & "Activity Logs" di section Kelola disembunyikan dulu
 // (belum fungsional). Ubah `advancedMenu` jadi `true` untuk memunculkannya lagi.
@@ -265,7 +266,7 @@ function ProfilPage() {
       <button
         type="button"
         onClick={() => setShowProfileModal(true)}
-        className="app-card mb-6 flex w-full items-center gap-3 p-4 text-left"
+        className="app-card flex w-full items-center gap-3 p-4 text-left"
         aria-label="Edit profil"
       >
         <UserAvatar
@@ -282,8 +283,14 @@ function ProfilPage() {
         </div>
         <ChevronRight size={18} style={{ color: 'var(--app-text-mute)' }} />
       </button>
+      
+      {user && !user.emailVerified && 
+        <section className="mt-6 w-full">
+          <VerifyEmailBanner email={user.email} />
+        </section>
+      }
 
-      <section className="mb-6">
+      <section className="mb-6 mt-6">
         <h2
           className="mb-2 text-xs font-semibold uppercase"
           style={{ color: 'var(--app-text-mute)' }}
