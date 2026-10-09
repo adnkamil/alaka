@@ -11,6 +11,7 @@ import {
   revokeAllSessions,
   verifyPassword,
 } from './auth'
+import { sendVerificationEmail } from './email-verification-queries'
 import { getUserEntitlements } from './entitlements'
 
 const registerSchema = z.object({
@@ -41,6 +42,16 @@ export const registerUser = createServerFn({ method: 'POST' })
       })
       .returning()
 
+    // Kirim email verifikasi, tapi jangan gagalkan pendaftaran kalau pengiriman
+    // error: akunnya sudah jadi, dan user bisa minta kirim ulang dari app.
+    // Di-await (bukan fire-and-forget) karena di serverless proses bisa
+    // dihentikan begitu response terkirim.
+    try {
+      await sendVerificationEmail(user)
+    } catch (err) {
+      console.error('Email verifikasi registrasi tidak terkirim:', err)
+    }
+
     await createSession(user.id)
     return { id: user.id, name: user.name, email: user.email }
   })
@@ -66,7 +77,12 @@ export const loginUser = createServerFn({ method: 'POST' })
     }
 
     await createSession(user.id)
-    return { id: user.id, name: user.name, email: user.email, isAdmin: user.isAdmin }
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      isAdmin: user.isAdmin,
+    }
   })
 
 export const logoutUser = createServerFn({ method: 'POST' }).handler(
@@ -154,6 +170,8 @@ export const fetchCurrentUser = createServerFn({ method: 'GET' }).handler(
       // Dipakai di halaman Profil: akun Google-only belum punya kata sandi,
       // jadi menu "Ubah Kata Sandi" ditampilkan sebagai info, bukan aksi.
       hasPassword: Boolean(user.passwordHash),
+      // false = email belum diverifikasi; app menampilkan banner pengingat.
+      emailVerified: Boolean(user.emailVerifiedAt),
       // Cuma buat nampilin/nyembunyiin menu & nge-redirect di client (UX).
       // Proteksi yang beneran ada di server — lihat `requireAdminUser()`.
       isAdmin: user.isAdmin,

@@ -23,6 +23,11 @@ interface EditProfileModalProps {
    * Kalau tidak, modal hanya berisi nama + nama brand.
    */
   avatar?: { userId?: string; avatarUpdatedAt?: string | null }
+  /**
+   * Kalau diisi, modal menampilkan kolom email (hanya baca) dan pesan error
+   * merah di bawahnya selama emailnya belum terverifikasi.
+   */
+  email?: { address: string; verified: boolean }
   onClose: () => void
   onSubmit: (value: ProfileFormValue) => Promise<void>
 }
@@ -32,6 +37,7 @@ export default function EditProfileModal({
   submitLabel = 'Simpan',
   initialValue,
   avatar,
+  email,
   onClose,
   onSubmit,
 }: EditProfileModalProps) {
@@ -235,6 +241,39 @@ export default function EditProfileModal({
               placeholder="Nama kamu"
             />
           </label>
+
+          {email && (
+            <label className="flex flex-col gap-1 text-sm font-medium">
+              Email
+              <input
+                type="email"
+                readOnly
+                value={email.address}
+                aria-invalid={!email.verified}
+                aria-describedby="profile-email-status"
+                className="app-input"
+                style={{ color: 'var(--app-text-soft)' }}
+              />
+              {email.verified ? (
+                <span
+                  id="profile-email-status"
+                  className="text-xs font-normal"
+                  style={{ color: 'var(--app-text-mute)' }}
+                >
+                  Email belum bisa diubah dari sini.
+                </span>
+              ) : (
+                <span
+                  id="profile-email-status"
+                  role="alert"
+                  className="text-xs font-normal"
+                  style={{ color: 'var(--app-danger)' }}
+                >
+                  Email belum terverifikasi
+                </span>
+              )}
+            </label>
+          )}
 
           <label className="flex flex-col gap-1 text-sm font-medium">
             Nama brand

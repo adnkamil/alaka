@@ -627,6 +627,11 @@ function ProfilPage() {
             userId: user?.id,
             avatarUpdatedAt: user?.avatarUpdatedAt,
           }}
+          email={
+            user
+              ? { address: user.email, verified: user.emailVerified }
+              : undefined
+          }
           onClose={() => setShowProfileModal(false)}
           onSubmit={handleSaveProfile}
         />

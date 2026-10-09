@@ -20,6 +20,7 @@ import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminCustomersRouteImport } from './routes/admin/customers'
 import { Route as AdminPengaturanRouteImport } from './routes/admin/pengaturan'
 import { Route as ResetSandiTokenRouteImport } from './routes/reset-sandi.$token'
+import { Route as VerifikasiEmailTokenRouteImport } from './routes/verifikasi-email.$token'
 import { Route as AppEventsEventIdRouteImport } from './routes/_app/events.$eventId'
 import { Route as AppEventsNewRouteImport } from './routes/_app/events.new'
 import { Route as AppPesananIndexRouteImport } from './routes/_app/pesanan/index'
@@ -89,6 +90,11 @@ const AdminPengaturanRoute = AdminPengaturanRouteImport.update({
 const ResetSandiTokenRoute = ResetSandiTokenRouteImport.update({
   id: '/reset-sandi/$token',
   path: '/reset-sandi/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VerifikasiEmailTokenRoute = VerifikasiEmailTokenRouteImport.update({
+  id: '/verifikasi-email/$token',
+  path: '/verifikasi-email/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppEventsEventIdRoute = AppEventsEventIdRouteImport.update({
@@ -184,6 +190,7 @@ export interface FileRoutesByFullPath {
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/pengaturan': typeof AdminPengaturanRoute
   '/reset-sandi/$token': typeof ResetSandiTokenRoute
+  '/verifikasi-email/$token': typeof VerifikasiEmailTokenRoute
   '/admin/': typeof AdminIndexRoute
   '/events/$eventId': typeof AppEventsEventIdRoute
   '/events/new': typeof AppEventsNewRoute
@@ -210,6 +217,7 @@ export interface FileRoutesByTo {
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/pengaturan': typeof AdminPengaturanRoute
   '/reset-sandi/$token': typeof ResetSandiTokenRoute
+  '/verifikasi-email/$token': typeof VerifikasiEmailTokenRoute
   '/': typeof AppIndexRoute
   '/admin': typeof AdminIndexRoute
   '/events/$eventId': typeof AppEventsEventIdRoute
@@ -240,6 +248,7 @@ export interface FileRoutesById {
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/pengaturan': typeof AdminPengaturanRoute
   '/reset-sandi/$token': typeof ResetSandiTokenRoute
+  '/verifikasi-email/$token': typeof VerifikasiEmailTokenRoute
   '/_app/': typeof AppIndexRoute
   '/admin/': typeof AdminIndexRoute
   '/_app/events/$eventId': typeof AppEventsEventIdRoute
@@ -271,6 +280,7 @@ export interface FileRouteTypes {
     | '/admin/customers'
     | '/admin/pengaturan'
     | '/reset-sandi/$token'
+    | '/verifikasi-email/$token'
     | '/admin/'
     | '/events/$eventId'
     | '/events/new'
@@ -297,6 +307,7 @@ export interface FileRouteTypes {
     | '/admin/customers'
     | '/admin/pengaturan'
     | '/reset-sandi/$token'
+    | '/verifikasi-email/$token'
     | '/'
     | '/admin'
     | '/events/$eventId'
@@ -326,6 +337,7 @@ export interface FileRouteTypes {
     | '/admin/customers'
     | '/admin/pengaturan'
     | '/reset-sandi/$token'
+    | '/verifikasi-email/$token'
     | '/_app/'
     | '/admin/'
     | '/_app/events/$eventId'
@@ -353,6 +365,7 @@ export interface RootRouteChildren {
   LupaSandiRoute: typeof LupaSandiRoute
   RegisterRoute: typeof RegisterRoute
   ResetSandiTokenRoute: typeof ResetSandiTokenRoute
+  VerifikasiEmailTokenRoute: typeof VerifikasiEmailTokenRoute
   ApiAvatarUserIdRoute: typeof ApiAvatarUserIdRoute
   TagihanEventIdOrderIdRoute: typeof TagihanEventIdOrderIdRoute
   ApiAuthGoogleCallbackRoute: typeof ApiAuthGoogleCallbackRoute
@@ -436,6 +449,13 @@ declare module '@tanstack/react-router' {
       path: '/reset-sandi/$token'
       fullPath: '/reset-sandi/$token'
       preLoaderRoute: typeof ResetSandiTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/verifikasi-email/$token': {
+      id: '/verifikasi-email/$token'
+      path: '/verifikasi-email/$token'
+      fullPath: '/verifikasi-email/$token'
+      preLoaderRoute: typeof VerifikasiEmailTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/events/$eventId': {
@@ -610,6 +630,7 @@ const rootRouteChildren: RootRouteChildren = {
   LupaSandiRoute: LupaSandiRoute,
   RegisterRoute: RegisterRoute,
   ResetSandiTokenRoute: ResetSandiTokenRoute,
+  VerifikasiEmailTokenRoute: VerifikasiEmailTokenRoute,
   ApiAvatarUserIdRoute: ApiAvatarUserIdRoute,
   TagihanEventIdOrderIdRoute: TagihanEventIdOrderIdRoute,
   ApiAuthGoogleCallbackRoute: ApiAuthGoogleCallbackRoute,

@@ -2,7 +2,11 @@ import { createFileRoute } from '@tanstack/react-router'
 import { eq } from 'drizzle-orm'
 import { db } from '../../../../db'
 import { users } from '../../../../db/schema'
-import { SESSION_COOKIE_NAME, createSessionToken } from '../../../../lib/auth'
+import {
+  SESSION_COOKIE_NAME,
+  createSessionToken,
+  revokeAllSessions,
+} from '../../../../lib/auth'
 import { exchangeGoogleCode } from '../../../../lib/google-auth'
 
 const STATE_COOKIE = 'google_oauth_state'
@@ -64,6 +68,11 @@ export const Route = createFileRoute('/api/auth/google/callback')({
           if (!profile.email) {
             throw new Error('Google tidak mengirim email')
           }
+          // Email yang tidak diverifikasi Google tidak boleh dipakai untuk
+          // membuat/menyambung akun — siapa pun bisa mengklaim email orang lain.
+          if (profile.email_verified === false) {
+            throw new Error('Email Google belum terverifikasi')
+          }
 
           // 1. Sudah pernah login pakai Google ini sebelumnya
           let user = await db.query.users.findFirst({
@@ -76,11 +85,23 @@ export const Route = createFileRoute('/api/auth/google/callback')({
               where: eq(users.email, profile.email),
             })
             if (existingByEmail) {
+              // Akun password yang emailnya BELUM terverifikasi bisa jadi dibuat
+              // orang lain dengan email ini (pre-hijacking). Google baru saja
+              // membuktikan pemilik email yang sebenarnya, jadi kata sandi lama
+              // dibuang dan semua sesi lama dimatikan.
+              const wasUnverified = !existingByEmail.emailVerifiedAt
               ;[user] = await db
                 .update(users)
-                .set({ googleId: profile.sub, updatedAt: new Date() })
+                .set({
+                  googleId: profile.sub,
+                  emailVerifiedAt:
+                    existingByEmail.emailVerifiedAt ?? new Date(),
+                  ...(wasUnverified ? { passwordHash: null } : {}),
+                  updatedAt: new Date(),
+                })
                 .where(eq(users.id, existingByEmail.id))
                 .returning()
+              if (wasUnverified) await revokeAllSessions(existingByEmail.id)
             }
           }
 
@@ -92,6 +113,7 @@ export const Route = createFileRoute('/api/auth/google/callback')({
                 name: profile.name || profile.email.split('@')[0],
                 email: profile.email,
                 googleId: profile.sub,
+                emailVerifiedAt: profile.email_verified ? new Date() : null,
               })
               .returning()
           }

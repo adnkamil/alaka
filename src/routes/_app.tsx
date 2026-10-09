@@ -1,5 +1,7 @@
+import { useQuery } from '@tanstack/react-query'
 import { Outlet, createFileRoute, redirect } from '@tanstack/react-router'
 import BottomNav, { useShowBottomNav } from '../components/BottomNav'
+import VerifyEmailBanner from '../components/VerifyEmailBanner'
 import { currentUserQuery } from '../lib/queries'
 
 export const Route = createFileRoute('/_app')({
@@ -26,9 +28,13 @@ export const Route = createFileRoute('/_app')({
 
 function AppLayout() {
   const showBottomNav = useShowBottomNav()
+  // Data user dari cache yang sama dengan `beforeLoad`; di-query ulang di sini
+  // supaya banner hilang begitu verifikasi selesai (cache di-invalidate).
+  const { data: user } = useQuery(currentUserQuery)
 
   return (
     <div className={`app-shell ${showBottomNav ? 'app-shell--with-nav' : ''}`}>
+      {/* {user && !user.emailVerified && <VerifyEmailBanner email={user.email} />} */}
       <Outlet />
       {showBottomNav && <BottomNav />}
     </div>
