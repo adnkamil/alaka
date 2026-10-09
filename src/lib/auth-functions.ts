@@ -12,6 +12,7 @@ import {
   verifyPassword,
 } from './auth'
 import { sendVerificationEmail } from './email-verification-queries'
+import { requireVerifiedEmail } from './email-verified'
 import { getUserEntitlements } from './entitlements'
 
 const registerSchema = z.object({
@@ -122,6 +123,7 @@ export const changePassword = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const current = await getSessionUser()
     if (!current) throw new Error('Belum login')
+    requireVerifiedEmail(current)
 
     // Akun yang daftar lewat Google belum punya kata sandi — jalur gantinya
     // lewat pengaturan Google, bukan di sini.

@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { db } from '../db'
 import { users } from '../db/schema'
 import { getSessionUser } from './auth'
+import { requireVerifiedEmail } from './email-verified'
 import {
   AVATAR_MAX_DATA_URL_LENGTH,
   parseAvatarDataUrl,
@@ -21,6 +22,8 @@ export const uploadAvatar = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const current = await getSessionUser()
     if (!current) throw new Error('Belum login')
+    // Upload memakai storage: cegah akun spam yang belum terverifikasi.
+    requireVerifiedEmail(current)
 
     const { bytes, contentType } = parseAvatarDataUrl(data.dataUrl)
 

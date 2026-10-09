@@ -11,6 +11,7 @@ import {
   requireFeature,
 } from './entitlements'
 import { canUseFeature } from './subscription'
+import { EmailNotVerifiedError, isEmailVerified } from './email-verified'
 import { findCustomerForOrder } from './customer-matching'
 import { findMergeTarget, mergeItemLines, mergePaidAmount } from './order-merge'
 import { derivePaymentStatus } from './order-totals'
@@ -407,6 +408,15 @@ export const getPublicOrderInvoice = createServerFn({ method: 'GET' })
     }
 
     const owner = order.event.user
+
+    // Link publik bisa dibuka siapa saja atas nama brand, jadi baru aktif
+    // setelah email pemilik terverifikasi (cegah akun spam/phishing). Pesannya
+    // ditulis untuk PELANGGAN, bukan pemilik akun.
+    if (!isEmailVerified(owner)) {
+      throw new EmailNotVerifiedError(
+        'Tagihan ini belum bisa dibuka karena akun penjual belum menyelesaikan verifikasi email.',
+      )
+    }
 
     // Gate fitur PRO `billing`. Aturan tambahan (grandfathering): pesanan yang
     // dibuat waktu akses user masih terbuka (trial/PRO) tetap bisa dibuka lewat

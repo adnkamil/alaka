@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { db } from '../db'
 import { subscriptions } from '../db/schema'
 import { getSessionUser } from './auth'
+import { requireVerifiedEmail } from './email-verified'
 import { PRO_DURATION_DAYS, PRO_PLAN_CODE } from './subscription'
 import {
   findPendingSubscription,
@@ -43,6 +44,8 @@ export const submitSubscriptionRequest = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const user = await getSessionUser()
     if (!user) throw new Error('Belum login')
+    // Pembayaran terkait identitas akun: email harus sudah terbukti milik user.
+    requireVerifiedEmail(user)
 
     // Jaring pengaman di level aplikasi — batas sebenarnya tetap dijaga unique
     // index `subscriptions_pending_per_user_unique` di DB.

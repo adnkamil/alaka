@@ -219,10 +219,19 @@ function SubscriptionPage() {
               <button
                 type="button"
                 onClick={() => setModalOpen(true)}
-                className="app-btn-primary w-full"
+                disabled={!user.emailVerified}
+                className="app-btn-primary w-full disabled:opacity-50"
               >
                 Ajukan Upgrade ke PRO
               </button>
+              {!user.emailVerified && (
+                <p
+                  className="mt-2 text-center text-xs"
+                  style={{ color: 'var(--app-warning)' }}
+                >
+                  Verifikasi email kamu dulu untuk mengajukan upgrade.
+                </p>
+              )}
             </div>
           )}
         </section>

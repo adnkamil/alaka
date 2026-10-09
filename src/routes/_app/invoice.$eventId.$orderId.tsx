@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import {
   queryOptions,
+  useQuery,
   useQueryClient,
   useSuspenseQuery,
 } from '@tanstack/react-query'
@@ -16,6 +17,7 @@ import {
   SquarePen,
 } from 'lucide-react'
 import { getOrderInvoice } from '../../lib/orders-functions'
+import { currentUserQuery } from '../../lib/queries'
 import { createCustomer } from '../../lib/customers-functions'
 import {
   buildWhatsAppLink,
@@ -111,6 +113,10 @@ function InvoicePage() {
     queryFn: () => getOrderInvoice({ data: { eventId, orderId } }),
   })
   const { data } = useSuspenseQuery(query)
+  // Link tagihan publik baru aktif setelah email pemilik terverifikasi
+  // (dijaga di server: `getPublicOrderInvoice`). Selama belum, jangan kirim.
+  const { data: currentUser } = useQuery(currentUserQuery)
+  const canShare = currentUser?.emailVerified ?? false
 
   // Isi awal input No. HP cuma sekali (biar nggak ke-reset kalau
   // di-refetch), diambil dari nomor yang berhasil dicocokkan di server.
@@ -450,23 +456,36 @@ function InvoicePage() {
         </label>
 
         <a
-          href={phoneValid ? buildWhatsAppLink(phone, waMessage) : undefined}
+          href={
+            phoneValid && canShare
+              ? buildWhatsAppLink(phone, waMessage)
+              : undefined
+          }
           target="_blank"
           rel="noopener noreferrer"
-          aria-disabled={!phoneValid}
+          aria-disabled={!phoneValid || !canShare}
           onClick={(e) => {
-            if (!phoneValid) e.preventDefault()
+            if (!phoneValid || !canShare) e.preventDefault()
           }}
           className="app-btn-primary w-full"
           style={{
             background: '#25D366',
-            opacity: phoneValid ? 1 : 0.5,
-            pointerEvents: phoneValid ? 'auto' : 'none',
+            opacity: phoneValid && canShare ? 1 : 0.5,
+            pointerEvents: phoneValid && canShare ? 'auto' : 'none',
           }}
         >
           <MessageCircle size={18} />
           Kirim ke WhatsApp
         </a>
+        {!canShare && (
+          <p
+            className="mt-2 text-center text-xs"
+            style={{ color: 'var(--app-warning)' }}
+          >
+            Verifikasi email kamu dulu supaya link tagihan bisa dibuka
+            pelanggan.
+          </p>
+        )}
       </div>
 
       <p

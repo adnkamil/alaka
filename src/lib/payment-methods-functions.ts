@@ -5,6 +5,7 @@ import { db } from '../db'
 import { paymentMethods } from '../db/schema'
 import { getSessionUser } from './auth'
 import { requireUserFeature } from './entitlements'
+import { requireVerifiedEmail } from './email-verified'
 
 /**
  * Baca metode pembayaran TIDAK dikunci (dipakai juga di invoice/tagihan buat
@@ -81,6 +82,8 @@ export const createPaymentMethod = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     // `payment_methods` termasuk fitur PRO (TRIAL & PRO terbuka).
     const { user } = await requireUserFeature('payment_methods')
+    // Gambar QRIS = upload file; rekening bank/e-wallet (teks) tetap boleh.
+    if (data.type === 'qris') requireVerifiedEmail(user)
     const [method] = await db
       .insert(paymentMethods)
       .values({
@@ -100,6 +103,7 @@ export const updatePaymentMethod = createServerFn({ method: 'POST' })
   .validator(paymentMethodInputSchema.extend({ id: z.uuid() }))
   .handler(async ({ data }) => {
     const { user } = await requireUserFeature('payment_methods')
+    if (data.type === 'qris') requireVerifiedEmail(user)
     const existing = await db.query.paymentMethods.findFirst({
       where: and(
         eq(paymentMethods.id, data.id),
