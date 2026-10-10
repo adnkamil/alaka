@@ -24,9 +24,9 @@ async function requireUser() {
   return user
 }
 
-async function assertEventOwnership(eventId: string, userId: string) {
+async function assertEventOwnership(eventId: string, brandId: string) {
   const event = await db.query.events.findFirst({
-    where: and(eq(events.id, eventId), eq(events.userId, userId)),
+    where: and(eq(events.id, eventId), eq(events.brandId, brandId)),
   })
   if (!event) throw new Error('Event tidak ditemukan')
   return event
@@ -85,7 +85,7 @@ export const createOrder = createServerFn({ method: 'POST' })
   .validator(createOrderSchema)
   .handler(async ({ data }) => {
     const user = await requireUser()
-    const event = await assertEventOwnership(data.eventId, user.id)
+    const event = await assertEventOwnership(data.eventId, brandIdOf(user))
 
     // Event nonaktif = sudah ditutup, jadi tidak boleh nambah pesanan baru.
     // Pesanan lama tetap bisa diedit/dihapus (lihat updateOrder/deleteOrder).
@@ -228,7 +228,7 @@ export const updateOrderPaymentStatus = createServerFn({ method: 'POST' })
       where: eq(orders.id, data.orderId),
       with: { event: true, items: true },
     })
-    if (!order || order.event.userId !== user.id) {
+    if (!order || order.event.brandId !== brandIdOf(user)) {
       throw new Error('Pesanan tidak ditemukan')
     }
 
@@ -279,7 +279,7 @@ export const updateOrder = createServerFn({ method: 'POST' })
       where: eq(orders.id, data.orderId),
       with: { event: true },
     })
-    if (!order || order.event.userId !== user.id) {
+    if (!order || order.event.brandId !== brandIdOf(user)) {
       throw new Error('Pesanan tidak ditemukan')
     }
 
@@ -346,7 +346,12 @@ export const updateItemsObtained = createServerFn({ method: 'POST' })
       .from(items)
       .innerJoin(orders, eq(items.orderId, orders.id))
       .innerJoin(events, eq(orders.eventId, events.id))
-      .where(and(inArray(items.id, data.itemIds), eq(events.userId, user.id)))
+      .where(
+        and(
+          inArray(items.id, data.itemIds),
+          eq(events.brandId, brandIdOf(user)),
+        ),
+      )
 
     if (owned.length !== data.itemIds.length) {
       throw new Error('Barang tidak ditemukan')
@@ -367,7 +372,7 @@ export const deleteOrder = createServerFn({ method: 'POST' })
       where: eq(orders.id, data.orderId),
       with: { event: true },
     })
-    if (!order || order.event.userId !== user.id) {
+    if (!order || order.event.brandId !== brandIdOf(user)) {
       throw new Error('Pesanan tidak ditemukan')
     }
 
@@ -383,7 +388,7 @@ export const deleteItem = createServerFn({ method: 'POST' })
       where: eq(items.id, data.itemId),
       with: { order: { with: { event: true } } },
     })
-    if (!item || item.order.event.userId !== user.id) {
+    if (!item || item.order.event.brandId !== brandIdOf(user)) {
       throw new Error('Barang tidak ditemukan')
     }
 
@@ -501,7 +506,7 @@ export const getOrderInvoice = createServerFn({ method: 'GET' })
     if (!order || order.eventId !== data.eventId) {
       throw new Error('Pesanan tidak ditemukan')
     }
-    if (order.event.userId !== user.id) {
+    if (order.event.brandId !== brandIdOf(user)) {
       throw new Error('Pesanan tidak ditemukan')
     }
 

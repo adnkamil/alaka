@@ -3,6 +3,7 @@ import { and, desc, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '../db'
 import { events, items, orders } from '../db/schema'
+import { brandIdOf } from './brand'
 import { getSessionUser } from './auth'
 
 async function requireUser() {
@@ -43,7 +44,7 @@ export const listEvents = createServerFn({ method: 'GET' }).handler(
       .from(events)
       .leftJoin(orders, eq(orders.eventId, events.id))
       .leftJoin(orderTotals, eq(orderTotals.orderId, orders.id))
-      .where(eq(events.userId, user.id))
+      .where(eq(events.brandId, brandIdOf(user)))
       .groupBy(events.id)
       .orderBy(desc(events.eventDate))
 
@@ -89,7 +90,7 @@ export const updateEvent = createServerFn({ method: 'POST' })
         feeRuleId: data.feeRuleId ?? null,
         updatedAt: new Date(),
       })
-      .where(and(eq(events.id, data.id), eq(events.userId, user.id)))
+      .where(and(eq(events.id, data.id), eq(events.brandId, brandIdOf(user))))
   })
 
 export const deleteEvent = createServerFn({ method: 'POST' })
@@ -98,7 +99,7 @@ export const deleteEvent = createServerFn({ method: 'POST' })
     const user = await requireUser()
     await db
       .delete(events)
-      .where(and(eq(events.id, data.id), eq(events.userId, user.id)))
+      .where(and(eq(events.id, data.id), eq(events.brandId, brandIdOf(user))))
   })
 
 /**
@@ -114,7 +115,7 @@ export const setEventActive = createServerFn({ method: 'POST' })
     const updated = await db
       .update(events)
       .set({ isActive: data.isActive, updatedAt: new Date() })
-      .where(and(eq(events.id, data.id), eq(events.userId, user.id)))
+      .where(and(eq(events.id, data.id), eq(events.brandId, brandIdOf(user))))
       .returning({ id: events.id })
 
     if (updated.length === 0) throw new Error('Event tidak ditemukan')
@@ -133,7 +134,7 @@ export const setEventHideFee = createServerFn({ method: 'POST' })
     const updated = await db
       .update(events)
       .set({ hideFee: data.hideFee, updatedAt: new Date() })
-      .where(and(eq(events.id, data.id), eq(events.userId, user.id)))
+      .where(and(eq(events.id, data.id), eq(events.brandId, brandIdOf(user))))
       .returning({ id: events.id })
 
     if (updated.length === 0) throw new Error('Event tidak ditemukan')
@@ -145,7 +146,7 @@ export const getEventDetail = createServerFn({ method: 'GET' })
     const user = await requireUser()
 
     const event = await db.query.events.findFirst({
-      where: and(eq(events.id, data.id), eq(events.userId, user.id)),
+      where: and(eq(events.id, data.id), eq(events.brandId, brandIdOf(user))),
       with: {
         feeRule: { with: { tiers: true } },
         orders: { with: { items: true } },

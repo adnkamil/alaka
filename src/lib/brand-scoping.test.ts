@@ -17,7 +17,10 @@ import test from 'node:test'
  */
 
 const SRC_DIR = fileURLToPath(new URL('..', import.meta.url))
-const SCOPED_BY_BRAND = ['feeRules', 'paymentMethods', 'customers']
+const SCOPED_BY_BRAND = ['feeRules', 'paymentMethods', 'customers', 'events']
+
+// Akses lewat relasi (mis. `order.event.userId`) juga dilarang untuk `events`.
+const RELATION_ACCESS = String.raw`\bevent\.userId\b`
 
 function listFiles(dir: string): Array<string> {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -31,7 +34,9 @@ function listFiles(dir: string): Array<string> {
 
 test('tabel yang sudah di-scope brand tidak difilter lewat userId', () => {
   const offenders: Array<string> = []
-  const pattern = new RegExp(`\\b(${SCOPED_BY_BRAND.join('|')})\\.userId\\b`)
+  const pattern = new RegExp(
+    `\\b(${SCOPED_BY_BRAND.join('|')})\\.userId\\b|${RELATION_ACCESS}`,
+  )
 
   for (const file of listFiles(SRC_DIR)) {
     if (file.endsWith(join('db', 'schema.ts'))) continue
