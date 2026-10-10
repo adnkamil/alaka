@@ -33,6 +33,7 @@ export const createCustomer = createServerFn({ method: 'POST' })
       .insert(customers)
       .values({
         userId: user.id,
+        brandId: user.brandId,
         name: data.name,
         phone: data.phone || null,
         address: data.address || null,

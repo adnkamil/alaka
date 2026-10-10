@@ -7,6 +7,7 @@ import {
   createSessionToken,
   revokeAllSessions,
 } from '../../../../lib/auth'
+import { createUserWithBrand } from '../../../../lib/brand-queries'
 import { exchangeGoogleCode } from '../../../../lib/google-auth'
 
 const STATE_COOKIE = 'google_oauth_state'
@@ -107,15 +108,12 @@ export const Route = createFileRoute('/api/auth/google/callback')({
 
           // 3. Belum ada sama sekali -> bikin akun baru tanpa password
           if (!user) {
-            ;[user] = await db
-              .insert(users)
-              .values({
-                name: profile.name || profile.email.split('@')[0],
-                email: profile.email,
-                googleId: profile.sub,
-                emailVerifiedAt: profile.email_verified ? new Date() : null,
-              })
-              .returning()
+            user = await createUserWithBrand({
+              name: profile.name || profile.email.split('@')[0],
+              email: profile.email,
+              googleId: profile.sub,
+              emailVerifiedAt: profile.email_verified ? new Date() : null,
+            })
           }
 
           const isProd = process.env.NODE_ENV === 'production'

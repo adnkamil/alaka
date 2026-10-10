@@ -11,6 +11,7 @@ import {
   revokeAllSessions,
   verifyPassword,
 } from './auth'
+import { createUserWithBrand, updateUserProfile } from './brand-queries'
 import { sendVerificationEmail } from './email-verification-queries'
 import { requireVerifiedEmail } from './email-verified'
 import { getUserEntitlements } from './entitlements'
@@ -33,15 +34,13 @@ export const registerUser = createServerFn({ method: 'POST' })
     }
 
     const passwordHash = await hashPassword(data.password)
-    const [user] = await db
-      .insert(users)
-      .values({
-        name: data.name,
-        brandName: data.brandName || null,
-        email: data.email,
-        passwordHash,
-      })
-      .returning()
+    // User + brand-nya dibuat satu transaksi (dual-write tahap migrasi brands).
+    const user = await createUserWithBrand({
+      name: data.name,
+      brandName: data.brandName || null,
+      email: data.email,
+      passwordHash,
+    })
 
     // Kirim email verifikasi, tapi jangan gagalkan pendaftaran kalau pengiriman
     // error: akunnya sudah jadi, dan user bisa minta kirim ulang dari app.
@@ -103,14 +102,10 @@ export const updateProfile = createServerFn({ method: 'POST' })
     const current = await getSessionUser()
     if (!current) throw new Error('Belum login')
 
-    await db
-      .update(users)
-      .set({
-        name: data.name,
-        brandName: data.brandName?.trim() || null,
-        updatedAt: new Date(),
-      })
-      .where(eq(users.id, current.id))
+    await updateUserProfile(current, {
+      name: data.name,
+      brandName: data.brandName?.trim() || null,
+    })
   })
 
 const changePasswordSchema = z.object({

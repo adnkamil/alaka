@@ -58,7 +58,7 @@ export const createFeeRule = createServerFn({ method: 'POST' })
 
     const [rule] = await db
       .insert(feeRules)
-      .values({ userId: user.id, name: data.name })
+      .values({ userId: user.id, brandId: user.brandId, name: data.name })
       .returning()
 
     await db.insert(feeTiers).values(
