@@ -41,6 +41,15 @@ export async function createUserWithBrand(values: NewUserValues) {
   })
 }
 
+/** Baris brand untuk user yang dimuat sendiri (bukan lewat sesi). */
+export async function findBrand(brandId: string | null) {
+  if (!brandId) return null
+  const brand = await db.query.brands.findFirst({
+    where: eq(brands.id, brandId),
+  })
+  return brand ?? null
+}
+
 type BrandOwner = { id: string; brandId: string | null }
 
 /** Ubah nama user + nama brand sekaligus (halaman Profil). */

@@ -7,7 +7,8 @@ import {
   setCookie,
 } from '@tanstack/react-start/server'
 import { db } from '../db'
-import { sessions, users } from '../db/schema'
+import { brands, sessions, users } from '../db/schema'
+import { applyBrandIdentity } from './brand'
 
 export const SESSION_COOKIE_NAME = 'jastip_session'
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000 // 30 days
@@ -67,9 +68,10 @@ async function getSessionUserByToken(token: string | undefined) {
   if (!token) return null
 
   const rows = await db
-    .select({ user: users, session: sessions })
+    .select({ user: users, session: sessions, brand: brands })
     .from(sessions)
     .innerJoin(users, eq(sessions.userId, users.id))
+    .leftJoin(brands, eq(users.brandId, brands.id))
     .where(eq(sessions.token, token))
     .limit(1)
 
@@ -77,7 +79,8 @@ async function getSessionUserByToken(token: string | undefined) {
   const row = rows[0]
   if (row.session.expiresAt < new Date()) return null
 
-  return row.user
+  // Nama brand, template pesan, & trial dibaca dari tabel brands (satu query).
+  return applyBrandIdentity(row.user, row.brand)
 }
 
 // Matikan SEMUA sesi milik user. Dipakai setelah reset/ganti kata sandi:
