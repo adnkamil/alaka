@@ -11,12 +11,13 @@
 import { eq } from 'drizzle-orm'
 import { db } from '../db'
 import { subscriptions } from '../db/schema'
+import { canViewSubscriptionProof } from './subscription-proof-access'
 import { parsePaymentProofDataUrl } from './payment-proof'
 import { getPaymentProof } from './storage'
 import type { PaymentProofContentType } from './payment-proof'
 
 export async function loadSubscriptionProof(
-  viewer: { id: string; isAdmin: boolean },
+  viewer: { isAdmin: boolean; brandId: string | null },
   subscriptionId: string,
 ): Promise<{
   data: ArrayBuffer
@@ -25,13 +26,13 @@ export async function loadSubscriptionProof(
   const row = await db.query.subscriptions.findFirst({
     where: eq(subscriptions.id, subscriptionId),
     columns: {
-      userId: true,
+      brandId: true,
       paymentProofImage: true,
       paymentProofStored: true,
     },
   })
   if (!row) return null
-  if (!viewer.isAdmin && row.userId !== viewer.id) return null
+  if (!canViewSubscriptionProof(viewer, row)) return null
 
   // Pengajuan baru: file ada di Blobs.
   if (row.paymentProofStored) return getPaymentProof(subscriptionId)

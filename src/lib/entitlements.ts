@@ -1,3 +1,4 @@
+import { brandIdOf } from './brand'
 import { getSessionUser } from './auth'
 import { listActiveSubscriptions } from './subscription-queries'
 import {
@@ -45,7 +46,7 @@ export async function getUserEntitlements(
   user: TrialFields,
   now: Date = new Date(),
 ): Promise<Entitlement> {
-  const subscriptions = await listActiveSubscriptions(user.id)
+  const subscriptions = await listActiveSubscriptions(brandIdOf(user))
 
   return resolveEntitlement(
     {
@@ -65,7 +66,7 @@ export async function hasFullAccessAtForUser(
   user: TrialFields,
   at: Date,
 ): Promise<boolean> {
-  const subscriptions = await listActiveSubscriptions(user.id)
+  const subscriptions = await listActiveSubscriptions(brandIdOf(user))
 
   return hasFullAccess(
     resolveEntitlement(

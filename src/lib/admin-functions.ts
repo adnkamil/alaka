@@ -68,7 +68,13 @@ export const approveSubscription = createServerFn({ method: 'POST' })
       throw new Error('Pengajuan ini sudah diproses sebelumnya')
     }
 
-    const activeWindows = await listActiveSubscriptions(sub.userId)
+    // Masa aktif PRO dihitung per BRAND: sambung dari langganan aktif brand itu.
+    if (!sub.brandId) {
+      throw new Error(
+        'Pengajuan ini belum terhubung ke brand. Jalankan db:backfill-brands lalu coba lagi.',
+      )
+    }
+    const activeWindows = await listActiveSubscriptions(sub.brandId)
     const { startedAt, endsAt } = nextProWindow(activeWindows, sub.durationDays)
 
     await db

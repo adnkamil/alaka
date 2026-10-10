@@ -55,3 +55,58 @@ test('tabel yang sudah di-scope brand tidak difilter lewat userId', () => {
     'Filter pakai `<tabel>.brandId` dengan `brandIdOf(user)` dari lib/brand.ts.',
   )
 })
+
+/**
+ * Fungsi langganan sekarang meminta id BRAND. Karena id user dan id brand
+ * sama-sama `string`, TypeScript tidak akan menangkap salah kirim — test ini
+ * yang menjaganya.
+ */
+const BRAND_KEYED_SUBSCRIPTION_FUNCTIONS = [
+  'listSubscriptions',
+  'listActiveSubscriptions',
+  'findPendingSubscription',
+  'findSubscriptionForBrand',
+]
+
+test('fungsi langganan tidak dipanggil dengan id user', () => {
+  const offenders: Array<string> = []
+  const call = new RegExp(
+    `\\b(${BRAND_KEYED_SUBSCRIPTION_FUNCTIONS.join('|')})\\(([^)]*)\\)`,
+  )
+  const userIdLike = /\b(userId|user\.id|owner\.id|sub\.userId)\b/
+
+  for (const file of listFiles(SRC_DIR)) {
+    readFileSync(file, 'utf8')
+      .split('\n')
+      .forEach((line, index) => {
+        if (/export (async )?function/.test(line)) return
+        const match = call.exec(line)
+        if (match && userIdLike.test(match[2])) {
+          offenders.push(`${file.slice(SRC_DIR.length)}:${index + 1}`)
+        }
+      })
+  }
+
+  assert.deepEqual(
+    offenders,
+    [],
+    'Kirim `brandIdOf(user)` atau `row.brandId`, bukan id user.',
+  )
+})
+
+test('query langganan di lapisan entitlement tidak memfilter lewat userId', () => {
+  const files = [
+    'lib/subscription-queries.ts',
+    'lib/entitlements.ts',
+    'lib/subscription-proof-queries.ts',
+    'lib/subscription-functions.ts',
+  ]
+  const offenders = files.flatMap((file) =>
+    readFileSync(join(SRC_DIR, file), 'utf8')
+      .split('\n')
+      .map((line, index) => ({ line, no: index + 1 }))
+      .filter(({ line }) => /\bsubscriptions\.userId\b/.test(line))
+      .map(({ no }) => `${file}:${no}`),
+  )
+  assert.deepEqual(offenders, [])
+})
