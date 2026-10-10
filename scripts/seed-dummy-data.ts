@@ -112,7 +112,8 @@ async function main() {
   // static import di ESM selalu "naik" duluan sebelum kode lain jalan,
   // jadi kalau db diimport statis, dia bakal kebaca sebelum config()
   // dotenv sempat ngisi DATABASE_URL — bikin koneksinya undefined.
-  const { and, eq, inArray, isNull, sql } = await import('drizzle-orm')
+  const { and, eq, inArray, isNotNull, isNull, sql } =
+    await import('drizzle-orm')
   const { db } = await import('../src/db')
   const { customers, events, items, orders, users } =
     await import('../src/db/schema')
@@ -142,14 +143,14 @@ async function main() {
         total: sql<number>`count(*)`.mapWith(Number),
       })
       .from(customers)
-      .where(isNull(customers.deletedAt))
+      .where(and(isNull(customers.deletedAt), isNotNull(customers.userId)))
       .groupBy(customers.userId)
       .orderBy(sql`count(*) desc`)
 
     targetUser =
       customerCounts.length > 0
         ? await db.query.users.findFirst({
-            where: eq(users.id, customerCounts[0].userId),
+            where: eq(users.id, customerCounts[0].userId as string),
           })
         : await db.query.users.findFirst({
             orderBy: (u, { asc }) => asc(u.createdAt),

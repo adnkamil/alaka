@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { asc, eq } from 'drizzle-orm'
 import { db } from '../db'
 import { brands, users } from '../db/schema'
 
@@ -48,6 +48,21 @@ export async function findBrand(brandId: string | null) {
     where: eq(brands.id, brandId),
   })
   return brand ?? null
+}
+
+/**
+ * Pemilik brand: akun pertama yang bergabung ke brand itu. Dipakai halaman
+ * publik (invoice) untuk menampilkan identitas & memeriksa verifikasi email
+ * PEMILIK — bukan akun yang kebetulan membuat event/order. Admin brand selalu
+ * bergabung setelah pemiliknya, jadi urutan `created_at` cukup selama belum ada
+ * kolom peran; ganti ke `brand_role = 'owner'` saat fitur admin brand dibangun.
+ */
+export async function findBrandOwner(brandId: string) {
+  const owner = await db.query.users.findFirst({
+    where: eq(users.brandId, brandId),
+    orderBy: [asc(users.createdAt), asc(users.id)],
+  })
+  return owner ?? null
 }
 
 type BrandOwner = { id: string; brandId: string | null }

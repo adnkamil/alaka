@@ -275,6 +275,8 @@ export async function listAdminUsers(
 
   const windowsByUser = new Map<string, Array<SubscriptionWindow>>()
   for (const row of activeRows) {
+    // Pengajuan yang akun pembuatnya sudah dihapus tidak punya baris user.
+    if (!row.userId) continue
     const windows = windowsByUser.get(row.userId) ?? []
     windows.push({
       status: row.status,
@@ -284,9 +286,13 @@ export async function listAdminUsers(
     windowsByUser.set(row.userId, windows)
   }
 
-  const pendingUserIds = new Set(pendingRows.map((row) => row.userId))
+  const pendingUserIds = new Set(
+    pendingRows.flatMap((row) => (row.userId ? [row.userId] : [])),
+  )
   const revenueByUser = new Map<string, number>(
-    revenueRows.map((row) => [row.userId, Number(row.total)]),
+    revenueRows.flatMap((row) =>
+      row.userId ? [[row.userId, Number(row.total)] as const] : [],
+    ),
   )
   const lastLoginByUser = new Map<string, Date | null>(
     lastLoginRows.map((row) => [row.userId, row.lastLoginAt]),

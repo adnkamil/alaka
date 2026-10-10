@@ -5,7 +5,7 @@ import { db } from '../db'
 import { customers, events, items, orders, paymentMethods } from '../db/schema'
 import { getSessionUser } from './auth'
 import { applyBrandIdentity, brandIdOf } from './brand'
-import { findBrand } from './brand-queries'
+import { findBrand, findBrandOwner } from './brand-queries'
 import {
   FeatureLockedError,
   getUserEntitlements,
@@ -408,16 +408,21 @@ export const getPublicOrderInvoice = createServerFn({ method: 'GET' })
   .handler(async ({ data }) => {
     const order = await db.query.orders.findFirst({
       where: eq(orders.id, data.orderId),
-      with: { items: true, event: { with: { user: true } } },
+      with: { items: true, event: true },
     })
     if (!order || order.eventId !== data.eventId) {
       throw new Error('Invoice tidak ditemukan')
     }
 
-    const owner = applyBrandIdentity(
-      order.event.user,
-      await findBrand(order.event.user.brandId),
-    )
+    // Identitas, verifikasi email, dan entitlement dibaca dari PEMILIK brand
+    // event ini — bukan dari akun yang membuat event (bisa admin atau sudah
+    // terhapus; `events.user_id` hanya "dibuat oleh").
+    const [brand, ownerUser] = await Promise.all([
+      findBrand(order.event.brandId),
+      findBrandOwner(order.event.brandId),
+    ])
+    if (!brand || !ownerUser) throw new Error('Invoice tidak ditemukan')
+    const owner = applyBrandIdentity(ownerUser, brand)
 
     // Link publik bisa dibuka siapa saja atas nama brand, jadi baru aktif
     // setelah email pemilik terverifikasi (cegah akun spam/phishing). Pesannya
