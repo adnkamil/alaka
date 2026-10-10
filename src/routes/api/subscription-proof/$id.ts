@@ -10,7 +10,7 @@ const PRIVATE_HEADERS = { 'Cache-Control': 'private, no-store' }
 
 /**
  * Menyajikan bukti transfer satu pengajuan PRO. KEBALIKAN dari
- * `/api/avatar/$userId`: wajib login, dan hanya admin atau pemilik pengajuan
+ * `/api/avatar/$brandId`: wajib login, dan hanya admin atau pemilik pengajuan
  * yang boleh melihat (dicek di `loadSubscriptionProof`).
  */
 export const Route = createFileRoute('/api/subscription-proof/$id')({

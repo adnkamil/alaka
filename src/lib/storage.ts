@@ -33,24 +33,24 @@ function avatarStore() {
   })
 }
 
-/** Simpan/timpa foto milik user. Key = userId, jadi tidak ada file yatim. */
+/** Simpan/timpa foto milik brand. Key = brandId, jadi tidak ada file yatim. */
 export async function putAvatar(
-  userId: string,
+  brandId: string,
   bytes: Uint8Array,
   contentType: AvatarContentType,
 ): Promise<void> {
   // Salin ke Uint8Array baru supaya buffer-nya pasti ArrayBuffer biasa
   // (bukan SharedArrayBuffer) dan diterima sebagai BlobPart.
   const body = new Blob([new Uint8Array(bytes)], { type: contentType })
-  await avatarStore().set(userId, body, { metadata: { contentType } })
+  await avatarStore().set(brandId, body, { metadata: { contentType } })
 }
 
 export async function getAvatar(
-  userId: string,
+  brandId: string,
 ): Promise<{ data: ArrayBuffer; contentType: AvatarContentType } | null> {
   // Overload `type: 'blob'` dipakai karena tipe `arrayBuffer`-nya tidak
   // mencantumkan `null`, padahal key yang tidak ada mengembalikan null.
-  const result = await avatarStore().getWithMetadata(userId, { type: 'blob' })
+  const result = await avatarStore().getWithMetadata(brandId, { type: 'blob' })
   if (!result) return null
 
   const data = await result.data.arrayBuffer()
@@ -63,8 +63,8 @@ export async function getAvatar(
   return { data, contentType }
 }
 
-export async function deleteAvatar(userId: string): Promise<void> {
-  await avatarStore().delete(userId)
+export async function deleteAvatar(brandId: string): Promise<void> {
+  await avatarStore().delete(brandId)
 }
 
 // --- Bukti transfer langganan PRO ---------------------------------------

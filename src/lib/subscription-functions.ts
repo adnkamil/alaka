@@ -3,6 +3,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { db } from '../db'
 import { subscriptions } from '../db/schema'
+import { brandIdOf } from './brand'
 import { getSessionUser } from './auth'
 import { requireVerifiedEmail } from './email-verified'
 import {
@@ -52,8 +53,9 @@ export const submitSubscriptionRequest = createServerFn({ method: 'POST' })
     const proof = parsePaymentProofDataUrl(data.paymentProofImage)
 
     // Jaring pengaman di level aplikasi — batas sebenarnya tetap dijaga unique
-    // index `subscriptions_pending_per_user_unique` di DB.
-    const existingPending = await findPendingSubscription(user.id)
+    // index `subscriptions_pending_per_user_unique` di DB (per user; saat ada admin
+    // di tahap berikutnya index itu diganti per brand).
+    const existingPending = await findPendingSubscription(brandIdOf(user))
     if (existingPending) {
       throw new Error('Kamu masih punya pengajuan yang menunggu verifikasi.')
     }
@@ -74,7 +76,7 @@ export const submitSubscriptionRequest = createServerFn({ method: 'POST' })
         .values({
           id,
           userId: user.id,
-          brandId: user.brandId,
+          brandId: brandIdOf(user),
           planCode: PRO_PLAN_CODE,
           status: 'pending',
           durationDays: PRO_DURATION_DAYS,

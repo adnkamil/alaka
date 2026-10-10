@@ -22,7 +22,7 @@ interface EditProfileModalProps {
    * Kalau diisi, modal menampilkan bagian foto brand di atas form.
    * Kalau tidak, modal hanya berisi nama + nama brand.
    */
-  avatar?: { userId?: string; avatarUpdatedAt?: string | null }
+  avatar?: { brandId?: string; avatarUpdatedAt?: string | null }
   /**
    * Kalau diisi, modal menampilkan kolom email (hanya baca) dan pesan error
    * merah di bawahnya selama emailnya belum terverifikasi.
@@ -162,7 +162,7 @@ export default function EditProfileModal({
                 />
               ) : (
                 <UserAvatar
-                  userId={avatar.userId}
+                  brandId={avatar.brandId}
                   name={name}
                   avatarUpdatedAt={removePhoto ? null : avatar.avatarUpdatedAt}
                   className="h-24 w-24 text-3xl"

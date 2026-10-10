@@ -1,7 +1,8 @@
 import { useState } from 'react'
 
 interface UserAvatarProps {
-  userId?: string
+  /** Id BRAND pemilik foto (bukan id user). */
+  brandId?: string
   name?: string
   /** ISO string; null/undefined = belum punya foto (tampil inisial). */
   avatarUpdatedAt?: string | null
@@ -13,7 +14,7 @@ interface UserAvatarProps {
  * jatuh ke inisial nama seperti sebelumnya.
  */
 export default function UserAvatar({
-  userId,
+  brandId,
   name,
   avatarUpdatedAt,
   className = '',
@@ -23,8 +24,8 @@ export default function UserAvatar({
   // `?v=` bikin URL berubah tiap foto diganti, jadi cache browser yang lama
   // (1 tahun) tidak pernah menyajikan foto usang.
   const src =
-    userId && avatarUpdatedAt
-      ? `/api/avatar/${userId}?v=${new Date(avatarUpdatedAt).getTime()}`
+    brandId && avatarUpdatedAt
+      ? `/api/avatar/${brandId}?v=${new Date(avatarUpdatedAt).getTime()}`
       : null
 
   return (

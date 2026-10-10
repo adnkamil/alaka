@@ -2,7 +2,7 @@ import { Landmark } from 'lucide-react'
 import UserAvatar from './UserAvatar'
 
 interface InvoiceBrandMarkProps {
-  userId: string
+  brandId: string
   name: string
   /** ISO string; null = brand belum punya foto. */
   avatarUpdatedAt: string | null
@@ -14,7 +14,7 @@ interface InvoiceBrandMarkProps {
  * internal dan halaman tagihan publik supaya tampilannya sama.
  */
 export default function InvoiceBrandMark({
-  userId,
+  brandId,
   name,
   avatarUpdatedAt,
 }: InvoiceBrandMarkProps) {
@@ -28,7 +28,7 @@ export default function InvoiceBrandMark({
 
   return (
     <UserAvatar
-      userId={userId}
+      brandId={brandId}
       name={name}
       avatarUpdatedAt={avatarUpdatedAt}
       className="h-14 w-14 border-2 border-white text-lg shadow-sm"

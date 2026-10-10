@@ -259,7 +259,7 @@ function InvoicePage() {
             </p>
           </div>
           <InvoiceBrandMark
-            userId={data.user.id}
+            brandId={data.user.brandId}
             name={data.user.brandName || data.user.name}
             avatarUpdatedAt={data.user.avatarUpdatedAt}
           />

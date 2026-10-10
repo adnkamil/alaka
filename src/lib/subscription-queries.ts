@@ -1,6 +1,7 @@
 import { and, desc, eq } from 'drizzle-orm'
 import { db } from '../db'
 import { subscriptions } from '../db/schema'
+import { brandIdOf } from './brand'
 import { stripProofData } from './payment-proof'
 import { resolveEntitlement } from './subscription'
 import type { users } from '../db/schema'
@@ -22,7 +23,7 @@ export type SubscriptionRow = typeof subscriptions.$inferSelect
 /** Kolom `users` yang dibutuhkan buat hitung status akses. */
 export type TrialFields = Pick<
   typeof users.$inferSelect,
-  'id' | 'trialStartedAt' | 'trialEndsAt'
+  'id' | 'brandId' | 'trialStartedAt' | 'trialEndsAt'
 >
 
 /**
@@ -42,23 +43,23 @@ export interface SubscriptionState {
   pending: ClientSubscription | null
 }
 
-/** Histori langganan milik satu user (terbaru dulu). */
-export async function listSubscriptions(userId: string) {
+/** Histori langganan milik satu brand (terbaru dulu). */
+export async function listSubscriptions(brandId: string) {
   return (
     db
       .select()
       .from(subscriptions)
-      .where(eq(subscriptions.userId, userId))
+      .where(eq(subscriptions.brandId, brandId))
       // id sebagai tiebreaker supaya urutan stabil kalau created_at sama persis.
       .orderBy(desc(subscriptions.createdAt), desc(subscriptions.id))
   )
 }
 
-/** Pengajuan yang masih menunggu verifikasi admin (maks. satu per user). */
-export async function findPendingSubscription(userId: string) {
+/** Pengajuan yang masih menunggu verifikasi admin (maks. satu per brand). */
+export async function findPendingSubscription(brandId: string) {
   return db.query.subscriptions.findFirst({
     where: and(
-      eq(subscriptions.userId, userId),
+      eq(subscriptions.brandId, brandId),
       eq(subscriptions.status, 'pending'),
     ),
     orderBy: [desc(subscriptions.createdAt), desc(subscriptions.id)],
@@ -66,17 +67,20 @@ export async function findPendingSubscription(userId: string) {
 }
 
 /**
- * Baris `active` milik user (termasuk yang masa berlakunya sudah lewat).
+ * Baris `active` milik brand (termasuk yang masa berlakunya sudah lewat).
  * Dipakai buat hitung entitlement: mana yang benar-benar masih berlaku
  * ditentukan oleh `resolveEntitlement()` lewat `ends_at`, jadi query-nya nggak
  * perlu ikut menghitung tanggal.
  */
-export async function listActiveSubscriptions(userId: string) {
+export async function listActiveSubscriptions(brandId: string) {
   return db
     .select()
     .from(subscriptions)
     .where(
-      and(eq(subscriptions.userId, userId), eq(subscriptions.status, 'active')),
+      and(
+        eq(subscriptions.brandId, brandId),
+        eq(subscriptions.status, 'active'),
+      ),
     )
     .orderBy(desc(subscriptions.endsAt), desc(subscriptions.id))
 }
@@ -90,7 +94,7 @@ export async function getSubscriptionState(
   user: TrialFields,
   now: Date = new Date(),
 ): Promise<SubscriptionState> {
-  const rows = await listSubscriptions(user.id)
+  const rows = await listSubscriptions(brandIdOf(user))
   const pendingRow = rows.find((row) => row.status === 'pending')
 
   return {
@@ -107,10 +111,10 @@ export async function getSubscriptionState(
   }
 }
 
-/** Ambil satu baris subscription dengan pengaman kepemilikan user. */
-export async function findSubscriptionForUser(id: string, userId: string) {
+/** Ambil satu baris subscription dengan pengaman kepemilikan brand. */
+export async function findSubscriptionForBrand(id: string, brandId: string) {
   return db.query.subscriptions.findFirst({
-    where: and(eq(subscriptions.id, id), eq(subscriptions.userId, userId)),
+    where: and(eq(subscriptions.id, id), eq(subscriptions.brandId, brandId)),
   })
 }
 

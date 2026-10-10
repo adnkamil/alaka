@@ -3,7 +3,7 @@ import type { brands, users } from '../db/schema'
 /**
  * Pembacaan identitas brand (tahap 4a migrasi `brands`).
  *
- * Nama brand, template pesan, dan masa trial sekarang dibaca dari tabel
+ * Nama brand, template pesan, foto, dan masa trial sekarang dibaca dari tabel
  * `brands`. Supaya kode yang sudah memakai `user.brandName` dkk tidak perlu
  * diubah satu per satu, baris user yang dimuat ditimpa dengan nilai dari brand-
  * nya lewat fungsi ini. Kolom lama di `users` masih ditulis (dual-write) dan
@@ -14,12 +14,20 @@ import type { brands, users } from '../db/schema'
 
 export type BrandIdentity = Pick<
   typeof brands.$inferSelect,
-  'name' | 'waMessageTemplate' | 'trialStartedAt' | 'trialEndsAt'
+  | 'name'
+  | 'waMessageTemplate'
+  | 'avatarUpdatedAt'
+  | 'trialStartedAt'
+  | 'trialEndsAt'
 >
 
 type LegacyIdentityColumns = Pick<
   typeof users.$inferSelect,
-  'brandName' | 'waMessageTemplate' | 'trialStartedAt' | 'trialEndsAt'
+  | 'brandName'
+  | 'waMessageTemplate'
+  | 'avatarUpdatedAt'
+  | 'trialStartedAt'
+  | 'trialEndsAt'
 >
 
 /**
@@ -37,6 +45,7 @@ export function applyBrandIdentity<T extends LegacyIdentityColumns>(
     ...user,
     brandName: brand.name,
     waMessageTemplate: brand.waMessageTemplate,
+    avatarUpdatedAt: brand.avatarUpdatedAt,
     trialStartedAt: brand.trialStartedAt,
     trialEndsAt: brand.trialEndsAt,
   }
