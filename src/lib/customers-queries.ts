@@ -20,10 +20,10 @@ import { customers } from '../db/schema'
  * `customers-functions.ts` DAN `getCustomerSuggestions` di
  * `customer-suggestions-functions.ts`, supaya query-nya nggak ditulis dua kali.
  */
-export function queryActiveCustomers(userId: string) {
+export function queryActiveCustomers(brandId: string) {
   return db
     .select()
     .from(customers)
-    .where(and(eq(customers.userId, userId), isNull(customers.deletedAt)))
+    .where(and(eq(customers.brandId, brandId), isNull(customers.deletedAt)))
     .orderBy(asc(customers.name))
 }

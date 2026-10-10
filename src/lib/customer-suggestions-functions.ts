@@ -1,4 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
+import { brandIdOf } from './brand'
 import { getSessionUser } from './auth'
 import { queryActiveCustomers } from './customers-queries'
 import { getUserEntitlements } from './entitlements'
@@ -36,7 +37,7 @@ export const getCustomerSuggestions = createServerFn({
     return LOCKED_CUSTOMER_SUGGESTIONS
   }
 
-  const rows = await queryActiveCustomers(user.id)
+  const rows = await queryActiveCustomers(brandIdOf(user))
   return {
     unlocked: true,
     customers: rows.map((row) => ({

@@ -41,3 +41,21 @@ export function applyBrandIdentity<T extends LegacyIdentityColumns>(
     trialEndsAt: brand.trialEndsAt,
   }
 }
+
+/**
+ * Id brand tempat data bisnis user disimpan (tahap 4b: semua query data
+ * di-scope pakai `brand_id`, bukan `user_id`).
+ *
+ * Melempar error kalau user belum punya brand, supaya gagalnya KENCANG: filter
+ * `brand_id = NULL` tidak cocok ke baris mana pun dan akan terlihat seperti
+ * "semua data hilang". Setelah `brand_id` jadi NOT NULL (tahap constrain), kasus
+ * ini tidak mungkin lagi.
+ */
+export function brandIdOf(user: { brandId: string | null }): string {
+  if (!user.brandId) {
+    throw new Error(
+      'Data brand akun ini belum siap. Coba lagi sebentar atau hubungi admin.',
+    )
+  }
+  return user.brandId
+}

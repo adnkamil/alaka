@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { applyBrandIdentity } from './brand'
+import { applyBrandIdentity, brandIdOf } from './brand'
 
 const user = {
   id: 'u1',
@@ -45,4 +45,9 @@ test('brand menang walau namanya sengaja kosong', () => {
 test('tanpa brand (belum di-backfill) user dikembalikan apa adanya', () => {
   assert.equal(applyBrandIdentity(user, null), user)
   assert.equal(applyBrandIdentity(user, undefined), user)
+})
+
+test('brandIdOf mengembalikan brandId, dan melempar kalau kosong', () => {
+  assert.equal(brandIdOf({ brandId: 'b1' }), 'b1')
+  assert.throws(() => brandIdOf({ brandId: null }), /belum siap/)
 })

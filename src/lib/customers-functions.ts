@@ -3,6 +3,7 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '../db'
 import { customers } from '../db/schema'
+import { brandIdOf } from './brand'
 import { getSessionUser } from './auth'
 import { queryActiveCustomers } from './customers-queries'
 
@@ -21,7 +22,7 @@ const customerInputSchema = z.object({
 export const listCustomers = createServerFn({ method: 'GET' }).handler(
   async () => {
     const user = await requireUser()
-    return queryActiveCustomers(user.id)
+    return queryActiveCustomers(brandIdOf(user))
   },
 )
 
@@ -49,7 +50,7 @@ export const updateCustomer = createServerFn({ method: 'POST' })
     const existing = await db.query.customers.findFirst({
       where: and(
         eq(customers.id, data.id),
-        eq(customers.userId, user.id),
+        eq(customers.brandId, brandIdOf(user)),
         isNull(customers.deletedAt),
       ),
     })
@@ -78,7 +79,7 @@ export const deleteCustomer = createServerFn({ method: 'POST' })
       .where(
         and(
           eq(customers.id, data.id),
-          eq(customers.userId, user.id),
+          eq(customers.brandId, brandIdOf(user)),
           isNull(customers.deletedAt),
         ),
       )
