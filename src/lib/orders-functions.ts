@@ -4,6 +4,8 @@ import { z } from 'zod'
 import { db } from '../db'
 import { customers, events, items, orders, paymentMethods } from '../db/schema'
 import { getSessionUser } from './auth'
+import { applyBrandIdentity } from './brand'
+import { findBrand } from './brand-queries'
 import {
   FeatureLockedError,
   getUserEntitlements,
@@ -407,7 +409,10 @@ export const getPublicOrderInvoice = createServerFn({ method: 'GET' })
       throw new Error('Invoice tidak ditemukan')
     }
 
-    const owner = order.event.user
+    const owner = applyBrandIdentity(
+      order.event.user,
+      await findBrand(order.event.user.brandId),
+    )
 
     // Link publik bisa dibuka siapa saja atas nama brand, jadi baru aktif
     // setelah email pemilik terverifikasi (cegah akun spam/phishing). Pesannya

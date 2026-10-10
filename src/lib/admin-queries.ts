@@ -1,6 +1,7 @@
 import { and, desc, eq, gte, max, sql } from 'drizzle-orm'
 import { db } from '../db'
-import { sessions, subscriptions, users } from '../db/schema'
+import { brands, sessions, subscriptions, users } from '../db/schema'
+import { applyBrandIdentity } from './brand'
 import { stripProofData } from './payment-proof'
 import { resolveEntitlement } from './subscription'
 import type {
@@ -34,10 +35,14 @@ export async function listAdminSubscriptions(
       subscription: subscriptions,
       userName: users.name,
       userEmail: users.email,
-      userBrandName: users.brandName,
+      // Nama brand dibaca dari brands; user yang belum punya brand pakai kolom lama.
+      userBrandName: sql<
+        string | null
+      >`case when ${brands.id} is null then ${users.brandName} else ${brands.name} end`,
     })
     .from(subscriptions)
     .innerJoin(users, eq(subscriptions.userId, users.id))
+    .leftJoin(brands, eq(users.brandId, brands.id))
     .where(
       and(
         status ? eq(subscriptions.status, status) : undefined,
@@ -143,10 +148,11 @@ export async function getAdminMetrics(
     db
       .select({ value: sql<string>`count(*)` })
       .from(users)
+      .leftJoin(brands, eq(users.brandId, brands.id))
       .where(
         and(
           eq(users.isAdmin, false),
-          sql`${users.trialEndsAt} > ${now}`,
+          sql`coalesce(${brands.trialEndsAt}, ${users.trialEndsAt}) > ${now}`,
           sql`not exists (
             select 1 from ${subscriptions}
             where ${subscriptions.userId} = ${users.id}
@@ -220,8 +226,9 @@ export async function listAdminUsers(
   const [userRows, activeRows, pendingRows, revenueRows, lastLoginRows] =
     await Promise.all([
       db
-        .select()
+        .select({ user: users, brand: brands })
         .from(users)
+        .leftJoin(brands, eq(users.brandId, brands.id))
         .where(eq(users.isAdmin, false))
         .orderBy(desc(users.createdAt), desc(users.id)),
       // Cuma baris yang masa berlakunya belum lewat; `resolveEntitlement()`
@@ -285,7 +292,8 @@ export async function listAdminUsers(
     lastLoginRows.map((row) => [row.userId, row.lastLoginAt]),
   )
 
-  return userRows.map((user) => {
+  return userRows.map(({ user: userRow, brand }) => {
+    const user = applyBrandIdentity(userRow, brand)
     const entitlement = resolveEntitlement(
       {
         trialStartedAt: user.trialStartedAt,
