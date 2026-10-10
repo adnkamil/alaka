@@ -66,6 +66,7 @@ export const createEvent = createServerFn({ method: 'POST' })
       .insert(events)
       .values({
         userId: user.id,
+        brandId: user.brandId,
         name: data.name,
         description: data.description || null,
         eventDate: new Date(data.eventDate),

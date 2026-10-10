@@ -74,6 +74,7 @@ export const submitSubscriptionRequest = createServerFn({ method: 'POST' })
         .values({
           id,
           userId: user.id,
+          brandId: user.brandId,
           planCode: PRO_PLAN_CODE,
           status: 'pending',
           durationDays: PRO_DURATION_DAYS,

@@ -182,6 +182,7 @@ async function main() {
       .values(
         DUMMY_CUSTOMER_POOL.map((c) => ({
           userId: targetUser.id,
+          brandId: targetUser.brandId,
           name: c.name,
           phone: c.phone,
         })),
@@ -243,6 +244,7 @@ async function main() {
       .insert(events)
       .values({
         userId: targetUser.id,
+        brandId: targetUser.brandId,
         name: eventName,
         eventDate,
         createdAt: eventDate,

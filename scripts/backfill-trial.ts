@@ -90,14 +90,34 @@ async function main() {
   // `base` cuma boleh 'now()' atau 'created_at' (sudah divalidasi di atas), jadi
   // aman diinterpolasi. Jumlah hari dikirim sebagai parameter.
   const base = from === 'now' ? 'now()' : 'created_at'
-  const result = await client.query(
-    `update users
-     set trial_started_at = ${base},
-         trial_ends_at = ${base} + interval '1 day' * $1::int,
-         updated_at = now()
-     ${email ? 'where email = $2' : ''}`,
-    email ? [days, email] : [days],
-  )
+  // Trial user & brand-nya harus selalu sama (dual-write tahap migrasi brands),
+  // jadi dua update ini satu transaksi. Masih 1 user per brand.
+  await client.query('begin')
+  let result
+  try {
+    result = await client.query(
+      `update users
+       set trial_started_at = ${base},
+           trial_ends_at = ${base} + interval '1 day' * $1::int,
+           updated_at = now()
+       ${email ? 'where email = $2' : ''}`,
+      email ? [days, email] : [days],
+    )
+    await client.query(
+      `update brands b
+       set trial_started_at = u.trial_started_at,
+           trial_ends_at = u.trial_ends_at,
+           updated_at = now()
+       from users u
+       where u.brand_id = b.id
+       ${email ? 'and u.email = $1' : ''}`,
+      email ? [email] : [],
+    )
+    await client.query('commit')
+  } catch (error) {
+    await client.query('rollback').catch(() => undefined)
+    throw error
+  }
 
   console.log(`Selesai. ${result.rowCount} baris user di-update.`)
 

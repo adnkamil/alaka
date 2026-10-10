@@ -88,6 +88,7 @@ export const createPaymentMethod = createServerFn({ method: 'POST' })
       .insert(paymentMethods)
       .values({
         userId: user.id,
+        brandId: user.brandId,
         type: data.type,
         provider: data.provider,
         accountNumber: data.type === 'qris' ? null : data.accountNumber || null,
