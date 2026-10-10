@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { db } from '../db'
 import { customers, events, items, orders, paymentMethods } from '../db/schema'
 import { getSessionUser } from './auth'
-import { applyBrandIdentity } from './brand'
+import { applyBrandIdentity, brandIdOf } from './brand'
 import { findBrand } from './brand-queries'
 import {
   FeatureLockedError,
@@ -36,7 +36,7 @@ async function assertEventOwnership(eventId: string, userId: string) {
  * Metode pembayaran aktif milik user (dari Profil → Pembayaran) yang ditampilkan
  * di halaman invoice/tagih. Hanya yang `is_active` yang ikut.
  */
-async function listActivePaymentMethods(userId: string) {
+async function listActivePaymentMethods(brandId: string) {
   return (
     db
       .select({
@@ -50,7 +50,7 @@ async function listActivePaymentMethods(userId: string) {
       .from(paymentMethods)
       .where(
         and(
-          eq(paymentMethods.userId, userId),
+          eq(paymentMethods.brandId, brandId),
           eq(paymentMethods.isActive, true),
         ),
       )
@@ -442,7 +442,10 @@ export const getPublicOrderInvoice = createServerFn({ method: 'GET' })
     // order ini sendiri — bukan data pelanggan lain — senada dengan nama
     // pelanggan yang memang sudah tampil di invoice publik.
     const savedCustomers = await db.query.customers.findMany({
-      where: and(eq(customers.userId, owner.id), isNull(customers.deletedAt)),
+      where: and(
+        eq(customers.brandId, brandIdOf(owner)),
+        isNull(customers.deletedAt),
+      ),
     })
     const matchedCustomer = findCustomerForOrder(
       savedCustomers,
@@ -482,7 +485,7 @@ export const getPublicOrderInvoice = createServerFn({ method: 'GET' })
         avatarUpdatedAt: owner.avatarUpdatedAt?.toISOString() ?? null,
       },
       // Cuma metode pembayaran yang aktif — ini yang ditampilkan ke pelanggan.
-      paymentMethods: await listActivePaymentMethods(owner.id),
+      paymentMethods: await listActivePaymentMethods(brandIdOf(owner)),
     }
   })
 
@@ -510,7 +513,10 @@ export const getOrderInvoice = createServerFn({ method: 'GET' })
     // di AddOrderSheet) ke daftar Customer milik user ini. Aturannya dipakai
     // bareng dengan link tagihan publik, lihat `customer-matching.ts`.
     const savedCustomers = await db.query.customers.findMany({
-      where: and(eq(customers.userId, user.id), isNull(customers.deletedAt)),
+      where: and(
+        eq(customers.brandId, brandIdOf(user)),
+        isNull(customers.deletedAt),
+      ),
     })
     const matchedCustomer = findCustomerForOrder(
       savedCustomers,
@@ -550,6 +556,6 @@ export const getOrderInvoice = createServerFn({ method: 'GET' })
         waMessageTemplate: user.waMessageTemplate,
       },
       // Cuma metode pembayaran yang aktif — ini yang ditampilkan ke pelanggan.
-      paymentMethods: await listActivePaymentMethods(user.id),
+      paymentMethods: await listActivePaymentMethods(brandIdOf(user)),
     }
   })

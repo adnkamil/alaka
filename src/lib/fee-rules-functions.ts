@@ -3,6 +3,7 @@ import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '../db'
 import { feeRules, feeTiers } from '../db/schema'
+import { brandIdOf } from './brand'
 import { getSessionUser } from './auth'
 import { validateFeeTiers } from './fee-tier-validation'
 
@@ -27,7 +28,7 @@ export const listFeeRules = createServerFn({ method: 'GET' }).handler(
   async () => {
     const user = await requireUser()
     return db.query.feeRules.findMany({
-      where: eq(feeRules.userId, user.id),
+      where: eq(feeRules.brandId, brandIdOf(user)),
       with: { tiers: true },
       orderBy: (table, { desc }) => desc(table.createdAt),
     })
@@ -39,7 +40,10 @@ export const getFeeRule = createServerFn({ method: 'GET' })
   .handler(async ({ data }) => {
     const user = await requireUser()
     const rule = await db.query.feeRules.findFirst({
-      where: and(eq(feeRules.id, data.id), eq(feeRules.userId, user.id)),
+      where: and(
+        eq(feeRules.id, data.id),
+        eq(feeRules.brandId, brandIdOf(user)),
+      ),
       with: { tiers: true },
     })
     if (!rule) throw new Error('Aturan fee tidak ditemukan')
@@ -84,7 +88,10 @@ export const updateFeeRule = createServerFn({ method: 'POST' })
     }
 
     const existing = await db.query.feeRules.findFirst({
-      where: and(eq(feeRules.id, data.id), eq(feeRules.userId, user.id)),
+      where: and(
+        eq(feeRules.id, data.id),
+        eq(feeRules.brandId, brandIdOf(user)),
+      ),
     })
     if (!existing) throw new Error('Aturan fee tidak ditemukan')
 
@@ -110,5 +117,7 @@ export const deleteFeeRule = createServerFn({ method: 'POST' })
     const user = await requireUser()
     await db
       .delete(feeRules)
-      .where(and(eq(feeRules.id, data.id), eq(feeRules.userId, user.id)))
+      .where(
+        and(eq(feeRules.id, data.id), eq(feeRules.brandId, brandIdOf(user))),
+      )
   })

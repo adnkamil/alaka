@@ -3,6 +3,7 @@ import { and, asc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '../db'
 import { paymentMethods } from '../db/schema'
+import { brandIdOf } from './brand'
 import { getSessionUser } from './auth'
 import { requireUserFeature } from './entitlements'
 import { requireVerifiedEmail } from './email-verified'
@@ -69,7 +70,7 @@ export const listPaymentMethods = createServerFn({ method: 'GET' }).handler(
       db
         .select()
         .from(paymentMethods)
-        .where(eq(paymentMethods.userId, user.id))
+        .where(eq(paymentMethods.brandId, brandIdOf(user)))
         // id dipakai sebagai tiebreaker: `created_at` bisa sama persis (Postgres
         // pakai waktu mulai transaksi), biar urutan tampil tidak berubah-ubah.
         .orderBy(asc(paymentMethods.createdAt), asc(paymentMethods.id))
@@ -108,7 +109,7 @@ export const updatePaymentMethod = createServerFn({ method: 'POST' })
     const existing = await db.query.paymentMethods.findFirst({
       where: and(
         eq(paymentMethods.id, data.id),
-        eq(paymentMethods.userId, user.id),
+        eq(paymentMethods.brandId, brandIdOf(user)),
       ),
     })
     if (!existing) throw new Error('Metode pembayaran tidak ditemukan')
@@ -136,7 +137,10 @@ export const setPaymentMethodActive = createServerFn({ method: 'POST' })
       .update(paymentMethods)
       .set({ isActive: data.isActive, updatedAt: new Date() })
       .where(
-        and(eq(paymentMethods.id, data.id), eq(paymentMethods.userId, user.id)),
+        and(
+          eq(paymentMethods.id, data.id),
+          eq(paymentMethods.brandId, brandIdOf(user)),
+        ),
       )
   })
 
@@ -147,6 +151,9 @@ export const deletePaymentMethod = createServerFn({ method: 'POST' })
     await db
       .delete(paymentMethods)
       .where(
-        and(eq(paymentMethods.id, data.id), eq(paymentMethods.userId, user.id)),
+        and(
+          eq(paymentMethods.id, data.id),
+          eq(paymentMethods.brandId, brandIdOf(user)),
+        ),
       )
   })
