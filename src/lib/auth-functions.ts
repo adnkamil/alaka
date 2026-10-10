@@ -161,7 +161,9 @@ export const fetchCurrentUser = createServerFn({ method: 'GET' }).handler(
       name: user.name,
       email: user.email,
       brandName: user.brandName,
-      // Cuma penanda + cache-buster; fotonya diambil lewat `/api/avatar/:id`.
+      // Id brand = key foto; fotonya diambil lewat `/api/avatar/:brandId`.
+      brandId: user.brandId,
+      // Cuma penanda + cache-buster.
       avatarUpdatedAt: user.avatarUpdatedAt?.toISOString() ?? null,
       waMessageTemplate: user.waMessageTemplate,
       // Dipakai di halaman Profil: akun Google-only belum punya kata sandi,

@@ -12,10 +12,11 @@ const user = {
   avatarUpdatedAt: new Date('2026-02-01T00:00:00Z'),
 }
 
-test('brand menimpa nama, template, dan trial; kolom lain tetap', () => {
+test('brand menimpa nama, template, foto, dan trial; kolom lain tetap', () => {
   const brand = {
     name: 'Nama Brand',
     waMessageTemplate: 'template brand',
+    avatarUpdatedAt: new Date('2026-04-01T00:00:00Z'),
     trialStartedAt: new Date('2026-03-01T00:00:00Z'),
     trialEndsAt: new Date('2026-03-15T00:00:00Z'),
   }
@@ -26,7 +27,7 @@ test('brand menimpa nama, template, dan trial; kolom lain tetap', () => {
   assert.equal(result.trialEndsAt, brand.trialEndsAt)
   assert.equal(result.id, 'u1')
   assert.equal(result.name, 'Nama User')
-  assert.equal(result.avatarUpdatedAt, user.avatarUpdatedAt)
+  assert.equal(result.avatarUpdatedAt, brand.avatarUpdatedAt)
   // objek asli tidak dimutasi
   assert.equal(user.brandName, 'Nama Lama')
 })
@@ -35,11 +36,14 @@ test('brand menang walau namanya sengaja kosong', () => {
   const result = applyBrandIdentity(user, {
     name: null,
     waMessageTemplate: null,
+    avatarUpdatedAt: null,
     trialStartedAt: user.trialStartedAt,
     trialEndsAt: user.trialEndsAt,
   })
   assert.equal(result.brandName, null)
   assert.equal(result.waMessageTemplate, null)
+  // Brand tanpa foto menang atas foto lama di kolom user (foto diunggah ulang).
+  assert.equal(result.avatarUpdatedAt, null)
 })
 
 test('tanpa brand (belum di-backfill) user dikembalikan apa adanya', () => {

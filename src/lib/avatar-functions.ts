@@ -2,8 +2,9 @@ import { createServerFn } from '@tanstack/react-start'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '../db'
-import { users } from '../db/schema'
+import { brands } from '../db/schema'
 import { getSessionUser } from './auth'
+import { brandIdOf } from './brand'
 import { requireVerifiedEmail } from './email-verified'
 import {
   AVATAR_MAX_DATA_URL_LENGTH,
@@ -29,13 +30,16 @@ export const uploadAvatar = createServerFn({ method: 'POST' })
 
     // Simpan file dulu, baru tandai di DB. Kalau update DB gagal, yang tersisa
     // cuma file yang akan ditimpa pada upload berikutnya.
-    await putAvatar(current.id, bytes, contentType)
+    // Foto adalah milik BRAND: key di Blobs = brandId, penandanya di `brands`.
+    // Kolom lama `users.avatar_updated_at` tidak ditulis lagi.
+    const brandId = brandIdOf(current)
+    await putAvatar(brandId, bytes, contentType)
 
     const avatarUpdatedAt = new Date()
     await db
-      .update(users)
+      .update(brands)
       .set({ avatarUpdatedAt, updatedAt: avatarUpdatedAt })
-      .where(eq(users.id, current.id))
+      .where(eq(brands.id, brandId))
 
     return { avatarUpdatedAt: avatarUpdatedAt.toISOString() }
   })
@@ -48,13 +52,14 @@ export const removeAvatar = createServerFn({ method: 'POST' }).handler(
     // Tandai di DB dulu supaya UI langsung kembali ke inisial; file di storage
     // dihapus sesudahnya (kalau gagal, file yatim tidak terlihat siapa pun dan
     // ditimpa upload berikutnya).
+    const brandId = brandIdOf(current)
     await db
-      .update(users)
+      .update(brands)
       .set({ avatarUpdatedAt: null, updatedAt: new Date() })
-      .where(eq(users.id, current.id))
+      .where(eq(brands.id, brandId))
 
     try {
-      await deleteAvatar(current.id)
+      await deleteAvatar(brandId)
     } catch (err) {
       console.error('Gagal menghapus file avatar dari storage:', err)
     }

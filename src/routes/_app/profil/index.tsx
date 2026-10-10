@@ -270,7 +270,7 @@ function ProfilPage() {
         aria-label="Edit profil"
       >
         <UserAvatar
-          userId={user?.id}
+          brandId={user?.brandId ?? undefined}
           name={user?.name}
           avatarUpdatedAt={user?.avatarUpdatedAt}
           className="h-14 w-14 text-xl"
@@ -283,12 +283,12 @@ function ProfilPage() {
         </div>
         <ChevronRight size={18} style={{ color: 'var(--app-text-mute)' }} />
       </button>
-      
-      {user && !user.emailVerified && 
+
+      {user && !user.emailVerified && (
         <section className="mt-6 w-full">
           <VerifyEmailBanner email={user.email} />
         </section>
-      }
+      )}
 
       <section className="mb-6 mt-6">
         <h2
@@ -631,7 +631,7 @@ function ProfilPage() {
             brandName: user?.brandName ?? '',
           }}
           avatar={{
-            userId: user?.id,
+            brandId: user?.brandId ?? undefined,
             avatarUpdatedAt: user?.avatarUpdatedAt,
           }}
           email={

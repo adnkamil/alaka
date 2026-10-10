@@ -481,10 +481,10 @@ export const getPublicOrderInvoice = createServerFn({ method: 'GET' })
         qty: item.qty,
       })),
       user: {
-        // `id` + `avatarUpdatedAt` dipakai buat URL foto brand
-        // (`/api/avatar/:id?v=`). Id-nya UUID acak dan memang harus ada di URL
-        // gambar publik itu; bukan kredensial (sesi pakai token terpisah).
-        id: owner.id,
+        // `brandId` + `avatarUpdatedAt` dipakai buat URL foto brand
+        // (`/api/avatar/:brandId?v=`). Id-nya UUID acak dan memang harus ada di
+        // URL gambar publik itu; bukan kredensial (sesi pakai token terpisah).
+        brandId: brandIdOf(owner),
         name: owner.name,
         brandName: owner.brandName,
         avatarUpdatedAt: owner.avatarUpdatedAt?.toISOString() ?? null,
@@ -554,7 +554,7 @@ export const getOrderInvoice = createServerFn({ method: 'GET' })
         qty: item.qty,
       })),
       user: {
-        id: user.id,
+        brandId: brandIdOf(user),
         name: user.name,
         brandName: user.brandName,
         avatarUpdatedAt: user.avatarUpdatedAt?.toISOString() ?? null,

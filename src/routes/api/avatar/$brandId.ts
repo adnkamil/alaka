@@ -5,19 +5,19 @@ const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /**
- * Menyajikan foto brand milik satu user. Sengaja tanpa login: halamannya
- * cuma gambar logo, dan id user berupa UUID acak. Browser menyimpan cache
+ * Menyajikan foto satu brand. Sengaja tanpa login: halamannya cuma gambar
+ * logo, dan id brand berupa UUID acak. Browser menyimpan cache
  * lama karena URL-nya membawa `?v=<avatarUpdatedAt>` — ganti foto = URL baru.
  */
-export const Route = createFileRoute('/api/avatar/$userId')({
+export const Route = createFileRoute('/api/avatar/$brandId')({
   server: {
     handlers: {
       GET: async ({ request, params }) => {
-        if (!UUID_PATTERN.test(params.userId)) {
+        if (!UUID_PATTERN.test(params.brandId)) {
           return new Response('Not found', { status: 404 })
         }
 
-        const avatar = await getAvatar(params.userId)
+        const avatar = await getAvatar(params.brandId)
         if (!avatar) {
           return new Response('Not found', {
             status: 404,
