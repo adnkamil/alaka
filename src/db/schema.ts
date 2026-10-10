@@ -46,6 +46,48 @@ export const subscriptionStatusEnum = pgEnum('subscription_status', [
   'rejected',
 ])
 
+// BRANDS
+// Satu brand = satu "toko" jastip: pemilik semua data bisnis (event, customer,
+// aturan fee, metode bayar, langganan) dan identitas brand (nama, foto, template
+// pesan, masa trial). Tabel `users` nantinya cuma berisi akun orangnya.
+//
+// MASIH TAHAP "EXPAND": tabel ini baru ditambahkan dan belum dipakai kode. Kolom
+// brand di `users` (brand_name, avatar_updated_at, wa_message_template,
+// trial_*) tetap jadi sumber kebenaran sampai tahap backfill + switch selesai.
+//
+// `brands.id` adalah UUID milik brand sendiri, TIDAK sama dengan id user mana
+// pun. Kode harus selalu memakai `brand.id` / `session.brandId` untuk apa pun
+// yang milik brand (termasuk key foto di Netlify Blobs), jangan `user.id`.
+export const brands = pgTable(
+  'brands',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    name: varchar(),
+    /** Penanda foto brand (null = belum ada) + cache-buster `?v=`; file di Blobs. */
+    avatarUpdatedAt: timestamp('avatar_updated_at', { withTimezone: true }),
+    waMessageTemplate: text('wa_message_template'),
+    /** Awal & akhir masa trial. Default-nya sama persis dengan di `users`. */
+    trialStartedAt: timestamp('trial_started_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    trialEndsAt: timestamp('trial_ends_at', { withTimezone: true })
+      .notNull()
+      .default(sql`now() + interval '${sql.raw(String(TRIAL_DAYS))} days'`),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    check(
+      'brands_trial_period_order',
+      sql`${table.trialEndsAt} >= ${table.trialStartedAt}`,
+    ),
+  ],
+)
+
 // USERS & AUTH
 // Trial 30 hari mulai dari saat user dibuat. Nilai trial diisi DEFAULT kolom di
 // database (bukan diset manual di kode) supaya SEMUA jalur pembuatan user —
@@ -83,6 +125,13 @@ export const users = pgTable(
      * bukan lewat UI, supaya nggak ada jalur self-service jadi admin.
      */
     isAdmin: boolean('is_admin').notNull().default(false),
+    /**
+     * Brand tempat akun ini bergabung. Nullable SEMENTARA (tahap expand):
+     * diisi oleh backfill, lalu dijadikan NOT NULL di tahap constrain.
+     */
+    brandId: uuid('brand_id').references(() => brands.id, {
+      onDelete: 'restrict',
+    }),
     /** Awal masa trial (= waktu user dibuat). */
     trialStartedAt: timestamp('trial_started_at', { withTimezone: true })
       .notNull()
@@ -158,6 +207,10 @@ export const feeRules = pgTable('fee_rules', {
   userId: uuid('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
+  /** Nullable SEMENTARA (tahap expand) — diisi backfill, lalu NOT NULL. */
+  brandId: uuid('brand_id').references(() => brands.id, {
+    onDelete: 'cascade',
+  }),
   name: varchar().notNull(),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
@@ -187,6 +240,10 @@ export const customers = pgTable('customers', {
   userId: uuid('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
+  /** Nullable SEMENTARA (tahap expand) — diisi backfill, lalu NOT NULL. */
+  brandId: uuid('brand_id').references(() => brands.id, {
+    onDelete: 'cascade',
+  }),
   name: varchar().notNull(),
   phone: varchar(),
   /** Alamat customer (opsional), diisi manual di Profil → Customer. */
@@ -209,6 +266,10 @@ export const paymentMethods = pgTable('payment_methods', {
   userId: uuid('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
+  /** Nullable SEMENTARA (tahap expand) — diisi backfill, lalu NOT NULL. */
+  brandId: uuid('brand_id').references(() => brands.id, {
+    onDelete: 'cascade',
+  }),
   type: paymentMethodTypeEnum('type').notNull(),
   provider: varchar().notNull(), // "BCA", "GoPay", "QRIS"
   accountNumber: varchar('account_number'), // no. rekening / no. HP wallet
@@ -235,6 +296,10 @@ export const subscriptions = pgTable(
     userId: uuid('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
+    /** Nullable SEMENTARA (tahap expand) — diisi backfill, lalu NOT NULL. */
+    brandId: uuid('brand_id').references(() => brands.id, {
+      onDelete: 'cascade',
+    }),
     /** Kode paket — lihat PRO_PLAN_CODE. */
     planCode: varchar('plan_code').notNull().default(PRO_PLAN_CODE),
     status: subscriptionStatusEnum().notNull().default('pending'),
@@ -301,6 +366,10 @@ export const events = pgTable('events', {
   userId: uuid('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
+  /** Nullable SEMENTARA (tahap expand) — diisi backfill, lalu NOT NULL. */
+  brandId: uuid('brand_id').references(() => brands.id, {
+    onDelete: 'cascade',
+  }),
   feeRuleId: uuid('fee_rule_id').references(() => feeRules.id, {
     onDelete: 'set null',
   }),
@@ -383,6 +452,10 @@ export const activityLogs = pgTable('activity_logs', {
   userId: uuid('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
+  /** Nullable SEMENTARA (tahap expand) — diisi backfill, lalu NOT NULL. */
+  brandId: uuid('brand_id').references(() => brands.id, {
+    onDelete: 'cascade',
+  }),
   action: varchar().notNull(),
   entityType: varchar('entity_type').notNull(),
   entityId: uuid('entity_id').notNull(),

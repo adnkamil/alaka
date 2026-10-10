@@ -78,6 +78,13 @@
       "when": 1791531944632,
       "tag": "0010_add_payment_proof_stored",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791540677686,
+      "tag": "0011_add_brands_expand",
+      "breakpoints": true
     }
   ]
 }
