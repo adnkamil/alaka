@@ -2,6 +2,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { and, eq, inArray, sql } from 'drizzle-orm'
 import { db } from '../db'
 import { events, items, orders } from '../db/schema'
+import { brandIdOf } from './brand'
 import { getSessionUser } from './auth'
 
 async function requireUser() {
@@ -30,7 +31,7 @@ export const getFinanceSummary = createServerFn({ method: 'GET' }).handler(
   async () => {
     const user = await requireUser()
 
-    // Kelima query di bawah saling independen (semuanya cuma butuh user.id),
+    // Kelima query di bawah saling independen (semuanya cuma butuh id brand),
     // jadi dijalankan paralel — bukan berurutan satu per satu.
     const totalsQuery = db
       .select({
@@ -40,7 +41,7 @@ export const getFinanceSummary = createServerFn({ method: 'GET' }).handler(
       .from(events)
       .leftJoin(orders, eq(orders.eventId, events.id))
       .leftJoin(items, eq(items.orderId, orders.id))
-      .where(eq(events.userId, user.id))
+      .where(eq(events.brandId, brandIdOf(user)))
 
     // Uang masuk = nominal yang sudah dibayar (DP ikut kehitung). Dihitung
     // langsung dari `orders.paid_amount`, TANPA join items — kalau lewat join
@@ -49,7 +50,7 @@ export const getFinanceSummary = createServerFn({ method: 'GET' }).handler(
       .select({ totalIn: sql<string>`coalesce(sum(${orders.paidAmount}), 0)` })
       .from(events)
       .innerJoin(orders, eq(orders.eventId, events.id))
-      .where(eq(events.userId, user.id))
+      .where(eq(events.brandId, brandIdOf(user)))
 
     // Monthly revenue chart counts orders that are paid or shipped.
     const monthlyQuery = db
@@ -62,7 +63,7 @@ export const getFinanceSummary = createServerFn({ method: 'GET' }).handler(
       .innerJoin(items, eq(items.orderId, orders.id))
       .where(
         and(
-          eq(events.userId, user.id),
+          eq(events.brandId, brandIdOf(user)),
           inArray(orders.paymentStatus, ['paid', 'shipped']),
         ),
       )
@@ -77,7 +78,7 @@ export const getFinanceSummary = createServerFn({ method: 'GET' }).handler(
       })
       .from(events)
       .innerJoin(orders, eq(orders.eventId, events.id))
-      .where(eq(events.userId, user.id))
+      .where(eq(events.brandId, brandIdOf(user)))
       .groupBy(events.id)
 
     const perEventQuery = db
@@ -91,7 +92,7 @@ export const getFinanceSummary = createServerFn({ method: 'GET' }).handler(
       .from(events)
       .leftJoin(orders, eq(orders.eventId, events.id))
       .leftJoin(items, eq(items.orderId, orders.id))
-      .where(eq(events.userId, user.id))
+      .where(eq(events.brandId, brandIdOf(user)))
       .groupBy(events.id)
 
     const [[totals], [paidTotals], monthly, paidPerEventRows, perEvent] =

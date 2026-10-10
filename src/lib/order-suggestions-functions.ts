@@ -3,6 +3,7 @@ import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '../db'
 import { events, items, orders } from '../db/schema'
+import { brandIdOf } from './brand'
 import { getSessionUser } from './auth'
 import { getUserEntitlements } from './entitlements'
 import { canUseFeature } from './subscription'
@@ -46,7 +47,9 @@ export const getOrderSuggestions = createServerFn({ method: 'GET' })
       .from(items)
       .innerJoin(orders, eq(items.orderId, orders.id))
       .innerJoin(events, eq(orders.eventId, events.id))
-      .where(and(eq(events.id, data.eventId), eq(events.userId, user.id)))
+      .where(
+        and(eq(events.id, data.eventId), eq(events.brandId, brandIdOf(user))),
+      )
 
     const itemNames = Array.from(
       new Set(rows.map((row) => row.name.trim()).filter(Boolean)),

@@ -3,6 +3,7 @@ import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '../db'
 import { events, items, orders } from '../db/schema'
+import { brandIdOf } from './brand'
 import { getSessionUser } from './auth'
 import { findMergeTarget, mergeItemLines, mergePaidAmount } from './order-merge'
 import { MAX_IMPORT_ORDERS } from './order-import'
@@ -57,7 +58,10 @@ export const importOrders = createServerFn({ method: 'POST' })
     if (!user) throw new Error('Belum login')
 
     const event = await db.query.events.findFirst({
-      where: and(eq(events.id, data.eventId), eq(events.userId, user.id)),
+      where: and(
+        eq(events.id, data.eventId),
+        eq(events.brandId, brandIdOf(user)),
+      ),
     })
     if (!event) throw new Error('Event tidak ditemukan')
 
