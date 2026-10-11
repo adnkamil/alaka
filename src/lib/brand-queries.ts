@@ -1,49 +1,52 @@
 import { asc, eq } from 'drizzle-orm'
 import { db } from '../db'
 import { brands, users } from '../db/schema'
+import { applyBrandIdentity } from './brand'
+import type { BrandIdentityFields } from './brand'
 
 /**
- * Helper "dual-write" untuk migrasi ke tabel `brands` (tahap 3).
+ * Query server-only untuk identitas & keanggotaan brand.
  *
- * Selama masa transisi, data brand ditulis ke DUA tempat: kolom lama di `users`
- * (masih jadi sumber baca) dan tabel `brands` (calon sumber baca). Semua jalur
- * yang menulis data brand wajib lewat helper di sini supaya keduanya selalu
- * sama. Kalau tahap "switch baca" sudah selesai, tulisan ke kolom lama dihapus
- * dari sini.
+ * Nama brand, template pesan, foto, dan masa trial ditulis HANYA ke tabel
+ * `brands`. Kolom lama dengan arti yang sama di `users` sudah tidak ditulis
+ * maupun dibaca (akan di-drop di migrasi berikutnya).
  *
  * File ini server-only (menyentuh `db`), jadi sengaja `*-queries.ts` dan bukan
  * `*-functions.ts` — lihat `client-bundle-safety.test.ts`.
  */
 
-type NewUserValues = Omit<typeof users.$inferInsert, 'brandId'>
+type NewUserValues = Omit<
+  typeof users.$inferInsert,
+  'brandId' | keyof BrandIdentityFields
+> & { brandName?: string | null }
 
 /**
  * Satu-satunya cara membuat user baru yang mendaftar sendiri (tanpa undangan):
  * brand-nya dibuat di transaksi yang sama dan jadi milik user itu. Brand dibuat
  * dulu karena `users.brand_id` merujuk ke `brands.id`.
  *
- * Masa trial di kedua tabel otomatis sama karena `now()` di Postgres bernilai
- * sama sepanjang satu transaksi.
+ * `brandName` disimpan di brand. User yang dikembalikan sudah ditempeli
+ * identitas brand-nya (`user.brandName`, trial, dst.).
  */
 export async function createUserWithBrand(values: NewUserValues) {
+  const { brandName, ...userValues } = values
   return db.transaction(async (tx) => {
     const [brand] = await tx
       .insert(brands)
-      .values({ name: values.brandName ?? null })
-      .returning({ id: brands.id })
+      .values({ name: brandName ?? null })
+      .returning()
 
     const [user] = await tx
       .insert(users)
-      .values({ ...values, brandId: brand.id })
+      .values({ ...userValues, brandId: brand.id })
       .returning()
 
-    return user
+    return applyBrandIdentity(user, brand)
   })
 }
 
 /** Baris brand untuk user yang dimuat sendiri (bukan lewat sesi). */
-export async function findBrand(brandId: string | null) {
-  if (!brandId) return null
+export async function findBrand(brandId: string) {
   const brand = await db.query.brands.findFirst({
     where: eq(brands.id, brandId),
   })
@@ -65,46 +68,34 @@ export async function findBrandOwner(brandId: string) {
   return owner ?? null
 }
 
-type BrandOwner = { id: string; brandId: string | null }
+type BrandMember = { id: string; brandId: string }
 
-/** Ubah nama user + nama brand sekaligus (halaman Profil). */
+/** Ubah nama user (di `users`) dan nama brand (di `brands`) — halaman Profil. */
 export async function updateUserProfile(
-  user: BrandOwner,
+  user: BrandMember,
   input: { name: string; brandName: string | null },
 ) {
   const now = new Date()
   await db.transaction(async (tx) => {
     await tx
       .update(users)
-      .set({ name: input.name, brandName: input.brandName, updatedAt: now })
+      .set({ name: input.name, updatedAt: now })
       .where(eq(users.id, user.id))
 
-    if (user.brandId) {
-      await tx
-        .update(brands)
-        .set({ name: input.brandName, updatedAt: now })
-        .where(eq(brands.id, user.brandId))
-    }
+    await tx
+      .update(brands)
+      .set({ name: input.brandName, updatedAt: now })
+      .where(eq(brands.id, user.brandId))
   })
 }
 
-/** Ubah template pesan WhatsApp di kolom lama + brand sekaligus. */
-export async function updateUserMessageTemplate(
-  user: BrandOwner,
+/** Ubah template pesan WhatsApp milik brand. */
+export async function updateBrandMessageTemplate(
+  user: { brandId: string },
   template: string,
 ) {
-  const now = new Date()
-  await db.transaction(async (tx) => {
-    await tx
-      .update(users)
-      .set({ waMessageTemplate: template, updatedAt: now })
-      .where(eq(users.id, user.id))
-
-    if (user.brandId) {
-      await tx
-        .update(brands)
-        .set({ waMessageTemplate: template, updatedAt: now })
-        .where(eq(brands.id, user.brandId))
-    }
-  })
+  await db
+    .update(brands)
+    .set({ waMessageTemplate: template, updatedAt: new Date() })
+    .where(eq(brands.id, user.brandId))
 }

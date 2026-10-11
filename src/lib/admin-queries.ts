@@ -35,14 +35,11 @@ export async function listAdminSubscriptions(
       subscription: subscriptions,
       userName: users.name,
       userEmail: users.email,
-      // Nama brand dibaca dari brands; user yang belum punya brand pakai kolom lama.
-      userBrandName: sql<
-        string | null
-      >`case when ${brands.id} is null then ${users.brandName} else ${brands.name} end`,
+      userBrandName: brands.name,
     })
     .from(subscriptions)
     .innerJoin(users, eq(subscriptions.userId, users.id))
-    .leftJoin(brands, eq(users.brandId, brands.id))
+    .innerJoin(brands, eq(users.brandId, brands.id))
     .where(
       and(
         status ? eq(subscriptions.status, status) : undefined,
@@ -148,11 +145,11 @@ export async function getAdminMetrics(
     db
       .select({ value: sql<string>`count(*)` })
       .from(users)
-      .leftJoin(brands, eq(users.brandId, brands.id))
+      .innerJoin(brands, eq(users.brandId, brands.id))
       .where(
         and(
           eq(users.isAdmin, false),
-          sql`coalesce(${brands.trialEndsAt}, ${users.trialEndsAt}) > ${now}`,
+          sql`${brands.trialEndsAt} > ${now}`,
           sql`not exists (
             select 1 from ${subscriptions}
             where ${subscriptions.userId} = ${users.id}
@@ -228,7 +225,7 @@ export async function listAdminUsers(
       db
         .select({ user: users, brand: brands })
         .from(users)
-        .leftJoin(brands, eq(users.brandId, brands.id))
+        .innerJoin(brands, eq(users.brandId, brands.id))
         .where(eq(users.isAdmin, false))
         .orderBy(desc(users.createdAt), desc(users.id)),
       // Cuma baris yang masa berlakunya belum lewat; `resolveEntitlement()`

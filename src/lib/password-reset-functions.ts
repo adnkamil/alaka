@@ -6,7 +6,6 @@ import { db } from '../db'
 import { passwordResetTokens, users } from '../db/schema'
 import { resolveAppUrl } from './app-url'
 import { createSession, hashPassword, revokeAllSessions } from './auth'
-import { applyBrandIdentity } from './brand'
 import { findBrand } from './brand-queries'
 import { sendMail } from './mailer'
 import { buildPasswordResetMail } from './password-reset-mail'
@@ -106,11 +105,7 @@ export const requestPasswordReset = createServerFn({ method: 'POST' })
 
     const mail = buildPasswordResetMail({
       name: user.name,
-      brand:
-        applyBrandIdentity(
-          user,
-          await findBrand(user.brandId),
-        ).brandName?.trim() || 'ALAKA',
+      brand: (await findBrand(user.brandId))?.name?.trim() || 'ALAKA',
       resetUrl: `${resolveAppUrl()}/reset-sandi/${token}`,
       expiresMinutes: TOKEN_TTL_MINUTES,
     })

@@ -71,7 +71,7 @@ async function getSessionUserByToken(token: string | undefined) {
     .select({ user: users, session: sessions, brand: brands })
     .from(sessions)
     .innerJoin(users, eq(sessions.userId, users.id))
-    .leftJoin(brands, eq(users.brandId, brands.id))
+    .innerJoin(brands, eq(users.brandId, brands.id))
     .where(eq(sessions.token, token))
     .limit(1)
 
