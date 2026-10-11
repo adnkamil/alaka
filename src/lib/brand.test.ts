@@ -46,11 +46,6 @@ test('brand menang walau namanya sengaja kosong', () => {
   assert.equal(result.avatarUpdatedAt, null)
 })
 
-test('tanpa brand (belum di-backfill) user dikembalikan apa adanya', () => {
-  assert.equal(applyBrandIdentity(user, null), user)
-  assert.equal(applyBrandIdentity(user, undefined), user)
-})
-
 test('brandIdOf mengembalikan brandId, dan melempar kalau kosong', () => {
   assert.equal(brandIdOf({ brandId: 'b1' }), 'b1')
   assert.throws(() => brandIdOf({ brandId: null }), /belum siap/)

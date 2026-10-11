@@ -4,7 +4,7 @@ import { subscriptions } from '../db/schema'
 import { brandIdOf } from './brand'
 import { stripProofData } from './payment-proof'
 import { resolveEntitlement } from './subscription'
-import type { users } from '../db/schema'
+import type { BrandIdentityFields } from './brand'
 import type { Entitlement, SubscriptionStatus } from './subscription'
 
 /**
@@ -22,9 +22,9 @@ export type SubscriptionRow = typeof subscriptions.$inferSelect
 
 /** Kolom `users` yang dibutuhkan buat hitung status akses. */
 export type TrialFields = Pick<
-  typeof users.$inferSelect,
-  'id' | 'brandId' | 'trialStartedAt' | 'trialEndsAt'
->
+  BrandIdentityFields,
+  'trialStartedAt' | 'trialEndsAt'
+> & { id: string; brandId: string }
 
 /**
  * Baris langganan versi yang aman dikirim ke browser: tanpa isi bukti transfer

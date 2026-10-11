@@ -1,3 +1,4 @@
+import type { WithBrandIdentity } from './brand'
 import { getSessionUser } from './auth'
 import type { users } from '../db/schema'
 
@@ -17,7 +18,7 @@ export class AdminRequiredError extends Error {
   }
 }
 
-export type AdminUser = typeof users.$inferSelect
+export type AdminUser = WithBrandIdentity<typeof users.$inferSelect>
 
 export async function requireAdminUser(): Promise<AdminUser> {
   const user = await getSessionUser()

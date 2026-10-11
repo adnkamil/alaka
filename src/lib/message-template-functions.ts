@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { getSessionUser } from './auth'
-import { updateUserMessageTemplate } from './brand-queries'
+import { updateBrandMessageTemplate } from './brand-queries'
 import { DEFAULT_WA_MESSAGE_TEMPLATE } from './message-template'
 
 async function requireUser() {
@@ -34,5 +34,5 @@ export const updateMessageTemplate = createServerFn({ method: 'POST' })
       throw new Error('Template tidak boleh kosong')
     }
 
-    await updateUserMessageTemplate(user, template)
+    await updateBrandMessageTemplate(user, template)
   })

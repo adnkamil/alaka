@@ -1,13 +1,13 @@
-import type { brands, users } from '../db/schema'
+import type { brands } from '../db/schema'
 
 /**
- * Pembacaan identitas brand (tahap 4a migrasi `brands`).
+ * Identitas brand pada objek user.
  *
- * Nama brand, template pesan, foto, dan masa trial sekarang dibaca dari tabel
- * `brands`. Supaya kode yang sudah memakai `user.brandName` dkk tidak perlu
- * diubah satu per satu, baris user yang dimuat ditimpa dengan nilai dari brand-
- * nya lewat fungsi ini. Kolom lama di `users` masih ditulis (dual-write) dan
- * baru dihapus di tahap "contract".
+ * Nama brand, template pesan, foto, dan masa trial adalah milik BRAND (tabel
+ * `brands`), bukan akun. Supaya kode yang sudah memakai `user.brandName` dkk
+ * tidak perlu diubah satu per satu, baris user yang dimuat ditempeli nilai dari
+ * brand-nya lewat `applyBrandIdentity`. Nama properti lama dipertahankan; yang
+ * berubah hanya sumbernya.
  *
  * File ini murni (tanpa `db`) supaya aman diimpor dari mana saja.
  */
@@ -21,26 +21,30 @@ export type BrandIdentity = Pick<
   | 'trialEndsAt'
 >
 
-type LegacyIdentityColumns = Pick<
-  typeof users.$inferSelect,
-  | 'brandName'
-  | 'waMessageTemplate'
-  | 'avatarUpdatedAt'
-  | 'trialStartedAt'
-  | 'trialEndsAt'
->
+/** Properti identitas brand yang ditempelkan ke user (nama lama dipertahankan). */
+export type BrandIdentityFields = {
+  brandName: string | null
+  waMessageTemplate: string | null
+  avatarUpdatedAt: Date | null
+  trialStartedAt: Date
+  trialEndsAt: Date
+}
 
 /**
- * Timpa kolom identitas lama pada baris user dengan nilai dari brand-nya.
- * Kalau brand tidak ada (user belum di-backfill), user dikembalikan apa adanya
- * supaya tidak ada yang rusak. Kalau brand ada, brand SELALU menang — termasuk
- * saat `name`/`waMessageTemplate`-nya sengaja kosong.
+ * `T` dengan properti identitas brand diganti nilai dari brand. Memakai `Omit`
+ * supaya tipenya tidak bergantung pada kolom lama di `users`.
  */
-export function applyBrandIdentity<T extends LegacyIdentityColumns>(
+export type WithBrandIdentity<T> = Omit<T, keyof BrandIdentityFields> &
+  BrandIdentityFields
+
+/**
+ * Tempelkan identitas brand ke objek user. Brand SELALU menang, termasuk saat
+ * `name`/`waMessageTemplate`/`avatarUpdatedAt`-nya sengaja kosong.
+ */
+export function applyBrandIdentity<T extends object>(
   user: T,
-  brand: BrandIdentity | null | undefined,
-): T {
-  if (!brand) return user
+  brand: BrandIdentity,
+): WithBrandIdentity<T> {
   return {
     ...user,
     brandName: brand.name,
@@ -52,13 +56,13 @@ export function applyBrandIdentity<T extends LegacyIdentityColumns>(
 }
 
 /**
- * Id brand tempat data bisnis user disimpan (tahap 4b: semua query data
- * di-scope pakai `brand_id`, bukan `user_id`).
+ * Id brand tempat data bisnis user disimpan (semua query data di-scope pakai
+ * `brand_id`, bukan `user_id`).
  *
- * Melempar error kalau user belum punya brand, supaya gagalnya KENCANG: filter
- * `brand_id = NULL` tidak cocok ke baris mana pun dan akan terlihat seperti
- * "semua data hilang". Setelah `brand_id` jadi NOT NULL (tahap constrain), kasus
- * ini tidak mungkin lagi.
+ * Sejak `brand_id` NOT NULL, `brandId` selalu terisi; pengecekan ini dipertahankan
+ * sebagai pengaman untuk objek yang tipenya masih `string | null` (mis. data
+ * dari luar), supaya gagalnya kencang: filter `brand_id = NULL` tidak cocok ke
+ * baris mana pun dan akan terlihat seperti "semua data hilang".
  */
 export function brandIdOf(user: { brandId: string | null }): string {
   if (!user.brandId) {

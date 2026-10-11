@@ -1,17 +1,17 @@
-// Atur masa trial user. Dipakai kalau pemilik aplikasi mau MENGECUALIKAN user
-// lama dari aturan "trial mulai saat user dibuat" — mis. memberi trial 30 hari
-// baru mulai hari ini saat fitur langganan dirilis, supaya user lama tidak
-// langsung masuk FREE.
+// Atur masa trial BRAND (kolom `brands.trial_*`; trial adalah milik brand, bukan
+// akun). Dipakai kalau pemilik aplikasi mau MENGECUALIKAN brand lama dari aturan
+// "trial mulai saat brand dibuat" — mis. memberi trial 30 hari baru mulai hari
+// ini, supaya brand lama tidak langsung masuk FREE.
 //
-// Defaultnya (`--from=created`) nilai yang dipasang sama dengan yang dikerjakan
-// migrasi `0001_curious_blade.sql`, jadi jalankan tanpa opsi = aman/no-op.
+// `--email` memilih brand tempat akun itu bergabung (akun pemilik maupun admin).
+// Defaultnya (`--from=created`) trial dihitung dari `brands.created_at`.
 //
 //   pnpm exec tsx scripts/backfill-trial.ts --from=now
-//     -> semua user: trial 30 hari mulai sekarang.
+//     -> semua brand: trial 30 hari mulai sekarang.
 //   pnpm exec tsx scripts/backfill-trial.ts --from=now --days=7
-//     -> semua user: trial 7 hari mulai sekarang.
+//     -> semua brand: trial 7 hari mulai sekarang.
 //   pnpm exec tsx scripts/backfill-trial.ts --email=kamu@email.com --from=now
-//     -> cuma user tertentu.
+//     -> cuma brand tempat akun itu bergabung.
 //   pnpm exec tsx scripts/backfill-trial.ts --email=kamu@email.com --from=now --days=0
 //     -> trial langsung habis (buat ngetes tampilan FREE).
 //   pnpm exec tsx scripts/backfill-trial.ts --dry-run
@@ -50,16 +50,22 @@ async function main() {
   const client = new Client({ connectionString: process.env.DATABASE_URL })
   await client.connect()
 
+  // Pemilik brand = akun pertama yang bergabung (sama dengan `findBrandOwner`).
   const plan = await client.query(
-    `select id, email, created_at, trial_started_at, trial_ends_at
-     from users
-     ${email ? 'where email = $1' : ''}
-     order by created_at`,
+    `select b.id as brand_id, o.email as owner_email, b.created_at,
+            b.trial_started_at, b.trial_ends_at
+     from brands b
+     join lateral (
+       select email from users where brand_id = b.id
+       order by created_at, id limit 1
+     ) o on true
+     ${email ? 'where b.id in (select brand_id from users where email = $1)' : ''}
+     order by b.created_at`,
     email ? [email] : [],
   )
 
   if (plan.rowCount === 0) {
-    console.log('Tidak ada user yang cocok.')
+    console.log('Tidak ada brand yang cocok.')
     await client.end()
     return
   }
@@ -69,7 +75,7 @@ async function main() {
   )
   console.table(
     plan.rows.map((row) => ({
-      email: row.email,
+      pemilik: row.owner_email,
       created_at: row.created_at,
       trial_started_at: row.trial_started_at,
       trial_ends_at: row.trial_ends_at,
@@ -90,42 +96,26 @@ async function main() {
   // `base` cuma boleh 'now()' atau 'created_at' (sudah divalidasi di atas), jadi
   // aman diinterpolasi. Jumlah hari dikirim sebagai parameter.
   const base = from === 'now' ? 'now()' : 'created_at'
-  // Trial user & brand-nya harus selalu sama (dual-write tahap migrasi brands),
-  // jadi dua update ini satu transaksi. Masih 1 user per brand.
-  await client.query('begin')
-  let result
-  try {
-    result = await client.query(
-      `update users
-       set trial_started_at = ${base},
-           trial_ends_at = ${base} + interval '1 day' * $1::int,
-           updated_at = now()
-       ${email ? 'where email = $2' : ''}`,
-      email ? [days, email] : [days],
-    )
-    await client.query(
-      `update brands b
-       set trial_started_at = u.trial_started_at,
-           trial_ends_at = u.trial_ends_at,
-           updated_at = now()
-       from users u
-       where u.brand_id = b.id
-       ${email ? 'and u.email = $1' : ''}`,
-      email ? [email] : [],
-    )
-    await client.query('commit')
-  } catch (error) {
-    await client.query('rollback').catch(() => undefined)
-    throw error
-  }
+  const result = await client.query(
+    `update brands
+     set trial_started_at = ${base},
+         trial_ends_at = ${base} + interval '1 day' * $1::int,
+         updated_at = now()
+     ${email ? 'where id in (select brand_id from users where email = $2)' : ''}`,
+    email ? [days, email] : [days],
+  )
 
-  console.log(`Selesai. ${result.rowCount} baris user di-update.`)
+  console.log(`Selesai. ${result.rowCount} brand di-update.`)
 
   const after = await client.query(
-    `select email, trial_started_at, trial_ends_at
-     from users
-     ${email ? 'where email = $1' : ''}
-     order by created_at`,
+    `select o.email as pemilik, b.trial_started_at, b.trial_ends_at
+     from brands b
+     join lateral (
+       select email from users where brand_id = b.id
+       order by created_at, id limit 1
+     ) o on true
+     ${email ? 'where b.id in (select brand_id from users where email = $1)' : ''}
+     order by b.created_at`,
     email ? [email] : [],
   )
   console.table(after.rows)

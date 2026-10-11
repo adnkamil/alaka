@@ -9,6 +9,12 @@
 // masih memakai key id user, jadi brand tampil tanpa foto sampai tahap
 // "switch baca" dan user mengunggah ulang.
 //
+// CATATAN: sejak `brand_id` NOT NULL (migrasi 0012) tidak ada lagi user/baris
+// tanpa brand, jadi langkah membuat brand dari kolom lama di `users` di bawah
+// tidak akan menemukan apa pun. Bagian itu (satu-satunya yang masih menyebut
+// kolom lama) dipensiunkan bersama migrasi yang men-drop kolom tersebut;
+// `--verify` tetap berguna sebagai pemeriksaan konsistensi.
+//
 // Aman dijalankan berulang (idempotent): yang sudah punya brand/brand_id dilewati.
 // Sekali jalan = satu transaksi; kalau ada cek yang gagal, semuanya di-rollback.
 //
@@ -53,7 +59,7 @@ async function count(client: Client, sql: string) {
   return Number(result.rows[0]?.n ?? 0)
 }
 
-async function runChecks(client: Client, includeDrift: boolean) {
+async function runChecks(client: Client) {
   const checks: { cek: string; bermasalah: number }[] = []
 
   checks.push({
@@ -81,33 +87,6 @@ async function runChecks(client: Client, includeDrift: boolean) {
          where x.brand_id is distinct from u.brand_id`,
       ),
     })
-  }
-
-  // Cek "drift" (hanya --verify): selama dual-write, data brand harus sama
-  // dengan kolom lama di users. Hapus cek ini saat tahap "switch baca" selesai,
-  // karena setelah itu kolom lama di users tidak ditulis lagi.
-  if (includeDrift) {
-    const drift = (cek: string, condition: string) =>
-      count(
-        client,
-        `select count(*) n from users u
-         join brands b on b.id = u.brand_id
-         where ${condition}`,
-      ).then((bermasalah) => checks.push({ cek, bermasalah }))
-
-    await drift(
-      'drift: brands.name beda dengan users.brand_name',
-      'b.name is distinct from u.brand_name',
-    )
-    await drift(
-      'drift: brands.wa_message_template beda dengan users',
-      'b.wa_message_template is distinct from u.wa_message_template',
-    )
-    await drift(
-      'drift: masa trial brands beda dengan users',
-      `(b.trial_started_at is distinct from u.trial_started_at
-        or b.trial_ends_at is distinct from u.trial_ends_at)`,
-    )
   }
 
   checks.push({
@@ -203,7 +182,7 @@ async function main() {
       }
     }
 
-    const checks = await runChecks(client, verifyOnly)
+    const checks = await runChecks(client)
     console.log('\nHasil cek (kolom "bermasalah" harus 0 semua):')
     console.table(
       checks.map((c) => ({

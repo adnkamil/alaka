@@ -110,3 +110,63 @@ test('query langganan di lapisan entitlement tidak memfilter lewat userId', () =
   )
   assert.deepEqual(offenders, [])
 })
+
+/**
+ * Langkah A migrasi `brands`: nama brand, template pesan, foto, dan masa trial
+ * milik BRAND. Kolom lama dengan arti yang sama di tabel `users` tidak boleh
+ * ditulis atau dibaca lagi dari kode aplikasi (kolomnya akan di-drop).
+ *
+ * `user.brandName` dkk sebagai nama properti boleh — nilainya ditempel dari
+ * brand lewat `applyBrandIdentity`. Yang dilarang hanya menyentuh KOLOM tabel
+ * `users`.
+ */
+const LEGACY_USER_COLUMNS = [
+  'brandName',
+  'waMessageTemplate',
+  'avatarUpdatedAt',
+  'trialStartedAt',
+  'trialEndsAt',
+]
+
+test('kolom identitas brand lama di tabel users tidak dipakai lagi', () => {
+  const offenders: Array<string> = []
+  const reference = new RegExp(
+    `\\busers\\.(${LEGACY_USER_COLUMNS.join('|')})\\b`,
+  )
+  const keyInWrite = new RegExp(`\\b(${LEGACY_USER_COLUMNS.join('|')})\\b`)
+
+  for (const file of listFiles(SRC_DIR)) {
+    if (file.endsWith(join('db', 'schema.ts'))) continue
+    const text = readFileSync(file, 'utf8')
+
+    text.split('\n').forEach((line, index) => {
+      if (reference.test(line)) {
+        offenders.push(
+          `${file.slice(SRC_DIR.length)}:${index + 1} -> users.<kolom>`,
+        )
+      }
+    })
+
+    for (const marker of ['.update(users)', '.insert(users)']) {
+      let from = 0
+      for (;;) {
+        const at = text.indexOf(marker, from)
+        if (at === -1) break
+        from = at + marker.length
+        const rest = text.slice(from)
+        const end = rest.search(/\.where\(|\.returning\(|\n\s*\n/)
+        const block = end === -1 ? rest : rest.slice(0, end)
+        if (keyInWrite.test(block)) {
+          const line = text.slice(0, at).split('\n').length
+          offenders.push(`${file.slice(SRC_DIR.length)}:${line} -> ${marker}`)
+        }
+      }
+    }
+  }
+
+  assert.deepEqual(
+    offenders,
+    [],
+    'Tulis/baca identitas brand lewat tabel `brands` (lihat lib/brand-queries.ts).',
+  )
+})
