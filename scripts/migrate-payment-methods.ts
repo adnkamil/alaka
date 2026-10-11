@@ -34,8 +34,8 @@ async function main() {
   )
 
   const bank = await client.query(
-    `insert into payment_methods (user_id, type, provider, account_number, is_active)
-     select u.id, 'bank', coalesce(nullif(u.bank_name, ''), 'Bank'), u.bank_account_number, true
+    `insert into payment_methods (user_id, brand_id, type, provider, account_number, is_active)
+     select u.id, u.brand_id, 'bank', coalesce(nullif(u.bank_name, ''), 'Bank'), u.bank_account_number, true
      from users u
      where (
          coalesce(u.bank_name, '') <> ''
@@ -50,8 +50,8 @@ async function main() {
   console.log('baris bank dibuat:', bank.rowCount)
 
   const qris = await client.query(
-    `insert into payment_methods (user_id, type, provider, qris_image, is_active)
-     select u.id, 'qris', 'QRIS', u.qris_image, true
+    `insert into payment_methods (user_id, brand_id, type, provider, qris_image, is_active)
+     select u.id, u.brand_id, 'qris', 'QRIS', u.qris_image, true
      from users u
      where u.qris_image is not null
        and not exists (

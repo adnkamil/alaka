@@ -126,12 +126,12 @@ export const users = pgTable(
      */
     isAdmin: boolean('is_admin').notNull().default(false),
     /**
-     * Brand tempat akun ini bergabung. Nullable SEMENTARA (tahap expand):
-     * diisi oleh backfill, lalu dijadikan NOT NULL di tahap constrain.
+     * Brand tempat akun ini bergabung (satu akun = satu brand). RESTRICT: brand
+     * tidak bisa dihapus selama masih ada akun di dalamnya — hapus akunnya dulu.
      */
-    brandId: uuid('brand_id').references(() => brands.id, {
-      onDelete: 'restrict',
-    }),
+    brandId: uuid('brand_id')
+      .notNull()
+      .references(() => brands.id, { onDelete: 'restrict' }),
     /** Awal masa trial (= waktu user dibuat). */
     trialStartedAt: timestamp('trial_started_at', { withTimezone: true })
       .notNull()
@@ -148,6 +148,7 @@ export const users = pgTable(
       .defaultNow(),
   },
   (table) => [
+    index('users_brand_idx').on(table.brandId),
     check(
       'users_trial_period_order',
       sql`${table.trialEndsAt} >= ${table.trialStartedAt}`,
@@ -202,23 +203,27 @@ export const emailVerificationTokens = pgTable('email_verification_tokens', {
 })
 
 // FEE RULES (Manajemen Fee)
-export const feeRules = pgTable('fee_rules', {
-  id: uuid().primaryKey().defaultRandom(),
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  /** Nullable SEMENTARA (tahap expand) — diisi backfill, lalu NOT NULL. */
-  brandId: uuid('brand_id').references(() => brands.id, {
-    onDelete: 'cascade',
-  }),
-  name: varchar().notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-})
+export const feeRules = pgTable(
+  'fee_rules',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    /** "Dibuat oleh". Boleh kosong: data milik brand, bukan akun pembuatnya. */
+    userId: uuid('user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    brandId: uuid('brand_id')
+      .notNull()
+      .references(() => brands.id, { onDelete: 'cascade' }),
+    name: varchar().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index('fee_rules_brand_idx').on(table.brandId)],
+)
 
 // Overlap between tiers of the same fee_rule is validated in the application/server layer.
 export const feeTiers = pgTable('fee_tiers', {
@@ -235,54 +240,62 @@ export const feeTiers = pgTable('fee_tiers', {
 })
 
 // CUSTOMERS (untuk autocomplete Nama Pelanggan saat tambah pesanan)
-export const customers = pgTable('customers', {
-  id: uuid().primaryKey().defaultRandom(),
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  /** Nullable SEMENTARA (tahap expand) — diisi backfill, lalu NOT NULL. */
-  brandId: uuid('brand_id').references(() => brands.id, {
-    onDelete: 'cascade',
-  }),
-  name: varchar().notNull(),
-  phone: varchar(),
-  /** Alamat customer (opsional), diisi manual di Profil → Customer. */
-  address: text('address'),
-  createdAt: timestamp('created_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  deletedAt: timestamp('deleted_at', { withTimezone: true }),
-})
+export const customers = pgTable(
+  'customers',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    /** "Dibuat oleh". Boleh kosong: data milik brand, bukan akun pembuatnya. */
+    userId: uuid('user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    brandId: uuid('brand_id')
+      .notNull()
+      .references(() => brands.id, { onDelete: 'cascade' }),
+    name: varchar().notNull(),
+    phone: varchar(),
+    /** Alamat customer (opsional), diisi manual di Profil → Customer. */
+    address: text('address'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  },
+  (table) => [index('customers_brand_idx').on(table.brandId)],
+)
 
 // PAYMENT METHODS (Profil → Pembayaran): bank, e-wallet, atau QRIS.
 // Satu user bisa punya banyak metode; yang tampil di invoice/tagih cuma yang
 // is_active = true. QRIS disimpan sebagai gambar (data URL base64), bank/wallet
 // pakai provider + nomor rekening/akun.
-export const paymentMethods = pgTable('payment_methods', {
-  id: uuid().primaryKey().defaultRandom(),
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  /** Nullable SEMENTARA (tahap expand) — diisi backfill, lalu NOT NULL. */
-  brandId: uuid('brand_id').references(() => brands.id, {
-    onDelete: 'cascade',
-  }),
-  type: paymentMethodTypeEnum('type').notNull(),
-  provider: varchar().notNull(), // "BCA", "GoPay", "QRIS"
-  accountNumber: varchar('account_number'), // no. rekening / no. HP wallet
-  accountName: varchar('account_name'), // atas nama (opsional)
-  qrisImage: text('qris_image'), // data URL base64 (image/png|jpeg|webp)
-  isActive: boolean('is_active').notNull().default(true),
-  createdAt: timestamp('created_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-})
+export const paymentMethods = pgTable(
+  'payment_methods',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    /** "Dibuat oleh". Boleh kosong: data milik brand, bukan akun pembuatnya. */
+    userId: uuid('user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    brandId: uuid('brand_id')
+      .notNull()
+      .references(() => brands.id, { onDelete: 'cascade' }),
+    type: paymentMethodTypeEnum('type').notNull(),
+    provider: varchar().notNull(), // "BCA", "GoPay", "QRIS"
+    accountNumber: varchar('account_number'), // no. rekening / no. HP wallet
+    accountName: varchar('account_name'), // atas nama (opsional)
+    qrisImage: text('qris_image'), // data URL base64 (image/png|jpeg|webp)
+    isActive: boolean('is_active').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index('payment_methods_brand_idx').on(table.brandId)],
+)
 
 // SUBSCRIPTIONS (histori langganan PRO) — pembayaran manual, diverifikasi admin.
 // Satu baris = satu pengajuan/pembelian. Karena histori, barisnya TIDAK
@@ -293,13 +306,13 @@ export const subscriptions = pgTable(
   'subscriptions',
   {
     id: uuid().primaryKey().defaultRandom(),
-    userId: uuid('user_id')
-      .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
-    /** Nullable SEMENTARA (tahap expand) — diisi backfill, lalu NOT NULL. */
-    brandId: uuid('brand_id').references(() => brands.id, {
-      onDelete: 'cascade',
+    /** Siapa yang mengajukan. Boleh kosong: langganan milik brand. */
+    userId: uuid('user_id').references(() => users.id, {
+      onDelete: 'set null',
     }),
+    brandId: uuid('brand_id')
+      .notNull()
+      .references(() => brands.id, { onDelete: 'cascade' }),
     /** Kode paket — lihat PRO_PLAN_CODE. */
     planCode: varchar('plan_code').notNull().default(PRO_PLAN_CODE),
     status: subscriptionStatusEnum().notNull().default('pending'),
@@ -346,7 +359,13 @@ export const subscriptions = pgTable(
   },
   (table) => [
     index('subscriptions_user_created_idx').on(table.userId, table.createdAt),
+    index('subscriptions_brand_created_idx').on(table.brandId, table.createdAt),
     index('subscriptions_status_idx').on(table.status),
+    // Maksimal satu pengajuan `pending` per BRAND (semua anggota brand berbagi
+    // satu langganan). Yang per-user di bawah dibiarkan sampai tahap contract.
+    uniqueIndex('subscriptions_pending_per_brand_unique')
+      .on(table.brandId)
+      .where(sql`${table.status} = 'pending'`),
     // Maksimal satu pengajuan `pending` per user: cegah kirim bukti transfer
     // dobel sebelum yang lama diproses admin.
     uniqueIndex('subscriptions_pending_per_user_unique')
@@ -361,45 +380,49 @@ export const subscriptions = pgTable(
 )
 
 // EVENTS
-export const events = pgTable('events', {
-  id: uuid().primaryKey().defaultRandom(),
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  /** Nullable SEMENTARA (tahap expand) — diisi backfill, lalu NOT NULL. */
-  brandId: uuid('brand_id').references(() => brands.id, {
-    onDelete: 'cascade',
-  }),
-  feeRuleId: uuid('fee_rule_id').references(() => feeRules.id, {
-    onDelete: 'set null',
-  }),
-  name: varchar().notNull(),
-  description: text(),
-  eventDate: timestamp('event_date', {
-    mode: 'date',
-    withTimezone: true,
-  }).notNull(),
-  /**
-   * Event nonaktif = event yang sudah selesai/ditutup: disembunyikan dari daftar
-   * "Event aktif" di beranda dan tidak bisa ditambah pesanan baru, tapi semua
-   * data pesanan/tagihannya tetap utuh dan bisa diaktifkan lagi kapan saja.
-   * Diatur dari menu ⋮ di halaman Detail Event.
-   */
-  isActive: boolean('is_active').notNull().default(true),
-  /**
-   * Kalau aktif, invoice/tagihan ke pelanggan tidak menampilkan rincian fee:
-   * daftar barang cukup menampilkan qty + harga nett (harga asli + fee) per
-   * unit, tanpa memecah "harga + fee". Total tagihan tetap sama, hanya cara
-   * menampilkannya yang berubah. Diatur dari menu ⋮ di halaman Detail Event.
-   */
-  hideFee: boolean('hide_fee').notNull().default(false),
-  createdAt: timestamp('created_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-})
+export const events = pgTable(
+  'events',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    /** "Dibuat oleh". Boleh kosong: data milik brand, bukan akun pembuatnya. */
+    userId: uuid('user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    brandId: uuid('brand_id')
+      .notNull()
+      .references(() => brands.id, { onDelete: 'cascade' }),
+    feeRuleId: uuid('fee_rule_id').references(() => feeRules.id, {
+      onDelete: 'set null',
+    }),
+    name: varchar().notNull(),
+    description: text(),
+    eventDate: timestamp('event_date', {
+      mode: 'date',
+      withTimezone: true,
+    }).notNull(),
+    /**
+     * Event nonaktif = event yang sudah selesai/ditutup: disembunyikan dari daftar
+     * "Event aktif" di beranda dan tidak bisa ditambah pesanan baru, tapi semua
+     * data pesanan/tagihannya tetap utuh dan bisa diaktifkan lagi kapan saja.
+     * Diatur dari menu ⋮ di halaman Detail Event.
+     */
+    isActive: boolean('is_active').notNull().default(true),
+    /**
+     * Kalau aktif, invoice/tagihan ke pelanggan tidak menampilkan rincian fee:
+     * daftar barang cukup menampilkan qty + harga nett (harga asli + fee) per
+     * unit, tanpa memecah "harga + fee". Total tagihan tetap sama, hanya cara
+     * menampilkannya yang berubah. Diatur dari menu ⋮ di halaman Detail Event.
+     */
+    hideFee: boolean('hide_fee').notNull().default(false),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index('events_brand_idx').on(table.brandId)],
+)
 
 // ORDERS & ITEMS
 export const orders = pgTable('orders', {
@@ -449,13 +472,11 @@ export const items = pgTable('items', {
 // ACTIVITY LOGS
 export const activityLogs = pgTable('activity_logs', {
   id: uuid().primaryKey().defaultRandom(),
-  userId: uuid('user_id')
+  /** "Dibuat oleh". Boleh kosong: data milik brand, bukan akun pembuatnya. */
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+  brandId: uuid('brand_id')
     .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  /** Nullable SEMENTARA (tahap expand) — diisi backfill, lalu NOT NULL. */
-  brandId: uuid('brand_id').references(() => brands.id, {
-    onDelete: 'cascade',
-  }),
+    .references(() => brands.id, { onDelete: 'cascade' }),
   action: varchar().notNull(),
   entityType: varchar('entity_type').notNull(),
   entityId: uuid('entity_id').notNull(),
