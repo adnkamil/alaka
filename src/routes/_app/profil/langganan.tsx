@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { queryOptions, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
-import { Link, createFileRoute } from '@tanstack/react-router'
+import { Link, createFileRoute, redirect } from '@tanstack/react-router'
 import { ArrowLeft, Check, Clock, Crown, Lock } from 'lucide-react'
 import PaymentProofViewer from '../../../components/PaymentProofViewer'
 import SubmitSubscriptionModal from '../../../components/SubmitSubscriptionModal'
@@ -32,11 +32,13 @@ const mySubscriptionStateQuery = queryOptions({
 })
 
 export const Route = createFileRoute('/_app/profil/langganan')({
-  loader: ({ context }) =>
-    Promise.all([
-      context.queryClient.ensureQueryData(currentUserQuery),
-      context.queryClient.ensureQueryData(mySubscriptionStateQuery),
-    ]),
+  loader: async ({ context }) => {
+    // Langganan hanya untuk pemilik brand. Dicek SEBELUM memuat data langganan,
+    // karena server function-nya menolak akun admin.
+    const user = await context.queryClient.ensureQueryData(currentUserQuery)
+    if (user?.brandRole !== 'owner') throw redirect({ to: '/profil' })
+    await context.queryClient.ensureQueryData(mySubscriptionStateQuery)
+  },
   component: SubscriptionPage,
 })
 

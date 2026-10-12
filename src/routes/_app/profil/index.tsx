@@ -162,6 +162,12 @@ function ProfilPage() {
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [lockedFeature, setLockedFeature] = useState<ProFeature | null>(null)
 
+  // Menu langganan, rekening/QRIS, serta nama & foto brand hanya untuk pemilik
+  // brand. Server tetap penentu akhir (`requireBrandPermission`).
+  // (lewat variabel perantara supaya TypeScript tidak mempersempit `user`)
+  const brandRole: string | undefined = user?.brandRole
+  const isOwner = brandRole === 'owner'
+
   // Akses fitur PRO diambil dari entitlement user (satu sumber). Server tetap
   // jadi penentu akhir — kalau UI-nya ke-bypass, server function-nya menolak.
   const paymentMethodsUnlocked = user
@@ -290,46 +296,48 @@ function ProfilPage() {
         </section>
       )}
 
-      <section className="mb-6 mt-6">
-        <h2
-          className="mb-2 text-xs font-semibold uppercase"
-          style={{ color: 'var(--app-text-mute)' }}
-        >
-          Langganan
-        </h2>
-        <Link
-          to="/profil/langganan"
-          className="app-card flex w-full items-center gap-3 p-4 no-underline"
-          style={{ color: 'var(--app-text)' }}
-        >
-          <span
-            className="flex h-9 w-9 items-center justify-center rounded-full"
-            style={{
-              background: 'var(--app-accent-soft)',
-              color: 'var(--app-accent)',
-            }}
+      {isOwner && (
+        <section className="mb-6 mt-6">
+          <h2
+            className="mb-2 text-xs font-semibold uppercase"
+            style={{ color: 'var(--app-text-mute)' }}
           >
-            <Crown size={18} />
-          </span>
-          <div className="flex-1">
-            <p className="text-sm font-semibold">
-              Paket {user ? planLabel(user.entitlements.plan) : '-'}
-            </p>
-            <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
-              {planRowSubtitle(user?.entitlements ?? null)}
-            </p>
-          </div>
-          {showUpgradeCta && (
+            Langganan
+          </h2>
+          <Link
+            to="/profil/langganan"
+            className="app-card flex w-full items-center gap-3 p-4 no-underline"
+            style={{ color: 'var(--app-text)' }}
+          >
             <span
-              className="text-xs font-semibold"
-              style={{ color: 'var(--app-accent)' }}
+              className="flex h-9 w-9 items-center justify-center rounded-full"
+              style={{
+                background: 'var(--app-accent-soft)',
+                color: 'var(--app-accent)',
+              }}
             >
-              Upgrade
+              <Crown size={18} />
             </span>
-          )}
-          <ChevronRight size={18} style={{ color: 'var(--app-text-mute)' }} />
-        </Link>
-      </section>
+            <div className="flex-1">
+              <p className="text-sm font-semibold">
+                Paket {user ? planLabel(user.entitlements.plan) : '-'}
+              </p>
+              <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
+                {planRowSubtitle(user?.entitlements ?? null)}
+              </p>
+            </div>
+            {showUpgradeCta && (
+              <span
+                className="text-xs font-semibold"
+                style={{ color: 'var(--app-accent)' }}
+              >
+                Upgrade
+              </span>
+            )}
+            <ChevronRight size={18} style={{ color: 'var(--app-text-mute)' }} />
+          </Link>
+        </section>
+      )}
       <section className="mb-6">
         <h2
           className="mb-2 text-xs font-semibold uppercase"
@@ -384,100 +392,104 @@ function ProfilPage() {
         </div>
       </section>
 
-      <section className="mb-6">
-        <h2
-          className="mb-2 text-xs font-semibold uppercase"
-          style={{ color: 'var(--app-text-mute)' }}
-        >
-          Pembayaran
-        </h2>
-        <div
-          className="app-card flex flex-col"
-          style={{ borderColor: 'var(--app-border)' }}
-        >
-          {paymentMethods.length === 0 && (
-            <p
-              className="px-4 py-3 text-xs"
-              style={{ color: 'var(--app-text-soft)' }}
-            >
-              {paymentMethodsUnlocked
-                ? 'Belum ada metode pembayaran. Tambahkan bank, e-wallet, atau QRIS supaya pelanggan bisa bayar.'
-                : 'Metode pembayaran (bank, e-wallet, QRIS) bisa ditambahkan di paket PRO.'}
-            </p>
-          )}
-
-          {paymentMethods.map((method) => (
-            <div
-              key={method.id}
-              className="flex items-center gap-3 border-b px-4 py-3"
-              style={{ borderColor: 'var(--app-border)' }}
-            >
-              <span style={{ color: 'var(--app-text-soft)' }}>
-                {paymentMethodIcon(method.type)}
-              </span>
-              <button
-                type="button"
-                onClick={() =>
-                  runPaymentMethodAction(() =>
-                    setPaymentModal({ mode: 'edit', id: method.id }),
-                  )
-                }
-                className="min-w-0 flex-1 text-left"
-                style={{ color: 'var(--app-text)' }}
-              >
-                <span className="flex items-center gap-2">
-                  <span className="truncate">{method.provider}</span>
-                  {!method.isActive && (
-                    <span
-                      className="app-badge flex-shrink-0"
-                      style={{
-                        background: 'var(--app-border)',
-                        color: 'var(--app-text-soft)',
-                      }}
-                    >
-                      Nonaktif
-                    </span>
-                  )}
-                </span>
-                <span
-                  className="block truncate text-xs font-normal"
-                  style={{ color: 'var(--app-text-soft)' }}
-                >
-                  {paymentMethodSubtitle(method)}
-                </span>
-              </button>
-              <Switch
-                checked={method.isActive}
-                onChange={(checked) =>
-                  runPaymentMethodAction(
-                    () => void handleTogglePaymentMethod(method.id, checked),
-                  )
-                }
-                label={`Aktifkan ${method.provider}`}
-              />
-            </div>
-          ))}
-
-          <button
-            type="button"
-            onClick={() =>
-              runPaymentMethodAction(() => setPaymentModal({ mode: 'create' }))
-            }
-            className="flex w-full items-center gap-3 px-4 py-3 text-left"
-            style={{
-              color: paymentMethodsUnlocked
-                ? 'var(--app-accent)'
-                : 'var(--app-text-mute)',
-            }}
+      {isOwner && (
+        <section className="mb-6">
+          <h2
+            className="mb-2 text-xs font-semibold uppercase"
+            style={{ color: 'var(--app-text-mute)' }}
           >
-            {paymentMethodsUnlocked ? <Plus size={18} /> : <Lock size={18} />}
-            <span className="flex-1 text-sm font-semibold">
-              Tambah metode pembayaran
-            </span>
-            {!paymentMethodsUnlocked && <ProBadge />}
-          </button>
-        </div>
-      </section>
+            Pembayaran
+          </h2>
+          <div
+            className="app-card flex flex-col"
+            style={{ borderColor: 'var(--app-border)' }}
+          >
+            {paymentMethods.length === 0 && (
+              <p
+                className="px-4 py-3 text-xs"
+                style={{ color: 'var(--app-text-soft)' }}
+              >
+                {paymentMethodsUnlocked
+                  ? 'Belum ada metode pembayaran. Tambahkan bank, e-wallet, atau QRIS supaya pelanggan bisa bayar.'
+                  : 'Metode pembayaran (bank, e-wallet, QRIS) bisa ditambahkan di paket PRO.'}
+              </p>
+            )}
+
+            {paymentMethods.map((method) => (
+              <div
+                key={method.id}
+                className="flex items-center gap-3 border-b px-4 py-3"
+                style={{ borderColor: 'var(--app-border)' }}
+              >
+                <span style={{ color: 'var(--app-text-soft)' }}>
+                  {paymentMethodIcon(method.type)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    runPaymentMethodAction(() =>
+                      setPaymentModal({ mode: 'edit', id: method.id }),
+                    )
+                  }
+                  className="min-w-0 flex-1 text-left"
+                  style={{ color: 'var(--app-text)' }}
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="truncate">{method.provider}</span>
+                    {!method.isActive && (
+                      <span
+                        className="app-badge flex-shrink-0"
+                        style={{
+                          background: 'var(--app-border)',
+                          color: 'var(--app-text-soft)',
+                        }}
+                      >
+                        Nonaktif
+                      </span>
+                    )}
+                  </span>
+                  <span
+                    className="block truncate text-xs font-normal"
+                    style={{ color: 'var(--app-text-soft)' }}
+                  >
+                    {paymentMethodSubtitle(method)}
+                  </span>
+                </button>
+                <Switch
+                  checked={method.isActive}
+                  onChange={(checked) =>
+                    runPaymentMethodAction(
+                      () => void handleTogglePaymentMethod(method.id, checked),
+                    )
+                  }
+                  label={`Aktifkan ${method.provider}`}
+                />
+              </div>
+            ))}
+
+            <button
+              type="button"
+              onClick={() =>
+                runPaymentMethodAction(() =>
+                  setPaymentModal({ mode: 'create' }),
+                )
+              }
+              className="flex w-full items-center gap-3 px-4 py-3 text-left"
+              style={{
+                color: paymentMethodsUnlocked
+                  ? 'var(--app-accent)'
+                  : 'var(--app-text-mute)',
+              }}
+            >
+              {paymentMethodsUnlocked ? <Plus size={18} /> : <Lock size={18} />}
+              <span className="flex-1 text-sm font-semibold">
+                Tambah metode pembayaran
+              </span>
+              {!paymentMethodsUnlocked && <ProBadge />}
+            </button>
+          </div>
+        </section>
+      )}
 
       <section className="mb-6">
         <h2
@@ -630,10 +642,15 @@ function ProfilPage() {
             name: user?.name ?? '',
             brandName: user?.brandName ?? '',
           }}
-          avatar={{
-            brandId: user?.brandId ?? undefined,
-            avatarUpdatedAt: user?.avatarUpdatedAt,
-          }}
+          avatar={
+            isOwner
+              ? {
+                  brandId: user?.brandId ?? undefined,
+                  avatarUpdatedAt: user?.avatarUpdatedAt,
+                }
+              : undefined
+          }
+          brandNameEditable={isOwner}
           email={
             user
               ? { address: user.email, verified: user.emailVerified }

@@ -11,6 +11,7 @@ import {
   revokeAllSessions,
   verifyPassword,
 } from './auth'
+import { requireBrandPermission } from './brand-permissions'
 import { createUserWithBrand, updateUserProfile } from './brand-queries'
 import { sendVerificationEmail } from './email-verification-queries'
 import { requireVerifiedEmail } from './email-verified'
@@ -102,10 +103,12 @@ export const updateProfile = createServerFn({ method: 'POST' })
     const current = await getSessionUser()
     if (!current) throw new Error('Belum login')
 
-    await updateUserProfile(current, {
-      name: data.name,
-      brandName: data.brandName?.trim() || null,
-    })
+    // Nama akun boleh diubah siapa pun; nama BRAND hanya pemilik.
+    const brandName = data.brandName?.trim() || null
+    if (brandName !== current.brandName) {
+      requireBrandPermission(current, 'brand.profile')
+    }
+    await updateUserProfile(current, { name: data.name, brandName })
   })
 
 const changePasswordSchema = z.object({
@@ -163,6 +166,9 @@ export const fetchCurrentUser = createServerFn({ method: 'GET' }).handler(
       brandName: user.brandName,
       // Id brand = key foto; fotonya diambil lewat `/api/avatar/:brandId`.
       brandId: user.brandId,
+      // Peran di brand (owner/admin): dipakai UI untuk menyembunyikan menu milik
+      // pemilik. Proteksi yang mengikat tetap di server (`requireBrandPermission`).
+      brandRole: user.brandRole,
       // Cuma penanda + cache-buster.
       avatarUpdatedAt: user.avatarUpdatedAt?.toISOString() ?? null,
       waMessageTemplate: user.waMessageTemplate,

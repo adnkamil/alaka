@@ -28,6 +28,11 @@ interface EditProfileModalProps {
    * merah di bawahnya selama emailnya belum terverifikasi.
    */
   email?: { address: string; verified: boolean }
+  /**
+   * `false` untuk akun admin brand: nama brand milik pemilik, jadi kolomnya
+   * disembunyikan (server juga menolak perubahannya).
+   */
+  brandNameEditable?: boolean
   onClose: () => void
   onSubmit: (value: ProfileFormValue) => Promise<void>
 }
@@ -37,6 +42,7 @@ export default function EditProfileModal({
   submitLabel = 'Simpan',
   initialValue,
   avatar,
+  brandNameEditable = true,
   email,
   onClose,
   onSubmit,
@@ -275,18 +281,23 @@ export default function EditProfileModal({
             </label>
           )}
 
-          <label className="flex flex-col gap-1 text-sm font-medium">
-            Nama brand
-            <input
-              value={brandName}
-              onChange={(e) => setBrandName(e.target.value)}
-              className="app-input"
-              placeholder="cth. ALAKA Jastip Korea"
-            />
-            <span className="text-xs" style={{ color: 'var(--app-text-mute)' }}>
-              Ditampilkan di halaman invoice/tagihan buat pelanggan.
-            </span>
-          </label>
+          {brandNameEditable && (
+            <label className="flex flex-col gap-1 text-sm font-medium">
+              Nama brand
+              <input
+                value={brandName}
+                onChange={(e) => setBrandName(e.target.value)}
+                className="app-input"
+                placeholder="cth. ALAKA Jastip Korea"
+              />
+              <span
+                className="text-xs"
+                style={{ color: 'var(--app-text-mute)' }}
+              >
+                Ditampilkan di halaman invoice/tagihan buat pelanggan.
+              </span>
+            </label>
+          )}
 
           {error && (
             <p className="text-sm" style={{ color: 'var(--app-danger)' }}>

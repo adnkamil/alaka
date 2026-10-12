@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '../db'
 import { brands } from '../db/schema'
+import { requireBrandPermission } from './brand-permissions'
 import { getSessionUser } from './auth'
 import { brandIdOf } from './brand'
 import { requireVerifiedEmail } from './email-verified'
@@ -23,6 +24,7 @@ export const uploadAvatar = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const current = await getSessionUser()
     if (!current) throw new Error('Belum login')
+    requireBrandPermission(current, 'brand.profile')
     // Upload memakai storage: cegah akun spam yang belum terverifikasi.
     requireVerifiedEmail(current)
 
@@ -48,6 +50,7 @@ export const removeAvatar = createServerFn({ method: 'POST' }).handler(
   async () => {
     const current = await getSessionUser()
     if (!current) throw new Error('Belum login')
+    requireBrandPermission(current, 'brand.profile')
 
     // Tandai di DB dulu supaya UI langsung kembali ke inisial; file di storage
     // dihapus sesudahnya (kalau gagal, file yatim tidak terlihat siapa pun dan

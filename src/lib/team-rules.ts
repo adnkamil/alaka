@@ -53,6 +53,14 @@ const TEAM_ERROR_MESSAGES: Record<TeamErrorCode, string> = {
   ADMIN_TIDAK_DITEMUKAN: 'Admin tidak ditemukan.',
 }
 
+export function isTeamErrorCode(value: string): value is TeamErrorCode {
+  return Object.prototype.hasOwnProperty.call(TEAM_ERROR_MESSAGES, value)
+}
+
+export function teamErrorMessage(code: TeamErrorCode): string {
+  return TEAM_ERROR_MESSAGES[code]
+}
+
 export class TeamError extends Error {
   readonly code: TeamErrorCode
 
