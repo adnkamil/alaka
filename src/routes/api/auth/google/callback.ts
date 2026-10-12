@@ -9,9 +9,14 @@ import {
 } from '../../../../lib/auth'
 import { createUserWithBrand } from '../../../../lib/brand-queries'
 import { exchangeGoogleCode } from '../../../../lib/google-auth'
+import { acceptInvitation } from '../../../../lib/team-queries'
+import { TeamError } from '../../../../lib/team-rules'
 
 const STATE_COOKIE = 'google_oauth_state'
 const CLEAR_STATE_COOKIE = `${STATE_COOKIE}=; Path=/; Max-Age=0`
+// Token undangan admin brand dari `/api/auth/google/?invite=...` (cookie HttpOnly).
+const INVITE_COOKIE = 'team_invite_token'
+const CLEAR_INVITE_COOKIE = `${INVITE_COOKIE}=; Path=/; Max-Age=0`
 
 function readCookie(request: Request, name: string) {
   const header = request.headers.get('cookie')
@@ -26,6 +31,7 @@ function readCookie(request: Request, name: string) {
 function redirectTo(location: string) {
   const headers = new Headers({ Location: location })
   headers.append('Set-Cookie', CLEAR_STATE_COOKIE)
+  headers.append('Set-Cookie', CLEAR_INVITE_COOKIE)
   return new Response(null, { status: 302, headers })
 }
 
@@ -46,6 +52,14 @@ function closePopupAndRefreshOpenerHtml(openerUrl: string) {
     </script>
   </body>
 </html>`
+}
+
+function popupResponse(openerUrl: string, cookies: Array<string> = []) {
+  const headers = new Headers({ 'Content-Type': 'text/html' })
+  headers.append('Set-Cookie', CLEAR_STATE_COOKIE)
+  headers.append('Set-Cookie', CLEAR_INVITE_COOKIE)
+  for (const cookie of cookies) headers.append('Set-Cookie', cookie)
+  return new Response(closePopupAndRefreshOpenerHtml(openerUrl), { headers })
 }
 
 export const Route = createFileRoute('/api/auth/google/callback')({
@@ -73,6 +87,42 @@ export const Route = createFileRoute('/api/auth/google/callback')({
           // membuat/menyambung akun — siapa pun bisa mengklaim email orang lain.
           if (profile.email_verified === false) {
             throw new Error('Email Google belum terverifikasi')
+          }
+
+          // Masuk lewat tautan undangan admin brand: jalurnya TERPISAH dari login
+          // biasa. Akun baru dibuat sebagai admin di brand pengundang (bukan
+          // brand baru), dan hanya boleh untuk email yang diundang.
+          const inviteToken = readCookie(request, INVITE_COOKIE)
+          if (inviteToken) {
+            const invitePage = `${origin}/undangan/${encodeURIComponent(inviteToken)}`
+            // Undangan memberi akses ke brand orang lain, jadi wajib email yang
+            // BENAR-BENAR terverifikasi Google (bukan sekadar tidak ditolak).
+            if (profile.email_verified !== true) {
+              return popupResponse(`${invitePage}?error=google_unverified`)
+            }
+            const googleAccount = await db.query.users.findFirst({
+              where: eq(users.googleId, profile.sub),
+            })
+            if (googleAccount) {
+              return popupResponse(`${invitePage}?error=EMAIL_TERDAFTAR`)
+            }
+            try {
+              const invited = await acceptInvitation(inviteToken, {
+                name: profile.name || profile.email.split('@')[0],
+                email: profile.email,
+                googleId: profile.sub,
+              })
+              const { token, expiresAt } = await createSessionToken(invited.id)
+              const isProdInvite = process.env.NODE_ENV === 'production'
+              return popupResponse(`${origin}/`, [
+                `${SESSION_COOKIE_NAME}=${token}; Path=/; Expires=${expiresAt.toUTCString()}; HttpOnly; SameSite=Lax${isProdInvite ? '; Secure' : ''}`,
+              ])
+            } catch (inviteError) {
+              if (inviteError instanceof TeamError) {
+                return popupResponse(`${invitePage}?error=${inviteError.code}`)
+              }
+              throw inviteError
+            }
           }
 
           // 1. Sudah pernah login pakai Google ini sebelumnya

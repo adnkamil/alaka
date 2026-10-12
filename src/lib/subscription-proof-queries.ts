@@ -12,12 +12,13 @@ import { eq } from 'drizzle-orm'
 import { db } from '../db'
 import { subscriptions } from '../db/schema'
 import { canViewSubscriptionProof } from './subscription-proof-access'
+import type { BrandRole } from './brand-permissions'
 import { parsePaymentProofDataUrl } from './payment-proof'
 import { getPaymentProof } from './storage'
 import type { PaymentProofContentType } from './payment-proof'
 
 export async function loadSubscriptionProof(
-  viewer: { isAdmin: boolean; brandId: string | null },
+  viewer: { isAdmin: boolean; brandId: string | null; brandRole: BrandRole },
   subscriptionId: string,
 ): Promise<{
   data: ArrayBuffer

@@ -3,6 +3,7 @@ import { and, asc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '../db'
 import { paymentMethods } from '../db/schema'
+import { requireBrandPermission } from './brand-permissions'
 import { brandIdOf } from './brand'
 import { getSessionUser } from './auth'
 import { requireUserFeature } from './entitlements'
@@ -83,6 +84,8 @@ export const createPaymentMethod = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     // `payment_methods` termasuk fitur PRO (TRIAL & PRO terbuka).
     const { user } = await requireUserFeature('payment_methods')
+    // Rekening/QRIS tempat pelanggan membayar: hanya pemilik brand.
+    requireBrandPermission(user, 'paymentMethod.manage')
     // Gambar QRIS = upload file; rekening bank/e-wallet (teks) tetap boleh.
     if (data.type === 'qris') requireVerifiedEmail(user)
     const [method] = await db
@@ -105,6 +108,8 @@ export const updatePaymentMethod = createServerFn({ method: 'POST' })
   .validator(paymentMethodInputSchema.extend({ id: z.uuid() }))
   .handler(async ({ data }) => {
     const { user } = await requireUserFeature('payment_methods')
+    // Rekening/QRIS tempat pelanggan membayar: hanya pemilik brand.
+    requireBrandPermission(user, 'paymentMethod.manage')
     if (data.type === 'qris') requireVerifiedEmail(user)
     const existing = await db.query.paymentMethods.findFirst({
       where: and(
@@ -133,6 +138,8 @@ export const setPaymentMethodActive = createServerFn({ method: 'POST' })
   .validator(z.object({ id: z.uuid(), isActive: z.boolean() }))
   .handler(async ({ data }) => {
     const { user } = await requireUserFeature('payment_methods')
+    // Rekening/QRIS tempat pelanggan membayar: hanya pemilik brand.
+    requireBrandPermission(user, 'paymentMethod.manage')
     await db
       .update(paymentMethods)
       .set({ isActive: data.isActive, updatedAt: new Date() })
@@ -148,6 +155,8 @@ export const deletePaymentMethod = createServerFn({ method: 'POST' })
   .validator(z.object({ id: z.uuid() }))
   .handler(async ({ data }) => {
     const { user } = await requireUserFeature('payment_methods')
+    // Rekening/QRIS tempat pelanggan membayar: hanya pemilik brand.
+    requireBrandPermission(user, 'paymentMethod.manage')
     await db
       .delete(paymentMethods)
       .where(

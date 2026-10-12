@@ -3,6 +3,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { db } from '../db'
 import { subscriptions } from '../db/schema'
+import { requireBrandPermission } from './brand-permissions'
 import { brandIdOf } from './brand'
 import { getSessionUser } from './auth'
 import { requireVerifiedEmail } from './email-verified'
@@ -46,6 +47,7 @@ export const submitSubscriptionRequest = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const user = await getSessionUser()
     if (!user) throw new Error('Belum login')
+    requireBrandPermission(user, 'subscription.manage')
     // Pembayaran terkait identitas akun: email harus sudah terbukti milik user.
     requireVerifiedEmail(user)
 
@@ -105,6 +107,7 @@ export const fetchSubscriptionPaymentInfo = createServerFn({
 }).handler(async () => {
   const user = await getSessionUser()
   if (!user) throw new Error('Belum login')
+  requireBrandPermission(user, 'subscription.manage')
   const settings = await getSubscriptionSettings()
   return {
     qrisImage: settings?.qrisImage ?? null,
@@ -119,5 +122,6 @@ export const fetchMySubscriptionState = createServerFn({
 }).handler(async () => {
   const user = await getSessionUser()
   if (!user) throw new Error('Belum login')
+  requireBrandPermission(user, 'subscription.manage')
   return getSubscriptionState(user)
 })
