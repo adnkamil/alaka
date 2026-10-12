@@ -67,9 +67,12 @@ test('setiap insert ke tabel data menyertakan brandId', () => {
   )
 })
 
-test('user baru hanya dibuat lewat createUserWithBrand', () => {
+test('user baru hanya dibuat lewat createUserWithBrand / acceptInvitation', () => {
   const offenders = listFiles(SRC_DIR)
-    .filter((file) => !file.endsWith('brand-queries.ts'))
+    .filter(
+      (file) =>
+        !file.endsWith('brand-queries.ts') && !file.endsWith('team-queries.ts'),
+    )
     .flatMap((file) =>
       readFileSync(file, 'utf8')
         .split('\n')
@@ -81,6 +84,6 @@ test('user baru hanya dibuat lewat createUserWithBrand', () => {
   assert.deepEqual(
     offenders,
     [],
-    'Pakai `createUserWithBrand()` dari lib/brand-queries.ts supaya brand ikut dibuat.',
+    'Pakai `createUserWithBrand()` (daftar sendiri) atau `acceptInvitation()` (terima undangan admin).',
   )
 })

@@ -46,6 +46,20 @@ export const subscriptionStatusEnum = pgEnum('subscription_status', [
   'rejected',
 ])
 
+/**
+ * Peran akun di dalam brand-nya. Tiap brand punya TEPAT SATU `owner` (dijaga
+ * unique index di `users`); sisanya `admin` (batas jumlahnya diatur di kode,
+ * lihat `lib/team-rules.ts`).
+ */
+export const brandRoleEnum = pgEnum('brand_role', ['owner', 'admin'])
+
+export const brandInvitationStatusEnum = pgEnum('brand_invitation_status', [
+  'pending',
+  'accepted',
+  'revoked',
+  'expired',
+])
+
 // BRANDS
 // Satu brand = satu "toko" jastip: pemilik semua data bisnis (event, customer,
 // aturan fee, metode bayar, langganan) dan identitas brand (nama, foto, template
@@ -132,6 +146,11 @@ export const users = pgTable(
     brandId: uuid('brand_id')
       .notNull()
       .references(() => brands.id, { onDelete: 'restrict' }),
+    /**
+     * Peran di brand. Default `owner`: akun yang mendaftar sendiri adalah
+     * pemilik brand barunya. `admin` hanya lewat undangan (`brand_invitations`).
+     */
+    brandRole: brandRoleEnum('brand_role').notNull().default('owner'),
     /** Awal masa trial (= waktu user dibuat). */
     trialStartedAt: timestamp('trial_started_at', { withTimezone: true })
       .notNull()
@@ -149,10 +168,62 @@ export const users = pgTable(
   },
   (table) => [
     index('users_brand_idx').on(table.brandId),
+    // Satu brand = satu pemilik. Tukar pemilik: turunkan yang lama jadi `admin`
+    // dulu, baru naikkan yang baru (dalam satu transaksi).
+    uniqueIndex('users_one_owner_per_brand')
+      .on(table.brandId)
+      .where(sql`${table.brandRole} = 'owner'`),
     check(
       'users_trial_period_order',
       sql`${table.trialEndsAt} >= ${table.trialStartedAt}`,
     ),
+  ],
+)
+
+// UNDANGAN ADMIN BRAND
+// Pemilik mengundang lewat email. Yang disimpan cuma hash token (sha256), bukan
+// token mentahnya — sama polanya dengan reset sandi & verifikasi email. Undangan
+// hanya untuk email yang BELUM punya akun: penerima mendaftar lewat tautan
+// undangan dan langsung jadi admin brand ini (bukan owner brand baru).
+export const brandInvitations = pgTable(
+  'brand_invitations',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    brandId: uuid('brand_id')
+      .notNull()
+      .references(() => brands.id, { onDelete: 'cascade' }),
+    /** Selalu huruf kecil (dijaga di kode dan oleh check di bawah). */
+    email: varchar().notNull(),
+    /** Peran yang diberikan saat diterima. Tidak boleh `owner`. */
+    role: brandRoleEnum().notNull().default('admin'),
+    tokenHash: varchar('token_hash').notNull().unique(),
+    status: brandInvitationStatusEnum().notNull().default('pending'),
+    /** Pengundang & penerima: dikosongkan kalau akunnya dihapus. */
+    invitedBy: uuid('invited_by').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    acceptedBy: uuid('accepted_by').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    acceptedAt: timestamp('accepted_at', { withTimezone: true }),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  },
+  (table) => [
+    index('brand_invitations_brand_status_idx').on(table.brandId, table.status),
+    // Satu undangan pending per email per brand. Undangan pending yang sudah
+    // lewat masa berlaku diubah ke `expired` dulu sebelum mengundang ulang.
+    uniqueIndex('brand_invitations_pending_email_unique')
+      .on(table.brandId, table.email)
+      .where(sql`${table.status} = 'pending'`),
+    check(
+      'brand_invitations_email_lowercase',
+      sql`${table.email} = lower(${table.email})`,
+    ),
+    check('brand_invitations_role_not_owner', sql`${table.role} <> 'owner'`),
   ],
 )
 
@@ -339,7 +410,9 @@ export const subscriptions = pgTable(
      */
     paymentProofImage: text('payment_proof_image'),
     /** true = bukti transfer ada di Blobs (lihat `src/lib/storage.ts`). */
-    paymentProofStored: boolean('payment_proof_stored').notNull().default(false),
+    paymentProofStored: boolean('payment_proof_stored')
+      .notNull()
+      .default(false),
     /** Catatan dari user, mis. "transfer dari rekening istri". */
     paymentNote: text('payment_note'),
     /** Tanggal user mengaku transfer. */

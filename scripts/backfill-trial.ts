@@ -50,14 +50,14 @@ async function main() {
   const client = new Client({ connectionString: process.env.DATABASE_URL })
   await client.connect()
 
-  // Pemilik brand = akun pertama yang bergabung (sama dengan `findBrandOwner`).
+  // Pemilik brand = akun ber-peran owner (sama dengan `findBrandOwner`).
   const plan = await client.query(
     `select b.id as brand_id, o.email as owner_email, b.created_at,
             b.trial_started_at, b.trial_ends_at
      from brands b
      join lateral (
-       select email from users where brand_id = b.id
-       order by created_at, id limit 1
+       select email from users
+       where brand_id = b.id and brand_role = 'owner'
      ) o on true
      ${email ? 'where b.id in (select brand_id from users where email = $1)' : ''}
      order by b.created_at`,
@@ -111,8 +111,8 @@ async function main() {
     `select o.email as pemilik, b.trial_started_at, b.trial_ends_at
      from brands b
      join lateral (
-       select email from users where brand_id = b.id
-       order by created_at, id limit 1
+       select email from users
+       where brand_id = b.id and brand_role = 'owner'
      ) o on true
      ${email ? 'where b.id in (select brand_id from users where email = $1)' : ''}
      order by b.created_at`,
