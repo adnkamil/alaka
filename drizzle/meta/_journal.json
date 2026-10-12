@@ -92,6 +92,13 @@
       "when": 1791667068270,
       "tag": "0012_add_brands_constrain",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1791756307148,
+      "tag": "0013_add_brand_team",
+      "breakpoints": true
     }
   ]
 }
