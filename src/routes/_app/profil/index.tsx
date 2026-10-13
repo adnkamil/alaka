@@ -17,11 +17,11 @@ import {
   Moon,
   SlidersHorizontal,
   Tag,
+  Users,
 } from 'lucide-react'
 import ChangePasswordModal from '../../../components/ChangePasswordModal'
 import EditProfileModal from '../../../components/EditProfileModal'
 import type { ProfileFormValue } from '../../../components/EditProfileModal'
-import TeamSection from '../../../components/TeamSection'
 import UserAvatar from '../../../components/UserAvatar'
 import Switch from '../../../components/ui/Switch'
 import { removeAvatar, uploadAvatar } from '../../../lib/avatar-functions'
@@ -325,9 +325,34 @@ function ProfilPage() {
         </section>
       )}
 
-
-
-      {isOwner && <TeamSection />}
+      {isOwner && (
+        <section className="mb-6">
+          <h2
+            className="mb-2 text-xs font-semibold uppercase"
+            style={{ color: 'var(--app-text-mute)' }}
+          >
+            Tim
+          </h2>
+          <div
+            className="app-card"
+            style={{ borderColor: 'var(--app-border)' }}
+          >
+            <Link
+              to="/profil/tim"
+              className="flex w-full items-center gap-3 px-4 py-3 no-underline"
+              style={{ color: 'var(--app-text)' }}
+            >
+              <span style={{ color: 'var(--app-text-soft)' }}>
+                <Users size={18} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block">Kelola Tim</span>
+              </span>
+              <ChevronRight size={18} style={{ color: 'var(--app-text-mute)' }} />
+            </Link>
+          </div>
+        </section>
+      )}
 
       <section className="mb-6">
         <h2
@@ -414,14 +439,6 @@ function ProfilPage() {
             </span>
             <span className="min-w-0 flex-1">
               <span className="block">Template Chat WA</span>
-              <span
-                className="block truncate text-xs font-normal"
-                style={{ color: 'var(--app-text-soft)' }}
-              >
-                {user?.waMessageTemplate
-                  ? 'Template kustom — pesan invoice lewat WhatsApp'
-                  : 'Template default — pesan invoice lewat WhatsApp'}
-              </span>
             </span>
             <ChevronRight size={18} style={{ color: 'var(--app-text-mute)' }} />
           </Link>

@@ -30,6 +30,7 @@ import { Route as AppProfilIndexRouteImport } from './routes/_app/profil/index'
 import { Route as AppProfilLanggananRouteImport } from './routes/_app/profil/langganan'
 import { Route as AppProfilPembayaranRouteImport } from './routes/_app/profil/pembayaran'
 import { Route as AppProfilTemplateChatRouteImport } from './routes/_app/profil/template-chat'
+import { Route as AppProfilTimRouteImport } from './routes/_app/profil/tim'
 import { Route as ApiAvatarBrandIdRouteImport } from './routes/api/avatar/$brandId'
 import { Route as ApiSubscriptionProofIdRouteImport } from './routes/api/subscription-proof/$id'
 import { Route as TagihanEventIdOrderIdRouteImport } from './routes/tagihan.$eventId.$orderId'
@@ -145,6 +146,11 @@ const AppProfilTemplateChatRoute = AppProfilTemplateChatRouteImport.update({
   path: '/profil/template-chat',
   getParentRoute: () => AppRoute,
 } as any)
+const AppProfilTimRoute = AppProfilTimRouteImport.update({
+  id: '/profil/tim',
+  path: '/profil/tim',
+  getParentRoute: () => AppRoute,
+} as any)
 const ApiAvatarBrandIdRoute = ApiAvatarBrandIdRouteImport.update({
   id: '/api/avatar/$brandId',
   path: '/api/avatar/$brandId',
@@ -217,6 +223,7 @@ export interface FileRoutesByFullPath {
   '/profil/langganan': typeof AppProfilLanggananRoute
   '/profil/pembayaran': typeof AppProfilPembayaranRoute
   '/profil/template-chat': typeof AppProfilTemplateChatRoute
+  '/profil/tim': typeof AppProfilTimRoute
   '/api/avatar/$brandId': typeof ApiAvatarBrandIdRoute
   '/api/subscription-proof/$id': typeof ApiSubscriptionProofIdRoute
   '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
@@ -248,6 +255,7 @@ export interface FileRoutesByTo {
   '/profil/langganan': typeof AppProfilLanggananRoute
   '/profil/pembayaran': typeof AppProfilPembayaranRoute
   '/profil/template-chat': typeof AppProfilTemplateChatRoute
+  '/profil/tim': typeof AppProfilTimRoute
   '/api/avatar/$brandId': typeof ApiAvatarBrandIdRoute
   '/api/subscription-proof/$id': typeof ApiSubscriptionProofIdRoute
   '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
@@ -282,6 +290,7 @@ export interface FileRoutesById {
   '/_app/profil/langganan': typeof AppProfilLanggananRoute
   '/_app/profil/pembayaran': typeof AppProfilPembayaranRoute
   '/_app/profil/template-chat': typeof AppProfilTemplateChatRoute
+  '/_app/profil/tim': typeof AppProfilTimRoute
   '/api/avatar/$brandId': typeof ApiAvatarBrandIdRoute
   '/api/subscription-proof/$id': typeof ApiSubscriptionProofIdRoute
   '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
@@ -316,6 +325,7 @@ export interface FileRouteTypes {
     | '/profil/langganan'
     | '/profil/pembayaran'
     | '/profil/template-chat'
+    | '/profil/tim'
     | '/api/avatar/$brandId'
     | '/api/subscription-proof/$id'
     | '/tagihan/$eventId/$orderId'
@@ -347,6 +357,7 @@ export interface FileRouteTypes {
     | '/profil/langganan'
     | '/profil/pembayaran'
     | '/profil/template-chat'
+    | '/profil/tim'
     | '/api/avatar/$brandId'
     | '/api/subscription-proof/$id'
     | '/tagihan/$eventId/$orderId'
@@ -380,6 +391,7 @@ export interface FileRouteTypes {
     | '/_app/profil/langganan'
     | '/_app/profil/pembayaran'
     | '/_app/profil/template-chat'
+    | '/_app/profil/tim'
     | '/api/avatar/$brandId'
     | '/api/subscription-proof/$id'
     | '/tagihan/$eventId/$orderId'
@@ -559,6 +571,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProfilTemplateChatRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/profil/tim': {
+      id: '/_app/profil/tim'
+      path: '/profil/tim'
+      fullPath: '/profil/tim'
+      preLoaderRoute: typeof AppProfilTimRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/api/avatar/$brandId': {
       id: '/api/avatar/$brandId'
       path: '/api/avatar/$brandId'
@@ -641,6 +660,7 @@ interface AppRouteChildren {
   AppProfilLanggananRoute: typeof AppProfilLanggananRoute
   AppProfilPembayaranRoute: typeof AppProfilPembayaranRoute
   AppProfilTemplateChatRoute: typeof AppProfilTemplateChatRoute
+  AppProfilTimRoute: typeof AppProfilTimRoute
   AppPesananIndexRoute: typeof AppPesananIndexRoute
   AppProfilIndexRoute: typeof AppProfilIndexRoute
   AppInvoiceEventIdOrderIdRoute: typeof AppInvoiceEventIdOrderIdRoute
@@ -659,6 +679,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppProfilLanggananRoute: AppProfilLanggananRoute,
   AppProfilPembayaranRoute: AppProfilPembayaranRoute,
   AppProfilTemplateChatRoute: AppProfilTemplateChatRoute,
+  AppProfilTimRoute: AppProfilTimRoute,
   AppPesananIndexRoute: AppPesananIndexRoute,
   AppProfilIndexRoute: AppProfilIndexRoute,
   AppInvoiceEventIdOrderIdRoute: AppInvoiceEventIdOrderIdRoute,
