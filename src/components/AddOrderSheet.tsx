@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Lock, Plus, Trash2, User, X } from 'lucide-react'
+import { Plus, Trash2, User, X } from 'lucide-react'
 import NumberInput from './ui/NumberInput'
 import Switch from './ui/Switch'
 import { customerLabel } from '../lib/customer-matching'
@@ -67,13 +67,6 @@ interface AddOrderSheetProps {
   customers?: Array<CustomerOption>
   itemNameSuggestions?: Array<string>
   itemPriceSuggestions?: Record<string, Array<number>>
-  /**
-   * Fitur PRO `order_suggestions` lagi terkunci (user FREE). Saran memang tidak
-   * dikirim server, jadi di sini cukup ditampilkan alasannya.
-   */
-  suggestionsLocked?: boolean
-  /** Sama seperti `suggestionsLocked`, tapi buat fitur PRO `customer_suggestions`. */
-  customerSuggestionsLocked?: boolean
   title?: string
   submitLabel?: string
   initialValue?: AddOrderSheetValue
@@ -140,8 +133,6 @@ export default function AddOrderSheet({
   customers = [],
   itemNameSuggestions = [],
   itemPriceSuggestions = {},
-  suggestionsLocked = false,
-  customerSuggestionsLocked = false,
   title = 'Tambah Pesanan',
   submitLabel = 'Simpan pesanan',
   initialValue,
@@ -413,38 +404,7 @@ export default function AddOrderSheet({
                 )}
               </label>
 
-              {customerSuggestionsLocked && (
-                <div
-                  className="flex items-center gap-2 rounded-xl border border-dashed px-3 py-2 text-xs"
-                  style={{
-                    borderColor: 'var(--app-border)',
-                    color: 'var(--app-text-mute)',
-                  }}
-                >
-                  <Lock size={13} className="flex-shrink-0" />
-                  <span>
-                    Saran nama &amp; no. HP pelanggan dari data customer
-                    tersedia di paket PRO.
-                  </span>
-                </div>
-              )}
-
               <div className="flex flex-col gap-3">
-                {suggestionsLocked && (
-                  <div
-                    className="flex items-center gap-2 rounded-xl border border-dashed px-3 py-2 text-xs"
-                    style={{
-                      borderColor: 'var(--app-border)',
-                      color: 'var(--app-text-mute)',
-                    }}
-                  >
-                    <Lock size={13} className="flex-shrink-0" />
-                    <span>
-                      Saran nama barang &amp; harga dari riwayat pesanan
-                      tersedia di paket PRO.
-                    </span>
-                  </div>
-                )}
                 {items.map((item, index) => (
                   <div key={index} className="app-card p-3">
                     <div className="mb-2 flex items-center justify-between gap-2">

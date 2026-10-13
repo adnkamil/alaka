@@ -28,21 +28,13 @@ export const PRO_DURATION_DAYS = 30
  * Daftar fitur yang cuma terbuka waktu TRIAL atau PRO. Dipakai bareng oleh
  * server (buat nutup endpoint) dan client (buat nampilin status terkunci),
  * jadi string-nya harus sama persis di dua sisi.
+ *
+ * Saran pesanan, saran fee, dan saran pelanggan SENGAJA tidak ada di sini:
+ * ketiganya fitur dasar yang terbuka untuk semua paket (termasuk FREE).
  */
-export type ProFeature =
-  | 'billing'
-  | 'payment_methods'
-  | 'order_suggestions'
-  | 'fee_suggestions'
-  | 'customer_suggestions'
+export type ProFeature = 'billing' | 'payment_methods'
 
-export const PRO_FEATURES: Array<ProFeature> = [
-  'billing',
-  'payment_methods',
-  'order_suggestions',
-  'fee_suggestions',
-  'customer_suggestions',
-]
+export const PRO_FEATURES: Array<ProFeature> = ['billing', 'payment_methods']
 
 /** Label & keterangan tiap fitur PRO — dipakai di pesan error dan UI terkunci. */
 export const PRO_FEATURE_INFO: Record<
@@ -58,21 +50,6 @@ export const PRO_FEATURE_INFO: Record<
     label: 'Metode Pembayaran',
     description:
       'Tambah, ubah, aktif/nonaktifkan metode pembayaran (bank, e-wallet, QRIS).',
-  },
-  order_suggestions: {
-    label: 'Saran Pesanan',
-    description:
-      'Saran nama barang & harga asli saat menambah pesanan, diambil dari riwayat event.',
-  },
-  fee_suggestions: {
-    label: 'Saran Fee',
-    description:
-      'Saran tier aturan fee yang dihitung dari harga & fee barang yang pernah kamu catat.',
-  },
-  customer_suggestions: {
-    label: 'Saran Pelanggan',
-    description:
-      'Saran nama & no. HP pelanggan dari data customer tersimpan, saat menambah pesanan.',
   },
 }
 

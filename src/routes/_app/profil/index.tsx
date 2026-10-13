@@ -12,24 +12,16 @@ import {
   History,
   KeyRound,
   Landmark,
-  Lock,
   LogOut,
   MessageSquareText,
   Moon,
-  Plus,
-  QrCode,
   SlidersHorizontal,
   Tag,
-  Wallet,
+  Users,
 } from 'lucide-react'
 import ChangePasswordModal from '../../../components/ChangePasswordModal'
 import EditProfileModal from '../../../components/EditProfileModal'
 import type { ProfileFormValue } from '../../../components/EditProfileModal'
-import type { PaymentMethodFormValue } from '../../../components/PaymentMethodModal'
-import PaymentMethodModal from '../../../components/PaymentMethodModal'
-import ProBadge from '../../../components/ProBadge'
-import ProLockPrompt from '../../../components/ProLockPrompt'
-import TeamSection from '../../../components/TeamSection'
 import UserAvatar from '../../../components/UserAvatar'
 import Switch from '../../../components/ui/Switch'
 import { removeAvatar, uploadAvatar } from '../../../lib/avatar-functions'
@@ -40,18 +32,13 @@ import {
   updateProfile,
 } from '../../../lib/auth-functions'
 import {
-  createPaymentMethod,
-  deletePaymentMethod,
   listPaymentMethods,
-  setPaymentMethodActive,
-  updatePaymentMethod,
 } from '../../../lib/payment-methods-functions'
 import {
-  canUseFeature,
   hasFullAccess,
   planLabel,
 } from '../../../lib/subscription'
-import type { Entitlement, ProFeature } from '../../../lib/subscription'
+import type { Entitlement } from '../../../lib/subscription'
 import VerifyEmailBanner from '#/components/VerifyEmailBanner'
 
 // Fitur "Master Control" & "Activity Logs" di section Kelola disembunyikan dulu
@@ -69,26 +56,6 @@ const paymentMethodsQuery = queryOptions({
   queryKey: ['payment-methods'],
   queryFn: () => listPaymentMethods(),
 })
-
-type PaymentMethod = Awaited<ReturnType<typeof listPaymentMethods>>[number]
-
-/** Ikon + baris keterangan tiap metode pembayaran di daftar Profil. */
-function paymentMethodIcon(type: PaymentMethod['type']) {
-  if (type === 'wallet') return <Wallet size={18} />
-  if (type === 'qris') return <QrCode size={18} />
-  return <Landmark size={18} />
-}
-
-function paymentMethodSubtitle(method: PaymentMethod) {
-  if (method.type === 'qris') {
-    return method.qrisImage
-      ? 'Gambar QRIS sudah diupload'
-      : 'Belum ada gambar QRIS'
-  }
-
-  const owner = method.accountName ? `a/n ${method.accountName} · ` : ''
-  return `${owner}${method.accountNumber ?? ''}`
-}
 
 export const Route = createFileRoute('/_app/profil/')({
   loader: ({ context }) =>
@@ -152,16 +119,11 @@ function RowLink({
 
 function ProfilPage() {
   const { data: user } = useSuspenseQuery(currentUserQuery)
-  const { data: paymentMethods } = useSuspenseQuery(paymentMethodsQuery)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [isDark, toggleDark] = useDarkModePreference()
-  const [paymentModal, setPaymentModal] = useState<
-    { mode: 'create' } | { mode: 'edit'; id: string } | null
-  >(null)
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
-  const [lockedFeature, setLockedFeature] = useState<ProFeature | null>(null)
 
   // Menu langganan, rekening/QRIS, serta nama & foto brand hanya untuk pemilik
   // brand. Server tetap penentu akhir (`requireBrandPermission`).
@@ -169,28 +131,9 @@ function ProfilPage() {
   const brandRole: string | undefined = user?.brandRole
   const isOwner = brandRole === 'owner'
 
-  // Akses fitur PRO diambil dari entitlement user (satu sumber). Server tetap
-  // jadi penentu akhir — kalau UI-nya ke-bypass, server function-nya menolak.
-  const paymentMethodsUnlocked = user
-    ? canUseFeature(user.entitlements, 'payment_methods')
-    : false
-
   // Ajakan upgrade di baris "Langganan" — TRIAL & PRO sama-sama akses penuh,
   // jadi cuma FREE yang perlu lihat CTA-nya. Pakai helper entitlement yang ada.
   const showUpgradeCta = user ? !hasFullAccess(user.entitlements) : false
-
-  /**
-   * Semua aksi tulis metode pembayaran lewat sini, jadi terkunci/tidaknya cukup
-   * dijaga di satu tempat: kalau terkunci, tampilkan info upgrade (bukan panggil
-   * server function yang pasti ditolak).
-   */
-  function runPaymentMethodAction(action: () => void) {
-    if (paymentMethodsUnlocked) {
-      action()
-      return
-    }
-    setLockedFeature('payment_methods')
-  }
 
   async function handleLogout() {
     await logoutUser()
@@ -217,46 +160,6 @@ function ProfilPage() {
     }
     setShowProfileModal(false)
   }
-
-  async function refreshPaymentMethods() {
-    await queryClient.invalidateQueries({ queryKey: ['payment-methods'] })
-    await queryClient.invalidateQueries({ queryKey: ['current-user'] })
-  }
-
-  async function handleSavePaymentMethod(value: PaymentMethodFormValue) {
-    // Server function pakai `undefined` buat "tidak ada gambar" (bukan null).
-    const payload = {
-      ...value,
-      qrisImage: value.qrisImage ?? undefined,
-    }
-
-    if (paymentModal?.mode === 'edit') {
-      await updatePaymentMethod({
-        data: { id: paymentModal.id, ...payload },
-      })
-    } else {
-      await createPaymentMethod({ data: payload })
-    }
-    await refreshPaymentMethods()
-    setPaymentModal(null)
-  }
-
-  async function handleDeletePaymentMethod(id: string) {
-    await deletePaymentMethod({ data: { id } })
-    await refreshPaymentMethods()
-    setPaymentModal(null)
-  }
-
-  async function handleTogglePaymentMethod(id: string, isActive: boolean) {
-    await setPaymentMethodActive({ data: { id, isActive } })
-    await refreshPaymentMethods()
-  }
-
-  // Metode yang lagi dibuka di modal (mode edit) — dipakai buat initialValue.
-  const editingPaymentMethod =
-    paymentModal?.mode === 'edit'
-      ? paymentMethods.find((method) => method.id === paymentModal.id)
-      : undefined
 
   async function handleChangePassword(data: {
     currentPassword: string
@@ -402,97 +305,54 @@ function ProfilPage() {
             Pembayaran
           </h2>
           <div
-            className="app-card flex flex-col"
+            className="app-card"
             style={{ borderColor: 'var(--app-border)' }}
           >
-            {paymentMethods.length === 0 && (
-              <p
-                className="px-4 py-3 text-xs"
-                style={{ color: 'var(--app-text-soft)' }}
-              >
-                {paymentMethodsUnlocked
-                  ? 'Belum ada metode pembayaran. Tambahkan bank, e-wallet, atau QRIS supaya pelanggan bisa bayar.'
-                  : 'Metode pembayaran (bank, e-wallet, QRIS) bisa ditambahkan di paket PRO.'}
-              </p>
-            )}
-
-            {paymentMethods.map((method) => (
-              <div
-                key={method.id}
-                className="flex items-center gap-3 border-b px-4 py-3"
-                style={{ borderColor: 'var(--app-border)' }}
-              >
-                <span style={{ color: 'var(--app-text-soft)' }}>
-                  {paymentMethodIcon(method.type)}
-                </span>
-                <button
-                  type="button"
-                  onClick={() =>
-                    runPaymentMethodAction(() =>
-                      setPaymentModal({ mode: 'edit', id: method.id }),
-                    )
-                  }
-                  className="min-w-0 flex-1 text-left"
-                  style={{ color: 'var(--app-text)' }}
-                >
-                  <span className="flex items-center gap-2">
-                    <span className="truncate">{method.provider}</span>
-                    {!method.isActive && (
-                      <span
-                        className="app-badge flex-shrink-0"
-                        style={{
-                          background: 'var(--app-border)',
-                          color: 'var(--app-text-soft)',
-                        }}
-                      >
-                        Nonaktif
-                      </span>
-                    )}
-                  </span>
-                  <span
-                    className="block truncate text-xs font-normal"
-                    style={{ color: 'var(--app-text-soft)' }}
-                  >
-                    {paymentMethodSubtitle(method)}
-                  </span>
-                </button>
-                <Switch
-                  checked={method.isActive}
-                  onChange={(checked) =>
-                    runPaymentMethodAction(
-                      () => void handleTogglePaymentMethod(method.id, checked),
-                    )
-                  }
-                  label={`Aktifkan ${method.provider}`}
-                />
-              </div>
-            ))}
-
-            <button
-              type="button"
-              onClick={() =>
-                runPaymentMethodAction(() =>
-                  setPaymentModal({ mode: 'create' }),
-                )
-              }
-              className="flex w-full items-center gap-3 px-4 py-3 text-left"
-              style={{
-                color: paymentMethodsUnlocked
-                  ? 'var(--app-accent)'
-                  : 'var(--app-text-mute)',
-              }}
+            <Link
+              to="/profil/pembayaran"
+              className="flex w-full items-center gap-3 px-4 py-3 no-underline"
+              style={{ color: 'var(--app-text)' }}
             >
-              {paymentMethodsUnlocked ? <Plus size={18} /> : <Lock size={18} />}
-              <span className="flex-1 text-sm font-semibold">
-                Tambah metode pembayaran
+              <span style={{ color: 'var(--app-text-soft)' }}>
+                <Landmark size={18} />
               </span>
-              {!paymentMethodsUnlocked && <ProBadge />}
-            </button>
+              <span className="min-w-0 flex-1">
+                <span className="block">Metode Pembayaran</span>
+              </span>
+              <ChevronRight size={18} style={{ color: 'var(--app-text-mute)' }} />
+            </Link>
           </div>
         </section>
       )}
 
-      {isOwner && <TeamSection />}
+      {isOwner && (
+        <section className="mb-6">
+          <h2
+            className="mb-2 text-xs font-semibold uppercase"
+            style={{ color: 'var(--app-text-mute)' }}
+          >
+            Tim
+          </h2>
+          <div
+            className="app-card"
+            style={{ borderColor: 'var(--app-border)' }}
+          >
+            <Link
+              to="/profil/tim"
+              className="flex w-full items-center gap-3 px-4 py-3 no-underline"
+              style={{ color: 'var(--app-text)' }}
+            >
+              <span style={{ color: 'var(--app-text-soft)' }}>
+                <Users size={18} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block">Kelola Tim</span>
+              </span>
+              <ChevronRight size={18} style={{ color: 'var(--app-text-mute)' }} />
+            </Link>
+          </div>
+        </section>
+      )}
 
       <section className="mb-6">
         <h2
@@ -517,12 +377,6 @@ function ProfilPage() {
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block">Ubah Kata Sandi</span>
-                <span
-                  className="block truncate text-xs font-normal"
-                  style={{ color: 'var(--app-text-soft)' }}
-                >
-                  Ganti kata sandi akun kamu
-                </span>
               </span>
               <ChevronRight
                 size={18}
@@ -579,14 +433,6 @@ function ProfilPage() {
             </span>
             <span className="min-w-0 flex-1">
               <span className="block">Template Chat WA</span>
-              <span
-                className="block truncate text-xs font-normal"
-                style={{ color: 'var(--app-text-soft)' }}
-              >
-                {user?.waMessageTemplate
-                  ? 'Template kustom — pesan invoice lewat WhatsApp'
-                  : 'Template default — pesan invoice lewat WhatsApp'}
-              </span>
             </span>
             <ChevronRight size={18} style={{ color: 'var(--app-text-mute)' }} />
           </Link>
@@ -604,38 +450,6 @@ function ProfilPage() {
         <LogOut size={18} />
         Keluar
       </button>
-
-      {paymentModal && (
-        <PaymentMethodModal
-          title={
-            paymentModal.mode === 'edit'
-              ? 'Edit Metode Pembayaran'
-              : 'Tambah Metode Pembayaran'
-          }
-          submitLabel={
-            paymentModal.mode === 'edit' ? 'Simpan perubahan' : 'Tambah'
-          }
-          initialValue={
-            editingPaymentMethod
-              ? {
-                  type: editingPaymentMethod.type,
-                  provider: editingPaymentMethod.provider,
-                  accountNumber: editingPaymentMethod.accountNumber ?? '',
-                  accountName: editingPaymentMethod.accountName ?? '',
-                  qrisImage: editingPaymentMethod.qrisImage,
-                  isActive: editingPaymentMethod.isActive,
-                }
-              : undefined
-          }
-          onClose={() => setPaymentModal(null)}
-          onSubmit={handleSavePaymentMethod}
-          onDelete={
-            paymentModal.mode === 'edit'
-              ? () => handleDeletePaymentMethod(paymentModal.id)
-              : undefined
-          }
-        />
-      )}
 
       {showProfileModal && (
         <EditProfileModal
@@ -672,12 +486,6 @@ function ProfilPage() {
           onSubmit={handleChangePassword}
         />
       )}
-
-      <ProLockPrompt
-        feature={lockedFeature}
-        entitlements={user?.entitlements ?? null}
-        onClose={() => setLockedFeature(null)}
-      />
     </main>
   )
 }

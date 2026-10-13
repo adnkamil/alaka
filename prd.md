@@ -125,13 +125,13 @@ Buat jastiper yang butuh rekap pesanan satu event di luar aplikasi (mis. dikirim
 ### 4.4 Tambah / Edit Pesanan (Bottom Sheet)
 
 - Context: event terkait (chip, non-editable).
-- **Nama pelanggan** — autocomplete dari daftar Customer yang tersimpan (nama + no. HP). Bisa diisi bebas jika belum terdaftar. Saran otomatis ini fitur PRO `customer_suggestions`: di paket FREE nama pelanggan tetap bisa diketik manual dan di tempat saran muncul keterangan bahwa saran pelanggan tersedia di paket PRO (server tidak mengirim datanya sama sekali — lihat 5).
+- **Nama pelanggan** — autocomplete dari daftar Customer yang tersimpan (nama + no. HP). Bisa diisi bebas jika belum terdaftar. Saran otomatis ini (`customer_suggestions`) terbuka untuk semua paket, termasuk FREE.
 - **No. HP pelanggan** — opsional, dipakai untuk kirim WA dari halaman Invoice.
 - Barang titipan — repeatable block: nama barang, harga asli, jumlah (qty), fee jastip.
   - **Fee auto-terisi** berdasarkan Aturan Fee event ini + harga barang yang diinput (lihat 4.9). Bila harga di luar semua tier, field fee dikosongkan untuk diisi manual.
   - **Fee jastip tidak wajib diisi.** Kalau field fee dibiarkan kosong, fee dianggap **0** — jadi barang titipan yang memang tanpa fee (mis. titipan tanpa upah) tetap bisa disimpan tanpa harus mengetik angka dulu. Nilai 0 ini berlaku seperti fee biasa di semua perhitungan (`(harga asli + 0) × qty`), dan field **Harga asli** tetap wajib.
   - **Fee berlaku per unit**: total satu barang = `(harga asli + fee) × qty`. Contoh: barang 30.000 + fee 4.000, qty 2 → (30.000 + 4.000) × 2 = 68.000.
-  - **Saran nama barang & harga asli** — saat mengisi nama barang, muncul saran dari barang yang pernah dicatat di event ini (nama + daftar harga), diambil dari server (`getOrderSuggestions`). Ini fitur PRO `order_suggestions`: kalau terkunci, field tetap bisa diisi manual dan di tempat saran muncul keterangan "Saran nama barang & harga dari riwayat pesanan tersedia di paket PRO" — server tidak mengirim data saran sama sekali ke user FREE (lihat 5).
+  - **Saran nama barang & harga asli** — saat mengisi nama barang, muncul saran dari barang yang pernah dicatat di event ini (nama + daftar harga), diambil dari server (`getOrderSuggestions`). Ini fitur dasar yang terbuka untuk semua paket, termasuk FREE.
   - **Toggle "Bundling" (satu harga untuk beberapa barang)** — untuk paket seperti "100/3 item". Kalau dinyalakan, field "Nama barang" berubah jadi daftar nama bernomor (mis. `Kaos` / `Celana` / `Topi`) dengan tombol **Tambah barang** dan hapus per baris. **Harga asli & fee tetap per paket** — pakai field **Jumlah** untuk berapa paket yang dibeli (mis. 2 paket × (100.000 + fee 5.000) = 210.000). Slot nama yang dikosongkan otomatis dibuang waktu disimpan.
     - Cara simpannya: nama-nama itu digabung jadi **satu nama** `"Kaos + Celana + Topi"` di satu baris `items.name` — jadi semua halaman (invoice, tagihan, checklist belanja, saran nama) tetap jalan **tanpa perubahan skema**. Aturannya di `lib/item-bundle.ts`.
     - Pesanan lama yang namanya mengandung `" + "` otomatis dibuka dengan toggle ini **aktif** (nama dipecah lagi jadi beberapa input), dan waktu disimpan digabung lagi jadi string yang sama.
@@ -216,7 +216,7 @@ Buat jastiper yang butuh rekap pesanan satu event di luar aplikasi (mis. dikirim
 
 - List aturan fee: card per aturan — nama, jumlah tier, rentang harga, preview tier. Tombol "Tambah aturan fee".
 - **Tambah / Edit Aturan Fee** — nama aturan + list tier (bisa tambah/hapus baris). Tiap tier: harga min, harga maks, fee jastip.
-- **Saran tier otomatis** (dipakai di form Tambah **dan** Edit aturan fee) — dari harga dan fee barang yang pernah dicatat user, sistem mengelompokkan harga ke rentang (band) lalu menyarankan satu tier per rentang dengan fee = nilai tengah rentang tersebut (dibulatkan). Ini fitur PRO `fee_suggestions`: di paket FREE panel saran diganti keterangan "Saran tier otomatis dari riwayat harga & fee barang tersedia di paket PRO", dan server (`getFeeSuggestions`) cuma mengirim `unlocked: false` tanpa data (lihat 5.2).
+- **Saran tier otomatis** (dipakai di form Tambah **dan** Edit aturan fee) — dari harga dan fee barang yang pernah dicatat user, sistem mengelompokkan harga ke rentang (band) lalu menyarankan satu tier per rentang dengan fee = nilai tengah rentang tersebut (dibulatkan). Ini fitur dasar yang terbuka untuk semua paket, termasuk FREE (diambil dari `getFeeSuggestions`).
 
 > **Pembaruan:** panel saran ini sekarang **hanya ada di form Tambah aturan fee**. Di halaman **Edit aturan fee** sudah dihapus — tier-nya toh sudah terisi dari aturan yang sedang diedit, jadi daftar saran cuma jadi noise (dan bikin ragu tier mana yang sebenarnya berlaku). Halaman edit juga tidak lagi memanggil `getFeeSuggestions`.
 
@@ -412,9 +412,8 @@ Tiga status akses. Seluruh aturannya ditulis di `src/lib/subscription.ts` (modul
 | ---------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
 | `billing`              | Tagih: halaman invoice internal, kirim WA, dan link tagihan publik | `requireFeature(getUserEntitlements(user), 'billing')` di `getOrderInvoice`; di `getPublicOrderInvoice` ada aturan grandfathering (5.5) |
 | `payment_methods`      | Tambah / edit / hapus / aktif-nonaktif metode pembayaran           | `requireUserFeature('payment_methods')` di 4 server function tulis — baca daftar tetap terbuka                                          |
-| `order_suggestions`    | Saran nama barang & harga asli di form Tambah/Edit Pesanan         | `getOrderSuggestions` mengembalikan `unlocked: false` + data kosong (tidak melempar error)                                              |
-| `fee_suggestions`      | Saran tier aturan fee di form Tambah Aturan Fee                    | `getFeeSuggestions` mengembalikan `unlocked: false` + data kosong                                                                       |
-| `customer_suggestions` | Saran nama & no. HP pelanggan di form Tambah/Edit Pesanan          | `getCustomerSuggestions` mengembalikan `unlocked: false` + data kosong (tidak melempar error)                                           |
+
+Saran pesanan (`order_suggestions`), saran fee (`fee_suggestions`), dan saran pelanggan (`customer_suggestions`) **bukan** fitur PRO — ketiganya terbuka untuk semua paket (termasuk FREE), jadi tidak punya gerbang di server. Endpoint saran selalu mengirim data apa adanya.
 
 Label & deskripsi tiap kunci (`PRO_FEATURE_INFO`), label/deskripsi plan (`PLAN_INFO`, `planLabel()`), dan pesan seragam `featureLockedMessage()` juga tinggal di `src/lib/subscription.ts` — jadi teks UI dan pesan server tidak bisa beda.
 
@@ -422,14 +421,18 @@ Label & deskripsi tiap kunci (`PRO_FEATURE_INFO`), label/deskripsi plan (`PLAN_I
 
 - Pintu masuknya `src/lib/entitlements.ts`: `getUserEntitlements(user)` (hitung status) → `requireFeature()` / `requireUserFeature()` yang melempar `FeatureLockedError` (`code = 'FEATURE_LOCKED'`, pesannya siap ditampilkan) kalau fiturnya terkunci.
 - Server function **tidak boleh** menulis `plan === 'pro'` sendiri; selalu lewat helper di atas.
-- Endpoint saran (`order_suggestions`, `fee_suggestions`, `customer_suggestions`) sengaja **tidak melempar error**, tapi mengembalikan `unlocked: false` + data kosong supaya halaman tetap bisa dirender dan UI-nya cukup menampilkan status terkunci. Yang penting: server tidak pernah mengirim data saran ke user FREE.
+- Endpoint saran (`order_suggestions`, `fee_suggestions`, `customer_suggestions`) tidak punya gerbang entitlement — fitur dasar, jadi selalu mengembalikan data saran ke semua paket (termasuk FREE).
 - Karena pengecekannya di server, UI yang diakali (memanggil endpoint langsung) tetap ditolak.
+
+### 5.3 Fitur dasar (bukan PRO)
+
+Saran pesanan, saran fee, dan saran pelanggan adalah fitur dasar yang terbuka untuk semua paket (trial, FREE, maupun PRO). Endpoint-nya (`getOrderSuggestions`, `getFeeSuggestions`, `getCustomerSuggestions`) tidak melakukan pengecekan entitlement — mereka selalu mengirim data saran selama user sudah login.
 
 ### 5.4 Perilaku UI saat fitur terkunci
 
 - `ProBadge` — penanda kecil "PRO" pada kontrol yang terkunci.
 - `ProLockPrompt` — dialog seragam untuk fitur terkunci: penjelasan fiturnya, isi paket PRO, status plan user saat ini, lalu tombol **"Upgrade ke PRO"** (menuju `/profil/langganan`) dan "Nanti saja".
-- Kontrol yang tampil terkunci di paket FREE: tombol **Tagih** di Detail Event (gembok + badge PRO; klik = dialog upgrade), tombol "Tambah metode pembayaran" serta toggle aktif-nonaktif metode (semua aksi tulis dialihkan ke dialog upgrade), lalu keterangan pengganti saran di form pesanan ("Saran nama barang & harga dari riwayat pesanan tersedia di paket PRO"), di form Tambah aturan fee ("Saran tier otomatis dari riwayat harga & fee barang tersedia di paket PRO"; halaman Edit aturan fee tidak lagi memakai saran ini), dan untuk saran pelanggan ("Saran nama & no. HP pelanggan dari data customer tersedia di paket PRO").
+- Kontrol yang tampil terkunci di paket FREE: tombol **Tagih** di Detail Event (gembok + badge PRO; klik = dialog upgrade), serta tombol "Tambah metode pembayaran" dan toggle aktif-nonaktif metode (semua aksi tulis dialihkan ke dialog upgrade). Fitur saran (pesanan, fee, pelanggan) tidak lagi terkunci karena sudah jadi fitur dasar.
 - Baris **Langganan** di Profil menampilkan status paket + chip **Upgrade** (khusus FREE) sebagai jalan masuk ke halaman Paket & Langganan.
 - Semua kunci di UI dibaca dari `canUseFeature(entitlements, '<kunci fitur>')` — komponen tidak menghitung status plan sendiri.
 
@@ -785,14 +788,14 @@ src/
 │   ├── client-bundle-safety.test.ts  # Guard: `db`/`pg` tidak boleh bocor ke bundle client
 │   ├── customer-matching.ts   # Cocokkan order → customer lewat nama (murni, tanpa db)
 │   ├── customer-matching.test.ts  # Unit test pencocokan order → customer
-│   ├── customer-suggestions-functions.ts  # getCustomerSuggestions (gerbang customer_suggestions)
+│   ├── customer-suggestions-functions.ts  # getCustomerSuggestions (saran pelanggan, fitur dasar)
 │   ├── customers-functions.ts # Endpoint CRUD customer
 │   ├── customers-queries.ts   # Query customer aktif (server-only)
 │   ├── entitlements.ts        # getUserEntitlements, requireFeature/requireUserFeature (gerbang PRO)
 │   ├── events-functions.ts    # listEvents, createEvent, updateEvent, deleteEvent, getEventDetail
 │   ├── fee-rules-functions.ts
 │   ├── fee-suggestions.ts     # Hitung saran tier fee (murni, tanpa db)
-│   ├── fee-suggestions-functions.ts  # getFeeSuggestions (gerbang fee_suggestions)
+│   ├── fee-suggestions-functions.ts  # getFeeSuggestions (saran tier fee, fitur dasar)
 │   ├── fee-tier-validation.ts # Validasi overlap tier (dipakai client & server)
 │   ├── finance-functions.ts   # getFinanceSummary
 │   ├── format.ts              # formatPhoneNumber, formatDate, buildWhatsAppLink, isValidIndonesianPhone
@@ -811,7 +814,7 @@ src/
 │   ├── order-merge.test.ts    # Unit test penggabungan pesanan
 │   ├── order-sheet-search.ts  # Kontrak URL sheet Tambah/Edit Pesanan (back = tutup sheet)
 │   ├── order-sheet-search.test.ts  # Unit test kontrak URL sheet
-│   ├── order-suggestions-functions.ts  # getOrderSuggestions (gerbang order_suggestions)
+│   ├── order-suggestions-functions.ts  # getOrderSuggestions (saran barang & harga, fitur dasar)
 │   ├── order-totals.ts        # lineTotal, summarizeItems
 │   ├── orders-functions.ts    # CRUD order & item, invoice, updateItemsObtained (+ gate billing)
 │   ├── password-reset-functions.ts

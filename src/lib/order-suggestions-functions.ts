@@ -5,29 +5,18 @@ import { db } from '../db'
 import { events, items, orders } from '../db/schema'
 import { brandIdOf } from './brand'
 import { getSessionUser } from './auth'
-import { getUserEntitlements } from './entitlements'
-import { canUseFeature } from './subscription'
 
 /**
  * Saran nama barang & harga asli untuk form Tambah/Edit Pesanan (dulu dihitung
- * di komponen `events.$eventId.tsx`, sekarang lewat server supaya gate fitur
- * PRO-nya benar-benar berlaku di API).
+ * di komponen `events.$eventId.tsx`, sekarang lewat server supaya pengambilan
+ * datanya konsisten).
  *
- * Keputusan bentuk respons: endpoint ini TIDAK melempar error waktu fiturnya
- * terkunci, tapi mengembalikan `unlocked: false` + data kosong — supaya halaman
- * event tetap bisa dirender normal dan tinggal menampilkan status terkunci.
- * Yang penting: server tidak pernah mengirim data saran ke user FREE.
+ * Fitur ini TERBUKA untuk semua paket (termasuk FREE) — jadi tidak ada
+ * pengecekan entitlement di sini.
  */
 export interface OrderSuggestions {
-  unlocked: boolean
   itemNames: Array<string>
   itemPrices: Record<string, Array<number>>
-}
-
-const LOCKED_SUGGESTIONS: OrderSuggestions = {
-  unlocked: false,
-  itemNames: [],
-  itemPrices: {},
 }
 
 export const getOrderSuggestions = createServerFn({ method: 'GET' })
@@ -35,11 +24,6 @@ export const getOrderSuggestions = createServerFn({ method: 'GET' })
   .handler(async ({ data }): Promise<OrderSuggestions> => {
     const user = await getSessionUser()
     if (!user) throw new Error('Belum login')
-
-    const entitlements = await getUserEntitlements(user)
-    if (!canUseFeature(entitlements, 'order_suggestions')) {
-      return LOCKED_SUGGESTIONS
-    }
 
     // Saran diambil dari barang di SEMUA pesanan pada event ini (punya user).
     const rows = await db
@@ -68,5 +52,5 @@ export const getOrderSuggestions = createServerFn({ method: 'GET' })
       itemPrices[name].sort((a, b) => a - b)
     }
 
-    return { unlocked: true, itemNames, itemPrices }
+    return { itemNames, itemPrices }
   })
