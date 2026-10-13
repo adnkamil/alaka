@@ -29,6 +29,7 @@ import type { PaymentMethodFormValue } from '../../../components/PaymentMethodMo
 import PaymentMethodModal from '../../../components/PaymentMethodModal'
 import ProBadge from '../../../components/ProBadge'
 import ProLockPrompt from '../../../components/ProLockPrompt'
+import TeamSection from '../../../components/TeamSection'
 import UserAvatar from '../../../components/UserAvatar'
 import Switch from '../../../components/ui/Switch'
 import { removeAvatar, uploadAvatar } from '../../../lib/avatar-functions'
@@ -297,7 +298,7 @@ function ProfilPage() {
       )}
 
       {isOwner && (
-        <section className="mb-6 mt-6">
+        <section className="mt-6">
           <h2
             className="mb-2 text-xs font-semibold uppercase"
             style={{ color: 'var(--app-text-mute)' }}
@@ -338,7 +339,7 @@ function ProfilPage() {
           </Link>
         </section>
       )}
-      <section className="mb-6">
+      <section className="mb-6 mt-6">
         <h2
           className="mb-2 text-xs font-semibold uppercase"
           style={{ color: 'var(--app-text-mute)' }}
@@ -490,6 +491,8 @@ function ProfilPage() {
           </div>
         </section>
       )}
+
+      {isOwner && <TeamSection />}
 
       <section className="mb-6">
         <h2

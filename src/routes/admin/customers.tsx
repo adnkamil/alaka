@@ -183,6 +183,7 @@ function CustomerCard({ user }: { user: AdminUserRow }) {
             style={{ color: 'var(--app-text-soft)' }}
           >
             {user.brandName ? `${user.name} · ${user.email}` : user.email}
+            {user.adminCount > 0 && ` · ${user.adminCount} admin`}
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap justify-end gap-1.5">

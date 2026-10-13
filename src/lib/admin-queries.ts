@@ -98,6 +98,11 @@ const ACTIVE_USER_WINDOW_DAYS = 7
  * kalau dipakai sekarang hasilnya akan selalu 0. Proxy login ini gampang
  * diganti begitu `activity_logs` mulai diisi.
  */
+/** Join ke akun PEMILIK sebuah brand (tepat satu per brand). */
+function ownerOf(brandId: typeof subscriptions.brandId) {
+  return and(eq(users.brandId, brandId), eq(users.brandRole, 'owner'))
+}
+
 export async function getAdminMetrics(
   now: Date = new Date(),
 ): Promise<AdminMetrics> {
@@ -113,21 +118,26 @@ export async function getAdminMetrics(
     [trialUsersRow],
     [revenueRow],
   ] = await Promise.all([
+    // "User" di dasbor = BRAND (diwakili akun pemilik). Akun admin brand tidak
+    // dihitung sendiri, supaya satu brand tidak terhitung dua kali.
     db
       .select({ value: sql<string>`count(*)` })
       .from(users)
-      .where(eq(users.isAdmin, false)),
+      .where(and(eq(users.isAdmin, false), eq(users.brandRole, 'owner'))),
+    // Brand aktif = ada akun (pemilik ATAU admin) yang login dalam jendela waktu.
     db
-      .select({ value: sql<string>`count(distinct ${sessions.userId})` })
+      .select({ value: sql<string>`count(distinct ${users.brandId})` })
       .from(sessions)
       .innerJoin(users, eq(sessions.userId, users.id))
       .where(
         and(gte(sessions.createdAt, activeSince), eq(users.isAdmin, false)),
       ),
+    // Langganan milik brand: ikuti `subscriptions.brandId` ke akun pemilik
+    // (pengaju bisa kosong kalau akunnya sudah dihapus).
     db
       .select({ value: sql<string>`count(*)` })
       .from(subscriptions)
-      .innerJoin(users, eq(subscriptions.userId, users.id))
+      .innerJoin(users, ownerOf(subscriptions.brandId))
       .where(
         and(
           eq(subscriptions.status, 'active'),
@@ -138,7 +148,7 @@ export async function getAdminMetrics(
     db
       .select({ value: sql<string>`count(*)` })
       .from(subscriptions)
-      .innerJoin(users, eq(subscriptions.userId, users.id))
+      .innerJoin(users, ownerOf(subscriptions.brandId))
       .where(
         and(eq(subscriptions.status, 'pending'), eq(users.isAdmin, false)),
       ),
@@ -149,10 +159,11 @@ export async function getAdminMetrics(
       .where(
         and(
           eq(users.isAdmin, false),
+          eq(users.brandRole, 'owner'),
           sql`${brands.trialEndsAt} > ${now}`,
           sql`not exists (
             select 1 from ${subscriptions}
-            where ${subscriptions.userId} = ${users.id}
+            where ${subscriptions.brandId} = ${users.brandId}
               and ${subscriptions.status} = 'active'
               and ${subscriptions.endsAt} > ${now}
           )`,
@@ -161,7 +172,7 @@ export async function getAdminMetrics(
     db
       .select({ value: sql<string>`coalesce(sum(${subscriptions.amount}), 0)` })
       .from(subscriptions)
-      .innerJoin(users, eq(subscriptions.userId, users.id))
+      .innerJoin(users, ownerOf(subscriptions.brandId))
       .where(
         and(
           sql`${subscriptions.status} in ('active', 'expired')`,
@@ -195,6 +206,8 @@ export interface AdminUserRow {
   proUntil: Date | null
   /** Ada pengajuan upgrade yang masih menunggu verifikasi admin. */
   hasPending: boolean
+  /** Jumlah akun admin di brand ini (selain pemilik). */
+  adminCount: number
   /** Login terakhir (baris `sessions` terbaru). `null` kalau belum pernah login. */
   lastLoginAt: Date | null
   /** Login dalam `ACTIVE_USER_WINDOW_DAYS` hari terakhir — definisi sama dengan metrik "Active Users". */
@@ -220,79 +233,94 @@ export async function listAdminUsers(
     now.getTime() - ACTIVE_USER_WINDOW_DAYS * 24 * 60 * 60 * 1000,
   )
 
-  const [userRows, activeRows, pendingRows, revenueRows, lastLoginRows] =
-    await Promise.all([
-      db
-        .select({ user: users, brand: brands })
-        .from(users)
-        .innerJoin(brands, eq(users.brandId, brands.id))
-        .where(eq(users.isAdmin, false))
-        .orderBy(desc(users.createdAt), desc(users.id)),
-      // Cuma baris yang masa berlakunya belum lewat; `resolveEntitlement()`
-      // tetap penentu akhir lewat `ends_at` (pola sama dengan metrik PRO Active).
-      db
-        .select({
-          userId: subscriptions.userId,
-          status: subscriptions.status,
-          startedAt: subscriptions.startedAt,
-          endsAt: subscriptions.endsAt,
-        })
-        .from(subscriptions)
-        .where(
-          and(
-            eq(subscriptions.status, 'active'),
-            sql`${subscriptions.endsAt} > ${now}`,
-          ),
+  // Satu baris = satu BRAND (akun pemilik). Admin brand tidak punya baris
+  // sendiri; jumlahnya ditampilkan di baris brand-nya (`adminCount`).
+  const [
+    userRows,
+    activeRows,
+    pendingRows,
+    revenueRows,
+    lastLoginRows,
+    adminRows,
+  ] = await Promise.all([
+    db
+      .select({ user: users, brand: brands })
+      .from(users)
+      .innerJoin(brands, eq(users.brandId, brands.id))
+      .where(and(eq(users.isAdmin, false), eq(users.brandRole, 'owner')))
+      .orderBy(desc(users.createdAt), desc(users.id)),
+    // Cuma baris yang masa berlakunya belum lewat; `resolveEntitlement()`
+    // tetap penentu akhir lewat `ends_at` (pola sama dengan metrik PRO Active).
+    db
+      .select({
+        brandId: subscriptions.brandId,
+        status: subscriptions.status,
+        startedAt: subscriptions.startedAt,
+        endsAt: subscriptions.endsAt,
+      })
+      .from(subscriptions)
+      .where(
+        and(
+          eq(subscriptions.status, 'active'),
+          sql`${subscriptions.endsAt} > ${now}`,
         ),
-      db
-        .select({ userId: subscriptions.userId })
-        .from(subscriptions)
-        .where(eq(subscriptions.status, 'pending')),
-      db
-        .select({
-          userId: subscriptions.userId,
-          total: sql<string>`coalesce(sum(${subscriptions.amount}), 0)`,
-        })
-        .from(subscriptions)
-        .where(sql`${subscriptions.status} in ('active', 'expired')`)
-        .groupBy(subscriptions.userId),
-      // `group by` bikin user yang belum pernah login tidak muncul di hasil —
-      // itu memang yang diinginkan (`lastLoginAt` jadi null). Pakai helper
-      // `max()` dari drizzle (bukan `sql` mentah) supaya hasilnya dipetakan
-      // lewat tipe kolomnya: driver mengembalikan timestamp sebagai string, dan
-      // mapping itu yang mengubahnya jadi Date — sama seperti `users.createdAt`.
-      db
-        .select({
-          userId: sessions.userId,
-          lastLoginAt: max(sessions.createdAt),
-        })
-        .from(sessions)
-        .groupBy(sessions.userId),
-    ])
+      ),
+    db
+      .select({ brandId: subscriptions.brandId })
+      .from(subscriptions)
+      .where(eq(subscriptions.status, 'pending')),
+    db
+      .select({
+        brandId: subscriptions.brandId,
+        total: sql<string>`coalesce(sum(${subscriptions.amount}), 0)`,
+      })
+      .from(subscriptions)
+      .where(sql`${subscriptions.status} in ('active', 'expired')`)
+      .groupBy(subscriptions.brandId),
+    // `group by` bikin user yang belum pernah login tidak muncul di hasil —
+    // itu memang yang diinginkan (`lastLoginAt` jadi null). Pakai helper
+    // `max()` dari drizzle (bukan `sql` mentah) supaya hasilnya dipetakan
+    // lewat tipe kolomnya: driver mengembalikan timestamp sebagai string, dan
+    // mapping itu yang mengubahnya jadi Date — sama seperti `users.createdAt`.
+    // Login terakhir BRAND = login terakhir akun mana pun di brand itu.
+    db
+      .select({
+        brandId: users.brandId,
+        lastLoginAt: max(sessions.createdAt),
+      })
+      .from(sessions)
+      .innerJoin(users, eq(sessions.userId, users.id))
+      .groupBy(users.brandId),
+    db
+      .select({
+        brandId: users.brandId,
+        total: sql<string>`count(*)::int`,
+      })
+      .from(users)
+      .where(eq(users.brandRole, 'admin'))
+      .groupBy(users.brandId),
+  ])
 
-  const windowsByUser = new Map<string, Array<SubscriptionWindow>>()
+  const windowsByBrand = new Map<string, Array<SubscriptionWindow>>()
   for (const row of activeRows) {
-    // Pengajuan yang akun pembuatnya sudah dihapus tidak punya baris user.
-    if (!row.userId) continue
-    const windows = windowsByUser.get(row.userId) ?? []
+    const windows = windowsByBrand.get(row.brandId) ?? []
     windows.push({
       status: row.status,
       startedAt: row.startedAt,
       endsAt: row.endsAt,
     })
-    windowsByUser.set(row.userId, windows)
+    windowsByBrand.set(row.brandId, windows)
   }
 
-  const pendingUserIds = new Set(
-    pendingRows.flatMap((row) => (row.userId ? [row.userId] : [])),
+  const pendingBrandIds = new Set(pendingRows.map((row) => row.brandId))
+  const revenueByBrand = new Map<string, number>(
+    revenueRows.map((row) => [row.brandId, Number(row.total)]),
   )
-  const revenueByUser = new Map<string, number>(
-    revenueRows.flatMap((row) =>
-      row.userId ? [[row.userId, Number(row.total)] as const] : [],
-    ),
+  const lastLoginByBrand = new Map<string, Date | null>(
+    lastLoginRows.map((row) => [row.brandId, row.lastLoginAt]),
   )
-  const lastLoginByUser = new Map<string, Date | null>(
-    lastLoginRows.map((row) => [row.userId, row.lastLoginAt]),
+  const adminCountByBrand = new Map<string, number>(
+    adminRows.map((row) => [row.brandId, Number(row.total)]),
   )
 
   return userRows.map(({ user: userRow, brand }) => {
@@ -301,11 +329,11 @@ export async function listAdminUsers(
       {
         trialStartedAt: user.trialStartedAt,
         trialEndsAt: user.trialEndsAt,
-        subscriptions: windowsByUser.get(user.id) ?? [],
+        subscriptions: windowsByBrand.get(user.brandId) ?? [],
       },
       now,
     )
-    const lastLoginAt = lastLoginByUser.get(user.id) ?? null
+    const lastLoginAt = lastLoginByBrand.get(user.brandId) ?? null
 
     return {
       id: user.id,
@@ -316,11 +344,12 @@ export async function listAdminUsers(
       createdAt: user.createdAt,
       plan: entitlement.plan,
       proUntil: entitlement.proUntil,
-      hasPending: pendingUserIds.has(user.id),
+      hasPending: pendingBrandIds.has(user.brandId),
+      adminCount: adminCountByBrand.get(user.brandId) ?? 0,
       lastLoginAt,
       isActive:
         lastLoginAt !== null && lastLoginAt.getTime() >= activeSince.getTime(),
-      revenue: revenueByUser.get(user.id) ?? 0,
+      revenue: revenueByBrand.get(user.brandId) ?? 0,
     }
   })
 }
