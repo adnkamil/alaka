@@ -377,12 +377,6 @@ function ProfilPage() {
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block">Ubah Kata Sandi</span>
-                <span
-                  className="block truncate text-xs font-normal"
-                  style={{ color: 'var(--app-text-soft)' }}
-                >
-                  Ganti kata sandi akun kamu
-                </span>
               </span>
               <ChevronRight
                 size={18}

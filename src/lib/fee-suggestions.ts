@@ -1,6 +1,5 @@
 /**
- * Saran tier aturan fee untuk halaman Manajemen Fee (fitur PRO
- * `fee_suggestions`).
+ * Saran tier aturan fee untuk halaman Manajemen Fee.
  *
  * Idenya: jastiper sudah punya data nyata — harga barang dan fee yang dia
  * tetapkan di pesanan-pesanan sebelumnya. Dari situ kita kelompokkan harga ke

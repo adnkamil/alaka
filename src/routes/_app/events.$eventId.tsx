@@ -362,9 +362,6 @@ function EventDetailPage() {
   const billingUnlocked = currentUser
     ? canUseFeature(currentUser.entitlements, 'billing')
     : false
-  const orderSuggestionsUnlocked = currentUser
-    ? canUseFeature(currentUser.entitlements, 'order_suggestions')
-    : false
 
   const feeRulesQuery = queryOptions({
     queryKey: ['fee-rules'],
@@ -372,21 +369,12 @@ function EventDetailPage() {
   })
   const { data: feeRules } = useSuspenseQuery(feeRulesQuery)
 
-  // Saran nama & no. HP pelanggan (fitur PRO `customer_suggestions`). Endpoint-nya
-  // tidak dipanggil sama sekali waktu fiturnya terkunci, jadi datanya benar-benar
-  // tidak dikirim ke client user FREE.
-  const customerSuggestionsUnlocked = currentUser
-    ? canUseFeature(currentUser.entitlements, 'customer_suggestions')
-    : false
-
+  // Saran nama & no. HP pelanggan — fitur dasar yang terbuka untuk semua paket.
   const customerSuggestionsQuery = queryOptions({
     queryKey: ['customer-suggestions'],
     queryFn: () => getCustomerSuggestions(),
   })
-  const { data: customerSuggestions } = useQuery({
-    ...customerSuggestionsQuery,
-    enabled: customerSuggestionsUnlocked,
-  })
+  const { data: customerSuggestions } = useQuery(customerSuggestionsQuery)
   const customers = customerSuggestions?.customers ?? []
 
   // Uang masuk = sum paid_amount dari semua pesanan (konsisten dengan server).
@@ -400,17 +388,12 @@ function EventDetailPage() {
     return sum + Math.max(0, total - Number(o.paidAmount))
   }, 0)
 
-  // Saran nama barang & harga (fitur PRO `order_suggestions`). Endpoint-nya
-  // tidak dipanggil sama sekali waktu fiturnya terkunci, jadi datanya benar-benar
-  // tidak dikirim ke client user FREE.
+  // Saran nama barang & harga — fitur dasar yang terbuka untuk semua paket.
   const orderSuggestionsQuery = queryOptions({
     queryKey: ['order-suggestions', eventId],
     queryFn: () => getOrderSuggestions({ data: { eventId } }),
   })
-  const { data: orderSuggestions } = useQuery({
-    ...orderSuggestionsQuery,
-    enabled: orderSuggestionsUnlocked,
-  })
+  const { data: orderSuggestions } = useQuery(orderSuggestionsQuery)
   const itemNameSuggestions = orderSuggestions?.itemNames ?? []
   const itemPriceSuggestions = orderSuggestions?.itemPrices ?? {}
 
@@ -1596,8 +1579,6 @@ function EventDetailPage() {
           customers={customers}
           itemNameSuggestions={itemNameSuggestions}
           itemPriceSuggestions={itemPriceSuggestions}
-          suggestionsLocked={!orderSuggestionsUnlocked}
-          customerSuggestionsLocked={!customerSuggestionsUnlocked}
           onClose={() => closeSheet()}
           onSubmit={handleCreateOrder}
         />
@@ -1610,8 +1591,6 @@ function EventDetailPage() {
           customers={customers}
           itemNameSuggestions={itemNameSuggestions}
           itemPriceSuggestions={itemPriceSuggestions}
-          suggestionsLocked={!orderSuggestionsUnlocked}
-          customerSuggestionsLocked={!customerSuggestionsUnlocked}
           title="Tambah Pesanan"
           submitLabel="Simpan pesanan"
           initialValue={{
@@ -1631,8 +1610,6 @@ function EventDetailPage() {
           customers={customers}
           itemNameSuggestions={itemNameSuggestions}
           itemPriceSuggestions={itemPriceSuggestions}
-          suggestionsLocked={!orderSuggestionsUnlocked}
-          customerSuggestionsLocked={!customerSuggestionsUnlocked}
           title="Edit Pesanan"
           submitLabel="Simpan perubahan"
           initialValue={{

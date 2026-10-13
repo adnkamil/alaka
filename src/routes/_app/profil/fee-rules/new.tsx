@@ -10,8 +10,8 @@ export const Route = createFileRoute('/_app/profil/fee-rules/new')({
   component: NewFeeRulePage,
 })
 
-// Saran tier (fitur PRO `fee_suggestions`). Sengaja pakai `useQuery` biasa, bukan
-// loader: formnya tetap bisa dipakai walau saran gagal dimuat.
+// Saran tier. Sengaja pakai `useQuery` biasa, bukan loader: formnya tetap bisa
+// dipakai walau saran gagal dimuat.
 const feeSuggestionsQuery = queryOptions({
   queryKey: ['fee-suggestions'],
   queryFn: () => getFeeSuggestions(),
@@ -21,10 +21,6 @@ function NewFeeRulePage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { data: feeSuggestions } = useQuery(feeSuggestionsQuery)
-
-  // `unlocked` dari server; selama masih dimuat belum ada info, jadi dianggap
-  // belum terkunci (biar nggak nge-flash pesan terkunci).
-  const suggestionsLocked = feeSuggestions ? !feeSuggestions.unlocked : false
 
   async function handleSubmit(value: FeeRuleFormValue) {
     await createFeeRule({ data: value })
@@ -44,7 +40,6 @@ function NewFeeRulePage() {
       <FeeRuleForm
         submitLabel="Simpan"
         suggestions={feeSuggestions?.suggestions ?? []}
-        suggestionsLocked={suggestionsLocked}
         onSubmit={handleSubmit}
       />
     </main>
