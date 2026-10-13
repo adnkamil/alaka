@@ -17,6 +17,13 @@ export function getMaxAdmins(): number {
 /** Masa berlaku undangan. */
 export const INVITATION_TTL_DAYS = 7
 
+/**
+ * Batas undangan yang boleh dibuat satu brand per 24 jam (semua status dihitung,
+ * termasuk yang dibatalkan). Mencegah "batalkan lalu undang ulang" dipakai untuk
+ * mengirim email ke banyak alamat orang lain.
+ */
+export const MAX_INVITATIONS_PER_DAY = 5
+
 /** Email undangan disimpan huruf kecil; pembandingan juga huruf kecil. */
 export function normalizeInviteEmail(raw: string): string {
   return raw.trim().toLowerCase()
@@ -31,6 +38,7 @@ export type TeamErrorCode =
   | 'EMAIL_TERDAFTAR'
   | 'UNDANGAN_SUDAH_ADA'
   | 'SLOT_PENUH'
+  | 'TERLALU_BANYAK_UNDANGAN'
   | 'UNDANGAN_TIDAK_DITEMUKAN'
   | 'UNDANGAN_KEDALUWARSA'
   | 'UNDANGAN_DICABUT'
@@ -45,6 +53,8 @@ const TEAM_ERROR_MESSAGES: Record<TeamErrorCode, string> = {
   UNDANGAN_SUDAH_ADA: 'Email ini sudah diundang dan undangannya masih berlaku.',
   SLOT_PENUH:
     'Jumlah admin sudah mencapai batas. Cabut admin atau batalkan undangan yang menunggu dulu.',
+  TERLALU_BANYAK_UNDANGAN:
+    'Terlalu banyak undangan dalam 24 jam terakhir. Coba lagi besok.',
   UNDANGAN_TIDAK_DITEMUKAN: 'Undangan tidak ditemukan.',
   UNDANGAN_KEDALUWARSA: 'Undangan ini sudah kedaluwarsa. Minta diundang ulang.',
   UNDANGAN_DICABUT: 'Undangan ini sudah dibatalkan oleh pemilik brand.',

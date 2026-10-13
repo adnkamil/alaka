@@ -8,6 +8,7 @@ import {
 } from './invitation-token'
 import {
   INVITATION_TTL_DAYS,
+  MAX_INVITATIONS_PER_DAY,
   TeamError,
   getMaxAdmins,
   isPlausibleEmail,
@@ -168,6 +169,22 @@ export async function createInvitation(actor: TeamActor, rawEmail: string) {
       (await countAdmins(tx, actor.brandId)) +
       (await countLivePending(tx, actor.brandId, now))
     if (used >= getMaxAdmins()) throw new TeamError('SLOT_PENUH')
+
+    const [recent] = await tx
+      .select({ n: sql<number>`count(*)::int` })
+      .from(brandInvitations)
+      .where(
+        and(
+          eq(brandInvitations.brandId, actor.brandId),
+          gt(
+            brandInvitations.createdAt,
+            new Date(now.getTime() - 24 * 60 * 60 * 1000),
+          ),
+        ),
+      )
+    if (recent.n >= MAX_INVITATIONS_PER_DAY) {
+      throw new TeamError('TERLALU_BANYAK_UNDANGAN')
+    }
 
     const { token, tokenHash } = generateInvitationToken()
     const [invitation] = await tx

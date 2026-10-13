@@ -111,3 +111,30 @@ test('aksi operasional TIDAK dibatasi hanya untuk pemilik', () => {
     )
   }
 })
+
+test('server function tim brand hanya lewat requireOwner (team.manage)', () => {
+  const text = readFileSync(join(SRC_DIR, 'lib/team-functions.ts'), 'utf8')
+  assert.match(
+    text,
+    /requireBrandPermission\(user, 'team\.manage'\)/,
+    'requireOwner() harus memanggil requireBrandPermission(user, "team.manage")',
+  )
+
+  const missing = [
+    'fetchTeam',
+    'inviteAdmin',
+    'cancelInvitation',
+    'removeTeamAdmin',
+  ].filter((fn) => !functionBody(text, fn).includes('await requireOwner()'))
+  assert.deepEqual(
+    missing,
+    [],
+    'Semua server function tim harus memanggil requireOwner().',
+  )
+
+  // Mengundang memberi orang lain akses ke brand: wajib email terverifikasi.
+  assert.match(
+    functionBody(text, 'inviteAdmin'),
+    /requireVerifiedEmail\(user\)/,
+  )
+})
