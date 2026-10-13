@@ -28,6 +28,7 @@ import { Route as AppPesananIndexRouteImport } from './routes/_app/pesanan/index
 import { Route as AppPesananNewRouteImport } from './routes/_app/pesanan/new'
 import { Route as AppProfilIndexRouteImport } from './routes/_app/profil/index'
 import { Route as AppProfilLanggananRouteImport } from './routes/_app/profil/langganan'
+import { Route as AppProfilPembayaranRouteImport } from './routes/_app/profil/pembayaran'
 import { Route as AppProfilTemplateChatRouteImport } from './routes/_app/profil/template-chat'
 import { Route as ApiAvatarBrandIdRouteImport } from './routes/api/avatar/$brandId'
 import { Route as ApiSubscriptionProofIdRouteImport } from './routes/api/subscription-proof/$id'
@@ -134,6 +135,11 @@ const AppProfilLanggananRoute = AppProfilLanggananRouteImport.update({
   path: '/profil/langganan',
   getParentRoute: () => AppRoute,
 } as any)
+const AppProfilPembayaranRoute = AppProfilPembayaranRouteImport.update({
+  id: '/profil/pembayaran',
+  path: '/profil/pembayaran',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppProfilTemplateChatRoute = AppProfilTemplateChatRouteImport.update({
   id: '/profil/template-chat',
   path: '/profil/template-chat',
@@ -209,6 +215,7 @@ export interface FileRoutesByFullPath {
   '/events/new': typeof AppEventsNewRoute
   '/pesanan/new': typeof AppPesananNewRoute
   '/profil/langganan': typeof AppProfilLanggananRoute
+  '/profil/pembayaran': typeof AppProfilPembayaranRoute
   '/profil/template-chat': typeof AppProfilTemplateChatRoute
   '/api/avatar/$brandId': typeof ApiAvatarBrandIdRoute
   '/api/subscription-proof/$id': typeof ApiSubscriptionProofIdRoute
@@ -239,6 +246,7 @@ export interface FileRoutesByTo {
   '/events/new': typeof AppEventsNewRoute
   '/pesanan/new': typeof AppPesananNewRoute
   '/profil/langganan': typeof AppProfilLanggananRoute
+  '/profil/pembayaran': typeof AppProfilPembayaranRoute
   '/profil/template-chat': typeof AppProfilTemplateChatRoute
   '/api/avatar/$brandId': typeof ApiAvatarBrandIdRoute
   '/api/subscription-proof/$id': typeof ApiSubscriptionProofIdRoute
@@ -272,6 +280,7 @@ export interface FileRoutesById {
   '/_app/events/new': typeof AppEventsNewRoute
   '/_app/pesanan/new': typeof AppPesananNewRoute
   '/_app/profil/langganan': typeof AppProfilLanggananRoute
+  '/_app/profil/pembayaran': typeof AppProfilPembayaranRoute
   '/_app/profil/template-chat': typeof AppProfilTemplateChatRoute
   '/api/avatar/$brandId': typeof ApiAvatarBrandIdRoute
   '/api/subscription-proof/$id': typeof ApiSubscriptionProofIdRoute
@@ -305,6 +314,7 @@ export interface FileRouteTypes {
     | '/events/new'
     | '/pesanan/new'
     | '/profil/langganan'
+    | '/profil/pembayaran'
     | '/profil/template-chat'
     | '/api/avatar/$brandId'
     | '/api/subscription-proof/$id'
@@ -335,6 +345,7 @@ export interface FileRouteTypes {
     | '/events/new'
     | '/pesanan/new'
     | '/profil/langganan'
+    | '/profil/pembayaran'
     | '/profil/template-chat'
     | '/api/avatar/$brandId'
     | '/api/subscription-proof/$id'
@@ -367,6 +378,7 @@ export interface FileRouteTypes {
     | '/_app/events/new'
     | '/_app/pesanan/new'
     | '/_app/profil/langganan'
+    | '/_app/profil/pembayaran'
     | '/_app/profil/template-chat'
     | '/api/avatar/$brandId'
     | '/api/subscription-proof/$id'
@@ -533,6 +545,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProfilLanggananRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/profil/pembayaran': {
+      id: '/_app/profil/pembayaran'
+      path: '/profil/pembayaran'
+      fullPath: '/profil/pembayaran'
+      preLoaderRoute: typeof AppProfilPembayaranRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/profil/template-chat': {
       id: '/_app/profil/template-chat'
       path: '/profil/template-chat'
@@ -620,6 +639,7 @@ interface AppRouteChildren {
   AppEventsNewRoute: typeof AppEventsNewRoute
   AppPesananNewRoute: typeof AppPesananNewRoute
   AppProfilLanggananRoute: typeof AppProfilLanggananRoute
+  AppProfilPembayaranRoute: typeof AppProfilPembayaranRoute
   AppProfilTemplateChatRoute: typeof AppProfilTemplateChatRoute
   AppPesananIndexRoute: typeof AppPesananIndexRoute
   AppProfilIndexRoute: typeof AppProfilIndexRoute
@@ -637,6 +657,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppEventsNewRoute: AppEventsNewRoute,
   AppPesananNewRoute: AppPesananNewRoute,
   AppProfilLanggananRoute: AppProfilLanggananRoute,
+  AppProfilPembayaranRoute: AppProfilPembayaranRoute,
   AppProfilTemplateChatRoute: AppProfilTemplateChatRoute,
   AppPesananIndexRoute: AppPesananIndexRoute,
   AppProfilIndexRoute: AppProfilIndexRoute,
