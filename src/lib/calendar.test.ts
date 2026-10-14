@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   buildMonthGrid,
+  calendarBannerSrc,
   daysInMonth,
   formatLongDate,
   groupByDate,
@@ -74,4 +75,13 @@ test('isCalendarDetailPath hanya true untuk halaman detail', () => {
   assert.equal(isCalendarDetailPath('/kalender/abc-123'), true)
   assert.equal(isCalendarDetailPath('/kalender/abc-123/'), true)
   assert.equal(isCalendarDetailPath('/keuangan'), false)
+})
+
+test('calendarBannerSrc null tanpa banner, versi dari waktu penggantian', () => {
+  const id = '11111111-1111-4111-8111-111111111111'
+  assert.equal(calendarBannerSrc(id, null), null)
+  assert.equal(
+    calendarBannerSrc(id, new Date('2026-10-14T00:00:00.000Z')),
+    `/api/event-banner/${id}?v=1791936000000`,
+  )
 })

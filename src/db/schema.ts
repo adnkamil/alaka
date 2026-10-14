@@ -661,11 +661,13 @@ export const calendarEvents = pgTable(
     /** Deskripsi event di halaman detail. Boleh kosong. */
     description: text(),
     /**
-     * Gambar banner di atas halaman detail (URL yang bisa langsung dipakai
-     * `<img src>`). Boleh kosong: halaman detail menampilkan banner polos.
+     * Penanda banner, sama polanya dengan `brands.avatar_updated_at`: filenya
+     * ada di Netlify Blobs (store `calendar-banners`, key = id event), kolom ini
+     * cuma menandai KAPAN terakhir diganti. Null = belum ada banner. Dipakai
+     * juga sebagai `?v=` di URL gambar supaya cache browser ikut ganti.
      * Diisi dari UI admin (batch berikutnya).
      */
-    bannerUrl: text('banner_url'),
+    bannerUpdatedAt: timestamp('banner_updated_at', { withTimezone: true }),
     /**
      * Brand yang dipamerkan di event ini, berupa nama bebas (mis. brand skincare
      * yang ikut bazar) — BUKAN relasi ke tabel `brands` (itu brand jastiper).

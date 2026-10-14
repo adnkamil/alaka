@@ -117,3 +117,50 @@ export async function deletePaymentProof(
 ): Promise<void> {
   await paymentProofStore().delete(subscriptionId)
 }
+
+// --- Banner event kalender ----------------------------------------------
+//
+// Sama dengan avatar: publik (cuma gambar banner, id event berupa UUID acak),
+// key = id event di tabel `calendar_event`. Format yang diterima sama dengan
+// avatar (WebP/JPEG), jadi deteksi tipenya memakai fungsi yang sama.
+
+const CALENDAR_BANNER_STORE = 'calendar-banners'
+
+function calendarBannerStore() {
+  // Opsi sama dengan `avatarStore()` (consistency strong, region us-east-2).
+  return getStore({
+    name: CALENDAR_BANNER_STORE,
+    consistency: 'strong',
+    region: 'us-east-2',
+  })
+}
+
+/** Simpan/timpa banner satu event. Key = eventId, jadi tidak ada file yatim. */
+export async function putCalendarBanner(
+  eventId: string,
+  bytes: Uint8Array,
+  contentType: AvatarContentType,
+): Promise<void> {
+  const body = new Blob([new Uint8Array(bytes)], { type: contentType })
+  await calendarBannerStore().set(eventId, body, { metadata: { contentType } })
+}
+
+export async function getCalendarBanner(
+  eventId: string,
+): Promise<{ data: ArrayBuffer; contentType: AvatarContentType } | null> {
+  const result = await calendarBannerStore().getWithMetadata(eventId, {
+    type: 'blob',
+  })
+  if (!result) return null
+
+  const data = await result.data.arrayBuffer()
+  // Tipe dikenali dari isi file, bukan dari metadata.
+  const contentType = detectAvatarContentType(new Uint8Array(data))
+  if (!contentType) return null
+
+  return { data, contentType }
+}
+
+export async function deleteCalendarBanner(eventId: string): Promise<void> {
+  await calendarBannerStore().delete(eventId)
+}

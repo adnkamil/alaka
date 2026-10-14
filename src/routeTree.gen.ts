@@ -33,6 +33,7 @@ import { Route as AppProfilPembayaranRouteImport } from './routes/_app/profil/pe
 import { Route as AppProfilTemplateChatRouteImport } from './routes/_app/profil/template-chat'
 import { Route as AppProfilTimRouteImport } from './routes/_app/profil/tim'
 import { Route as ApiAvatarBrandIdRouteImport } from './routes/api/avatar/$brandId'
+import { Route as ApiEventBannerEventIdRouteImport } from './routes/api/event-banner/$eventId'
 import { Route as ApiSubscriptionProofIdRouteImport } from './routes/api/subscription-proof/$id'
 import { Route as TagihanEventIdOrderIdRouteImport } from './routes/tagihan.$eventId.$orderId'
 import { Route as AppInvoiceEventIdOrderIdRouteImport } from './routes/_app/invoice.$eventId.$orderId'
@@ -162,6 +163,11 @@ const ApiAvatarBrandIdRoute = ApiAvatarBrandIdRouteImport.update({
   path: '/api/avatar/$brandId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiEventBannerEventIdRoute = ApiEventBannerEventIdRouteImport.update({
+  id: '/api/event-banner/$eventId',
+  path: '/api/event-banner/$eventId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiSubscriptionProofIdRoute = ApiSubscriptionProofIdRouteImport.update({
   id: '/api/subscription-proof/$id',
   path: '/api/subscription-proof/$id',
@@ -232,6 +238,7 @@ export interface FileRoutesByFullPath {
   '/profil/template-chat': typeof AppProfilTemplateChatRoute
   '/profil/tim': typeof AppProfilTimRoute
   '/api/avatar/$brandId': typeof ApiAvatarBrandIdRoute
+  '/api/event-banner/$eventId': typeof ApiEventBannerEventIdRoute
   '/api/subscription-proof/$id': typeof ApiSubscriptionProofIdRoute
   '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
   '/kalender/': typeof AppKalenderIndexRoute
@@ -265,6 +272,7 @@ export interface FileRoutesByTo {
   '/profil/template-chat': typeof AppProfilTemplateChatRoute
   '/profil/tim': typeof AppProfilTimRoute
   '/api/avatar/$brandId': typeof ApiAvatarBrandIdRoute
+  '/api/event-banner/$eventId': typeof ApiEventBannerEventIdRoute
   '/api/subscription-proof/$id': typeof ApiSubscriptionProofIdRoute
   '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
   '/kalender': typeof AppKalenderIndexRoute
@@ -301,6 +309,7 @@ export interface FileRoutesById {
   '/_app/profil/template-chat': typeof AppProfilTemplateChatRoute
   '/_app/profil/tim': typeof AppProfilTimRoute
   '/api/avatar/$brandId': typeof ApiAvatarBrandIdRoute
+  '/api/event-banner/$eventId': typeof ApiEventBannerEventIdRoute
   '/api/subscription-proof/$id': typeof ApiSubscriptionProofIdRoute
   '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
   '/_app/kalender/': typeof AppKalenderIndexRoute
@@ -337,6 +346,7 @@ export interface FileRouteTypes {
     | '/profil/template-chat'
     | '/profil/tim'
     | '/api/avatar/$brandId'
+    | '/api/event-banner/$eventId'
     | '/api/subscription-proof/$id'
     | '/tagihan/$eventId/$orderId'
     | '/kalender/'
@@ -370,6 +380,7 @@ export interface FileRouteTypes {
     | '/profil/template-chat'
     | '/profil/tim'
     | '/api/avatar/$brandId'
+    | '/api/event-banner/$eventId'
     | '/api/subscription-proof/$id'
     | '/tagihan/$eventId/$orderId'
     | '/kalender'
@@ -405,6 +416,7 @@ export interface FileRouteTypes {
     | '/_app/profil/template-chat'
     | '/_app/profil/tim'
     | '/api/avatar/$brandId'
+    | '/api/event-banner/$eventId'
     | '/api/subscription-proof/$id'
     | '/tagihan/$eventId/$orderId'
     | '/_app/kalender/'
@@ -428,6 +440,7 @@ export interface RootRouteChildren {
   UndanganTokenRoute: typeof UndanganTokenRoute
   VerifikasiEmailTokenRoute: typeof VerifikasiEmailTokenRoute
   ApiAvatarBrandIdRoute: typeof ApiAvatarBrandIdRoute
+  ApiEventBannerEventIdRoute: typeof ApiEventBannerEventIdRoute
   ApiSubscriptionProofIdRoute: typeof ApiSubscriptionProofIdRoute
   TagihanEventIdOrderIdRoute: typeof TagihanEventIdOrderIdRoute
   ApiAuthGoogleCallbackRoute: typeof ApiAuthGoogleCallbackRoute
@@ -604,6 +617,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAvatarBrandIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/event-banner/$eventId': {
+      id: '/api/event-banner/$eventId'
+      path: '/api/event-banner/$eventId'
+      fullPath: '/api/event-banner/$eventId'
+      preLoaderRoute: typeof ApiEventBannerEventIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/subscription-proof/$id': {
       id: '/api/subscription-proof/$id'
       path: '/api/subscription-proof/$id'
@@ -736,6 +756,7 @@ const rootRouteChildren: RootRouteChildren = {
   UndanganTokenRoute: UndanganTokenRoute,
   VerifikasiEmailTokenRoute: VerifikasiEmailTokenRoute,
   ApiAvatarBrandIdRoute: ApiAvatarBrandIdRoute,
+  ApiEventBannerEventIdRoute: ApiEventBannerEventIdRoute,
   ApiSubscriptionProofIdRoute: ApiSubscriptionProofIdRoute,
   TagihanEventIdOrderIdRoute: TagihanEventIdOrderIdRoute,
   ApiAuthGoogleCallbackRoute: ApiAuthGoogleCallbackRoute,

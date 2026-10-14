@@ -32,9 +32,9 @@ function CalendarEventDetailPage() {
             'linear-gradient(135deg, var(--app-accent) 0%, var(--app-accent-strong) 100%)',
         }}
       >
-        {event.bannerUrl ? (
+        {event.bannerSrc ? (
           <img
-            src={event.bannerUrl}
+            src={event.bannerSrc}
             alt={`Banner ${event.name}`}
             className="h-full w-full object-cover"
           />

@@ -127,3 +127,16 @@ export function groupByDate<T extends { eventDate: string }>(
 export function isCalendarDetailPath(pathname: string): boolean {
   return /^\/kalender\/[^/]+/.test(pathname)
 }
+
+/**
+ * URL gambar banner event, atau null kalau belum ada. `?v=` memakai waktu
+ * penggantian banner supaya URL berubah (dan cache browser ikut segar) tiap
+ * banner diganti.
+ */
+export function calendarBannerSrc(
+  eventId: string,
+  bannerUpdatedAt: Date | null,
+): string | null {
+  if (!bannerUpdatedAt) return null
+  return `/api/event-banner/${eventId}?v=${bannerUpdatedAt.getTime()}`
+}

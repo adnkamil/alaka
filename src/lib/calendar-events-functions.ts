@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { db } from '../db'
 import { calendarEvents } from '../db/schema'
 import { getSessionUser } from './auth'
-import { MONTH_KEY_PATTERN, monthRange } from './calendar'
+import { MONTH_KEY_PATTERN, calendarBannerSrc, monthRange } from './calendar'
 
 async function requireUser() {
   const user = await getSessionUser()
@@ -51,12 +51,13 @@ export const getCalendarEvent = createServerFn({ method: 'GET' })
         location: calendarEvents.location,
         eventDate: calendarEvents.eventDate,
         description: calendarEvents.description,
-        bannerUrl: calendarEvents.bannerUrl,
+        bannerUpdatedAt: calendarEvents.bannerUpdatedAt,
         exhibitors: calendarEvents.exhibitors,
       })
       .from(calendarEvents)
       .where(eq(calendarEvents.id, data.id))
     const event = rows.at(0)
     if (!event) throw new Error('Event tidak ditemukan')
-    return event
+    const { bannerUpdatedAt, ...rest } = event
+    return { ...rest, bannerSrc: calendarBannerSrc(event.id, bannerUpdatedAt) }
   })
