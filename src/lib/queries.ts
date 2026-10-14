@@ -1,4 +1,5 @@
 import { queryOptions } from '@tanstack/react-query'
+import { fetchAdminCalendarEvents } from './calendar-events-admin-functions'
 import { fetchCurrentUser } from './auth-functions'
 
 /**
@@ -9,4 +10,10 @@ import { fetchCurrentUser } from './auth-functions'
 export const currentUserQuery = queryOptions({
   queryKey: ['current-user'],
   queryFn: () => fetchCurrentUser(),
+})
+
+/** Semua event kalender untuk halaman admin (daftar + halaman detail/ubah). */
+export const adminCalendarEventsQuery = queryOptions({
+  queryKey: ['admin-calendar-events'],
+  queryFn: () => fetchAdminCalendarEvents(),
 })

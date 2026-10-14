@@ -32,6 +32,9 @@ import { Route as AppProfilLanggananRouteImport } from './routes/_app/profil/lan
 import { Route as AppProfilPembayaranRouteImport } from './routes/_app/profil/pembayaran'
 import { Route as AppProfilTemplateChatRouteImport } from './routes/_app/profil/template-chat'
 import { Route as AppProfilTimRouteImport } from './routes/_app/profil/tim'
+import { Route as AdminEventIndexRouteImport } from './routes/admin/event/index'
+import { Route as AdminEventEventIdRouteImport } from './routes/admin/event/$eventId'
+import { Route as AdminEventNewRouteImport } from './routes/admin/event/new'
 import { Route as ApiAvatarBrandIdRouteImport } from './routes/api/avatar/$brandId'
 import { Route as ApiEventBannerEventIdRouteImport } from './routes/api/event-banner/$eventId'
 import { Route as ApiSubscriptionProofIdRouteImport } from './routes/api/subscription-proof/$id'
@@ -158,6 +161,21 @@ const AppProfilTimRoute = AppProfilTimRouteImport.update({
   path: '/profil/tim',
   getParentRoute: () => AppRoute,
 } as any)
+const AdminEventIndexRoute = AdminEventIndexRouteImport.update({
+  id: '/event/',
+  path: '/event/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminEventEventIdRoute = AdminEventEventIdRouteImport.update({
+  id: '/event/$eventId',
+  path: '/event/$eventId',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminEventNewRoute = AdminEventNewRouteImport.update({
+  id: '/event/new',
+  path: '/event/new',
+  getParentRoute: () => AdminRoute,
+} as any)
 const ApiAvatarBrandIdRoute = ApiAvatarBrandIdRouteImport.update({
   id: '/api/avatar/$brandId',
   path: '/api/avatar/$brandId',
@@ -237,12 +255,15 @@ export interface FileRoutesByFullPath {
   '/profil/pembayaran': typeof AppProfilPembayaranRoute
   '/profil/template-chat': typeof AppProfilTemplateChatRoute
   '/profil/tim': typeof AppProfilTimRoute
+  '/admin/event/$eventId': typeof AdminEventEventIdRoute
+  '/admin/event/new': typeof AdminEventNewRoute
   '/api/avatar/$brandId': typeof ApiAvatarBrandIdRoute
   '/api/event-banner/$eventId': typeof ApiEventBannerEventIdRoute
   '/api/subscription-proof/$id': typeof ApiSubscriptionProofIdRoute
   '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
   '/kalender/': typeof AppKalenderIndexRoute
   '/profil/': typeof AppProfilIndexRoute
+  '/admin/event/': typeof AdminEventIndexRoute
   '/invoice/$eventId/$orderId': typeof AppInvoiceEventIdOrderIdRoute
   '/profil/fee-rules/$feeRuleId': typeof AppProfilFeeRulesFeeRuleIdRoute
   '/profil/fee-rules/new': typeof AppProfilFeeRulesNewRoute
@@ -271,12 +292,15 @@ export interface FileRoutesByTo {
   '/profil/pembayaran': typeof AppProfilPembayaranRoute
   '/profil/template-chat': typeof AppProfilTemplateChatRoute
   '/profil/tim': typeof AppProfilTimRoute
+  '/admin/event/$eventId': typeof AdminEventEventIdRoute
+  '/admin/event/new': typeof AdminEventNewRoute
   '/api/avatar/$brandId': typeof ApiAvatarBrandIdRoute
   '/api/event-banner/$eventId': typeof ApiEventBannerEventIdRoute
   '/api/subscription-proof/$id': typeof ApiSubscriptionProofIdRoute
   '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
   '/kalender': typeof AppKalenderIndexRoute
   '/profil': typeof AppProfilIndexRoute
+  '/admin/event': typeof AdminEventIndexRoute
   '/invoice/$eventId/$orderId': typeof AppInvoiceEventIdOrderIdRoute
   '/profil/fee-rules/$feeRuleId': typeof AppProfilFeeRulesFeeRuleIdRoute
   '/profil/fee-rules/new': typeof AppProfilFeeRulesNewRoute
@@ -308,12 +332,15 @@ export interface FileRoutesById {
   '/_app/profil/pembayaran': typeof AppProfilPembayaranRoute
   '/_app/profil/template-chat': typeof AppProfilTemplateChatRoute
   '/_app/profil/tim': typeof AppProfilTimRoute
+  '/admin/event/$eventId': typeof AdminEventEventIdRoute
+  '/admin/event/new': typeof AdminEventNewRoute
   '/api/avatar/$brandId': typeof ApiAvatarBrandIdRoute
   '/api/event-banner/$eventId': typeof ApiEventBannerEventIdRoute
   '/api/subscription-proof/$id': typeof ApiSubscriptionProofIdRoute
   '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
   '/_app/kalender/': typeof AppKalenderIndexRoute
   '/_app/profil/': typeof AppProfilIndexRoute
+  '/admin/event/': typeof AdminEventIndexRoute
   '/_app/invoice/$eventId/$orderId': typeof AppInvoiceEventIdOrderIdRoute
   '/_app/profil/fee-rules/$feeRuleId': typeof AppProfilFeeRulesFeeRuleIdRoute
   '/_app/profil/fee-rules/new': typeof AppProfilFeeRulesNewRoute
@@ -345,12 +372,15 @@ export interface FileRouteTypes {
     | '/profil/pembayaran'
     | '/profil/template-chat'
     | '/profil/tim'
+    | '/admin/event/$eventId'
+    | '/admin/event/new'
     | '/api/avatar/$brandId'
     | '/api/event-banner/$eventId'
     | '/api/subscription-proof/$id'
     | '/tagihan/$eventId/$orderId'
     | '/kalender/'
     | '/profil/'
+    | '/admin/event/'
     | '/invoice/$eventId/$orderId'
     | '/profil/fee-rules/$feeRuleId'
     | '/profil/fee-rules/new'
@@ -379,12 +409,15 @@ export interface FileRouteTypes {
     | '/profil/pembayaran'
     | '/profil/template-chat'
     | '/profil/tim'
+    | '/admin/event/$eventId'
+    | '/admin/event/new'
     | '/api/avatar/$brandId'
     | '/api/event-banner/$eventId'
     | '/api/subscription-proof/$id'
     | '/tagihan/$eventId/$orderId'
     | '/kalender'
     | '/profil'
+    | '/admin/event'
     | '/invoice/$eventId/$orderId'
     | '/profil/fee-rules/$feeRuleId'
     | '/profil/fee-rules/new'
@@ -415,12 +448,15 @@ export interface FileRouteTypes {
     | '/_app/profil/pembayaran'
     | '/_app/profil/template-chat'
     | '/_app/profil/tim'
+    | '/admin/event/$eventId'
+    | '/admin/event/new'
     | '/api/avatar/$brandId'
     | '/api/event-banner/$eventId'
     | '/api/subscription-proof/$id'
     | '/tagihan/$eventId/$orderId'
     | '/_app/kalender/'
     | '/_app/profil/'
+    | '/admin/event/'
     | '/_app/invoice/$eventId/$orderId'
     | '/_app/profil/fee-rules/$feeRuleId'
     | '/_app/profil/fee-rules/new'
@@ -610,6 +646,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProfilTimRouteImport
       parentRoute: typeof AppRoute
     }
+    '/admin/event/': {
+      id: '/admin/event/'
+      path: '/event'
+      fullPath: '/admin/event/'
+      preLoaderRoute: typeof AdminEventIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/event/$eventId': {
+      id: '/admin/event/$eventId'
+      path: '/event/$eventId'
+      fullPath: '/admin/event/$eventId'
+      preLoaderRoute: typeof AdminEventEventIdRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/event/new': {
+      id: '/admin/event/new'
+      path: '/event/new'
+      fullPath: '/admin/event/new'
+      preLoaderRoute: typeof AdminEventNewRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/api/avatar/$brandId': {
       id: '/api/avatar/$brandId'
       path: '/api/avatar/$brandId'
@@ -736,12 +793,18 @@ interface AdminRouteChildren {
   AdminCustomersRoute: typeof AdminCustomersRoute
   AdminPengaturanRoute: typeof AdminPengaturanRoute
   AdminIndexRoute: typeof AdminIndexRoute
+  AdminEventEventIdRoute: typeof AdminEventEventIdRoute
+  AdminEventNewRoute: typeof AdminEventNewRoute
+  AdminEventIndexRoute: typeof AdminEventIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminCustomersRoute: AdminCustomersRoute,
   AdminPengaturanRoute: AdminPengaturanRoute,
   AdminIndexRoute: AdminIndexRoute,
+  AdminEventEventIdRoute: AdminEventEventIdRoute,
+  AdminEventNewRoute: AdminEventNewRoute,
+  AdminEventIndexRoute: AdminEventIndexRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)

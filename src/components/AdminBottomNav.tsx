@@ -1,9 +1,9 @@
 import { Link, useRouterState } from '@tanstack/react-router'
-import { LayoutDashboard, Settings, Users } from 'lucide-react'
+import { CalendarDays, LayoutDashboard, Settings, Users } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 interface TabDef {
-  to: '/admin' | '/admin/customers' | '/admin/pengaturan'
+  to: '/admin' | '/admin/customers' | '/admin/event' | '/admin/pengaturan'
   label: string
   icon: LucideIcon
 }
@@ -11,11 +11,12 @@ interface TabDef {
 const TABS: Array<TabDef> = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/admin/customers', label: 'Customer', icon: Users },
+  { to: '/admin/event', label: 'Event', icon: CalendarDays },
   { to: '/admin/pengaturan', label: 'Pengaturan', icon: Settings },
 ]
 
 /**
- * Bottom tab admin — tiga halaman admin, jadi navigasinya cukup di sini dan
+ * Bottom tab admin — empat halaman admin, jadi navigasinya cukup di sini dan
  * header tinggal identitas (tanpa tombol). Bentuknya meniru `BottomNav.tsx`
  * member (fixed, max 480px, safe-area) supaya perpindahan halaman terasa sama.
  *
@@ -41,7 +42,11 @@ export default function AdminBottomNav() {
       <div className="mx-auto flex max-w-lg items-stretch justify-between px-2 py-1.5">
         {TABS.map((tab) => {
           const Icon = tab.icon
-          const active = current === tab.to
+          // Dashboard (`/admin`) cuma aktif persis; tab lain juga aktif di
+          // halaman turunannya (mis. `/admin/event/<id>` menyalakan tab Event).
+          const active =
+            current === tab.to ||
+            (tab.to !== '/admin' && current.startsWith(`${tab.to}/`))
           return (
             <Link
               key={tab.to}
