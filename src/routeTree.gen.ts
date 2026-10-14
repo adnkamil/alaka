@@ -25,6 +25,7 @@ import { Route as VerifikasiEmailTokenRouteImport } from './routes/verifikasi-em
 import { Route as AppEventsEventIdRouteImport } from './routes/_app/events.$eventId'
 import { Route as AppEventsNewRouteImport } from './routes/_app/events.new'
 import { Route as AppKalenderIndexRouteImport } from './routes/_app/kalender/index'
+import { Route as AppKalenderEventIdRouteImport } from './routes/_app/kalender/$eventId'
 import { Route as AppPesananNewRouteImport } from './routes/_app/pesanan/new'
 import { Route as AppProfilIndexRouteImport } from './routes/_app/profil/index'
 import { Route as AppProfilLanggananRouteImport } from './routes/_app/profil/langganan'
@@ -119,6 +120,11 @@ const AppEventsNewRoute = AppEventsNewRouteImport.update({
 const AppKalenderIndexRoute = AppKalenderIndexRouteImport.update({
   id: '/kalender/',
   path: '/kalender/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppKalenderEventIdRoute = AppKalenderEventIdRouteImport.update({
+  id: '/kalender/$eventId',
+  path: '/kalender/$eventId',
   getParentRoute: () => AppRoute,
 } as any)
 const AppPesananNewRoute = AppPesananNewRouteImport.update({
@@ -219,6 +225,7 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/events/$eventId': typeof AppEventsEventIdRoute
   '/events/new': typeof AppEventsNewRoute
+  '/kalender/$eventId': typeof AppKalenderEventIdRoute
   '/pesanan/new': typeof AppPesananNewRoute
   '/profil/langganan': typeof AppProfilLanggananRoute
   '/profil/pembayaran': typeof AppProfilPembayaranRoute
@@ -251,6 +258,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/events/$eventId': typeof AppEventsEventIdRoute
   '/events/new': typeof AppEventsNewRoute
+  '/kalender/$eventId': typeof AppKalenderEventIdRoute
   '/pesanan/new': typeof AppPesananNewRoute
   '/profil/langganan': typeof AppProfilLanggananRoute
   '/profil/pembayaran': typeof AppProfilPembayaranRoute
@@ -286,6 +294,7 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/_app/events/$eventId': typeof AppEventsEventIdRoute
   '/_app/events/new': typeof AppEventsNewRoute
+  '/_app/kalender/$eventId': typeof AppKalenderEventIdRoute
   '/_app/pesanan/new': typeof AppPesananNewRoute
   '/_app/profil/langganan': typeof AppProfilLanggananRoute
   '/_app/profil/pembayaran': typeof AppProfilPembayaranRoute
@@ -321,6 +330,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/events/$eventId'
     | '/events/new'
+    | '/kalender/$eventId'
     | '/pesanan/new'
     | '/profil/langganan'
     | '/profil/pembayaran'
@@ -353,6 +363,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/events/$eventId'
     | '/events/new'
+    | '/kalender/$eventId'
     | '/pesanan/new'
     | '/profil/langganan'
     | '/profil/pembayaran'
@@ -387,6 +398,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/_app/events/$eventId'
     | '/_app/events/new'
+    | '/_app/kalender/$eventId'
     | '/_app/pesanan/new'
     | '/_app/profil/langganan'
     | '/_app/profil/pembayaran'
@@ -536,6 +548,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppKalenderIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/kalender/$eventId': {
+      id: '/_app/kalender/$eventId'
+      path: '/kalender/$eventId'
+      fullPath: '/kalender/$eventId'
+      preLoaderRoute: typeof AppKalenderEventIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/pesanan/new': {
       id: '/_app/pesanan/new'
       path: '/pesanan/new'
@@ -656,6 +675,7 @@ interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
   AppEventsEventIdRoute: typeof AppEventsEventIdRoute
   AppEventsNewRoute: typeof AppEventsNewRoute
+  AppKalenderEventIdRoute: typeof AppKalenderEventIdRoute
   AppPesananNewRoute: typeof AppPesananNewRoute
   AppProfilLanggananRoute: typeof AppProfilLanggananRoute
   AppProfilPembayaranRoute: typeof AppProfilPembayaranRoute
@@ -675,6 +695,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
   AppEventsEventIdRoute: AppEventsEventIdRoute,
   AppEventsNewRoute: AppEventsNewRoute,
+  AppKalenderEventIdRoute: AppKalenderEventIdRoute,
   AppPesananNewRoute: AppPesananNewRoute,
   AppProfilLanggananRoute: AppProfilLanggananRoute,
   AppProfilPembayaranRoute: AppProfilPembayaranRoute,

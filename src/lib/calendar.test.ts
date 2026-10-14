@@ -5,6 +5,7 @@ import {
   daysInMonth,
   formatLongDate,
   groupByDate,
+  isCalendarDetailPath,
   monthRange,
   shiftMonth,
 } from './calendar'
@@ -65,4 +66,12 @@ test('groupByDate mengelompokkan per tanggal', () => {
   )
   assert.equal(grouped.get('2026-10-15')?.length, 1)
   assert.equal(grouped.get('2026-10-16'), undefined)
+})
+
+test('isCalendarDetailPath hanya true untuk halaman detail', () => {
+  assert.equal(isCalendarDetailPath('/kalender'), false)
+  assert.equal(isCalendarDetailPath('/kalender/'), false)
+  assert.equal(isCalendarDetailPath('/kalender/abc-123'), true)
+  assert.equal(isCalendarDetailPath('/kalender/abc-123/'), true)
+  assert.equal(isCalendarDetailPath('/keuangan'), false)
 })

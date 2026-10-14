@@ -118,3 +118,12 @@ export function groupByDate<T extends { eventDate: string }>(
   }
   return map
 }
+
+/**
+ * Halaman detail event kalender (`/kalender/<id>`) menyembunyikan bottom nav,
+ * seperti halaman detail lain. Daftar kalender (`/kalender` atau `/kalender/`)
+ * tetap menampilkannya.
+ */
+export function isCalendarDetailPath(pathname: string): boolean {
+  return /^\/kalender\/[^/]+/.test(pathname)
+}

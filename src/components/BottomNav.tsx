@@ -1,6 +1,7 @@
 import { Link, useRouterState } from '@tanstack/react-router'
 import { CalendarDays, Home, Plus, User, Wallet } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { isCalendarDetailPath } from '../lib/calendar'
 
 interface TabDef {
   to: '/' | '/keuangan' | '/pesanan/new' | '/kalender' | '/profil'
@@ -27,7 +28,10 @@ const DETAIL_PATH_PREFIXES = [
 
 export function useShowBottomNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
-  return !DETAIL_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+  return (
+    !DETAIL_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix)) &&
+    !isCalendarDetailPath(pathname)
+  )
 }
 
 export default function BottomNav() {

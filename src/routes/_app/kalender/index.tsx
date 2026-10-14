@@ -1,6 +1,6 @@
-import { useState } from 'react'
 import { keepPreviousData, queryOptions, useQuery } from '@tanstack/react-query'
-import { createFileRoute } from '@tanstack/react-router'
+import { Link, createFileRoute } from '@tanstack/react-router'
+import { z } from 'zod'
 import { CalendarDays, ChevronLeft, ChevronRight, MapPin } from 'lucide-react'
 import { listCalendarEvents } from '../../../lib/calendar-events-functions'
 import {
@@ -21,10 +21,24 @@ const calendarEventsQuery = (month: string) =>
     queryFn: () => listCalendarEvents({ data: { month } }),
   })
 
+// Tanggal terpilih disimpan di URL supaya tombol kembali dari halaman detail
+// membuka kalender di bulan & tanggal yang sama.
+const searchSchema = z.object({
+  tanggal: z
+    .string()
+    .regex(/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/)
+    .optional()
+    .catch(undefined),
+})
+
 export const Route = createFileRoute('/_app/kalender/')({
-  loader: ({ context }) =>
+  validateSearch: searchSchema,
+  loaderDeps: ({ search }) => ({ tanggal: search.tanggal }),
+  loader: ({ context, deps }) =>
     context.queryClient.ensureQueryData(
-      calendarEventsQuery(monthKeyOfDate(todayIsoDateInAppTimeZone())),
+      calendarEventsQuery(
+        monthKeyOfDate(deps.tanggal ?? todayIsoDateInAppTimeZone()),
+      ),
     ),
   component: EventCalendarPage,
 })
@@ -32,8 +46,10 @@ export const Route = createFileRoute('/_app/kalender/')({
 function EventCalendarPage() {
   // Tanggal "hari ini" dihitung dalam WIB (sama dengan sisi server/seluruh app).
   const today = todayIsoDateInAppTimeZone()
-  const [month, setMonth] = useState(monthKeyOfDate(today))
-  const [selected, setSelected] = useState(today)
+  const navigate = Route.useNavigate()
+  const { tanggal } = Route.useSearch()
+  const selected = tanggal ?? today
+  const month = monthKeyOfDate(selected)
 
   const { data: events = [], isFetching } = useQuery({
     ...calendarEventsQuery(month),
@@ -45,10 +61,13 @@ function EventCalendarPage() {
   const { year, month: monthNumber } = parseMonthKey(month)
   const isCurrentMonth = month === monthKeyOfDate(today)
 
+  function selectDate(date: string) {
+    void navigate({ search: { tanggal: date }, replace: true })
+  }
+
   function goToMonth(next: string) {
-    setMonth(next)
     // Pilih "hari ini" kalau bulannya sama, kalau tidak tanggal 1 bulan itu.
-    setSelected(next === monthKeyOfDate(today) ? today : `${next}-01`)
+    selectDate(next === monthKeyOfDate(today) ? today : `${next}-01`)
   }
 
   return (
@@ -113,7 +132,7 @@ function EventCalendarPage() {
               <button
                 key={date}
                 type="button"
-                onClick={() => setSelected(date)}
+                onClick={() => selectDate(date)}
                 aria-pressed={isSelected}
                 aria-label={`${formatLongDate(date)}${hasEvents ? ', ada event' : ''}`}
                 className="mx-auto flex h-11 w-11 flex-col items-center justify-center rounded-full text-sm"
@@ -155,9 +174,11 @@ function EventCalendarPage() {
       ) : (
         <div className="flex flex-col gap-3">
           {selectedEvents.map((event) => (
-            <article
+            <Link
               key={event.id}
-              className="app-card flex items-start gap-3 p-4"
+              to="/kalender/$eventId"
+              params={{ eventId: event.id }}
+              className="app-card flex items-center gap-3 p-4 no-underline"
             >
               <span className="app-icon-tile h-10 w-10 flex-shrink-0">
                 <CalendarDays size={20} />
@@ -179,7 +200,12 @@ function EventCalendarPage() {
                   <span>{formatLongDate(event.eventDate)}</span>
                 </p>
               </div>
-            </article>
+              <ChevronRight
+                size={18}
+                className="flex-shrink-0"
+                style={{ color: 'var(--app-text-mute)' }}
+              />
+            </Link>
           ))}
         </div>
       )}

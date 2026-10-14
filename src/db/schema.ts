@@ -658,6 +658,22 @@ export const calendarEvents = pgTable(
     name: varchar().notNull(),
     location: varchar().notNull(),
     eventDate: date('event_date', { mode: 'string' }).notNull(),
+    /** Deskripsi event di halaman detail. Boleh kosong. */
+    description: text(),
+    /**
+     * Gambar banner di atas halaman detail (URL yang bisa langsung dipakai
+     * `<img src>`). Boleh kosong: halaman detail menampilkan banner polos.
+     * Diisi dari UI admin (batch berikutnya).
+     */
+    bannerUrl: text('banner_url'),
+    /**
+     * Brand yang dipamerkan di event ini, berupa nama bebas (mis. brand skincare
+     * yang ikut bazar) — BUKAN relasi ke tabel `brands` (itu brand jastiper).
+     */
+    exhibitors: text()
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
     /** Admin ALAKA yang menginput. Boleh kosong (mis. data seed). */
     createdBy: uuid('created_by').references(() => users.id, {
       onDelete: 'set null',
