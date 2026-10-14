@@ -2,6 +2,7 @@ import { relations, sql } from 'drizzle-orm'
 import {
   boolean,
   check,
+  date,
   decimal,
   index,
   integer,
@@ -639,6 +640,55 @@ export const activityLogsRelations = relations(activityLogs, ({ one }) => ({
 export const customersRelations = relations(customers, ({ one }) => ({
   user: one(users, { fields: [customers.userId], references: [users.id] }),
 }))
+
+/**
+ * Event kalender: daftar acara jastip (bazar, pameran, PO, dll) yang ditampilkan
+ * di tab "Event". Beda dari `events` di atas (batch belanja milik brand):
+ * tabel ini GLOBAL — diinput admin ALAKA dan terlihat oleh semua brand, jadi
+ * tidak punya `brand_id`. Fitur gratis (tidak dikunci PRO).
+ *
+ * `event_date` bertipe `date` (tanggal kalender polos, tanpa jam/zona), bukan
+ * `timestamptz`: yang dibutuhkan kalender hanya "tanggal berapa", dan dengan
+ * begitu tidak ada risiko tanggal bergeser sehari akibat konversi zona waktu.
+ */
+export const calendarEvents = pgTable(
+  'calendar_event',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    name: varchar().notNull(),
+    location: varchar().notNull(),
+    eventDate: date('event_date', { mode: 'string' }).notNull(),
+    /** Deskripsi event di halaman detail. Boleh kosong. */
+    description: text(),
+    /**
+     * Penanda banner, sama polanya dengan `brands.avatar_updated_at`: filenya
+     * ada di Netlify Blobs (store `calendar-banners`, key = id event), kolom ini
+     * cuma menandai KAPAN terakhir diganti. Null = belum ada banner. Dipakai
+     * juga sebagai `?v=` di URL gambar supaya cache browser ikut ganti.
+     * Diisi dari UI admin (batch berikutnya).
+     */
+    bannerUpdatedAt: timestamp('banner_updated_at', { withTimezone: true }),
+    /**
+     * Brand yang dipamerkan di event ini, berupa nama bebas (mis. brand skincare
+     * yang ikut bazar) — BUKAN relasi ke tabel `brands` (itu brand jastiper).
+     */
+    exhibitors: text()
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+    /** Admin ALAKA yang menginput. Boleh kosong (mis. data seed). */
+    createdBy: uuid('created_by').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index('calendar_event_date_idx').on(table.eventDate)],
+)
 
 export const subscriptionSettings = pgTable('subscription_settings', {
   id: uuid().primaryKey().defaultRandom(),

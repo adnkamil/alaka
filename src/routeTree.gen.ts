@@ -24,7 +24,8 @@ import { Route as UndanganTokenRouteImport } from './routes/undangan.$token'
 import { Route as VerifikasiEmailTokenRouteImport } from './routes/verifikasi-email.$token'
 import { Route as AppEventsEventIdRouteImport } from './routes/_app/events.$eventId'
 import { Route as AppEventsNewRouteImport } from './routes/_app/events.new'
-import { Route as AppPesananIndexRouteImport } from './routes/_app/pesanan/index'
+import { Route as AppKalenderIndexRouteImport } from './routes/_app/kalender/index'
+import { Route as AppKalenderEventIdRouteImport } from './routes/_app/kalender/$eventId'
 import { Route as AppPesananNewRouteImport } from './routes/_app/pesanan/new'
 import { Route as AppProfilIndexRouteImport } from './routes/_app/profil/index'
 import { Route as AppProfilLanggananRouteImport } from './routes/_app/profil/langganan'
@@ -32,6 +33,7 @@ import { Route as AppProfilPembayaranRouteImport } from './routes/_app/profil/pe
 import { Route as AppProfilTemplateChatRouteImport } from './routes/_app/profil/template-chat'
 import { Route as AppProfilTimRouteImport } from './routes/_app/profil/tim'
 import { Route as ApiAvatarBrandIdRouteImport } from './routes/api/avatar/$brandId'
+import { Route as ApiEventBannerEventIdRouteImport } from './routes/api/event-banner/$eventId'
 import { Route as ApiSubscriptionProofIdRouteImport } from './routes/api/subscription-proof/$id'
 import { Route as TagihanEventIdOrderIdRouteImport } from './routes/tagihan.$eventId.$orderId'
 import { Route as AppInvoiceEventIdOrderIdRouteImport } from './routes/_app/invoice.$eventId.$orderId'
@@ -116,9 +118,14 @@ const AppEventsNewRoute = AppEventsNewRouteImport.update({
   path: '/events/new',
   getParentRoute: () => AppRoute,
 } as any)
-const AppPesananIndexRoute = AppPesananIndexRouteImport.update({
-  id: '/pesanan/',
-  path: '/pesanan/',
+const AppKalenderIndexRoute = AppKalenderIndexRouteImport.update({
+  id: '/kalender/',
+  path: '/kalender/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppKalenderEventIdRoute = AppKalenderEventIdRouteImport.update({
+  id: '/kalender/$eventId',
+  path: '/kalender/$eventId',
   getParentRoute: () => AppRoute,
 } as any)
 const AppPesananNewRoute = AppPesananNewRouteImport.update({
@@ -154,6 +161,11 @@ const AppProfilTimRoute = AppProfilTimRouteImport.update({
 const ApiAvatarBrandIdRoute = ApiAvatarBrandIdRouteImport.update({
   id: '/api/avatar/$brandId',
   path: '/api/avatar/$brandId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiEventBannerEventIdRoute = ApiEventBannerEventIdRouteImport.update({
+  id: '/api/event-banner/$eventId',
+  path: '/api/event-banner/$eventId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSubscriptionProofIdRoute = ApiSubscriptionProofIdRouteImport.update({
@@ -219,15 +231,17 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/events/$eventId': typeof AppEventsEventIdRoute
   '/events/new': typeof AppEventsNewRoute
+  '/kalender/$eventId': typeof AppKalenderEventIdRoute
   '/pesanan/new': typeof AppPesananNewRoute
   '/profil/langganan': typeof AppProfilLanggananRoute
   '/profil/pembayaran': typeof AppProfilPembayaranRoute
   '/profil/template-chat': typeof AppProfilTemplateChatRoute
   '/profil/tim': typeof AppProfilTimRoute
   '/api/avatar/$brandId': typeof ApiAvatarBrandIdRoute
+  '/api/event-banner/$eventId': typeof ApiEventBannerEventIdRoute
   '/api/subscription-proof/$id': typeof ApiSubscriptionProofIdRoute
   '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
-  '/pesanan/': typeof AppPesananIndexRoute
+  '/kalender/': typeof AppKalenderIndexRoute
   '/profil/': typeof AppProfilIndexRoute
   '/invoice/$eventId/$orderId': typeof AppInvoiceEventIdOrderIdRoute
   '/profil/fee-rules/$feeRuleId': typeof AppProfilFeeRulesFeeRuleIdRoute
@@ -251,15 +265,17 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/events/$eventId': typeof AppEventsEventIdRoute
   '/events/new': typeof AppEventsNewRoute
+  '/kalender/$eventId': typeof AppKalenderEventIdRoute
   '/pesanan/new': typeof AppPesananNewRoute
   '/profil/langganan': typeof AppProfilLanggananRoute
   '/profil/pembayaran': typeof AppProfilPembayaranRoute
   '/profil/template-chat': typeof AppProfilTemplateChatRoute
   '/profil/tim': typeof AppProfilTimRoute
   '/api/avatar/$brandId': typeof ApiAvatarBrandIdRoute
+  '/api/event-banner/$eventId': typeof ApiEventBannerEventIdRoute
   '/api/subscription-proof/$id': typeof ApiSubscriptionProofIdRoute
   '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
-  '/pesanan': typeof AppPesananIndexRoute
+  '/kalender': typeof AppKalenderIndexRoute
   '/profil': typeof AppProfilIndexRoute
   '/invoice/$eventId/$orderId': typeof AppInvoiceEventIdOrderIdRoute
   '/profil/fee-rules/$feeRuleId': typeof AppProfilFeeRulesFeeRuleIdRoute
@@ -286,15 +302,17 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/_app/events/$eventId': typeof AppEventsEventIdRoute
   '/_app/events/new': typeof AppEventsNewRoute
+  '/_app/kalender/$eventId': typeof AppKalenderEventIdRoute
   '/_app/pesanan/new': typeof AppPesananNewRoute
   '/_app/profil/langganan': typeof AppProfilLanggananRoute
   '/_app/profil/pembayaran': typeof AppProfilPembayaranRoute
   '/_app/profil/template-chat': typeof AppProfilTemplateChatRoute
   '/_app/profil/tim': typeof AppProfilTimRoute
   '/api/avatar/$brandId': typeof ApiAvatarBrandIdRoute
+  '/api/event-banner/$eventId': typeof ApiEventBannerEventIdRoute
   '/api/subscription-proof/$id': typeof ApiSubscriptionProofIdRoute
   '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
-  '/_app/pesanan/': typeof AppPesananIndexRoute
+  '/_app/kalender/': typeof AppKalenderIndexRoute
   '/_app/profil/': typeof AppProfilIndexRoute
   '/_app/invoice/$eventId/$orderId': typeof AppInvoiceEventIdOrderIdRoute
   '/_app/profil/fee-rules/$feeRuleId': typeof AppProfilFeeRulesFeeRuleIdRoute
@@ -321,15 +339,17 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/events/$eventId'
     | '/events/new'
+    | '/kalender/$eventId'
     | '/pesanan/new'
     | '/profil/langganan'
     | '/profil/pembayaran'
     | '/profil/template-chat'
     | '/profil/tim'
     | '/api/avatar/$brandId'
+    | '/api/event-banner/$eventId'
     | '/api/subscription-proof/$id'
     | '/tagihan/$eventId/$orderId'
-    | '/pesanan/'
+    | '/kalender/'
     | '/profil/'
     | '/invoice/$eventId/$orderId'
     | '/profil/fee-rules/$feeRuleId'
@@ -353,15 +373,17 @@ export interface FileRouteTypes {
     | '/admin'
     | '/events/$eventId'
     | '/events/new'
+    | '/kalender/$eventId'
     | '/pesanan/new'
     | '/profil/langganan'
     | '/profil/pembayaran'
     | '/profil/template-chat'
     | '/profil/tim'
     | '/api/avatar/$brandId'
+    | '/api/event-banner/$eventId'
     | '/api/subscription-proof/$id'
     | '/tagihan/$eventId/$orderId'
-    | '/pesanan'
+    | '/kalender'
     | '/profil'
     | '/invoice/$eventId/$orderId'
     | '/profil/fee-rules/$feeRuleId'
@@ -387,15 +409,17 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/_app/events/$eventId'
     | '/_app/events/new'
+    | '/_app/kalender/$eventId'
     | '/_app/pesanan/new'
     | '/_app/profil/langganan'
     | '/_app/profil/pembayaran'
     | '/_app/profil/template-chat'
     | '/_app/profil/tim'
     | '/api/avatar/$brandId'
+    | '/api/event-banner/$eventId'
     | '/api/subscription-proof/$id'
     | '/tagihan/$eventId/$orderId'
-    | '/_app/pesanan/'
+    | '/_app/kalender/'
     | '/_app/profil/'
     | '/_app/invoice/$eventId/$orderId'
     | '/_app/profil/fee-rules/$feeRuleId'
@@ -416,6 +440,7 @@ export interface RootRouteChildren {
   UndanganTokenRoute: typeof UndanganTokenRoute
   VerifikasiEmailTokenRoute: typeof VerifikasiEmailTokenRoute
   ApiAvatarBrandIdRoute: typeof ApiAvatarBrandIdRoute
+  ApiEventBannerEventIdRoute: typeof ApiEventBannerEventIdRoute
   ApiSubscriptionProofIdRoute: typeof ApiSubscriptionProofIdRoute
   TagihanEventIdOrderIdRoute: typeof TagihanEventIdOrderIdRoute
   ApiAuthGoogleCallbackRoute: typeof ApiAuthGoogleCallbackRoute
@@ -529,11 +554,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppEventsNewRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/pesanan/': {
-      id: '/_app/pesanan/'
-      path: '/pesanan'
-      fullPath: '/pesanan/'
-      preLoaderRoute: typeof AppPesananIndexRouteImport
+    '/_app/kalender/': {
+      id: '/_app/kalender/'
+      path: '/kalender'
+      fullPath: '/kalender/'
+      preLoaderRoute: typeof AppKalenderIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/kalender/$eventId': {
+      id: '/_app/kalender/$eventId'
+      path: '/kalender/$eventId'
+      fullPath: '/kalender/$eventId'
+      preLoaderRoute: typeof AppKalenderEventIdRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/pesanan/new': {
@@ -583,6 +615,13 @@ declare module '@tanstack/react-router' {
       path: '/api/avatar/$brandId'
       fullPath: '/api/avatar/$brandId'
       preLoaderRoute: typeof ApiAvatarBrandIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/event-banner/$eventId': {
+      id: '/api/event-banner/$eventId'
+      path: '/api/event-banner/$eventId'
+      fullPath: '/api/event-banner/$eventId'
+      preLoaderRoute: typeof ApiEventBannerEventIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/subscription-proof/$id': {
@@ -656,12 +695,13 @@ interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
   AppEventsEventIdRoute: typeof AppEventsEventIdRoute
   AppEventsNewRoute: typeof AppEventsNewRoute
+  AppKalenderEventIdRoute: typeof AppKalenderEventIdRoute
   AppPesananNewRoute: typeof AppPesananNewRoute
   AppProfilLanggananRoute: typeof AppProfilLanggananRoute
   AppProfilPembayaranRoute: typeof AppProfilPembayaranRoute
   AppProfilTemplateChatRoute: typeof AppProfilTemplateChatRoute
   AppProfilTimRoute: typeof AppProfilTimRoute
-  AppPesananIndexRoute: typeof AppPesananIndexRoute
+  AppKalenderIndexRoute: typeof AppKalenderIndexRoute
   AppProfilIndexRoute: typeof AppProfilIndexRoute
   AppInvoiceEventIdOrderIdRoute: typeof AppInvoiceEventIdOrderIdRoute
   AppProfilFeeRulesFeeRuleIdRoute: typeof AppProfilFeeRulesFeeRuleIdRoute
@@ -675,12 +715,13 @@ const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
   AppEventsEventIdRoute: AppEventsEventIdRoute,
   AppEventsNewRoute: AppEventsNewRoute,
+  AppKalenderEventIdRoute: AppKalenderEventIdRoute,
   AppPesananNewRoute: AppPesananNewRoute,
   AppProfilLanggananRoute: AppProfilLanggananRoute,
   AppProfilPembayaranRoute: AppProfilPembayaranRoute,
   AppProfilTemplateChatRoute: AppProfilTemplateChatRoute,
   AppProfilTimRoute: AppProfilTimRoute,
-  AppPesananIndexRoute: AppPesananIndexRoute,
+  AppKalenderIndexRoute: AppKalenderIndexRoute,
   AppProfilIndexRoute: AppProfilIndexRoute,
   AppInvoiceEventIdOrderIdRoute: AppInvoiceEventIdOrderIdRoute,
   AppProfilFeeRulesFeeRuleIdRoute: AppProfilFeeRulesFeeRuleIdRoute,
@@ -715,6 +756,7 @@ const rootRouteChildren: RootRouteChildren = {
   UndanganTokenRoute: UndanganTokenRoute,
   VerifikasiEmailTokenRoute: VerifikasiEmailTokenRoute,
   ApiAvatarBrandIdRoute: ApiAvatarBrandIdRoute,
+  ApiEventBannerEventIdRoute: ApiEventBannerEventIdRoute,
   ApiSubscriptionProofIdRoute: ApiSubscriptionProofIdRoute,
   TagihanEventIdOrderIdRoute: TagihanEventIdOrderIdRoute,
   ApiAuthGoogleCallbackRoute: ApiAuthGoogleCallbackRoute,
