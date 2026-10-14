@@ -17,14 +17,14 @@ export function computeSquareCrop(
   }
 }
 
-interface DecodedImage {
+export interface DecodedImage {
   source: CanvasImageSource
   width: number
   height: number
   release: () => void
 }
 
-async function decodeImage(file: File): Promise<DecodedImage> {
+export async function decodeImage(file: File): Promise<DecodedImage> {
   if (typeof createImageBitmap === 'function') {
     try {
       const bitmap = await createImageBitmap(file)
@@ -61,7 +61,7 @@ async function decodeImage(file: File): Promise<DecodedImage> {
   }
 }
 
-function canvasToBlob(
+export function canvasToBlob(
   canvas: HTMLCanvasElement,
   type: string,
   quality: number,

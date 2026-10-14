@@ -25,7 +25,7 @@ export const Route = createFileRoute('/admin')({
 
 /**
  * Layout admin: header cuma identitas, navigasi antar halaman admin ada di
- * `AdminBottomNav` (Dashboard / Customer / Pengaturan). `app-shell--with-nav`
+ * `AdminBottomNav` (Dashboard / Customer / Event / Pengaturan). `app-shell--with-nav`
  * menyediakan ruang di bawah supaya isi terakhir tidak tertutup nav yang fixed.
  */
 function AdminLayout() {
