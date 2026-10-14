@@ -24,7 +24,7 @@ import { Route as UndanganTokenRouteImport } from './routes/undangan.$token'
 import { Route as VerifikasiEmailTokenRouteImport } from './routes/verifikasi-email.$token'
 import { Route as AppEventsEventIdRouteImport } from './routes/_app/events.$eventId'
 import { Route as AppEventsNewRouteImport } from './routes/_app/events.new'
-import { Route as AppPesananIndexRouteImport } from './routes/_app/pesanan/index'
+import { Route as AppKalenderIndexRouteImport } from './routes/_app/kalender/index'
 import { Route as AppPesananNewRouteImport } from './routes/_app/pesanan/new'
 import { Route as AppProfilIndexRouteImport } from './routes/_app/profil/index'
 import { Route as AppProfilLanggananRouteImport } from './routes/_app/profil/langganan'
@@ -116,9 +116,9 @@ const AppEventsNewRoute = AppEventsNewRouteImport.update({
   path: '/events/new',
   getParentRoute: () => AppRoute,
 } as any)
-const AppPesananIndexRoute = AppPesananIndexRouteImport.update({
-  id: '/pesanan/',
-  path: '/pesanan/',
+const AppKalenderIndexRoute = AppKalenderIndexRouteImport.update({
+  id: '/kalender/',
+  path: '/kalender/',
   getParentRoute: () => AppRoute,
 } as any)
 const AppPesananNewRoute = AppPesananNewRouteImport.update({
@@ -227,7 +227,7 @@ export interface FileRoutesByFullPath {
   '/api/avatar/$brandId': typeof ApiAvatarBrandIdRoute
   '/api/subscription-proof/$id': typeof ApiSubscriptionProofIdRoute
   '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
-  '/pesanan/': typeof AppPesananIndexRoute
+  '/kalender/': typeof AppKalenderIndexRoute
   '/profil/': typeof AppProfilIndexRoute
   '/invoice/$eventId/$orderId': typeof AppInvoiceEventIdOrderIdRoute
   '/profil/fee-rules/$feeRuleId': typeof AppProfilFeeRulesFeeRuleIdRoute
@@ -259,7 +259,7 @@ export interface FileRoutesByTo {
   '/api/avatar/$brandId': typeof ApiAvatarBrandIdRoute
   '/api/subscription-proof/$id': typeof ApiSubscriptionProofIdRoute
   '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
-  '/pesanan': typeof AppPesananIndexRoute
+  '/kalender': typeof AppKalenderIndexRoute
   '/profil': typeof AppProfilIndexRoute
   '/invoice/$eventId/$orderId': typeof AppInvoiceEventIdOrderIdRoute
   '/profil/fee-rules/$feeRuleId': typeof AppProfilFeeRulesFeeRuleIdRoute
@@ -294,7 +294,7 @@ export interface FileRoutesById {
   '/api/avatar/$brandId': typeof ApiAvatarBrandIdRoute
   '/api/subscription-proof/$id': typeof ApiSubscriptionProofIdRoute
   '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
-  '/_app/pesanan/': typeof AppPesananIndexRoute
+  '/_app/kalender/': typeof AppKalenderIndexRoute
   '/_app/profil/': typeof AppProfilIndexRoute
   '/_app/invoice/$eventId/$orderId': typeof AppInvoiceEventIdOrderIdRoute
   '/_app/profil/fee-rules/$feeRuleId': typeof AppProfilFeeRulesFeeRuleIdRoute
@@ -329,7 +329,7 @@ export interface FileRouteTypes {
     | '/api/avatar/$brandId'
     | '/api/subscription-proof/$id'
     | '/tagihan/$eventId/$orderId'
-    | '/pesanan/'
+    | '/kalender/'
     | '/profil/'
     | '/invoice/$eventId/$orderId'
     | '/profil/fee-rules/$feeRuleId'
@@ -361,7 +361,7 @@ export interface FileRouteTypes {
     | '/api/avatar/$brandId'
     | '/api/subscription-proof/$id'
     | '/tagihan/$eventId/$orderId'
-    | '/pesanan'
+    | '/kalender'
     | '/profil'
     | '/invoice/$eventId/$orderId'
     | '/profil/fee-rules/$feeRuleId'
@@ -395,7 +395,7 @@ export interface FileRouteTypes {
     | '/api/avatar/$brandId'
     | '/api/subscription-proof/$id'
     | '/tagihan/$eventId/$orderId'
-    | '/_app/pesanan/'
+    | '/_app/kalender/'
     | '/_app/profil/'
     | '/_app/invoice/$eventId/$orderId'
     | '/_app/profil/fee-rules/$feeRuleId'
@@ -529,11 +529,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppEventsNewRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/pesanan/': {
-      id: '/_app/pesanan/'
-      path: '/pesanan'
-      fullPath: '/pesanan/'
-      preLoaderRoute: typeof AppPesananIndexRouteImport
+    '/_app/kalender/': {
+      id: '/_app/kalender/'
+      path: '/kalender'
+      fullPath: '/kalender/'
+      preLoaderRoute: typeof AppKalenderIndexRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/pesanan/new': {
@@ -661,7 +661,7 @@ interface AppRouteChildren {
   AppProfilPembayaranRoute: typeof AppProfilPembayaranRoute
   AppProfilTemplateChatRoute: typeof AppProfilTemplateChatRoute
   AppProfilTimRoute: typeof AppProfilTimRoute
-  AppPesananIndexRoute: typeof AppPesananIndexRoute
+  AppKalenderIndexRoute: typeof AppKalenderIndexRoute
   AppProfilIndexRoute: typeof AppProfilIndexRoute
   AppInvoiceEventIdOrderIdRoute: typeof AppInvoiceEventIdOrderIdRoute
   AppProfilFeeRulesFeeRuleIdRoute: typeof AppProfilFeeRulesFeeRuleIdRoute
@@ -680,7 +680,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppProfilPembayaranRoute: AppProfilPembayaranRoute,
   AppProfilTemplateChatRoute: AppProfilTemplateChatRoute,
   AppProfilTimRoute: AppProfilTimRoute,
-  AppPesananIndexRoute: AppPesananIndexRoute,
+  AppKalenderIndexRoute: AppKalenderIndexRoute,
   AppProfilIndexRoute: AppProfilIndexRoute,
   AppInvoiceEventIdOrderIdRoute: AppInvoiceEventIdOrderIdRoute,
   AppProfilFeeRulesFeeRuleIdRoute: AppProfilFeeRulesFeeRuleIdRoute,

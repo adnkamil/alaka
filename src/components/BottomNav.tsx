@@ -1,9 +1,9 @@
 import { Link, useRouterState } from '@tanstack/react-router'
-import { ClipboardList, Home, Plus, User, Wallet } from 'lucide-react'
+import { CalendarDays, Home, Plus, User, Wallet } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 interface TabDef {
-  to: '/' | '/keuangan' | '/pesanan/new' | '/pesanan' | '/profil'
+  to: '/' | '/keuangan' | '/pesanan/new' | '/kalender' | '/profil'
   label: string
   icon: LucideIcon
   isFab?: boolean
@@ -13,7 +13,7 @@ const TABS: Array<TabDef> = [
   { to: '/', label: 'Beranda', icon: Home },
   { to: '/keuangan', label: 'Keuangan', icon: Wallet },
   { to: '/pesanan/new', label: 'Tambah', icon: Plus, isFab: true },
-  { to: '/pesanan', label: 'Pesanan', icon: ClipboardList },
+  { to: '/kalender', label: 'Event', icon: CalendarDays },
   { to: '/profil', label: 'Profil', icon: User },
 ]
 

@@ -2,6 +2,7 @@ import { relations, sql } from 'drizzle-orm'
 import {
   boolean,
   check,
+  date,
   decimal,
   index,
   integer,
@@ -639,6 +640,37 @@ export const activityLogsRelations = relations(activityLogs, ({ one }) => ({
 export const customersRelations = relations(customers, ({ one }) => ({
   user: one(users, { fields: [customers.userId], references: [users.id] }),
 }))
+
+/**
+ * Event kalender: daftar acara jastip (bazar, pameran, PO, dll) yang ditampilkan
+ * di tab "Event". Beda dari `events` di atas (batch belanja milik brand):
+ * tabel ini GLOBAL — diinput admin ALAKA dan terlihat oleh semua brand, jadi
+ * tidak punya `brand_id`. Fitur gratis (tidak dikunci PRO).
+ *
+ * `event_date` bertipe `date` (tanggal kalender polos, tanpa jam/zona), bukan
+ * `timestamptz`: yang dibutuhkan kalender hanya "tanggal berapa", dan dengan
+ * begitu tidak ada risiko tanggal bergeser sehari akibat konversi zona waktu.
+ */
+export const calendarEvents = pgTable(
+  'calendar_event',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    name: varchar().notNull(),
+    location: varchar().notNull(),
+    eventDate: date('event_date', { mode: 'string' }).notNull(),
+    /** Admin ALAKA yang menginput. Boleh kosong (mis. data seed). */
+    createdBy: uuid('created_by').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index('calendar_event_date_idx').on(table.eventDate)],
+)
 
 export const subscriptionSettings = pgTable('subscription_settings', {
   id: uuid().primaryKey().defaultRandom(),

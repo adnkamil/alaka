@@ -19,6 +19,8 @@
     "db:studio:neon": "node --env-file=.env.neon.local node_modules/drizzle-kit/bin.cjs studio",
     "db:baseline": "tsx scripts/drizzle-baseline.ts",
     "db:seed-dummy": "tsx scripts/seed-dummy-data.ts",
+    "db:seed-calendar": "tsx scripts/seed-calendar-events.ts",
+    "db:seed-calendar:neon": "node --env-file=.env.neon.local node_modules/tsx/dist/cli.mjs scripts/seed-calendar-events.ts",
     "db:backfill-trial": "tsx scripts/backfill-trial.ts",
     "db:backfill-brands": "tsx scripts/backfill-brands.ts",
     "db:backfill-brands:neon": "node --env-file=.env.neon.local node_modules/tsx/dist/cli.mjs scripts/backfill-brands.ts",
