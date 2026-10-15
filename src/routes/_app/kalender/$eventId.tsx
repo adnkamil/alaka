@@ -3,6 +3,7 @@ import { Link, createFileRoute } from '@tanstack/react-router'
 import { ArrowLeft, CalendarDays, MapPin, Store } from 'lucide-react'
 import { getCalendarEvent } from '../../../lib/calendar-events-functions'
 import { formatLongDate } from '../../../lib/calendar'
+import { EventDescription } from '../../../components/EventDescription'
 
 const calendarEventQuery = (id: string) =>
   queryOptions({
@@ -81,12 +82,7 @@ function CalendarEventDetailPage() {
         {event.description && (
           <section className="mt-6">
             <h2 className="mb-2 text-sm font-semibold">Tentang event</h2>
-            <p
-              className="whitespace-pre-line text-sm leading-relaxed"
-              style={{ color: 'var(--app-text-soft)' }}
-            >
-              {event.description}
-            </p>
+            <EventDescription text={event.description} />
           </section>
         )}
 
