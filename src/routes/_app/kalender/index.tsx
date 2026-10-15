@@ -128,6 +128,39 @@ function EventCalendarPage() {
             const isSelected = date === selected
             const isToday = date === today
             const hasEvents = byDate.has(date)
+
+            // Tiga penanda yang bisa menumpuk di satu tanggal:
+            // - ada event  -> lingkaran penuh warna aksen (paling mencolok)
+            // - dipilih    -> cincin luar dengan jarak ("halo"), jadi tetap
+            //                 kelihatan walau tanggalnya sudah berlingkaran penuh
+            // - hari ini   -> cincin tipis (cincin dalam putih kalau sudah
+            //                 berlingkaran penuh)
+            let background = 'transparent'
+            let color = 'var(--app-text)'
+            let fontWeight = 400
+            if (hasEvents) {
+              background = 'var(--app-accent)'
+              color = 'white'
+              fontWeight = 700
+            } else if (isSelected) {
+              background = 'var(--app-accent-soft)'
+              color = 'var(--app-accent)'
+              fontWeight = 700
+            } else if (isToday) {
+              color = 'var(--app-accent)'
+              fontWeight = 700
+            }
+
+            let boxShadow: string | undefined
+            if (isSelected) {
+              boxShadow =
+                '0 0 0 2px var(--app-card), 0 0 0 4px var(--app-accent)'
+            } else if (isToday) {
+              boxShadow = hasEvents
+                ? 'inset 0 0 0 2px var(--app-card)'
+                : 'inset 0 0 0 1.5px var(--app-accent)'
+            }
+
             return (
               <button
                 key={date}
@@ -135,31 +168,33 @@ function EventCalendarPage() {
                 onClick={() => selectDate(date)}
                 aria-pressed={isSelected}
                 aria-label={`${formatLongDate(date)}${hasEvents ? ', ada event' : ''}`}
-                className="mx-auto flex h-11 w-11 flex-col items-center justify-center rounded-full text-sm"
-                style={{
-                  background: isSelected ? 'var(--app-accent)' : 'transparent',
-                  color: isSelected ? 'white' : 'var(--app-text)',
-                  fontWeight: isToday || isSelected ? 700 : 400,
-                  boxShadow:
-                    isToday && !isSelected
-                      ? 'inset 0 0 0 1.5px var(--app-accent)'
-                      : undefined,
-                }}
+                className="mx-auto my-0.5 flex h-10 w-10 items-center justify-center rounded-full text-sm"
+                style={{ background, color, fontWeight, boxShadow }}
               >
                 {Number(date.slice(8, 10))}
-                <span
-                  className="mt-0.5 h-1 w-1 rounded-full"
-                  style={{
-                    background: hasEvents
-                      ? isSelected
-                        ? 'white'
-                        : 'var(--app-accent)'
-                      : 'transparent',
-                  }}
-                />
               </button>
             )
           })}
+        </div>
+
+        <div
+          className="mt-3 flex items-center justify-center gap-4 text-xs"
+          style={{ color: 'var(--app-text-soft)' }}
+        >
+          <span className="flex items-center gap-1.5">
+            <span
+              className="h-3 w-3 rounded-full"
+              style={{ background: 'var(--app-accent)' }}
+            />
+            Ada event
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span
+              className="h-3 w-3 rounded-full"
+              style={{ boxShadow: 'inset 0 0 0 1.5px var(--app-accent)' }}
+            />
+            Hari ini
+          </span>
         </div>
       </section>
 
