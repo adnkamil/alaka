@@ -126,14 +126,11 @@ function EventCalendarPage() {
           {buildMonthGrid(month).map((date, index) => {
             if (!date) return <span key={`blank-${index}`} />
             const isSelected = date === selected
-            const isToday = date === today
             const hasEvents = byDate.has(date)
 
-            // Tiga penanda yang bisa menumpuk di satu tanggal:
+            // Dua penanda yang bisa menumpuk di satu tanggal:
             // - ada event  -> lingkaran penuh warna aksen (paling mencolok)
-            // - dipilih    -> cincin luar dengan jarak ("halo"), jadi tetap
-            //                 kelihatan walau tanggalnya sudah berlingkaran penuh
-            // - hari ini   -> cincin tipis (cincin dalam putih kalau sudah
+            // - dipilih    -> cincin tipis (cincin dalam putih kalau sudah
             //                 berlingkaran penuh)
             let background = 'transparent'
             let color = 'var(--app-text)'
@@ -143,23 +140,16 @@ function EventCalendarPage() {
               color = 'white'
               fontWeight = 700
             } else if (isSelected) {
-              background = 'var(--app-accent-soft)'
+              // background = 'var(--app-accent-soft)'
               color = 'var(--app-accent)'
               fontWeight = 700
-            } else if (isToday) {
-              color = 'var(--app-accent)'
-              fontWeight = 700
-            }
+            } 
 
             let boxShadow: string | undefined
             if (isSelected) {
               boxShadow =
                 '0 0 0 2px var(--app-card), 0 0 0 4px var(--app-accent)'
-            } else if (isToday) {
-              boxShadow = hasEvents
-                ? 'inset 0 0 0 2px var(--app-card)'
-                : 'inset 0 0 0 1.5px var(--app-accent)'
-            }
+            } 
 
             return (
               <button
@@ -187,13 +177,6 @@ function EventCalendarPage() {
               style={{ background: 'var(--app-accent)' }}
             />
             Ada event
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span
-              className="h-3 w-3 rounded-full"
-              style={{ boxShadow: 'inset 0 0 0 1.5px var(--app-accent)' }}
-            />
-            Hari ini
           </span>
         </div>
       </section>
