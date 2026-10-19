@@ -961,12 +961,7 @@ function EventDetailPage() {
           <p className="mb-1 text-sm" style={{ color: 'var(--app-text-soft)' }}>
             Belum bayar
           </p>
-          <p
-            className="text-lg font-bold"
-            style={{ color: 'var(--app-warning)' }}
-          >
-            {formatIDR(outstanding)}
-          </p>
+          <p className="text-lg font-bold">{formatIDR(outstanding)}</p>
         </div>
       </section>
 

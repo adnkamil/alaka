@@ -31,14 +31,12 @@ import {
   logoutUser,
   updateProfile,
 } from '../../../lib/auth-functions'
-import {
-  listPaymentMethods,
-} from '../../../lib/payment-methods-functions'
+import { listPaymentMethods } from '../../../lib/payment-methods-functions'
 import {
   hasFullAccess,
+  planBadgeText,
   planLabel,
 } from '../../../lib/subscription'
-import type { Entitlement } from '../../../lib/subscription'
 import VerifyEmailBanner from '#/components/VerifyEmailBanner'
 
 // Fitur "Master Control" & "Activity Logs" di section Kelola disembunyikan dulu
@@ -85,33 +83,91 @@ function useDarkModePreference() {
   return [isDark, toggle] as const
 }
 
-/** Keterangan singkat status paket di baris "Langganan" halaman Profil. */
-function planRowSubtitle(entitlement: Entitlement | null) {
-  if (!entitlement) return ''
-  if (entitlement.plan === 'pro') return 'Semua fitur terbuka'
-  if (entitlement.plan === 'trial') {
-    return `Sisa ${entitlement.trialDaysLeft} hari trial`
-  }
-  return 'Fitur PRO terkunci'
+const rowClassName =
+  'flex w-full items-center gap-3 px-4 py-3 text-left no-underline'
+
+/** Satu kelompok menu: judul kecil + kartu berisi baris-baris menu. */
+function MenuSection({
+  title,
+  children,
+}: {
+  title: string
+  children: React.ReactNode
+}) {
+  return (
+    <section className="mb-6">
+      <h2
+        className="mb-2 text-xs font-semibold uppercase"
+        style={{ color: 'var(--app-text-mute)' }}
+      >
+        {title}
+      </h2>
+      <div
+        className="app-card flex flex-col"
+        style={{ borderColor: 'var(--app-border)' }}
+      >
+        {children}
+      </div>
+    </section>
+  )
+}
+
+/** Pembungkus satu baris menu: garis pemisah di atas, kecuali baris pertama. */
+function MenuItem({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      className="border-t first:border-t-0"
+      style={{ borderColor: 'var(--app-border)' }}
+    >
+      {children}
+    </div>
+  )
+}
+
+function RowLabel({
+  icon,
+  label,
+  description,
+}: {
+  icon: React.ReactNode
+  label: string
+  description?: string
+}) {
+  return (
+    <>
+      <span style={{ color: 'var(--app-text-soft)' }}>{icon}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block">{label}</span>
+        {description && (
+          <span
+            className="block text-xs"
+            style={{ color: 'var(--app-text-soft)' }}
+          >
+            {description}
+          </span>
+        )}
+      </span>
+    </>
+  )
 }
 
 function RowLink({
   to,
   icon,
   label,
+  description,
+  trailing,
 }: {
   to: string
   icon: React.ReactNode
   label: string
+  description?: string
+  trailing?: React.ReactNode
 }) {
   return (
-    <Link
-      to={to}
-      className="flex items-center gap-3 px-4 py-3 no-underline"
-      style={{ color: 'var(--app-text)' }}
-    >
-      <span style={{ color: 'var(--app-text-soft)' }}>{icon}</span>
-      <span className="flex-1">{label}</span>
+    <Link to={to} className={rowClassName} style={{ color: 'var(--app-text)' }}>
+      <RowLabel icon={icon} label={label} description={description} />
+      {trailing}
       <ChevronRight size={18} style={{ color: 'var(--app-text-mute)' }} />
     </Link>
   )
@@ -125,13 +181,13 @@ function ProfilPage() {
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
 
-  // Menu langganan, rekening/QRIS, serta nama & foto brand hanya untuk pemilik
+  // Badge & menu Subscription, rekening/QRIS, serta nama & foto brand hanya untuk pemilik
   // brand. Server tetap penentu akhir (`requireBrandPermission`).
   // (lewat variabel perantara supaya TypeScript tidak mempersempit `user`)
   const brandRole: string | undefined = user?.brandRole
   const isOwner = brandRole === 'owner'
 
-  // Ajakan upgrade di baris "Langganan" — TRIAL & PRO sama-sama akses penuh,
+  // Ajakan upgrade di baris "Subscription" — TRIAL & PRO sama-sama akses penuh,
   // jadi cuma FREE yang perlu lihat CTA-nya. Pakai helper entitlement yang ada.
   const showUpgradeCta = user ? !hasFullAccess(user.entitlements) : false
 
@@ -183,13 +239,31 @@ function ProfilPage() {
           brandId={user?.brandId ?? undefined}
           name={user?.name}
           avatarUpdatedAt={user?.avatarUpdatedAt}
-          className="h-14 w-14 text-xl"
+          className="h-16 w-16 text-xl"
         />
         <div className="min-w-0 flex-1">
           <p className="font-semibold">{user?.name}</p>
           <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
             {user?.brandName || 'Belum ada nama brand'}
           </p>
+          {isOwner && user && (
+            <span
+              className="app-badge mt-1.5"
+              style={
+                user.entitlements.plan === 'free'
+                  ? {
+                      background: 'var(--app-border)',
+                      color: 'var(--app-text-soft)',
+                    }
+                  : {
+                      background: 'var(--app-accent-soft)',
+                      color: 'var(--app-accent)',
+                    }
+              }
+            >
+              {planBadgeText(user.entitlements)}
+            </span>
+          )}
         </div>
         <ChevronRight size={18} style={{ color: 'var(--app-text-mute)' }} />
       </button>
@@ -200,244 +274,132 @@ function ProfilPage() {
         </section>
       )}
 
-      {isOwner && (
-        <section className="mt-6">
-          <h2
-            className="mb-2 text-xs font-semibold uppercase"
-            style={{ color: 'var(--app-text-mute)' }}
-          >
-            Langganan
-          </h2>
-          <Link
-            to="/profil/langganan"
-            className="app-card flex w-full items-center gap-3 p-4 no-underline"
-            style={{ color: 'var(--app-text)' }}
-          >
-            <span
-              className="flex h-9 w-9 items-center justify-center rounded-full"
-              style={{
-                background: 'var(--app-accent-soft)',
-                color: 'var(--app-accent)',
-              }}
-            >
-              <Crown size={18} />
-            </span>
-            <div className="flex-1">
-              <p className="text-sm font-semibold">
-                Paket {user ? planLabel(user.entitlements.plan) : '-'}
-              </p>
-              <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
-                {planRowSubtitle(user?.entitlements ?? null)}
-              </p>
-            </div>
-            {showUpgradeCta && (
-              <span
-                className="text-xs font-semibold"
-                style={{ color: 'var(--app-accent)' }}
+      <div className="mt-6">
+        <MenuSection title="Akun & Keamanan">
+          {isOwner && (
+            <MenuItem>
+              <RowLink
+                to="/profil/langganan"
+                icon={<Crown size={18} />}
+                label="Langganan"
+                trailing={
+                  showUpgradeCta ? (
+                    <span
+                      className="text-xs font-semibold"
+                      style={{ color: 'var(--app-accent)' }}
+                    >
+                      Upgrade
+                    </span>
+                  ) : undefined
+                }
+              />
+            </MenuItem>
+          )}
+          <MenuItem>
+            {user?.hasPassword ? (
+              <button
+                type="button"
+                onClick={() => setShowPasswordModal(true)}
+                className={rowClassName}
+                style={{ color: 'var(--app-text)' }}
               >
-                Upgrade
-              </span>
+                <RowLabel
+                  icon={<KeyRound size={18} />}
+                  label="Keamanan"
+                />
+                <ChevronRight
+                  size={18}
+                  style={{ color: 'var(--app-text-mute)' }}
+                />
+              </button>
+            ) : (
+              <div className="flex items-center gap-3 px-4 py-3">
+                <RowLabel
+                  icon={<KeyRound size={18} />}
+                  label="Keamanan"
+                  description="Akun ini masuk lewat Google — kata sandi diatur dari akun Google kamu"
+                />
+              </div>
             )}
-            <ChevronRight size={18} style={{ color: 'var(--app-text-mute)' }} />
-          </Link>
-        </section>
-      )}
-      <section className="mb-6 mt-6">
-        <h2
-          className="mb-2 text-xs font-semibold uppercase"
-          style={{ color: 'var(--app-text-mute)' }}
-        >
-          Kelola
-        </h2>
+          </MenuItem>
+        </MenuSection>
 
-        <div
-          className="app-card flex flex-col divide-y"
-          style={{ borderColor: 'var(--app-border)' }}
-        >
-          <div
-            style={{ borderColor: 'var(--app-border)' }}
-            className="border-b"
-          >
+        <MenuSection title="Bisnis & Tim">
+          <MenuItem>
             <RowLink
               to="/profil/fee-rules"
               icon={<Tag size={18} />}
               label="Manajemen Fee"
             />
-          </div>
-          <div
-            style={{ borderColor: 'var(--app-border)' }}
-            className={FEATURES.advancedMenu ? 'border-b' : ''}
-          >
+          </MenuItem>
+          <MenuItem>
             <RowLink
               to="/profil/customers"
               icon={<Contact size={18} />}
-              label="Customer"
+              label="Data Customer"
             />
-          </div>
+          </MenuItem>
           {FEATURES.advancedMenu && (
             <>
-              <div
-                style={{ borderColor: 'var(--app-border)' }}
-                className="border-b"
-              >
+              <MenuItem>
                 <RowLink
                   to="/profil"
                   icon={<SlidersHorizontal size={18} />}
                   label="Master Control"
                 />
-              </div>
-              <RowLink
-                to="/profil"
-                icon={<History size={18} />}
-                label="Activity Logs"
-              />
+              </MenuItem>
+              <MenuItem>
+                <RowLink
+                  to="/profil"
+                  icon={<History size={18} />}
+                  label="Activity Logs"
+                />
+              </MenuItem>
             </>
           )}
-        </div>
-      </section>
-
-      {isOwner && (
-        <section className="mb-6">
-          <h2
-            className="mb-2 text-xs font-semibold uppercase"
-            style={{ color: 'var(--app-text-mute)' }}
-          >
-            Pembayaran
-          </h2>
-          <div
-            className="app-card"
-            style={{ borderColor: 'var(--app-border)' }}
-          >
-            <Link
-              to="/profil/pembayaran"
-              className="flex w-full items-center gap-3 px-4 py-3 no-underline"
-              style={{ color: 'var(--app-text)' }}
-            >
-              <span style={{ color: 'var(--app-text-soft)' }}>
-                <Landmark size={18} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block">Metode Pembayaran</span>
-              </span>
-              <ChevronRight size={18} style={{ color: 'var(--app-text-mute)' }} />
-            </Link>
-          </div>
-        </section>
-      )}
-
-      {isOwner && (
-        <section className="mb-6">
-          <h2
-            className="mb-2 text-xs font-semibold uppercase"
-            style={{ color: 'var(--app-text-mute)' }}
-          >
-            Tim
-          </h2>
-          <div
-            className="app-card"
-            style={{ borderColor: 'var(--app-border)' }}
-          >
-            <Link
-              to="/profil/tim"
-              className="flex w-full items-center gap-3 px-4 py-3 no-underline"
-              style={{ color: 'var(--app-text)' }}
-            >
-              <span style={{ color: 'var(--app-text-soft)' }}>
-                <Users size={18} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block">Kelola Tim</span>
-              </span>
-              <ChevronRight size={18} style={{ color: 'var(--app-text-mute)' }} />
-            </Link>
-          </div>
-        </section>
-      )}
-
-      <section className="mb-6">
-        <h2
-          className="mb-2 text-xs font-semibold uppercase"
-          style={{ color: 'var(--app-text-mute)' }}
-        >
-          Keamanan
-        </h2>
-        <div
-          className="app-card flex flex-col"
-          style={{ borderColor: 'var(--app-border)' }}
-        >
-          {user?.hasPassword ? (
-            <button
-              type="button"
-              onClick={() => setShowPasswordModal(true)}
-              className="flex w-full items-center gap-3 px-4 py-3 text-left no-underline"
-              style={{ color: 'var(--app-text)' }}
-            >
-              <span style={{ color: 'var(--app-text-soft)' }}>
-                <KeyRound size={18} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block">Ubah Kata Sandi</span>
-              </span>
-              <ChevronRight
-                size={18}
-                style={{ color: 'var(--app-text-mute)' }}
+          {isOwner && (
+            <MenuItem>
+              <RowLink
+                to="/profil/tim"
+                icon={<Users size={18} />}
+                label="Kelola Tim"
               />
-            </button>
-          ) : (
-            <div className="flex items-center gap-3 px-4 py-3">
-              <KeyRound size={18} style={{ color: 'var(--app-text-soft)' }} />
-              <span className="min-w-0 flex-1">
-                <span className="block">Kata Sandi</span>
-                <span
-                  className="block text-xs"
-                  style={{ color: 'var(--app-text-soft)' }}
-                >
-                  Akun ini masuk lewat Google — kata sandi diatur dari akun
-                  Google kamu
-                </span>
-              </span>
-            </div>
+            </MenuItem>
           )}
-        </div>
-      </section>
+          {isOwner && (
+            <MenuItem>
+              <RowLink
+                to="/profil/pembayaran"
+                icon={<Landmark size={18} />}
+                label="Metode Pembayaran"
+              />
+            </MenuItem>
+          )}
+        </MenuSection>
 
-      <section className="mb-6">
-        <h2
-          className="mb-2 text-xs font-semibold uppercase"
-          style={{ color: 'var(--app-text-mute)' }}
-        >
-          Preferensi
-        </h2>
-        <div
-          className="app-card flex flex-col divide-y"
-          style={{ borderColor: 'var(--app-border)' }}
-        >
-          <div
-            className="flex items-center gap-3 border-b px-4 py-3"
-            style={{ borderColor: 'var(--app-border)' }}
-          >
-            <Moon size={18} style={{ color: 'var(--app-text-soft)' }} />
-            <span className="flex-1">Mode gelap</span>
-            <Switch checked={isDark} onChange={toggleDark} label="Mode gelap" />
-          </div>
-          <Link
-            to="/profil/template-chat"
-            className="flex w-full items-center gap-3 border-b px-4 py-3 text-left no-underline"
-            style={{
-              borderColor: 'var(--app-border)',
-              color: 'var(--app-text)',
-            }}
-          >
-            <span style={{ color: 'var(--app-text-soft)' }}>
-              <MessageSquareText size={18} />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block">Template Chat WA</span>
-            </span>
-            <ChevronRight size={18} style={{ color: 'var(--app-text-mute)' }} />
-          </Link>
-        </div>
-      </section>
+        <MenuSection title="Preferensi Sistem">
+          <MenuItem>
+            <div className="flex items-center gap-3 px-4 py-3">
+              <RowLabel
+                icon={<Moon size={18} />}
+                label="Mode Tampilan"
+              />
+              <Switch
+                checked={isDark}
+                onChange={toggleDark}
+                label="Mode gelap"
+              />
+            </div>
+          </MenuItem>
+          <MenuItem>
+            <RowLink
+              to="/profil/template-chat"
+              icon={<MessageSquareText size={18} />}
+              label="Template Chat WA"
+            />
+          </MenuItem>
+        </MenuSection>
+      </div>
 
       <button
         onClick={handleLogout}
