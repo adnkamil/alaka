@@ -31,7 +31,7 @@ export default function InvoiceBrandMark({
       brandId={brandId}
       name={name}
       avatarUpdatedAt={avatarUpdatedAt}
-      className="h-14 w-14 border-2 border-white text-lg shadow-sm"
+      className="h-14 w-14 border-1 border text-lg shadow-sm"
     />
   )
 }

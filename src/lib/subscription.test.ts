@@ -15,6 +15,7 @@ import {
   hasFullAccess,
   isSubscriptionActive,
   nextProWindow,
+  planBadgeText,
   planLabel,
   resolveEntitlement,
 } from './subscription'
@@ -244,5 +245,43 @@ describe('label plan buat UI', () => {
     for (const plan of ['trial', 'free', 'pro'] as const) {
       assert.ok(PLAN_INFO[plan].description.length > 0)
     }
+  })
+})
+
+describe('planBadgeText', () => {
+  it('trial: tampil sisa hari trial', () => {
+    const ent = resolveEntitlement(
+      {
+        trialStartedAt: NOW,
+        trialEndsAt: addDays(NOW, 12),
+      },
+      NOW,
+    )
+    assert.equal(planBadgeText(ent, NOW), 'Trial · 12 hari lagi')
+  })
+
+  it('free: tampil FREE tanpa sisa hari', () => {
+    const ent = resolveEntitlement(
+      { trialStartedAt: addDays(NOW, -40), trialEndsAt: addDays(NOW, -10) },
+      NOW,
+    )
+    assert.equal(planBadgeText(ent, NOW), 'FREE')
+  })
+
+  it('pro: tampil sisa hari PRO, dibulatkan ke atas', () => {
+    const ent = resolveEntitlement(
+      {
+        trialEndsAt: addDays(NOW, -10),
+        subscriptions: [
+          {
+            status: 'active',
+            startedAt: addDays(NOW, -10),
+            endsAt: new Date(addDays(NOW, 20).getTime() - 60 * 1000),
+          },
+        ],
+      },
+      NOW,
+    )
+    assert.equal(planBadgeText(ent, NOW), 'PRO · sisa 20 hari')
   })
 })

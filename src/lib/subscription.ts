@@ -115,6 +115,29 @@ export function addDays(date: Date, days: number) {
 }
 
 /**
+ * Teks badge status paket di kartu profil: `Trial · 12 hari lagi`, `FREE`,
+ * atau `PRO · sisa 20 hari`. Sisa hari dibulatkan ke atas (sama seperti
+ * `trialDaysLeft`), jadi hari terakhir tetap tampil "1 hari", bukan "0 hari".
+ */
+export function planBadgeText(
+  entitlement: Pick<Entitlement, 'plan' | 'trialDaysLeft' | 'proUntil'>,
+  now: Date = new Date(),
+) {
+  if (entitlement.plan === 'trial') {
+    return `Trial · ${entitlement.trialDaysLeft} hari lagi`
+  }
+  if (entitlement.plan === 'pro') {
+    if (!entitlement.proUntil) return 'PRO'
+    const daysLeft = Math.max(
+      1,
+      Math.ceil((entitlement.proUntil.getTime() - now.getTime()) / DAY_MS),
+    )
+    return `PRO · sisa ${daysLeft} hari`
+  }
+  return PLAN_INFO.free.label
+}
+
+/**
  * Baris subscription dianggap aktif kalau statusnya `active` DAN masa
  * berlakunya belum lewat. Jadi `status = 'active'` dengan `ends_at` yang sudah
  * lewat otomatis dianggap expired tanpa perlu cron yang mengubah statusnya.

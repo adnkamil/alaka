@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { queryOptions, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { queryOptions, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { Link, createFileRoute, redirect } from '@tanstack/react-router'
-import { ArrowLeft, Check, Clock, Crown, Lock } from 'lucide-react'
+import { ArrowLeft, Check, Clock, Crown } from 'lucide-react'
 import PaymentProofViewer from '../../../components/PaymentProofViewer'
 import SubmitSubscriptionModal from '../../../components/SubmitSubscriptionModal'
 import type { SubmitSubscriptionValue } from '../../../components/SubmitSubscriptionModal'
@@ -10,15 +10,9 @@ import { formatDate } from '../../../lib/format'
 import { paymentProofUrl } from '../../../lib/payment-proof'
 import {
   fetchMySubscriptionState,
+  fetchSubscriptionPaymentInfo,
   submitSubscriptionRequest,
 } from '../../../lib/subscription-functions'
-import {
-  PLAN_INFO,
-  PRO_FEATURES,
-  PRO_FEATURE_INFO,
-  canUseFeature,
-  planLabel,
-} from '../../../lib/subscription'
 import type { Entitlement, SubscriptionStatus } from '../../../lib/subscription'
 
 const currentUserQuery = queryOptions({
@@ -29,6 +23,11 @@ const currentUserQuery = queryOptions({
 const mySubscriptionStateQuery = queryOptions({
   queryKey: ['my-subscription-state'],
   queryFn: () => fetchMySubscriptionState(),
+})
+
+const paymentInfoQuery = queryOptions({
+  queryKey: ['subscription-payment-info'],
+  queryFn: () => fetchSubscriptionPaymentInfo(),
 })
 
 export const Route = createFileRoute('/_app/profil/langganan')({
@@ -60,8 +59,8 @@ function periodText(entitlement: Entitlement) {
 
   if (entitlement.plan === 'trial') {
     return entitlement.trialEndsAt
-      ? `Sisa ${entitlement.trialDaysLeft} hari (sampai ${formatDate(entitlement.trialEndsAt)})`
-      : `Sisa ${entitlement.trialDaysLeft} hari`
+      ? `Trial · sisa ${entitlement.trialDaysLeft} hari (sampai ${formatDate(entitlement.trialEndsAt)})`
+      : `Trial · sisa ${entitlement.trialDaysLeft} hari`
   }
 
   return entitlement.trialEndsAt
@@ -76,11 +75,29 @@ const STATUS_LABEL: Record<SubscriptionStatus, { label: string; bg: string; fg: 
   rejected: { label: 'Ditolak', bg: 'var(--app-danger-soft)', fg: 'var(--app-danger)' },
 }
 
+/** Fitur yang sudah termasuk di paket FREE. */
+const FREE_FEATURES = [
+  'Event dan pesanan tanpa batas',
+  'Laporan keuangan dasar',
+]
+
+/** Fitur tambahan di paket PRO. */
+const PRO_FEATURES_LIST = [
+  'Link tagihan publik untuk pelanggan',
+  'Autocomplete nama dan no. HP customer',
+  'Upload foto brand dan catatan',
+  'Tambah admin tim',
+]
+
+type Tab = 'paket' | 'riwayat'
+
 function SubscriptionPage() {
   const queryClient = useQueryClient()
   const { data: user } = useSuspenseQuery(currentUserQuery)
   const { data: subscriptionState } = useSuspenseQuery(mySubscriptionStateQuery)
+  const { data: paymentInfo } = useQuery(paymentInfoQuery)
   const [modalOpen, setModalOpen] = useState(false)
+  const [tab, setTab] = useState<Tab>('paket')
 
   // Layout `_app` sudah redirect ke /login kalau sesinya habis; ini cuma jaring
   // pengaman buat tipe.
@@ -89,10 +106,9 @@ function SubscriptionPage() {
   // Satu sumber: entitlement user dari server. Nggak ada hitung-hitungan plan
   // di sini supaya UI & server nggak bisa beda pendapat.
   const entitlement = user.entitlements
+  const isPro = entitlement.isPro
   const { pending, subscriptions: allSubscriptions } = subscriptionState
-  // Yang pending sudah ditampilkan di kartu status di atas, jadi riwayat di
-  // bawah cukup yang sudah selesai diproses (active/expired/rejected).
-  const history = allSubscriptions.filter((row) => row.status !== 'pending')
+  const proPrice = paymentInfo ? formatIDR(paymentInfo.proPrice) : null
 
   async function handleSubmit(value: SubmitSubscriptionValue) {
     await submitSubscriptionRequest({
@@ -114,155 +130,172 @@ function SubscriptionPage() {
         <h1 className="text-xl font-bold">Paket &amp; Langganan</h1>
       </header>
 
-      <section className="app-card mb-6 p-4">
-        <div className="flex items-center gap-3">
-          <span
-            className="flex h-10 w-10 items-center justify-center rounded-full"
-            style={{ background: 'var(--app-accent-soft)', color: 'var(--app-accent)' }}
-          >
-            <Crown size={20} />
-          </span>
-          <div className="flex-1">
-            <p className="text-sm font-semibold">Paket {planLabel(entitlement.plan)}</p>
-            <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
-              {periodText(entitlement)}
-            </p>
-          </div>
-        </div>
-        <p className="mt-3 text-xs leading-relaxed" style={{ color: 'var(--app-text-soft)' }}>
-          {PLAN_INFO[entitlement.plan].description}
-        </p>
-      </section>
+      <div
+        role="tablist"
+        className="mb-5 grid grid-cols-2 gap-1 rounded-full p-1"
+        style={{ background: 'var(--app-border)' }}
+      >
+        {(['paket', 'riwayat'] as const).map((key) => {
+          const active = tab === key
+          return (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setTab(key)}
+              className="rounded-full py-2 text-sm font-semibold transition-colors"
+              style={{
+                background: active ? 'var(--app-card)' : 'transparent',
+                color: active ? 'var(--app-text)' : 'var(--app-text-mute)',
+                boxShadow: active ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+              }}
+            >
+              {key === 'paket' ? 'Paket' : 'Riwayat'}
+            </button>
+          )
+        })}
+      </div>
 
-      <section className="mb-6">
-        <h2 className="mb-2 text-xs font-semibold uppercase" style={{ color: 'var(--app-text-mute)' }}>
-          Fitur PRO
-        </h2>
-        <div className="app-card flex flex-col divide-y" style={{ borderColor: 'var(--app-border)' }}>
-          {PRO_FEATURES.map((feature) => {
-            const unlocked = canUseFeature(entitlement, feature)
-            const info = PRO_FEATURE_INFO[feature]
-            return (
-              <div key={feature} className="flex items-start gap-3 p-4" style={{ borderColor: 'var(--app-border)' }}>
+      {tab === 'paket' && (
+        <section className="flex flex-col gap-3">
+          {/* Banner status: pengajuan yang sedang diverifikasi, atau masa aktif plan. */}
+          {pending ? (
+            <div
+              className="flex items-start gap-3 rounded-2xl p-4"
+              style={{ background: 'var(--app-warning-soft)' }}
+            >
+              <Clock size={18} className="mt-0.5 shrink-0" style={{ color: 'var(--app-warning)' }} />
+              <div className="flex-1 text-xs">
+                <p className="font-semibold">Pengajuan sedang diverifikasi</p>
+                <p style={{ color: 'var(--app-text-soft)' }}>
+                  Nominal {formatIDR(pending.amount)} · diajukan {formatDate(pending.paidAt ?? pending.createdAt)}
+                </p>
+                {pending.hasPaymentProof && (
+                  <PaymentProofViewer
+                    src={paymentProofUrl(pending.id)}
+                    label="Lihat bukti transfer"
+                    className="mt-1 flex items-center gap-1.5 font-semibold"
+                  />
+                )}
+              </div>
+            </div>
+          ) : (
+            <div
+              className="flex items-center gap-3 rounded-2xl p-4 text-xs"
+              style={{ background: 'var(--app-accent-soft)', color: 'var(--app-text-soft)' }}
+            >
+              <Crown size={16} style={{ color: 'var(--app-accent)' }} />
+              {periodText(entitlement)}
+            </div>
+          )}
+
+          {/* Kartu FREE */}
+          <div className="app-card p-5" style={{ borderColor: 'var(--app-border)' }}>
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-base font-bold">Free</p>
+              {!isPro && (
                 <span
-                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
-                  style={{
-                    background: unlocked ? 'var(--app-accent-soft)' : 'var(--app-border)',
-                    color: unlocked ? 'var(--app-accent)' : 'var(--app-text-mute)',
-                  }}
+                  className="app-badge"
+                  style={{ background: 'var(--app-border)', color: 'var(--app-text-soft)' }}
                 >
-                  {unlocked ? <Check size={15} /> : <Lock size={14} />}
+                  Paket saat ini
                 </span>
-                <div className="flex-1">
-                  <p className="text-sm font-semibold">{info.label}</p>
-                  <p className="text-xs leading-relaxed" style={{ color: 'var(--app-text-soft)' }}>
-                    {info.description}
-                  </p>
-                </div>
-                <span
-                  className="text-[11px] font-semibold"
-                  style={{ color: unlocked ? 'var(--app-accent)' : 'var(--app-text-mute)' }}
+              )}
+            </div>
+            <ul className="flex flex-col gap-2.5">
+              {FREE_FEATURES.map((text) => (
+                <li key={text} className="flex items-center gap-2.5 text-sm">
+                  <Check size={16} style={{ color: 'var(--app-accent)' }} />
+                  {text}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Kartu PRO */}
+          <div className="app-card p-5" style={{ borderColor: 'var(--app-accent)' }}>
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2" style={{ color: 'var(--app-accent)' }}>
+                <Crown size={18} />
+                <p className="text-base font-bold">PRO</p>
+                {isPro && (
+                  <span
+                    className="app-badge"
+                    style={{ background: 'var(--app-accent-soft)', color: 'var(--app-accent)' }}
+                  >
+                    Paket saat ini
+                  </span>
+                )}
+              </div>
+              <p className="text-lg font-bold">
+                {proPrice ?? '—'}
+                <span className="text-xs font-normal" style={{ color: 'var(--app-text-mute)' }}>
+                  {' '}/bulan
+                </span>
+              </p>
+            </div>
+            <ul className="mb-4 flex flex-col gap-2.5">
+              {PRO_FEATURES_LIST.map((text) => (
+                <li key={text} className="flex items-center gap-2.5 text-sm">
+                  <Check size={16} style={{ color: 'var(--app-accent)' }} />
+                  {text}
+                </li>
+              ))}
+            </ul>
+
+            {!isPro && !pending && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setModalOpen(true)}
+                  disabled={!user.emailVerified}
+                  className="app-btn-primary w-full disabled:opacity-50"
                 >
-                  {unlocked ? 'Terbuka' : 'Terkunci'}
+                  Ajukan Upgrade ke PRO
+                </button>
+                {!user.emailVerified && (
+                  <p className="mt-2 text-center text-xs" style={{ color: 'var(--app-warning)' }}>
+                    Verifikasi email kamu dulu untuk mengajukan upgrade.
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+        </section>
+      )}
+
+      {tab === 'riwayat' && (
+        <section className="flex flex-col gap-2">
+          {allSubscriptions.length === 0 && (
+            <p className="py-10 text-center text-sm" style={{ color: 'var(--app-text-mute)' }}>
+              Belum ada transaksi langganan.
+            </p>
+          )}
+
+          {allSubscriptions.map((row) => {
+            const status = STATUS_LABEL[row.status]
+            return (
+              <div key={row.id} className="app-card flex items-center justify-between p-4">
+                <div className="flex flex-col gap-0.5">
+                  <p className="text-sm font-semibold">PRO · {formatIDR(row.amount)}</p>
+                  <p className="text-xs" style={{ color: 'var(--app-text-mute)' }}>
+                    {formatDate(row.paidAt ?? row.createdAt)}
+                  </p>
+                  {row.hasPaymentProof && (
+                    <PaymentProofViewer
+                      src={paymentProofUrl(row.id)}
+                      label="Lihat bukti transfer"
+                      className="mt-1 flex items-center gap-1.5 text-xs font-semibold"
+                    />
+                  )}
+                </div>
+                <span className="app-badge" style={{ background: status.bg, color: status.fg }}>
+                  {status.label}
                 </span>
               </div>
             )
           })}
-        </div>
-      </section>
-
-      {!entitlement.isPro && (
-        <section className="mb-6">
-          <h2 className="mb-2 text-xs font-semibold uppercase" style={{ color: 'var(--app-text-mute)' }}>
-            Upgrade ke PRO
-          </h2>
-
-          {pending ? (
-            <div className="app-card p-4">
-              <div className="mb-3 flex items-center gap-3">
-                <span
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
-                  style={{ background: 'var(--app-warning-soft)', color: 'var(--app-warning)' }}
-                >
-                  <Clock size={16} />
-                </span>
-                <div className="flex-1">
-                  <p className="text-sm font-semibold">Pengajuan sedang diverifikasi</p>
-                  <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
-                    Diajukan {formatDate(pending.paidAt ?? pending.createdAt)}
-                  </p>
-                </div>
-              </div>
-              <div className="mb-2 flex items-center justify-between text-xs">
-                <span style={{ color: 'var(--app-text-mute)' }}>Nominal</span>
-                <span className="font-semibold">{formatIDR(pending.amount)}</span>
-              </div>
-              {pending.hasPaymentProof && (
-                <PaymentProofViewer
-                  src={paymentProofUrl(pending.id)}
-                  label="Lihat bukti transfer yang kamu kirim"
-                  className="flex items-center gap-1.5 text-xs font-semibold"
-                />
-              )}
-              <p className="mt-3 text-xs leading-relaxed" style={{ color: 'var(--app-text-mute)' }}>
-                Admin akan memverifikasi bukti transfer ini, biasanya 1x24 jam. Status
-                PRO otomatis aktif begitu disetujui.
-              </p>
-            </div>
-          ) : (
-            <div className="app-card p-4">
-              <p className="mb-4 text-xs leading-relaxed" style={{ color: 'var(--app-text-soft)' }}>
-                Transfer sesuai nominal paket PRO, lalu ajukan lewat form — sertakan
-                bukti transfer. Setelah diverifikasi admin, fitur yang terkunci
-                otomatis terbuka.
-              </p>
-              <button
-                type="button"
-                onClick={() => setModalOpen(true)}
-                disabled={!user.emailVerified}
-                className="app-btn-primary w-full disabled:opacity-50"
-              >
-                Ajukan Upgrade ke PRO
-              </button>
-              {!user.emailVerified && (
-                <p
-                  className="mt-2 text-center text-xs"
-                  style={{ color: 'var(--app-warning)' }}
-                >
-                  Verifikasi email kamu dulu untuk mengajukan upgrade.
-                </p>
-              )}
-            </div>
-          )}
-        </section>
-      )}
-
-      {history.length > 0 && (
-        <section>
-          <h2 className="mb-2 text-xs font-semibold uppercase" style={{ color: 'var(--app-text-mute)' }}>
-            Riwayat Pengajuan
-          </h2>
-          <div className="flex flex-col gap-2">
-            {history.map((row) => {
-              const status = STATUS_LABEL[row.status]
-              return (
-                <div key={row.id} className="app-card flex items-center justify-between p-3 text-xs">
-                  <div>
-                    <p className="font-medium">{formatIDR(row.amount)}</p>
-                    <p style={{ color: 'var(--app-text-mute)' }}>
-                      {formatDate(row.paidAt ?? row.createdAt)}
-                    </p>
-                  </div>
-                  <span
-                    className="app-badge"
-                    style={{ background: status.bg, color: status.fg }}
-                  >
-                    {status.label}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
         </section>
       )}
 

@@ -951,22 +951,17 @@ function EventDetailPage() {
       )}
 
       <section className="mb-4 grid grid-cols-2 gap-3">
-        <div className="app-card p-4">
+        <div className="app-card px-4 py-3">
           <p className="mb-1 text-sm" style={{ color: 'var(--app-text-soft)' }}>
             Uang masuk
           </p>
           <p className="text-lg font-bold">{formatIDR(amountIn)}</p>
         </div>
-        <div className="app-card p-4">
+        <div className="app-card px-4 py-3">
           <p className="mb-1 text-sm" style={{ color: 'var(--app-text-soft)' }}>
             Belum bayar
           </p>
-          <p
-            className="text-lg font-bold"
-            style={{ color: 'var(--app-warning)' }}
-          >
-            {formatIDR(outstanding)}
-          </p>
+          <p className="text-lg font-bold">{formatIDR(outstanding)}</p>
         </div>
       </section>
 
@@ -1356,26 +1351,26 @@ function EventDetailPage() {
             // `paid_amount` di DB NOT NULL default 0, jadi tidak perlu fallback null.
             const remaining = Math.max(0, orderTotal - Number(order.paidAmount))
             return (
-              <details key={order.id} className="app-card p-4">
+              <details key={order.id} className="app-card p-3">
                 <summary className="flex cursor-pointer items-center gap-3">
                   <span className="app-avatar h-9 w-9 flex-shrink-0">
                     {order.customerName.at(0)?.toUpperCase()}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <p className="truncate font-semibold">
+                    <p className="truncate text-sm font-bold">
                       {order.customerName}
                     </p>
                     {/* Harga dijaga satu baris: `whitespace-nowrap` bikin
                         "N item · Rp…" dan "Sisa Rp…" nggak bisa terbelah. */}
                     <p
-                      className="text-xs"
+                      className="text-[11px] "
                       style={{ color: 'var(--app-text-soft)' }}
                     >
                       <span className="whitespace-nowrap">
                         {order.items.length} item · {formatIDR(orderTotal)}
                       </span>
                       {order.paymentStatus === 'dp' && (
-                        <span style={{ color: 'var(--app-warning)' }}>
+                        <span style={{ color: 'var(--app-danger)' }}>
                           {' '}
                           ·{' '}
                           <span className="whitespace-nowrap">
@@ -1423,7 +1418,7 @@ function EventDetailPage() {
                     </select>
                     <ChevronDown
                       size={12}
-                      className="pointer-events-none absolute right-1.5 opacity-60"
+                      className="pointer-events-none absolute right-1 opacity-60"
                     />
                   </div>
                   <ChevronRight

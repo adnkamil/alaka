@@ -115,7 +115,7 @@ function BerandaPage() {
             brandId={user?.brandId ?? undefined}
             name={user?.name}
             avatarUpdatedAt={user?.avatarUpdatedAt}
-            className="h-10 w-10"
+            className="h-13 w-13"
           />
         </Link>
       </header>
@@ -131,12 +131,7 @@ function BerandaPage() {
           <p className="mb-1 text-sm" style={{ color: 'var(--app-text-soft)' }}>
             Belum bayar
           </p>
-          <p
-            className="text-xl font-bold"
-            style={{ color: 'var(--app-warning)' }}
-          >
-            {formatIDR(outstanding)}
-          </p>
+          <p className="text-xl font-bold">{formatIDR(outstanding)}</p>
         </div>
       </section>
 
@@ -147,7 +142,7 @@ function BerandaPage() {
           className="flex items-center gap-1 text-sm font-semibold no-underline"
           style={{ color: 'var(--app-accent)' }}
         >
-          <Plus size={16} />
+          {/* <Plus size={16} /> */}
           Tambah event
         </Link>
       </div>
