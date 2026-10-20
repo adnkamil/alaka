@@ -239,7 +239,7 @@ function ProfilPage() {
           brandId={user?.brandId ?? undefined}
           name={user?.name}
           avatarUpdatedAt={user?.avatarUpdatedAt}
-          className="h-16 w-16 text-xl"
+          className="h-16 w-16 text-xl border"
         />
         <div className="min-w-0 flex-1">
           <p className="font-semibold">{user?.name}</p>

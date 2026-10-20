@@ -617,6 +617,15 @@ a {
   padding: 0.25rem 0.6rem;
 }
 
+.app-badge-entitlement {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  /* font-size: 0.72rem; */
+  font-weight: 600;
+  padding: 0.25rem 0.6rem;
+}
+
 .app-badge-success {
   background: var(--app-success-soft);
   color: var(--app-success);

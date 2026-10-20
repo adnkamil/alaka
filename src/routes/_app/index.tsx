@@ -142,7 +142,7 @@ function BerandaPage() {
           className="flex items-center gap-1 text-sm font-semibold no-underline"
           style={{ color: 'var(--app-accent)' }}
         >
-          <Plus size={16} />
+          {/* <Plus size={16} /> */}
           Tambah event
         </Link>
       </div>
