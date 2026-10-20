@@ -22,6 +22,7 @@ import {
 import ChangePasswordModal from '../../../components/ChangePasswordModal'
 import EditProfileModal from '../../../components/EditProfileModal'
 import type { ProfileFormValue } from '../../../components/EditProfileModal'
+import NewBadge from '../../../components/NewBadge'
 import UserAvatar from '../../../components/UserAvatar'
 import Switch from '../../../components/ui/Switch'
 import { removeAvatar, uploadAvatar } from '../../../lib/avatar-functions'
@@ -31,6 +32,7 @@ import {
   logoutUser,
   updateProfile,
 } from '../../../lib/auth-functions'
+import { NEW_FEATURES } from '../../../lib/new-feature'
 import { listPaymentMethods } from '../../../lib/payment-methods-functions'
 import {
   planBadgeText,
@@ -126,16 +128,22 @@ function RowLabel({
   icon,
   label,
   description,
+  badge,
 }: {
   icon: React.ReactNode
   label: string
   description?: string
+  /** Penanda kecil di samping label (mis. badge "New"). */
+  badge?: React.ReactNode
 }) {
   return (
     <>
       <span style={{ color: 'var(--app-text-soft)' }}>{icon}</span>
       <span className="min-w-0 flex-1">
-        <span className="block">{label}</span>
+        <span className="flex items-center gap-2">
+          {label}
+          {badge}
+        </span>
         {description && (
           <span
             className="block text-xs"
@@ -155,16 +163,24 @@ function RowLink({
   label,
   description,
   trailing,
+  isNew,
 }: {
   to: string
   icon: React.ReactNode
   label: string
   description?: string
   trailing?: React.ReactNode
+  /** Tampilkan badge "New" di samping label (lihat `NEW_FEATURES`). */
+  isNew?: boolean
 }) {
   return (
     <Link to={to} className={rowClassName} style={{ color: 'var(--app-text)' }}>
-      <RowLabel icon={icon} label={label} description={description} />
+      <RowLabel
+        icon={icon}
+        label={label}
+        description={description}
+        badge={isNew ? <NewBadge /> : undefined}
+      />
       {trailing}
       <ChevronRight size={18} style={{ color: 'var(--app-text-mute)' }} />
     </Link>
@@ -350,6 +366,7 @@ function ProfilPage() {
                 to="/profil/tim"
                 icon={<Users size={18} />}
                 label="Kelola Tim"
+                isNew={NEW_FEATURES.tim}
               />
             </MenuItem>
           )}
