@@ -33,9 +33,7 @@ import {
 } from '../../../lib/auth-functions'
 import { listPaymentMethods } from '../../../lib/payment-methods-functions'
 import {
-  hasFullAccess,
   planBadgeText,
-  planLabel,
 } from '../../../lib/subscription'
 import VerifyEmailBanner from '#/components/VerifyEmailBanner'
 
@@ -180,16 +178,13 @@ function ProfilPage() {
   const [isDark, toggleDark] = useDarkModePreference()
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const entitlements = user?.entitlements;
 
   // Badge & menu Subscription, rekening/QRIS, serta nama & foto brand hanya untuk pemilik
   // brand. Server tetap penentu akhir (`requireBrandPermission`).
   // (lewat variabel perantara supaya TypeScript tidak mempersempit `user`)
   const brandRole: string | undefined = user?.brandRole
   const isOwner = brandRole === 'owner'
-
-  // Ajakan upgrade di baris "Subscription" — TRIAL & PRO sama-sama akses penuh,
-  // jadi cuma FREE yang perlu lihat CTA-nya. Pakai helper entitlement yang ada.
-  const showUpgradeCta = user ? !hasFullAccess(user.entitlements) : false
 
   async function handleLogout() {
     await logoutUser()
@@ -242,28 +237,10 @@ function ProfilPage() {
           className="h-16 w-16 text-xl border"
         />
         <div className="min-w-0 flex-1">
-          <p className="font-semibold">{user?.name}</p>
-          <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
+          <p className="font-bold text-xl">{user?.name}</p>
+          <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
             {user?.brandName || 'Belum ada nama brand'}
           </p>
-          {isOwner && user && (
-            <span
-              className="app-badge mt-1.5"
-              style={
-                user.entitlements.plan === 'free'
-                  ? {
-                      background: 'var(--app-border)',
-                      color: 'var(--app-text-soft)',
-                    }
-                  : {
-                      background: 'var(--app-accent-soft)',
-                      color: 'var(--app-accent)',
-                    }
-              }
-            >
-              {planBadgeText(user.entitlements)}
-            </span>
-          )}
         </div>
         <ChevronRight size={18} style={{ color: 'var(--app-text-mute)' }} />
       </button>
@@ -281,14 +258,24 @@ function ProfilPage() {
               <RowLink
                 to="/profil/langganan"
                 icon={<Crown size={18} />}
-                label="Langganan"
+                label="Subscription"
                 trailing={
-                  showUpgradeCta ? (
+                  entitlements ? (
                     <span
-                      className="text-xs font-semibold"
-                      style={{ color: 'var(--app-accent)' }}
+                      className="app-badge"
+                      style={
+                        entitlements.plan === 'free'
+                          ? {
+                              background: 'var(--app-border)',
+                              color: 'var(--app-text-soft)',
+                            }
+                          : {
+                              background: 'var(--app-accent-soft)',
+                              color: 'var(--app-accent)',
+                            }
+                      }
                     >
-                      Upgrade
+                      {planBadgeText(entitlements)}
                     </span>
                   ) : undefined
                 }
