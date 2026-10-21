@@ -24,12 +24,14 @@ export function parseCustomDays(text: string): number | null {
 
 export function FilterChip({
   active,
+  disabled = false,
   onClick,
   icon,
   trailing,
   children,
 }: {
   active: boolean
+  disabled?: boolean
   onClick: () => void
   icon?: ReactNode
   trailing?: ReactNode
@@ -39,12 +41,18 @@ export function FilterChip({
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       aria-pressed={active}
-      className="flex h-9 flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-4 text-sm font-medium"
+      className="flex h-9 flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-4 text-sm font-medium disabled:cursor-not-allowed"
       style={{
         borderColor: active ? 'var(--app-accent)' : 'var(--app-border)',
         background: active ? 'var(--app-accent-soft)' : 'var(--app-card)',
-        color: active ? 'var(--app-accent)' : 'var(--app-text)',
+        color: disabled
+          ? 'var(--app-text-mute)'
+          : active
+            ? 'var(--app-accent)'
+            : 'var(--app-text)',
+        opacity: disabled ? 0.45 : 1,
       }}
     >
       {icon}

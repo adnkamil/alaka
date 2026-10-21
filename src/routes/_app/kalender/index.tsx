@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { queryOptions, useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
-import { Search, SlidersHorizontal, X } from 'lucide-react'
+import { Search, SlidersHorizontal } from 'lucide-react'
 import EventFilterSheet, {
   FilterChip,
   lokasiLabel,
@@ -109,6 +109,7 @@ function EventPage() {
   )
 
   const activeCount = (waktu !== null ? 1 : 0) + (lokasi !== null ? 1 : 0)
+  const isCustomWaktu = waktu !== null && waktu !== 7 && waktu !== 30
   const hasFilter = activeCount > 0 || search.trim() !== ''
 
   function clearAll() {
@@ -171,40 +172,32 @@ function EventPage() {
       </div>
 
       <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
-        {activeCount === 0 ? (
-          <>
-            <FilterChip active={false} onClick={() => setWaktu(0)}>
-              Hari ini
+        {[7, 30].map((days) => {
+          const active = waktu === days
+          return (
+            <FilterChip
+              key={days}
+              active={active}
+              disabled={waktu !== null && !active}
+              onClick={() => setWaktu(active ? null : days)}
+            >
+              {waktuLabel(days)}
             </FilterChip>
-            <FilterChip active={false} onClick={() => setWaktu(7)}>
-              7 hari
+          )
+        })}
+        {(['online', 'offline'] as const).map((item) => {
+          const active = lokasi === item
+          return (
+            <FilterChip
+              key={item}
+              active={active}
+              disabled={lokasi !== null && !active}
+              onClick={() => setLokasi(active ? null : item)}
+            >
+              {lokasiLabel(item)}
             </FilterChip>
-            <FilterChip active={false} onClick={() => setWaktu(30)}>
-              30 hari
-            </FilterChip>
-          </>
-        ) : (
-          <>
-            {waktu !== null && (
-              <FilterChip
-                active
-                onClick={() => setWaktu(null)}
-                trailing={<X size={14} />}
-              >
-                {waktuLabel(waktu)}
-              </FilterChip>
-            )}
-            {lokasi !== null && (
-              <FilterChip
-                active
-                onClick={() => setLokasi(null)}
-                trailing={<X size={14} />}
-              >
-                {lokasiLabel(lokasi)}
-              </FilterChip>
-            )}
-          </>
-        )}
+          )
+        })}
       </div>
 
       {hasFilter && events.length > 0 && (

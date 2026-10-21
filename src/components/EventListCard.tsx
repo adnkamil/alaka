@@ -42,7 +42,7 @@ export default function EventListCard({
     <Link
       to="/kalender/$eventId"
       params={{ eventId }}
-      className="app-card flex items-stretch gap-4 px-4 py-2 no-underline"
+      className="app-card flex items-stretch gap-4 px-4 py-3 no-underline"
       style={dimmed ? { opacity: 0.65 } : undefined}
     >
       <span
