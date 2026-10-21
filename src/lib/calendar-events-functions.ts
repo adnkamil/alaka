@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { asc, between, eq } from 'drizzle-orm'
+import { asc, between, eq, gte } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '../db'
 import { calendarEvents } from '../db/schema'
@@ -36,6 +36,32 @@ export const listCalendarEvents = createServerFn({ method: 'GET' })
       .from(calendarEvents)
       .where(between(calendarEvents.eventDate, start, end))
       .orderBy(asc(calendarEvents.eventDate), asc(calendarEvents.name))
+  })
+
+/**
+ * Daftar event yang akan datang (tanggal >= `from`), diurutkan dari yang paling
+ * dekat. Dipakai halaman Event; filter waktu/lokasi/pencarian dikerjakan di client.
+ */
+export const listUpcomingCalendarEvents = createServerFn({ method: 'GET' })
+  .validator(
+    z.object({
+      from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format tanggal harus YYYY-MM-DD'),
+    }),
+  )
+  .handler(async ({ data }) => {
+    await requireUser()
+
+    return db
+      .select({
+        id: calendarEvents.id,
+        name: calendarEvents.name,
+        location: calendarEvents.location,
+        eventDate: calendarEvents.eventDate,
+      })
+      .from(calendarEvents)
+      .where(gte(calendarEvents.eventDate, data.from))
+      .orderBy(asc(calendarEvents.eventDate), asc(calendarEvents.name))
+      .limit(300)
   })
 
 /** Detail satu event kalender (banner, deskripsi, lokasi, tanggal, brand). */
