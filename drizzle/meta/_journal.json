@@ -120,6 +120,13 @@
       "when": 1791968786505,
       "tag": "0016_calendar_banner_blob",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1792634320731,
+      "tag": "0017_calendar_event_online_end",
+      "breakpoints": true
     }
   ]
 }

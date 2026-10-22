@@ -31,6 +31,34 @@ export function isRealIsoDate(value: string): boolean {
 }
 
 /**
+ * Tanggal selesai harus sama dengan atau setelah tanggal mulai. `null` atau
+ * string kosong = event sehari, selalu valid.
+ */
+export function isEndDateValid(
+  eventDate: string,
+  endDate: string | null,
+): boolean {
+  if (!endDate) return true
+  return endDate >= eventDate
+}
+
+/** Pesan galat tanggal selesai (dipakai server dan form). */
+export const END_DATE_ERROR =
+  'Tanggal selesai tidak boleh sebelum tanggal mulai'
+
+/**
+ * Bentuk yang disimpan ke DB: kosong, atau sama dengan tanggal mulai, jadi
+ * `null` (event sehari) supaya satu event sehari hanya punya satu representasi.
+ */
+export function normalizeEndDate(
+  eventDate: string,
+  endDate: string | null,
+): string | null {
+  if (!endDate || endDate === eventDate) return null
+  return endDate
+}
+
+/**
  * Rapikan daftar brand: spasi berlebih dibuang, yang kosong dibuang, dan
  * duplikat (tanpa membedakan huruf besar/kecil) hanya disimpan sekali —
  * penulisan pertama yang dipakai.
@@ -63,6 +91,12 @@ export const calendarEventFieldsSchema = z.object({
     .min(1, 'Lokasi wajib diisi')
     .max(CALENDAR_EVENT_LIMITS.location, 'Lokasi terlalu panjang'),
   eventDate: z.string().refine(isRealIsoDate, 'Tanggal tidak valid'),
+  /** Tanggal terakhir event; null = event sehari. */
+  endDate: z
+    .string()
+    .refine(isRealIsoDate, 'Tanggal selesai tidak valid')
+    .nullable(),
+  isOnline: z.boolean(),
   description: z
     .string()
     .trim()

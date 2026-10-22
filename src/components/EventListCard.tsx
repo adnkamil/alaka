@@ -68,17 +68,20 @@ export default function EventListCard({
 
       <span className="min-w-0 flex-1 items-center self-center">
         <span 
-          className="block truncate text-[15px] font-bold leading-5"
+          className="block truncate text-[15.5px] font-bold leading-5"
           style={{
               color: 'var(--app-accent)',
-            }}>{name}</span>
+            }}
+          >
+            {name}
+          </span>
         <span className="mt-1 flex flex-col gap-1">
           {rows.map((row, index) => {
             const Icon = EVENT_ROW_ICONS[row.icon]
             return (
               <span
                 key={index}
-                className="flex items-center gap-1.5 text-[10px]"
+                className="flex items-center gap-1.5 text-[11px]"
                 style={{ color: 'var(--app-text-soft)' }}
               >
                 <Icon size={14} className="flex-shrink-0" />

@@ -12,10 +12,11 @@
 import { config } from 'dotenv'
 config({ path: ['.env.local', '.env'] })
 
-/** Offset hari dari hari ini -> data event contoh. */
+/** Offset hari dari hari ini -> data event contoh (`endOffset` = tanggal selesai, kosong = sehari). */
 const SAMPLES = [
   {
     offset: 2,
+    endOffset: 4,
     name: 'Bazar Jastip Makassar',
     location: 'Phinisi Point Mall, Makassar',
     description:
@@ -31,9 +32,19 @@ const SAMPLES = [
   },
   {
     offset: 5,
+    endOffset: 11,
     name: 'Open PO Skincare Fair',
     location: 'Online (Instagram Live)',
     description: 'Open PO bareng lewat Instagram Live, tanpa perlu datang.',
+    exhibitors: [],
+  },
+  {
+    // Sudah mulai kemarin, selesai 2 hari lagi: contoh event "sedang berlangsung".
+    offset: -1,
+    endOffset: 2,
+    name: 'Cuci Gudang Akhir Tahun',
+    location: 'Gudang Mici, Makassar',
+    description: 'Cuci gudang akhir tahun, diskon sampai habis.',
     exhibitors: [],
   },
   {
@@ -95,6 +106,8 @@ async function main() {
     })
     const details = {
       location: sample.location,
+      endDate: sample.endOffset ? addDays(today, sample.endOffset) : null,
+      isOnline: /^online\b/i.test(sample.location),
       description: sample.description,
       exhibitors: sample.exhibitors,
     }

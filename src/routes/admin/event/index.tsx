@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { CalendarDays, MapPin, Plus } from 'lucide-react'
-import { formatLongDate } from '../../../lib/calendar'
+import { formatDateRange, isCalendarEventFinished } from '../../../lib/calendar'
 import { adminCalendarEventsQuery } from '../../../lib/queries'
 import { todayIsoDateInAppTimeZone } from '../../../lib/timezone'
 
@@ -20,9 +20,13 @@ function AdminEventListPage() {
 
   const today = todayIsoDateInAppTimeZone()
   // `events` terurut tanggal naik dari server; "Selesai" dibalik supaya yang
-  // paling baru lewat ada di atas.
-  const upcoming = events.filter((event) => event.eventDate >= today)
-  const past = events.filter((event) => event.eventDate < today).reverse()
+  // paling baru lewat ada di atas. Selesai = tanggal lewat ATAU diakhiri admin.
+  const upcoming = events.filter(
+    (event) => !isCalendarEventFinished(event, today),
+  )
+  const past = events
+    .filter((event) => isCalendarEventFinished(event, today))
+    .reverse()
   const visible = tab === 'upcoming' ? upcoming : past
 
   return (
@@ -113,7 +117,7 @@ function AdminEventListPage() {
                   className="mt-0.5 text-xs"
                   style={{ color: 'var(--app-text-soft)' }}
                 >
-                  {formatLongDate(event.eventDate)}
+                  {formatDateRange(event.eventDate, event.endDate)}
                 </p>
                 <p
                   className="mt-0.5 flex items-center gap-1 text-xs"
@@ -122,6 +126,12 @@ function AdminEventListPage() {
                   <MapPin size={12} className="flex-shrink-0" />
                   <span className="truncate">{event.location}</span>
                 </p>
+                <span className="mt-1.5 flex gap-1.5">
+                  <span className="app-badge app-badge-accent">
+                    {event.isOnline ? 'Online' : 'Offline'}
+                  </span>
+                  {event.isEnded && <span className="app-badge">Diakhiri</span>}
+                </span>
               </span>
             </Link>
           ))}

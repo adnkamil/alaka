@@ -1,14 +1,17 @@
 import { useState } from 'react'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, CircleCheck, CirclePlay } from 'lucide-react'
 import CalendarEventForm from '../../../components/CalendarEventForm'
 import ConfirmModal from '../../../components/ui/ConfirmModal'
 import {
   deleteCalendarEvent,
+  setCalendarEventEnded,
   updateCalendarEvent,
 } from '../../../lib/calendar-events-admin-functions'
+import { eventEndDate } from '../../../lib/calendar'
 import { adminCalendarEventsQuery } from '../../../lib/queries'
+import { todayIsoDateInAppTimeZone } from '../../../lib/timezone'
 import type { CalendarEventFormValue } from '../../../components/CalendarEventForm'
 
 export const Route = createFileRoute('/admin/event/$eventId')({
@@ -27,6 +30,9 @@ function AdminEventDetailPage() {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [confirmEnd, setConfirmEnd] = useState(false)
+  const [isTogglingEnded, setIsTogglingEnded] = useState(false)
+  const [endedError, setEndedError] = useState<string | null>(null)
 
   async function refresh() {
     // Cache sisi user ikut dibuang supaya perubahan langsung terlihat.
@@ -41,6 +47,23 @@ function AdminEventDetailPage() {
     await updateCalendarEvent({ data: { id: eventId, ...value } })
     await refresh()
     await navigate({ to: '/admin/event' })
+  }
+
+  async function handleSetEnded(ended: boolean) {
+    setIsTogglingEnded(true)
+    setEndedError(null)
+    try {
+      await setCalendarEventEnded({ data: { id: eventId, ended } })
+      await refresh()
+      setConfirmEnd(false)
+    } catch (err) {
+      setConfirmEnd(false)
+      setEndedError(
+        err instanceof Error ? err.message : 'Gagal mengubah status event',
+      )
+    } finally {
+      setIsTogglingEnded(false)
+    }
   }
 
   async function handleDelete() {
@@ -79,6 +102,61 @@ function AdminEventDetailPage() {
         </p>
       ) : (
         <>
+          <section className="app-card mb-4 p-4">
+            <p className="flex items-center gap-2 text-sm font-semibold">
+              {event.isEnded ? (
+                <CircleCheck
+                  size={16}
+                  style={{ color: 'var(--app-text-soft)' }}
+                />
+              ) : (
+                <CirclePlay size={16} style={{ color: 'var(--app-accent)' }} />
+              )}
+              {event.isEnded
+                ? 'Event sudah diakhiri'
+                : eventEndDate(event) < todayIsoDateInAppTimeZone()
+                  ? 'Tanggal event sudah lewat'
+                  : 'Event berjalan'}
+            </p>
+            <p
+              className="mt-1 text-xs leading-relaxed"
+              style={{ color: 'var(--app-text-soft)' }}
+            >
+              {event.isEnded
+                ? 'Event ini tidak muncul di kalender user. Datanya tetap tersimpan dan bisa dibuka kembali.'
+                : eventEndDate(event) < todayIsoDateInAppTimeZone()
+                  ? 'Event ini otomatis tidak muncul lagi di kalender user.'
+                  : 'Akhiri event kalau sudah selesai atau dibatalkan sebelum tanggalnya. Event langsung hilang dari kalender user.'}
+            </p>
+            {event.isEnded ? (
+              <button
+                type="button"
+                disabled={isTogglingEnded}
+                onClick={() => void handleSetEnded(false)}
+                className="app-btn-outline mt-3 w-full disabled:opacity-50"
+              >
+                {isTogglingEnded ? 'Memproses...' : 'Buka kembali event'}
+              </button>
+            ) : eventEndDate(event) >= todayIsoDateInAppTimeZone() ? (
+              <button
+                type="button"
+                disabled={isTogglingEnded}
+                onClick={() => setConfirmEnd(true)}
+                className="app-btn-outline mt-3 w-full disabled:opacity-50"
+              >
+                Akhiri event
+              </button>
+            ) : null}
+            {endedError && (
+              <p
+                className="mt-2 text-sm"
+                style={{ color: 'var(--app-danger)' }}
+              >
+                {endedError}
+              </p>
+            )}
+          </section>
+
           {deleteError && (
             <p className="mb-3 text-sm" style={{ color: 'var(--app-danger)' }}>
               {deleteError}
@@ -91,6 +169,8 @@ function AdminEventDetailPage() {
               name: event.name,
               location: event.location,
               eventDate: event.eventDate,
+              endDate: event.endDate,
+              isOnline: event.isOnline,
               description: event.description ?? '',
               exhibitors: event.exhibitors,
             }}
@@ -101,6 +181,21 @@ function AdminEventDetailPage() {
           />
         </>
       )}
+
+      <ConfirmModal
+        open={confirmEnd}
+        title="Akhiri event?"
+        content={
+          event
+            ? `"${event.name}" langsung hilang dari kalender semua user. Kamu bisa membukanya kembali kapan saja.`
+            : undefined
+        }
+        okText="Akhiri"
+        danger={false}
+        loading={isTogglingEnded}
+        onOk={() => void handleSetEnded(true)}
+        onCancel={() => setConfirmEnd(false)}
+      />
 
       <ConfirmModal
         open={confirmDelete}

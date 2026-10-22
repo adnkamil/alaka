@@ -10,7 +10,12 @@ import EventFilterSheet, {
 } from '../../../components/EventFilterSheet'
 import EventListCard from '../../../components/EventListCard'
 import { listUpcomingCalendarEvents } from '../../../lib/calendar-events-functions'
-import { MONTH_NAMES, formatLongDate } from '../../../lib/calendar'
+import {
+  MONTH_NAMES,
+  daysBetweenIso,
+  formatDateRange,
+  isCalendarEventWithinDays,
+} from '../../../lib/calendar'
 import { todayIsoDateInAppTimeZone } from '../../../lib/timezone'
 
 const upcomingEventsQuery = (from: string) =>
@@ -20,26 +25,6 @@ const upcomingEventsQuery = (from: string) =>
   })
 
 type CalendarRow = Awaited<ReturnType<typeof listUpcomingCalendarEvents>>[number]
-
-const DAY_MS = 86_400_000
-
-function utcOf(iso: string) {
-  const [y, m, d] = iso.split('-').map(Number)
-  return Date.UTC(y, m - 1, d)
-}
-
-/** Selisih hari (to - from) untuk dua tanggal ISO YYYY-MM-DD. */
-function daysBetween(from: string, to: string) {
-  return Math.round((utcOf(to) - utcOf(from)) / DAY_MS)
-}
-
-/**
- * Event online = lokasinya diawali kata "Online". Kolom lokasi di kalender
- * tidak punya tipe terpisah, jadi ini aturan sederhana dari teksnya saja.
- */
-function isOnline(location: string) {
-  return /^online\b/i.test(location.trim())
-}
 
 /** Angka tanggal, singkatan bulan, dan singkatan hari untuk badge kartu. */
 function dateBadge(iso: string) {
@@ -70,15 +55,17 @@ function filterEvents(events: CalendarRow[], today: string, filters: Filters) {
     ) {
       return false
     }
+    // "N hari" = event yang akan dan sedang berlangsung dalam N hari ke depan;
+    // yang sudah mulai tapi belum selesai tetap dihitung.
     if (
       filters.waktu !== null &&
-      daysBetween(today, event.eventDate) > filters.waktu
+      !isCalendarEventWithinDays(event, today, filters.waktu)
     ) {
       return false
     }
     if (
       filters.lokasi !== null &&
-      isOnline(event.location) !== (filters.lokasi === 'online')
+      event.isOnline !== (filters.lokasi === 'online')
     ) {
       return false
     }
@@ -109,7 +96,6 @@ function EventPage() {
   )
 
   const activeCount = (waktu !== null ? 1 : 0) + (lokasi !== null ? 1 : 0)
-  const isCustomWaktu = waktu !== null && waktu !== 7 && waktu !== 30
   const hasFilter = activeCount > 0 || search.trim() !== ''
 
   function clearAll() {
@@ -248,17 +234,20 @@ function EventPage() {
       ) : (
         <div className="flex flex-col gap-3">
           {filtered.map((event) => {
-            const diff = daysBetween(today, event.eventDate)
+            const diff = daysBetweenIso(today, event.eventDate)
             return (
               <EventListCard
                 key={event.id}
                 eventId={event.id}
                 name={event.name}
                 {...dateBadge(event.eventDate)}
-                tag={diff === 0 ? 'Sedang Berlangsung' : `${diff} hari lagi`}
+                tag={diff <= 0 ? 'Sedang Berlangsung' : `${diff} hari lagi`}
                 rows={[
                   { icon: 'pin', text: event.location },
-                  { icon: 'calendar', text: formatLongDate(event.eventDate) },
+                  {
+                    icon: 'calendar',
+                    text: formatDateRange(event.eventDate, event.endDate),
+                  },
                 ]}
               />
             )

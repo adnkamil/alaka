@@ -7,6 +7,11 @@ import {
   formatLongDate,
   groupByDate,
   isCalendarDetailPath,
+  daysBetweenIso,
+  eventEndDate,
+  formatDateRange,
+  isCalendarEventFinished,
+  isCalendarEventWithinDays,
   monthRange,
   shiftMonth,
 } from './calendar'
@@ -83,5 +88,123 @@ test('calendarBannerSrc null tanpa banner, versi dari waktu penggantian', () => 
   assert.equal(
     calendarBannerSrc(id, new Date('2026-10-14T00:00:00.000Z')),
     `/api/event-banner/${id}?v=1791936000000`,
+  )
+})
+
+test('daysBetweenIso menghitung selisih hari lintas bulan dan tahun', () => {
+  assert.equal(daysBetweenIso('2026-10-22', '2026-10-22'), 0)
+  assert.equal(daysBetweenIso('2026-10-22', '2026-10-29'), 7)
+  assert.equal(daysBetweenIso('2026-10-29', '2026-10-22'), -7)
+  assert.equal(daysBetweenIso('2026-12-30', '2027-01-02'), 3)
+})
+
+test('eventEndDate: event sehari berakhir di tanggal mulainya', () => {
+  assert.equal(
+    eventEndDate({ eventDate: '2026-11-20', endDate: null }),
+    '2026-11-20',
+  )
+  assert.equal(
+    eventEndDate({ eventDate: '2026-11-20', endDate: '2026-11-22' }),
+    '2026-11-22',
+  )
+})
+
+test('isCalendarEventFinished: berjalan sampai 23.59 di tanggal terakhir', () => {
+  const event = {
+    eventDate: '2026-10-23',
+    endDate: '2026-10-25',
+    isEnded: false,
+  }
+  // Hari terakhir (25) masih berjalan; baru selesai begitu tanggal WIB jadi 26.
+  assert.equal(isCalendarEventFinished(event, '2026-10-22'), false)
+  assert.equal(isCalendarEventFinished(event, '2026-10-24'), false)
+  assert.equal(isCalendarEventFinished(event, '2026-10-25'), false)
+  assert.equal(isCalendarEventFinished(event, '2026-10-26'), true)
+})
+
+test('isCalendarEventFinished: event sehari dan penutupan manual', () => {
+  const oneDay = { eventDate: '2026-10-22', endDate: null, isEnded: false }
+  assert.equal(isCalendarEventFinished(oneDay, '2026-10-22'), false)
+  assert.equal(isCalendarEventFinished(oneDay, '2026-10-23'), true)
+  // Diakhiri admin: selesai walau tanggal terakhirnya masih di depan.
+  assert.equal(
+    isCalendarEventFinished(
+      { eventDate: '2026-10-23', endDate: '2026-10-30', isEnded: true },
+      '2026-10-22',
+    ),
+    true,
+  )
+})
+
+test('isCalendarEventWithinDays: event yang sudah mulai tapi belum selesai ikut terhitung', () => {
+  const today = '2026-10-22'
+  // Mulai kemarin, selesai 2 hari lagi -> sedang berlangsung, masuk filter 7 hari.
+  assert.equal(
+    isCalendarEventWithinDays(
+      { eventDate: '2026-10-21', endDate: '2026-10-24' },
+      today,
+      7,
+    ),
+    true,
+  )
+  // Mulai di batas 7 hari masuk, 8 hari tidak.
+  assert.equal(
+    isCalendarEventWithinDays(
+      { eventDate: '2026-10-29', endDate: null },
+      today,
+      7,
+    ),
+    true,
+  )
+  assert.equal(
+    isCalendarEventWithinDays(
+      { eventDate: '2026-10-30', endDate: null },
+      today,
+      7,
+    ),
+    false,
+  )
+  // Hari terakhir adalah hari ini -> masih terhitung; kemarin -> tidak.
+  assert.equal(
+    isCalendarEventWithinDays(
+      { eventDate: '2026-10-20', endDate: '2026-10-22' },
+      today,
+      7,
+    ),
+    true,
+  )
+  assert.equal(
+    isCalendarEventWithinDays(
+      { eventDate: '2026-10-20', endDate: '2026-10-21' },
+      today,
+      7,
+    ),
+    false,
+  )
+  // Event panjang yang mulai 10 hari lagi tetap di luar filter 7 hari.
+  assert.equal(
+    isCalendarEventWithinDays(
+      { eventDate: '2026-11-01', endDate: '2026-11-05' },
+      today,
+      7,
+    ),
+    false,
+  )
+})
+
+test('formatDateRange: sehari format panjang, beberapa hari format ringkas', () => {
+  assert.equal(formatDateRange('2026-10-14', null), 'Rabu, 14 Oktober 2026')
+  assert.equal(
+    formatDateRange('2026-10-14', '2026-10-14'),
+    'Rabu, 14 Oktober 2026',
+  )
+  assert.equal(formatDateRange('2026-11-20', '2026-11-22'), '20 – 22 Nov 2026')
+  assert.equal(
+    formatDateRange('2026-10-28', '2026-11-02'),
+    '28 Okt – 2 Nov 2026',
+  )
+  assert.equal(
+    formatDateRange('2026-12-30', '2027-01-02'),
+    '30 Des 2026 – 2 Jan 2027',
   )
 })

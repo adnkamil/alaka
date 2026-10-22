@@ -6,8 +6,11 @@ import {
 } from '../lib/calendar-banner-image'
 import {
   CALENDAR_EVENT_LIMITS,
+  END_DATE_ERROR,
+  isEndDateValid,
   normalizeExhibitors,
 } from '../lib/calendar-event-input'
+import Switch from './ui/Switch'
 
 /** Perubahan banner yang dipilih admin; undefined = banner tidak diubah. */
 export type BannerChange =
@@ -18,6 +21,10 @@ export interface CalendarEventFormValue {
   location: string
   /** Format `YYYY-MM-DD`. */
   eventDate: string
+  /** Tanggal terakhir event (`YYYY-MM-DD`); null = event sehari. */
+  endDate: string | null
+  /** true = event online (tanpa tempat fisik), false = offline. */
+  isOnline: boolean
   description: string
   exhibitors: Array<string>
   banner?: BannerChange
@@ -49,6 +56,8 @@ export default function CalendarEventForm({
   const [name, setName] = useState(initialValue.name)
   const [location, setLocation] = useState(initialValue.location)
   const [eventDate, setEventDate] = useState(initialValue.eventDate)
+  const [endDate, setEndDate] = useState(initialValue.endDate)
+  const [isOnline, setIsOnline] = useState(initialValue.isOnline)
   const [description, setDescription] = useState(initialValue.description)
   const [exhibitors, setExhibitors] = useState(initialValue.exhibitors)
   const [exhibitorInput, setExhibitorInput] = useState('')
@@ -105,6 +114,10 @@ export default function CalendarEventForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
+    if (!isEndDateValid(eventDate, endDate)) {
+      setError(END_DATE_ERROR)
+      return
+    }
     setIsSubmitting(true)
     try {
       let banner: BannerChange | undefined
@@ -122,6 +135,8 @@ export default function CalendarEventForm({
         name: name.trim(),
         location: location.trim(),
         eventDate,
+        endDate,
+        isOnline,
         description: description.trim(),
         exhibitors: normalizeExhibitors([...exhibitors, ...pending]),
         banner,
@@ -233,15 +248,38 @@ export default function CalendarEventForm({
         />
       </label>
 
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium">Event online</p>
+          <p
+            className="mt-0.5 text-xs leading-relaxed"
+            style={{ color: 'var(--app-text-soft)' }}
+          >
+            {isOnline
+              ? 'Online: PO lewat website atau chat admin brand, tanpa tempat fisik.'
+              : 'Offline: event fisik di suatu tempat.'}
+          </p>
+        </div>
+        <Switch
+          checked={isOnline}
+          onChange={setIsOnline}
+          label="Event online"
+        />
+      </div>
+
       <label className="flex flex-col gap-1 text-sm font-medium">
-        Lokasi
+        {isOnline ? 'Platform / tempat PO' : 'Lokasi'}
         <input
           required
           maxLength={CALENDAR_EVENT_LIMITS.location}
           value={location}
           onChange={(e) => setLocation(e.target.value)}
           className="app-input"
-          placeholder="cth. Phinisi Point Mall, Makassar"
+          placeholder={
+            isOnline
+              ? 'cth. Instagram Live, website brand'
+              : 'cth. Phinisi Point Mall, Makassar'
+          }
         />
       </label>
 
@@ -251,9 +289,32 @@ export default function CalendarEventForm({
           type="date"
           required
           value={eventDate}
-          onChange={(e) => setEventDate(e.target.value)}
+          onChange={(e) => {
+            const value = e.target.value
+            setEventDate(value)
+            // Tanggal selesai yang jadi lebih awal dari tanggal mulai dikosongkan.
+            if (endDate && endDate < value) setEndDate(null)
+          }}
           className="app-input"
         />
+      </label>
+
+      <label className="flex flex-col gap-1 text-sm font-medium">
+        Tanggal selesai (opsional)
+        <input
+          type="date"
+          min={eventDate}
+          value={endDate ?? ''}
+          onChange={(e) => setEndDate(e.target.value || null)}
+          className="app-input"
+        />
+        <span
+          className="text-xs font-normal leading-relaxed"
+          style={{ color: 'var(--app-text-mute)' }}
+        >
+          Kosongkan untuk event sehari. Event dianggap berlangsung sampai 23.59
+          WIB di tanggal ini.
+        </span>
       </label>
 
       <label className="flex flex-col gap-1 text-sm font-medium">
