@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { asc, eq } from 'drizzle-orm'
+import { asc, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '../db'
 import { calendarEvents } from '../db/schema'
@@ -10,7 +10,10 @@ import {
   parseCalendarBannerDataUrl,
 } from './calendar-banner'
 import {
+  END_DATE_ERROR,
   calendarEventFieldsSchema,
+  isEndDateValid,
+  normalizeEndDate,
   normalizeExhibitors,
 } from './calendar-event-input'
 import { deleteCalendarBanner, putCalendarBanner } from './storage'
@@ -29,17 +32,27 @@ const bannerUploadSchema = z.object({
     .max(CALENDAR_BANNER_MAX_DATA_URL_LENGTH, 'Banner terlalu besar'),
 })
 
-const createSchema = calendarEventFieldsSchema.extend({
-  banner: bannerUploadSchema.optional(),
-})
+const createSchema = calendarEventFieldsSchema
+  .extend({
+    banner: bannerUploadSchema.optional(),
+  })
+  .refine((value) => isEndDateValid(value.eventDate, value.endDate), {
+    message: END_DATE_ERROR,
+    path: ['endDate'],
+  })
 
-const updateSchema = calendarEventFieldsSchema.extend({
-  id: z.uuid(),
-  /** undefined = banner tidak diubah. */
-  banner: z
-    .union([bannerUploadSchema, z.object({ type: z.literal('remove') })])
-    .optional(),
-})
+const updateSchema = calendarEventFieldsSchema
+  .extend({
+    id: z.uuid(),
+    /** undefined = banner tidak diubah. */
+    banner: z
+      .union([bannerUploadSchema, z.object({ type: z.literal('remove') })])
+      .optional(),
+  })
+  .refine((value) => isEndDateValid(value.eventDate, value.endDate), {
+    message: END_DATE_ERROR,
+    path: ['endDate'],
+  })
 
 /** Semua event kalender (yang lampau juga), terurut tanggal naik. */
 export const fetchAdminCalendarEvents = createServerFn({
@@ -57,6 +70,9 @@ export const fetchAdminCalendarEvents = createServerFn({
     name: row.name,
     location: row.location,
     eventDate: row.eventDate,
+    endDate: row.endDate,
+    isOnline: row.isOnline,
+    isEnded: row.endedAt !== null,
     description: row.description,
     exhibitors: row.exhibitors,
     bannerSrc: calendarBannerSrc(row.id, row.bannerUpdatedAt),
@@ -86,6 +102,8 @@ export const createCalendarEvent = createServerFn({ method: 'POST' })
         name: data.name,
         location: data.location,
         eventDate: data.eventDate,
+        endDate: normalizeEndDate(data.eventDate, data.endDate),
+        isOnline: data.isOnline,
         description: data.description || null,
         exhibitors: normalizeExhibitors(data.exhibitors),
         bannerUpdatedAt,
@@ -128,6 +146,8 @@ export const updateCalendarEvent = createServerFn({ method: 'POST' })
         name: data.name,
         location: data.location,
         eventDate: data.eventDate,
+        endDate: normalizeEndDate(data.eventDate, data.endDate),
+        isOnline: data.isOnline,
         description: data.description || null,
         exhibitors: normalizeExhibitors(data.exhibitors),
         // undefined = kolom tidak disentuh.
@@ -136,6 +156,32 @@ export const updateCalendarEvent = createServerFn({ method: 'POST' })
       })
       .where(eq(calendarEvents.id, data.id))
     return { id: data.id }
+  })
+
+/**
+ * Akhiri event (`ended: true`) atau buka kembali (`ended: false`). Event yang
+ * diakhiri langsung hilang dari daftar user, datanya tetap tersimpan.
+ * Mengakhiri event yang sudah berakhir tidak mengubah waktu akhirnya.
+ */
+export const setCalendarEventEnded = createServerFn({ method: 'POST' })
+  .validator(z.object({ id: z.uuid(), ended: z.boolean() }))
+  .handler(async ({ data }) => {
+    await requireAdminUser()
+
+    const updated = await db
+      .update(calendarEvents)
+      .set(
+        data.ended
+          ? {
+              endedAt: sql`coalesce(${calendarEvents.endedAt}, now())`,
+              updatedAt: new Date(),
+            }
+          : { endedAt: null, updatedAt: new Date() },
+      )
+      .where(eq(calendarEvents.id, data.id))
+      .returning({ id: calendarEvents.id })
+    if (updated.length === 0) throw new Error('Event tidak ditemukan')
+    return { id: data.id, ended: data.ended }
   })
 
 export const deleteCalendarEvent = createServerFn({ method: 'POST' })

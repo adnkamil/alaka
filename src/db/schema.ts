@@ -658,6 +658,23 @@ export const calendarEvents = pgTable(
     name: varchar().notNull(),
     location: varchar().notNull(),
     eventDate: date('event_date', { mode: 'string' }).notNull(),
+    /**
+     * Tanggal terakhir event (inklusif), format `YYYY-MM-DD`. Null = event
+     * sehari (berakhir di `event_date`). Event masih dianggap berjalan sampai
+     * 23.59 WIB di tanggal ini; dipakai juga sebagai rentang di kartu event.
+     */
+    endDate: date('end_date', { mode: 'string' }),
+    /**
+     * Event online (PO lewat website/chat, tanpa tempat fisik) atau offline.
+     * Diatur admin lewat toggle; dipakai filter Lokasi di tab Event user.
+     */
+    isOnline: boolean('is_online').notNull().default(false),
+    /**
+     * Diisi saat admin menekan "Akhiri event". Non-null = event sudah
+     * diakhiri: hilang dari daftar user walau tanggalnya belum lewat, dan
+     * bisa dibuka kembali (kolom dikosongkan lagi).
+     */
+    endedAt: timestamp('ended_at', { withTimezone: true }),
     /** Deskripsi event di halaman detail. Boleh kosong. */
     description: text(),
     /**

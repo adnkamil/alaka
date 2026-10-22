@@ -119,6 +119,66 @@ export function groupByDate<T extends { eventDate: string }>(
   return map
 }
 
+/** Selisih hari (to - from) untuk dua tanggal ISO `YYYY-MM-DD`. */
+export function daysBetweenIso(from: string, to: string): number {
+  const utc = (iso: string) => {
+    const [year, month, day] = iso.split('-').map(Number)
+    return Date.UTC(year, month - 1, day)
+  }
+  return Math.round((utc(to) - utc(from)) / 86_400_000)
+}
+
+/** Tanggal terakhir event (inklusif); event sehari berakhir di tanggal mulainya. */
+export function eventEndDate(event: {
+  eventDate: string
+  endDate: string | null
+}): string {
+  return event.endDate ?? event.eventDate
+}
+
+/**
+ * Event dianggap selesai kalau tanggal terakhirnya sudah lewat (event masih
+ * berjalan sampai 23.59 di tanggal itu) ATAU admin sudah menekan "Akhiri
+ * event". Dipakai tab Mendatang/Selesai di halaman admin dan halaman detail.
+ */
+export function isCalendarEventFinished(
+  event: { eventDate: string; endDate: string | null; isEnded: boolean },
+  today: string,
+): boolean {
+  return event.isEnded || eventEndDate(event) < today
+}
+
+/**
+ * Filter "N hari" di tab Event: event yang akan dan sedang berlangsung dalam
+ * N hari ke depan. Event yang tanggal mulainya sudah lewat tetap dihitung
+ * selama tanggal terakhirnya belum lewat.
+ */
+export function isCalendarEventWithinDays(
+  event: { eventDate: string; endDate: string | null },
+  today: string,
+  days: number,
+): boolean {
+  return (
+    eventEndDate(event) >= today &&
+    daysBetweenIso(today, event.eventDate) <= days
+  )
+}
+
+/**
+ * Rentang tanggal untuk kartu dan detail event. Event sehari memakai format
+ * panjang (`Rabu, 14 Oktober 2026`); event beberapa hari memakai format ringkas
+ * (`20 – 22 Nov 2026`, `28 Okt – 2 Nov 2026`, `30 Des 2026 – 2 Jan 2027`).
+ */
+export function formatDateRange(start: string, end: string | null): string {
+  if (!end || end === start) return formatLongDate(start)
+  const [y1, m1, d1] = start.split('-').map(Number)
+  const [y2, m2, d2] = end.split('-').map(Number)
+  const mon = (month: number) => MONTH_NAMES[month - 1].slice(0, 3)
+  if (y1 !== y2) return `${d1} ${mon(m1)} ${y1} – ${d2} ${mon(m2)} ${y2}`
+  if (m1 !== m2) return `${d1} ${mon(m1)} – ${d2} ${mon(m2)} ${y1}`
+  return `${d1} – ${d2} ${mon(m1)} ${y1}`
+}
+
 /**
  * Halaman detail event kalender (`/kalender/<id>`) menyembunyikan bottom nav,
  * seperti halaman detail lain. Daftar kalender (`/kalender` atau `/kalender/`)

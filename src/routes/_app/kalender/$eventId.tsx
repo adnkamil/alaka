@@ -2,7 +2,8 @@ import { queryOptions, useSuspenseQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { ArrowLeft, CalendarDays, MapPin, Store } from 'lucide-react'
 import { getCalendarEvent } from '../../../lib/calendar-events-functions'
-import { formatLongDate } from '../../../lib/calendar'
+import { formatDateRange, isCalendarEventFinished } from '../../../lib/calendar'
+import { todayIsoDateInAppTimeZone } from '../../../lib/timezone'
 import { EventDescription } from '../../../components/EventDescription'
 
 const calendarEventQuery = (id: string) =>
@@ -62,13 +63,25 @@ function CalendarEventDetailPage() {
       <div className="px-4 pt-5">
         <h1 className="text-xl font-bold">{event.name}</h1>
 
+        {isCalendarEventFinished(event, todayIsoDateInAppTimeZone()) && (
+          <p
+            className="mt-3 rounded-xl px-3 py-2 text-sm font-medium"
+            style={{
+              background: 'var(--app-accent-soft)',
+              color: 'var(--app-accent)',
+            }}
+          >
+            Event ini sudah berakhir.
+          </p>
+        )}
+
         <div className="mt-3 flex flex-col gap-2">
           <p
             className="flex items-start gap-2 text-sm"
             style={{ color: 'var(--app-text-soft)' }}
           >
             <CalendarDays size={16} className="mt-0.5 flex-shrink-0" />
-            <span>{formatLongDate(event.eventDate)}</span>
+            <span>{formatDateRange(event.eventDate, event.endDate)}</span>
           </p>
           <p
             className="flex items-start gap-2 text-sm"

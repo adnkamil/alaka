@@ -48,6 +48,8 @@ function AdminEventNewPage() {
           name: '',
           location: '',
           eventDate: todayIsoDateInAppTimeZone(),
+          endDate: null,
+          isOnline: false,
           description: '',
           exhibitors: [],
         }}
