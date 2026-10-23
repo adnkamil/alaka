@@ -1,16 +1,34 @@
-import { queryOptions, useSuspenseQuery } from '@tanstack/react-query'
+import { useState } from 'react'
+import {
+  queryOptions,
+  useQuery,
+  useQueryClient,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { ArrowLeft, CalendarDays, MapPin, Store } from 'lucide-react'
-import { getCalendarEvent } from '../../../lib/calendar-events-functions'
+import {
+  getCalendarEvent,
+  joinCalendarEvent,
+} from '../../../lib/calendar-events-functions'
+import { listFeeRules } from '../../../lib/fee-rules-functions'
 import { formatDateRange, isCalendarEventFinished } from '../../../lib/calendar'
+import { isCalendarEventJoinable } from '../../../lib/calendar-join'
+import { currentUserQuery } from '../../../lib/queries'
 import { todayIsoDateInAppTimeZone } from '../../../lib/timezone'
 import { EventDescription } from '../../../components/EventDescription'
+import JoinEventSheet from '../../../components/JoinEventSheet'
 
 const calendarEventQuery = (id: string) =>
   queryOptions({
     queryKey: ['calendar-event', id],
     queryFn: () => getCalendarEvent({ data: { id } }),
   })
+
+const feeRulesQuery = queryOptions({
+  queryKey: ['fee-rules'],
+  queryFn: () => listFeeRules(),
+})
 
 export const Route = createFileRoute('/_app/kalender/$eventId')({
   loader: ({ context, params }) =>
@@ -21,9 +39,42 @@ export const Route = createFileRoute('/_app/kalender/$eventId')({
 function CalendarEventDetailPage() {
   const { eventId } = Route.useParams()
   const { data: event } = useSuspenseQuery(calendarEventQuery(eventId))
+  const { data: user } = useSuspenseQuery(currentUserQuery)
+  const queryClient = useQueryClient()
+  const navigate = Route.useNavigate()
+  const [showJoinSheet, setShowJoinSheet] = useState(false)
+  // Aturan fee baru dimuat saat sheet dibuka: kebanyakan pengunjung halaman
+  // ini tidak menekan "Ikut Event".
+  const { data: feeRules = [] } = useQuery({
+    ...feeRulesQuery,
+    enabled: showJoinSheet,
+  })
+
+  const today = todayIsoDateInAppTimeZone()
+  const myJoinedEventId = event.myEventId
+  const alreadyJoined = myJoinedEventId !== null
+  const canJoin = isCalendarEventJoinable(event, today)
+  // Tombol hanya muncul kalau sudah ikut (jadi "Lihat Event Saya") atau
+  // eventnya masih bisa diikuti.
+  const showActionBar = alreadyJoined || canJoin
+
+  async function handleJoin(feeRuleId: string | null) {
+    const { eventId: myEventId } = await joinCalendarEvent({
+      data: { calendarEventId: eventId, feeRuleId },
+    })
+    // Daftar event belanja (beranda) dan status tombol ikut berubah.
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['events'] }),
+      queryClient.invalidateQueries({ queryKey: ['calendar-event', eventId] }),
+    ])
+    await navigate({ to: '/events/$eventId', params: { eventId: myEventId } })
+  }
 
   return (
-    <main className="mx-auto max-w-lg pb-10">
+    <main
+      className="mx-auto max-w-lg"
+      style={{ paddingBottom: showActionBar ? '7rem' : '2.5rem' }}
+    >
       {/* Banner. Tombol kembali menumpang di atasnya supaya tetap terlihat
           walau gambar terang atau belum ada. */}
       <div
@@ -124,6 +175,48 @@ function CalendarEventDetailPage() {
           )}
         </section>
       </div>
+
+      {showActionBar && (
+        <div
+          className="fixed bottom-0 left-1/2 z-30 w-full -translate-x-1/2 border-t px-4 pt-4"
+          style={{
+            maxWidth: 480,
+            borderColor: 'var(--app-border)',
+            background: 'var(--app-card)',
+            paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
+          }}
+        >
+          {myJoinedEventId ? (
+            <Link
+              to="/events/$eventId"
+              params={{ eventId: myJoinedEventId }}
+              className="app-btn-primary h-12 w-full"
+            >
+              Lihat Event Saya
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowJoinSheet(true)}
+              className="app-btn-primary h-12 w-full"
+            >
+              Ikut Event
+            </button>
+          )}
+        </div>
+      )}
+
+      {showJoinSheet && !alreadyJoined && (
+        <JoinEventSheet
+          feeRules={feeRules}
+          eventName={event.name}
+          dateLabel={formatDateRange(event.eventDate, event.endDate)}
+          hasWaNumber={Boolean(user?.waNumber)}
+          canEditWaNumber={user?.brandRole === 'owner'}
+          onConfirm={handleJoin}
+          onClose={() => setShowJoinSheet(false)}
+        />
+      )}
     </main>
   )
 }

@@ -16,6 +16,7 @@ export type BrandIdentity = Pick<
   typeof brands.$inferSelect,
   | 'name'
   | 'waMessageTemplate'
+  | 'waNumber'
   | 'avatarUpdatedAt'
   | 'trialStartedAt'
   | 'trialEndsAt'
@@ -25,6 +26,7 @@ export type BrandIdentity = Pick<
 export type BrandIdentityFields = {
   brandName: string | null
   waMessageTemplate: string | null
+  waNumber: string | null
   avatarUpdatedAt: Date | null
   trialStartedAt: Date
   trialEndsAt: Date
@@ -49,6 +51,7 @@ export function applyBrandIdentity<T extends object>(
     ...user,
     brandName: brand.name,
     waMessageTemplate: brand.waMessageTemplate,
+    waNumber: brand.waNumber,
     avatarUpdatedAt: brand.avatarUpdatedAt,
     trialStartedAt: brand.trialStartedAt,
     trialEndsAt: brand.trialEndsAt,

@@ -11,6 +11,8 @@ export type AvatarChange =
 export interface ProfileFormValue {
   name: string
   brandName: string
+  /** Nomor WhatsApp brand; string kosong = dikosongkan. */
+  waNumber: string
   avatarChange?: AvatarChange
 }
 
@@ -29,8 +31,8 @@ interface EditProfileModalProps {
    */
   email?: { address: string; verified: boolean }
   /**
-   * `false` untuk akun admin brand: nama brand milik pemilik, jadi kolomnya
-   * disembunyikan (server juga menolak perubahannya).
+   * `false` untuk akun admin brand: nama brand dan nomor WhatsApp brand milik
+   * pemilik, jadi kolomnya disembunyikan (server juga menolak perubahannya).
    */
   brandNameEditable?: boolean
   onClose: () => void
@@ -50,6 +52,7 @@ export default function EditProfileModal({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [name, setName] = useState(initialValue?.name ?? '')
   const [brandName, setBrandName] = useState(initialValue?.brandName ?? '')
+  const [waNumber, setWaNumber] = useState(initialValue?.waNumber ?? '')
   const [pendingPhoto, setPendingPhoto] = useState<{
     blob: Blob
     url: string
@@ -109,6 +112,7 @@ export default function EditProfileModal({
       await onSubmit({
         name: name.trim(),
         brandName: brandName.trim(),
+        waNumber: waNumber.trim(),
         avatarChange,
       })
     } catch (err) {
@@ -295,6 +299,27 @@ export default function EditProfileModal({
                 style={{ color: 'var(--app-text-mute)' }}
               >
                 Ditampilkan di halaman invoice/tagihan buat pelanggan.
+              </span>
+            </label>
+          )}
+
+          {brandNameEditable && (
+            <label className="flex flex-col gap-1 text-sm font-medium">
+              No. WhatsApp
+              <input
+                type="tel"
+                inputMode="tel"
+                value={waNumber}
+                onChange={(e) => setWaNumber(e.target.value)}
+                className="app-input"
+                placeholder="cth. 0812-3456-7890"
+              />
+              <span
+                className="text-xs"
+                style={{ color: 'var(--app-text-mute)' }}
+              >
+                Wajib diisi untuk ikut event kalender. Terlihat oleh admin ALAKA
+                dan penyelenggara event yang kamu ikuti.
               </span>
             </label>
           )}

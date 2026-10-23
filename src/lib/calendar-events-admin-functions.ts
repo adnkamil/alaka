@@ -5,6 +5,7 @@ import { db } from '../db'
 import { calendarEvents } from '../db/schema'
 import { requireAdminUser } from './admin'
 import { calendarBannerSrc } from './calendar'
+import { listCalendarEventParticipants } from './calendar-join-queries'
 import {
   CALENDAR_BANNER_MAX_DATA_URL_LENGTH,
   parseCalendarBannerDataUrl,
@@ -198,4 +199,18 @@ export const deleteCalendarEvent = createServerFn({ method: 'POST' })
     // Barisnya sudah hilang; kegagalan hapus file tidak boleh menggagalkan aksi.
     await deleteCalendarBanner(data.id).catch(() => {})
     return { id: data.id }
+  })
+
+/**
+ * Jastiper yang ikut satu event kalender (tabel "Peserta" di halaman admin).
+ * Query yang sama dipakai Partner Portal nanti, dengan pengecekan hak akses
+ * milik portal itu sendiri.
+ */
+export const fetchCalendarEventParticipants = createServerFn({
+  method: 'GET',
+})
+  .validator(z.object({ id: z.uuid() }))
+  .handler(async ({ data }) => {
+    await requireAdminUser()
+    return listCalendarEventParticipants(data.id)
   })

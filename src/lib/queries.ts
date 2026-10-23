@@ -1,5 +1,8 @@
 import { queryOptions } from '@tanstack/react-query'
-import { fetchAdminCalendarEvents } from './calendar-events-admin-functions'
+import {
+  fetchAdminCalendarEvents,
+  fetchCalendarEventParticipants,
+} from './calendar-events-admin-functions'
 import { fetchCurrentUser } from './auth-functions'
 
 /**
@@ -17,3 +20,10 @@ export const adminCalendarEventsQuery = queryOptions({
   queryKey: ['admin-calendar-events'],
   queryFn: () => fetchAdminCalendarEvents(),
 })
+
+/** Jastiper yang ikut satu event kalender (tabel peserta di halaman admin). */
+export const adminCalendarEventParticipantsQuery = (id: string) =>
+  queryOptions({
+    queryKey: ['admin-calendar-event-participants', id],
+    queryFn: () => fetchCalendarEventParticipants({ data: { id } }),
+  })
