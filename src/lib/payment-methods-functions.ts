@@ -20,7 +20,7 @@ async function requireUser() {
   return user
 }
 
-const MAX_QRIS_BYTES = 1_500_000 // ~1.5MB, cukup buat gambar QR
+const MAX_QRIS_BYTES = 1_000_000 // 1MB, cukup buat gambar QR
 
 const qrisImageSchema = z
   .string()
@@ -33,7 +33,7 @@ const qrisImageSchema = z
       // Perkiraan ukuran biner asli dari panjang string base64-nya.
       return (base64.length * 3) / 4 <= MAX_QRIS_BYTES
     },
-    { message: 'Ukuran gambar maksimal 1.5MB' },
+    { message: 'Ukuran gambar maksimal 1MB' },
   )
 
 /**

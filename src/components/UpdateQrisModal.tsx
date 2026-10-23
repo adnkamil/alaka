@@ -10,7 +10,7 @@ interface UpdateQrisModalProps {
   onSubmit: (qrisImage: string, qrisString: string) => Promise<void>
 }
 
-const MAX_BYTES = 1_500_000 // ~1.5MB
+const MAX_BYTES = 1_000_000 // 1MB, sama dengan validasi di server
 const ACCEPTED_TYPES = [
   'image/png',
   'image/jpeg',
@@ -95,7 +95,7 @@ export default function UpdateQrisModal({
       return
     }
     if (file.size > MAX_BYTES) {
-      setError('Ukuran gambar maksimal 1.5MB')
+      setError('Ukuran gambar maksimal 1MB')
       return
     }
 

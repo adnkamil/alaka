@@ -5,6 +5,7 @@ import { QrCode, X } from 'lucide-react'
 import { fetchSubscriptionPaymentInfo } from '../lib/subscription-functions'
 import { buildDynamicQrisPayload } from '../lib/qris-display'
 import { useBackToClose } from '../lib/back-to-close'
+import { fileToPaymentProofBlob } from '../lib/payment-proof-image'
 
 export type SubmitSubscriptionValue = {
   paymentProofImage: string
@@ -15,7 +16,6 @@ interface SubmitSubscriptionModalProps {
   onSubmit: (value: SubmitSubscriptionValue) => Promise<void>
 }
 
-const MAX_BYTES = 1_500_000 // ~1.5MB, sama dengan validasi di server
 const ACCEPTED_TYPES = [
   'image/png',
   'image/jpeg',
@@ -30,7 +30,7 @@ function isAcceptedImage(file: File): boolean {
   return ext === 'png' || ext === 'jpg' || ext === 'jpeg' || ext === 'webp'
 }
 
-function fileToDataUrl(file: File): Promise<string> {
+function fileToDataUrl(file: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => resolve(reader.result as string)
@@ -97,6 +97,7 @@ export default function SubmitSubscriptionModal({
 
   const [proofImage, setProofImage] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -113,15 +114,21 @@ export default function SubmitSubscriptionModal({
       setError('Format harus PNG, JPG, JPEG, atau WEBP')
       return
     }
-    if (file.size > MAX_BYTES) {
-      setError('Ukuran gambar maksimal 1.5MB')
-      return
-    }
 
+    // Gambar yang lebih dari 1MB diperkecil otomatis (maks 1000px, JPEG);
+    // yang sudah kecil dikirim apa adanya.
+    setIsProcessing(true)
     try {
-      setProofImage(await fileToDataUrl(file))
-    } catch {
-      setError('Gagal membaca gambar, coba file lain')
+      const blob = await fileToPaymentProofBlob(file)
+      setProofImage(await fileToDataUrl(blob))
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Gagal membaca gambar, coba file lain',
+      )
+    } finally {
+      setIsProcessing(false)
     }
   }
 
@@ -239,12 +246,19 @@ export default function SubmitSubscriptionModal({
             <span className="text-sm font-medium">Bukti transfer</span>
             <button
               type="button"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isProcessing}
               onClick={() => fileInputRef.current?.click()}
               className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed p-4"
               style={{ borderColor: 'var(--app-border)' }}
             >
-              {proofImage ? (
+              {isProcessing ? (
+                <span
+                  className="text-xs"
+                  style={{ color: 'var(--app-text-soft)' }}
+                >
+                  Memproses gambar...
+                </span>
+              ) : proofImage ? (
                 <img
                   src={proofImage}
                   alt="Preview bukti transfer"

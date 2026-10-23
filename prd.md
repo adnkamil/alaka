@@ -263,7 +263,7 @@ Buat jastiper yang butuh rekap pesanan satu event di luar aplikasi (mis. dikirim
 - Halaman status langganan, dibuka dari baris **Langganan** di Profil. Punya header sendiri dengan tombol back (bottom nav tetap tampil di sini).
 - **Kartu paket**: ikon Crown + teks "Paket Trial / FREE / PRO" + kalimat periode — "Sisa 12 hari (sampai 12 Februari 2026)" untuk trial, "Aktif sampai …" untuk PRO, "Masa trial berakhir …" untuk FREE — dilengkapi keterangan singkat masing-masing plan.
 - **Daftar fitur PRO** (dirakit dari `PRO_FEATURES` — sekarang 5 fitur) dengan status **Terbuka / Terkunci** per fitur (ikon centang vs gembok) + deskripsi singkat tiap fitur.
-- **Pengajuan upgrade** (muncul kalau belum PRO): kartu menampilkan nominal harga membership + gambar QRIS dari pengaturan admin → member scan & bayar → upload bukti transfer lewat `SubmitSubscriptionModal` (PNG/JPEG/WEBP, maks 1.5MB, dikirim sebagai data URL base64).
+- **Pengajuan upgrade** (muncul kalau belum PRO): kartu menampilkan nominal harga membership + gambar QRIS dari pengaturan admin → member scan & bayar → upload bukti transfer lewat `SubmitSubscriptionModal` (PNG/JPEG/WEBP, maks 1MB, dikirim sebagai data URL base64). Gambar yang lebih dari 1MB diperkecil otomatis di client (sisi terpanjang maks 1000px, JPEG) lewat `fileToPaymentProofBlob`; yang sudah kecil dikirim apa adanya.
 - Selama pengajuan belum diproses, halaman menampilkan kartu **"Menunggu verifikasi"** (nominal, tanggal pengajuan, tautan bukti transfer) dan form pengajuan tidak bisa dibuka lagi — server menolak pengajuan kedua karena maksimal **satu baris `pending` per user**.
 - **Riwayat langganan**: baris yang sudah diproses (`active` / `rejected`) ditampilkan lengkap dengan periode, nominal, dan catatan review admin.
 - Yang ditagih adalah **snapshot harga saat pengajuan dikirim** (`subscriptions.amount`) — kalau admin mengubah harga setelahnya, pengajuan yang sudah masuk tetap memakai harga lama (lihat 5.7).
@@ -343,7 +343,7 @@ dibuka lewat **tab Pengaturan** di bottom nav admin. Isinya semua yang bukan
 aktivitas harian admin:
 
 - **Pengaturan Pembayaran PRO** (kartu utama, pindahan dari dashboard):
-  - **QRIS Pembayaran** — upload / ganti gambar QRIS yang dipakai member saat mengajukan upgrade (`UpdateQrisModal`), maks 1.5MB (PNG/JPEG/WEBP). Kalau belum ada QRIS, kartunya memberi tahu bahwa member belum bisa mengajukan upgrade.
+  - **QRIS Pembayaran** — upload / ganti gambar QRIS yang dipakai member saat mengajukan upgrade (`UpdateQrisModal`), maks 1MB (PNG/JPEG/WEBP, tidak dikompres supaya QR tetap terbaca). Kalau belum ada QRIS, kartunya memberi tahu bahwa member belum bisa mengajukan upgrade.
   - **Harga Membership** — nominal yang wajib ditransfer member, bisa diubah inline lewat `subscriptionSettingsQuery` (query key `admin-subscription-settings`, di-load di loader route ini). Perubahan harga **hanya berlaku untuk pengajuan baru** (lihat 5.7).
 - **Tombol Keluar** di bawah kartu — dulu ada di header layout admin, sekarang tinggal di sini (`logoutUser()` → redirect `/login`).
 
@@ -453,7 +453,7 @@ Saran pesanan, saran fee, dan saran pelanggan adalah fitur dasar yang terbuka un
 ### 5.7 Pengaturan pembayaran PRO (admin)
 
 - Harga membership PRO **bukan konstanta di kode**: disimpan di tabel singleton `subscription_settings` (`pro_price`) dan diubah admin dari `/admin/pengaturan` (lihat 4.14). Durasi PRO tetap konstanta `PRO_DURATION_DAYS` (30 hari).
-- Gambar QRIS pembayaran ada di tabel yang sama (`qris_image`, data URL base64, maks 1.5MB) — dibaca member lewat `fetchSubscriptionPaymentInfo()` dan ditulis admin lewat `updateSubscriptionQris()`. Barisnya cuma satu: `getSubscriptionSettings()` ambil baris pertama dan update-nya selalu upsert.
+- Gambar QRIS pembayaran ada di tabel yang sama (`qris_image`, data URL base64, maks 1MB) — dibaca member lewat `fetchSubscriptionPaymentInfo()` dan ditulis admin lewat `updateSubscriptionQris()`. Barisnya cuma satu: `getSubscriptionSettings()` ambil baris pertama dan update-nya selalu upsert.
 - `subscriptions.amount` di-snapshot dari harga tersebut **saat pengajuan dibuat**, jadi mengubah harga tidak mengubah nominal pengajuan yang sudah masuk (dan sebaliknya, nominal lama tidak berubah walau harga dinaikkan).
 
 ## 6. Navigasi
@@ -664,7 +664,7 @@ activity_logs
 - **`wa_message_template` di `users`**: template default ada di `src/lib/message-template.ts`. Jika null, dipakai template default.
 - **Status langganan tidak disimpan sebagai flag**: tidak ada kolom `users.is_pro`. Masa trial ada di `users.trial_started_at` / `users.trial_ends_at`, sedangkan status PRO dihitung dari baris `subscriptions` berstatus `active` yang `ends_at`-nya belum lewat (lihat 5.1).
 - **`subscriptions` bersifat histori, bukan state**: satu baris = satu pengajuan/pembelian, riwayat pembayaran selalu bisa diaudit. Verifikasi admin mengubah baris `pending` itu sendiri jadi `active` dan **menggeser jendelanya** (`started_at` / `ends_at` dihitung `nextProWindow()`: perpanjangan menyambung dari `ends_at` yang masih berlaku), jadi tidak ada baris tambahan saat perpanjangan. Status `expired` sudah ada di enum tapi belum pernah ditulis otomatis oleh kode mana pun — masa habis cukup dideteksi dari `ends_at` saat menghitung entitlement.
-- **Kolom `payment_*` di `subscriptions`**: info pembayaran disimpan di tabel yang sama supaya admin bisa mencocokkan transfer tanpa tabel tambahan. Bukti transfer memakai pola yang sama dengan `payment_methods.qris_image` (data URL base64, maks 1.5MB).
+- **Kolom `payment_*` di `subscriptions`**: info pembayaran disimpan di tabel yang sama supaya admin bisa mencocokkan transfer tanpa tabel tambahan. Bukti transfer memakai pola yang sama dengan `payment_methods.qris_image` (data URL base64, maks 1MB).
 - **`is_admin` ditandai di DB, bukan di UI**: kolom `users.is_admin` (default `false`) cuma diaktifkan manual lewat `pnpm db:studio` oleh pemilik aplikasi — sengaja tidak ada jalur self-service dari aplikasi supaya tidak ada yang bisa mengangkat dirinya jadi admin. Nilainya dipakai `requireAdminUser()` (`src/lib/admin.ts`) di server dan `fetchCurrentUser()` di client.
 - **`subscription_settings` = baris tunggal**: harga membership PRO dan gambar QRIS pembayaran sengaja tidak jadi konstanta di kode supaya admin bisa mengubahnya tanpa deploy. Harga di-snapshot ke `subscriptions.amount` saat pengajuan dibuat (lihat 5.7).
 - **Default trial ada di level database**: `trial_started_at DEFAULT now()` dan `trial_ends_at DEFAULT now() + interval '30 days'` — semua jalur pembuatan user otomatis kebagian trial. Migrasi `0001_curious_blade.sql` membackfill user lama dengan aturan "trial mulai saat user dibuat" (`trial_started_at = created_at`), dan `pnpm db:backfill-trial` dipakai kalau pemilik aplikasi mau mengecualikan user lama (mis. trial 30 hari mulai hari rilis).

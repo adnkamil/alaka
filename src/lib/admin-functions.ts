@@ -115,7 +115,7 @@ export const rejectSubscription = createServerFn({ method: 'POST' })
 // menulisnya lewat dua server function di bawah. Keduanya lewat helper upsert
 // bersama supaya QRIS & harga tidak punya jalur tulis sendiri-sendiri.
 
-const MAX_QRIS_BYTES = 1_500_000 // ~1.5MB, sama dengan batas QRIS di payment-methods-functions.ts & bukti transfer di subscription-functions.ts
+const MAX_QRIS_BYTES = 1_000_000 // 1MB, sama dengan batas QRIS di payment-methods-functions.ts & bukti transfer di subscription-functions.ts
 
 const qrisImageSchema = z
   .string()
@@ -127,7 +127,7 @@ const qrisImageSchema = z
       const base64 = v.split(',')[1] ?? ''
       return (base64.length * 3) / 4 <= MAX_QRIS_BYTES
     },
-    { message: 'Ukuran gambar QRIS maksimal 1.5MB' },
+    { message: 'Ukuran gambar QRIS maksimal 1MB' },
   )
 
 /** Upsert baris singleton `subscription_settings` — dipakai QRIS & harga. */
