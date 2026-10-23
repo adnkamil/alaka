@@ -45,7 +45,7 @@ const TYPE_OPTIONS: Array<{
   { type: 'qris', label: 'QRIS', icon: QrCode },
 ]
 
-const MAX_BYTES = 1_500_000 // ~1.5MB, sama dengan validasi di server
+const MAX_BYTES = 1_000_000 // 1MB, sama dengan validasi di server
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 
 function fileToDataUrl(file: File): Promise<string> {
@@ -133,7 +133,7 @@ export default function PaymentMethodModal({
       return
     }
     if (file.size > MAX_BYTES) {
-      setError('Ukuran gambar maksimal 1.5MB')
+      setError('Ukuran gambar maksimal 1MB')
       return
     }
 

@@ -6,7 +6,7 @@
  * ukuran, dan isi file dicek ulang di sini sebelum disimpan ke Blobs.
  */
 
-export const PAYMENT_PROOF_MAX_BYTES = 1_500_000 // ~1.5MB, sama dengan di client
+export const PAYMENT_PROOF_MAX_BYTES = 1_000_000 // 1MB, sama dengan di client
 
 export type PaymentProofContentType = 'image/png' | 'image/jpeg' | 'image/webp'
 
@@ -73,7 +73,7 @@ export function parsePaymentProofDataUrl(dataUrl: string): {
   const padding = base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0
   const decodedLength = (base64.length * 3) / 4 - padding
   if (decodedLength > PAYMENT_PROOF_MAX_BYTES) {
-    throw new Error('Ukuran bukti transfer maksimal 1.5MB')
+    throw new Error('Ukuran bukti transfer maksimal 1MB')
   }
 
   const bytes = new Uint8Array(Buffer.from(base64, 'base64'))

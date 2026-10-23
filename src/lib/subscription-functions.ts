@@ -38,7 +38,7 @@ const submitSubscriptionSchema = z.object({
     .string()
     .max(
       PAYMENT_PROOF_MAX_DATA_URL_LENGTH,
-      'Ukuran bukti transfer maksimal 1.5MB',
+      'Ukuran bukti transfer maksimal 1MB',
     ),
 })
 

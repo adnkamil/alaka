@@ -4,14 +4,14 @@ import type { AvatarContentType } from './avatar-validation'
 /**
  * Aturan banner event kalender yang dipakai server dan client.
  *
- * Client memotong gambar jadi 16:9, memperkecilnya ke 1280x720 lalu mengirimnya
+ * Client memotong gambar jadi 16:9, memperkecilnya ke 1000x563 lalu mengirimnya
  * sebagai data URL (pola yang sama dengan foto brand di `avatar-validation.ts`).
  * Server TIDAK percaya client: tipe, ukuran, dan isi file dicek ulang di sini
  * sebelum disimpan ke Blobs. Format yang diterima sama dengan avatar.
  */
 
-export const CALENDAR_BANNER_WIDTH_PX = 1280
-export const CALENDAR_BANNER_HEIGHT_PX = 720
+export const CALENDAR_BANNER_WIDTH_PX = 1000
+export const CALENDAR_BANNER_HEIGHT_PX = 563
 export const CALENDAR_BANNER_MAX_BYTES = 300 * 1024
 
 // Batas panjang string data URL (base64 ~ 4/3 ukuran asli + prefix). Dipakai di

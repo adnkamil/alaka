@@ -64,7 +64,7 @@ describe('payment-proof', () => {
         parsePaymentProofDataUrl(
           dataUrl('image/png', PNG_HEADER, PAYMENT_PROOF_MAX_BYTES + 10),
         ),
-      /maksimal 1.5MB/,
+      /maksimal 1MB/,
     )
   })
 

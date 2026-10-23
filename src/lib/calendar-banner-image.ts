@@ -30,7 +30,7 @@ export function computeCoverCrop(
 }
 
 /**
- * Potong tengah jadi 16:9, perkecil ke 1280x720, lalu encode jadi WebP
+ * Potong tengah jadi 16:9, perkecil ke 1000x563, lalu encode jadi WebP
  * (JPEG kalau browser nggak bisa encode WebP, mis. Safari lama), di bawah
  * `CALENDAR_BANNER_MAX_BYTES`.
  */
