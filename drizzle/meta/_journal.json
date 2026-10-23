@@ -127,6 +127,13 @@
       "when": 1792634320731,
       "tag": "0017_calendar_event_online_end",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1792728779462,
+      "tag": "0018_calendar_event_participation",
+      "breakpoints": true
     }
   ]
 }

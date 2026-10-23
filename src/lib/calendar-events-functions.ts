@@ -5,6 +5,12 @@ import { db } from '../db'
 import { calendarEvents } from '../db/schema'
 import { getSessionUser } from './auth'
 import { MONTH_KEY_PATTERN, calendarBannerSrc, monthRange } from './calendar'
+import { brandIdOf } from './brand'
+import { requireBrandPermission } from './brand-permissions'
+import {
+  findJoinedEventId,
+  joinCalendarEventForBrand,
+} from './calendar-join-queries'
 
 /** Tanggal terakhir event: `end_date`, atau `event_date` untuk event sehari. */
 const eventLastDate = sql<string>`coalesce(${calendarEvents.endDate}, ${calendarEvents.eventDate})`
@@ -59,7 +65,9 @@ export const listCalendarEvents = createServerFn({ method: 'GET' })
 export const listUpcomingCalendarEvents = createServerFn({ method: 'GET' })
   .validator(
     z.object({
-      from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format tanggal harus YYYY-MM-DD'),
+      from: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/, 'Format tanggal harus YYYY-MM-DD'),
     }),
   )
   .handler(async ({ data }) => {
@@ -85,11 +93,15 @@ export const listUpcomingCalendarEvents = createServerFn({ method: 'GET' })
       .limit(300)
   })
 
-/** Detail satu event kalender (banner, deskripsi, lokasi, tanggal, brand). */
+/**
+ * Detail satu event kalender (banner, deskripsi, lokasi, tanggal, brand).
+ * `myEventId` = id event belanja milik brand user kalau brand-nya sudah ikut
+ * event ini (tombol berubah jadi "Lihat Event Saya"), selain itu null.
+ */
 export const getCalendarEvent = createServerFn({ method: 'GET' })
   .validator(z.object({ id: z.uuid() }))
   .handler(async ({ data }) => {
-    await requireUser()
+    const user = await requireUser()
 
     const rows = await db
       .select({
@@ -109,11 +121,39 @@ export const getCalendarEvent = createServerFn({ method: 'GET' })
     const event = rows.at(0)
     if (!event) throw new Error('Event tidak ditemukan')
     const { bannerUpdatedAt, endedAt, ...rest } = event
+    const myEventId = await findJoinedEventId(brandIdOf(user), event.id)
     return {
       ...rest,
+      myEventId,
       // Link event yang sudah diakhiri tetap bisa dibuka (mis. dari chat),
       // tapi halamannya menandai bahwa event sudah berakhir.
       isEnded: endedAt !== null,
       bannerSrc: calendarBannerSrc(event.id, bannerUpdatedAt),
     }
+  })
+
+/**
+ * "Ikut Event": jastiper (brand) ikut event kalender, dan event belanja baru
+ * otomatis dibuat di akun brand-nya. Perlu izin `operations` (pemilik maupun
+ * admin brand) dan nomor WhatsApp brand yang sudah terisi. Idempoten — kalau
+ * brand sudah ikut, event yang sudah ada dikembalikan.
+ */
+export const joinCalendarEvent = createServerFn({ method: 'POST' })
+  .validator(
+    z.object({
+      calendarEventId: z.uuid(),
+      feeRuleId: z.uuid().nullable().optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const user = await requireUser()
+    requireBrandPermission(user, 'operations')
+
+    const { eventId } = await joinCalendarEventForBrand({
+      userId: user.id,
+      brandId: brandIdOf(user),
+      calendarEventId: data.calendarEventId,
+      feeRuleId: data.feeRuleId ?? null,
+    })
+    return { eventId }
   })

@@ -16,6 +16,7 @@ import { createUserWithBrand, updateUserProfile } from './brand-queries'
 import { sendVerificationEmail } from './email-verification-queries'
 import { requireVerifiedEmail } from './email-verified'
 import { getUserEntitlements } from './entitlements'
+import { isValidIndonesianPhone, toLocalPhoneNumber } from './format'
 
 const registerSchema = z.object({
   name: z.string().min(1, 'Nama wajib diisi'),
@@ -95,6 +96,8 @@ export const logoutUser = createServerFn({ method: 'POST' }).handler(
 const updateProfileSchema = z.object({
   name: z.string().min(1, 'Nama wajib diisi'),
   brandName: z.string().optional(),
+  /** Nomor WhatsApp brand. undefined = tidak diubah; string kosong = dikosongkan. */
+  waNumber: z.string().optional(),
 })
 
 export const updateProfile = createServerFn({ method: 'POST' })
@@ -108,7 +111,21 @@ export const updateProfile = createServerFn({ method: 'POST' })
     if (brandName !== current.brandName) {
       requireBrandPermission(current, 'brand.profile')
     }
-    await updateUserProfile(current, { name: data.name, brandName })
+
+    // Nomor WhatsApp juga milik BRAND, jadi hanya pemilik yang boleh mengubahnya.
+    let waNumber = current.waNumber
+    if (data.waNumber !== undefined) {
+      const requested = data.waNumber.trim()
+      if (requested && !isValidIndonesianPhone(requested)) {
+        throw new Error('Nomor WhatsApp tidak valid. Contoh: 0812-3456-7890')
+      }
+      const normalized = requested ? toLocalPhoneNumber(requested) : null
+      if (normalized !== current.waNumber) {
+        requireBrandPermission(current, 'brand.profile')
+        waNumber = normalized
+      }
+    }
+    await updateUserProfile(current, { name: data.name, brandName, waNumber })
   })
 
 const changePasswordSchema = z.object({
@@ -172,6 +189,8 @@ export const fetchCurrentUser = createServerFn({ method: 'GET' }).handler(
       // Cuma penanda + cache-buster.
       avatarUpdatedAt: user.avatarUpdatedAt?.toISOString() ?? null,
       waMessageTemplate: user.waMessageTemplate,
+      // Nomor WhatsApp brand (format lokal) — wajib terisi untuk "Ikut Event".
+      waNumber: user.waNumber,
       // Dipakai di halaman Profil: akun Google-only belum punya kata sandi,
       // jadi menu "Ubah Kata Sandi" ditampilkan sebagai info, bukan aksi.
       hasPassword: Boolean(user.passwordHash),

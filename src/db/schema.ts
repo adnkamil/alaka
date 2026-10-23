@@ -81,6 +81,12 @@ export const brands = pgTable(
     /** Penanda foto brand (null = belum ada) + cache-buster `?v=`; file di Blobs. */
     avatarUpdatedAt: timestamp('avatar_updated_at', { withTimezone: true }),
     waMessageTemplate: text('wa_message_template'),
+    /**
+     * Nomor WhatsApp jastiper (format lokal, mis. `0853...`). Wajib terisi
+     * sebelum brand bisa "Ikut Event" kalender; ditampilkan di tabel peserta
+     * event untuk admin ALAKA dan (nanti) Partner Portal. Null = belum diisi.
+     */
+    waNumber: varchar('wa_number'),
     /** Awal & akhir masa trial. Default-nya sama persis dengan di `users`. */
     trialStartedAt: timestamp('trial_started_at', { withTimezone: true })
       .notNull()
@@ -468,6 +474,15 @@ export const events = pgTable(
     feeRuleId: uuid('fee_rule_id').references(() => feeRules.id, {
       onDelete: 'set null',
     }),
+    /**
+     * Event kalender yang diikuti brand ini lewat tombol "Ikut Event". Null =
+     * event buatan sendiri. SET NULL: kalau admin menghapus event kalender,
+     * event belanja jastiper tetap utuh, hanya tautannya yang putus.
+     */
+    calendarEventId: uuid('calendar_event_id').references(
+      () => calendarEvents.id,
+      { onDelete: 'set null' },
+    ),
     name: varchar().notNull(),
     description: text(),
     eventDate: timestamp('event_date', {
@@ -495,7 +510,16 @@ export const events = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (table) => [index('events_brand_idx').on(table.brandId)],
+  (table) => [
+    index('events_brand_idx').on(table.brandId),
+    index('events_calendar_event_idx').on(table.calendarEventId),
+    // Satu brand hanya boleh ikut satu kali di tiap event kalender. Dijaga di
+    // DB (bukan cuma di kode) supaya dobel klik / dua perangkat tidak bikin
+    // event belanja ganda.
+    uniqueIndex('events_brand_calendar_event_unique')
+      .on(table.brandId, table.calendarEventId)
+      .where(sql`${table.calendarEventId} is not null`),
+  ],
 )
 
 // ORDERS & ITEMS

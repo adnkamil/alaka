@@ -68,10 +68,13 @@ export async function findBrandOwner(brandId: string) {
 
 type BrandMember = { id: string; brandId: string }
 
-/** Ubah nama user (di `users`) dan nama brand (di `brands`) — halaman Profil. */
+/**
+ * Ubah nama user (di `users`) serta nama brand dan nomor WhatsApp brand
+ * (di `brands`) — halaman Profil.
+ */
 export async function updateUserProfile(
   user: BrandMember,
-  input: { name: string; brandName: string | null },
+  input: { name: string; brandName: string | null; waNumber: string | null },
 ) {
   const now = new Date()
   await db.transaction(async (tx) => {
@@ -82,7 +85,11 @@ export async function updateUserProfile(
 
     await tx
       .update(brands)
-      .set({ name: input.brandName, updatedAt: now })
+      .set({
+        name: input.brandName,
+        waNumber: input.waNumber,
+        updatedAt: now,
+      })
       .where(eq(brands.id, user.brandId))
   })
 }

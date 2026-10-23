@@ -213,7 +213,11 @@ function ProfilPage() {
   async function handleSaveProfile(data: ProfileFormValue) {
     try {
       await updateProfile({
-        data: { name: data.name, brandName: data.brandName },
+        data: {
+          name: data.name,
+          brandName: data.brandName,
+          waNumber: data.waNumber,
+        },
       })
       if (data.avatarChange?.type === 'upload') {
         await uploadAvatar({ data: { dataUrl: data.avatarChange.dataUrl } })
@@ -424,6 +428,7 @@ function ProfilPage() {
           initialValue={{
             name: user?.name ?? '',
             brandName: user?.brandName ?? '',
+            waNumber: user?.waNumber ?? '',
           }}
           avatar={
             isOwner

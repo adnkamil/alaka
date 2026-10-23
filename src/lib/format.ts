@@ -37,6 +37,20 @@ export function toWhatsAppNumber(phone: string | null | undefined) {
   return digits
 }
 
+/**
+ * Ubah nomor HP Indonesia ke format lokal untuk disimpan/ditampilkan,
+ * misal "+6285397356608" atau "85397356608" -> "085397356608".
+ * Hanya mengubah bentuk; validitasnya dicek `isValidIndonesianPhone`.
+ */
+export function toLocalPhoneNumber(phone: string | null | undefined) {
+  if (!phone) return ''
+  const digits = phone.replace(/\D/g, '')
+  if (!digits) return ''
+  if (digits.startsWith('62')) return `0${digits.slice(2)}`
+  if (digits.startsWith('0')) return digits
+  return `0${digits}`
+}
+
 export function buildWhatsAppBusinessLink(phone: string, message: string) {
   const number = toWhatsAppNumber(phone)
   const text = encodeURIComponent(message)
