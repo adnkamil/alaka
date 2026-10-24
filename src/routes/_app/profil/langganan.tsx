@@ -1,5 +1,10 @@
 import { useState } from 'react'
-import { queryOptions, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import {
+  queryOptions,
+  useQuery,
+  useQueryClient,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
 import { Link, createFileRoute, redirect } from '@tanstack/react-router'
 import { ArrowLeft, Check, Clock, Crown } from 'lucide-react'
 import PaymentProofViewer from '../../../components/PaymentProofViewer'
@@ -8,6 +13,7 @@ import type { SubmitSubscriptionValue } from '../../../components/SubmitSubscrip
 import { fetchCurrentUser } from '../../../lib/auth-functions'
 import { formatDate } from '../../../lib/format'
 import { paymentProofUrl } from '../../../lib/payment-proof'
+import { discountPercent } from '../../../lib/price-discount'
 import {
   fetchMySubscriptionState,
   fetchSubscriptionPaymentInfo,
@@ -68,11 +74,30 @@ function periodText(entitlement: Entitlement) {
     : 'Belum berlangganan PRO'
 }
 
-const STATUS_LABEL: Record<SubscriptionStatus, { label: string; bg: string; fg: string }> = {
-  pending: { label: 'Menunggu verifikasi', bg: 'var(--app-warning-soft)', fg: 'var(--app-warning)' },
-  active: { label: 'Aktif', bg: 'var(--app-success-soft)', fg: 'var(--app-success)' },
-  expired: { label: 'Berakhir', bg: 'var(--app-border)', fg: 'var(--app-text-mute)' },
-  rejected: { label: 'Ditolak', bg: 'var(--app-danger-soft)', fg: 'var(--app-danger)' },
+const STATUS_LABEL: Record<
+  SubscriptionStatus,
+  { label: string; bg: string; fg: string }
+> = {
+  pending: {
+    label: 'Menunggu verifikasi',
+    bg: 'var(--app-warning-soft)',
+    fg: 'var(--app-warning)',
+  },
+  active: {
+    label: 'Aktif',
+    bg: 'var(--app-success-soft)',
+    fg: 'var(--app-success)',
+  },
+  expired: {
+    label: 'Berakhir',
+    bg: 'var(--app-border)',
+    fg: 'var(--app-text-mute)',
+  },
+  rejected: {
+    label: 'Ditolak',
+    bg: 'var(--app-danger-soft)',
+    fg: 'var(--app-danger)',
+  },
 }
 
 /** Fitur yang sudah termasuk di paket FREE. */
@@ -109,6 +134,14 @@ function SubscriptionPage() {
   const isPro = entitlement.isPro
   const { pending, subscriptions: allSubscriptions } = subscriptionState
   const proPrice = paymentInfo ? formatIDR(paymentInfo.proPrice) : null
+  // Harga coret & persen diskon hanya tampil kalau harga awal memang lebih besar.
+  const discount = paymentInfo
+    ? discountPercent(paymentInfo.originalPrice, paymentInfo.proPrice)
+    : null
+  const originalPriceText =
+    discount !== null && paymentInfo?.originalPrice
+      ? formatIDR(paymentInfo.originalPrice)
+      : null
 
   async function handleSubmit(value: SubmitSubscriptionValue) {
     await submitSubscriptionRequest({
@@ -165,11 +198,16 @@ function SubscriptionPage() {
               className="flex items-start gap-3 rounded-2xl p-4"
               style={{ background: 'var(--app-warning-soft)' }}
             >
-              <Clock size={18} className="mt-0.5 shrink-0" style={{ color: 'var(--app-warning)' }} />
+              <Clock
+                size={18}
+                className="mt-0.5 shrink-0"
+                style={{ color: 'var(--app-warning)' }}
+              />
               <div className="flex-1 text-xs">
                 <p className="font-semibold">Pengajuan sedang diverifikasi</p>
                 <p style={{ color: 'var(--app-text-soft)' }}>
-                  Nominal {formatIDR(pending.amount)} · diajukan {formatDate(pending.paidAt ?? pending.createdAt)}
+                  Nominal {formatIDR(pending.amount)} · diajukan{' '}
+                  {formatDate(pending.paidAt ?? pending.createdAt)}
                 </p>
                 {pending.hasPaymentProof && (
                   <PaymentProofViewer
@@ -183,7 +221,10 @@ function SubscriptionPage() {
           ) : (
             <div
               className="flex items-center gap-3 rounded-2xl p-4 text-xs"
-              style={{ background: 'var(--app-accent-soft)', color: 'var(--app-text-soft)' }}
+              style={{
+                background: 'var(--app-accent-soft)',
+                color: 'var(--app-text-soft)',
+              }}
             >
               <Crown size={16} style={{ color: 'var(--app-accent)' }} />
               {periodText(entitlement)}
@@ -191,13 +232,19 @@ function SubscriptionPage() {
           )}
 
           {/* Kartu FREE */}
-          <div className="app-card p-5" style={{ borderColor: 'var(--app-border)' }}>
+          <div
+            className="app-card p-5"
+            style={{ borderColor: 'var(--app-border)' }}
+          >
             <div className="mb-3 flex items-center justify-between">
               <p className="text-base font-bold">Free</p>
               {!isPro && (
                 <span
                   className="app-badge"
-                  style={{ background: 'var(--app-border)', color: 'var(--app-text-soft)' }}
+                  style={{
+                    background: 'var(--app-border)',
+                    color: 'var(--app-text-soft)',
+                  }}
                 >
                   Paket saat ini
                 </span>
@@ -214,26 +261,60 @@ function SubscriptionPage() {
           </div>
 
           {/* Kartu PRO */}
-          <div className="app-card p-5" style={{ borderColor: 'var(--app-accent)' }}>
+          <div
+            className="app-card p-5"
+            style={{ borderColor: 'var(--app-accent)' }}
+          >
             <div className="mb-3 flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2" style={{ color: 'var(--app-accent)' }}>
+              <div
+                className="flex items-center gap-2"
+                style={{ color: 'var(--app-accent)' }}
+              >
                 <Crown size={18} />
                 <p className="text-base font-bold">PRO</p>
+                {discount !== null && !isPro && (
+                  <span
+                    className="app-badge"
+                    style={{
+                      background: 'var(--app-accent-soft)',
+                      color: 'var(--app-accent)',
+                    }}
+                  >
+                    Hemat {discount}%
+                  </span>
+                )}
                 {isPro && (
                   <span
                     className="app-badge"
-                    style={{ background: 'var(--app-accent-soft)', color: 'var(--app-accent)' }}
+                    style={{
+                      background: 'var(--app-accent-soft)',
+                      color: 'var(--app-accent)',
+                    }}
                   >
                     Paket saat ini
                   </span>
                 )}
               </div>
-              <p className="text-lg font-bold">
-                {proPrice ?? '—'}
-                <span className="text-xs font-normal" style={{ color: 'var(--app-text-mute)' }}>
-                  {' '}/bulan
-                </span>
-              </p>
+              <div className="flex flex-col items-end">
+                {originalPriceText && (
+                  <span
+                    className="text-xs line-through"
+                    style={{ color: 'var(--app-text-mute)' }}
+                  >
+                    {originalPriceText}
+                  </span>
+                )}
+                <p className="text-2xl font-bold">
+                  {proPrice ?? '—'}
+                  <span
+                    className="text-xs font-normal"
+                    style={{ color: 'var(--app-text-mute)' }}
+                  >
+                    {' '}
+                    /bulan
+                  </span>
+                </p>
+              </div>
             </div>
             <ul className="mb-4 flex flex-col gap-2.5">
               {PRO_FEATURES_LIST.map((text) => (
@@ -255,7 +336,10 @@ function SubscriptionPage() {
                   Ajukan Upgrade ke PRO
                 </button>
                 {!user.emailVerified && (
-                  <p className="mt-2 text-center text-xs" style={{ color: 'var(--app-warning)' }}>
+                  <p
+                    className="mt-2 text-center text-xs"
+                    style={{ color: 'var(--app-warning)' }}
+                  >
                     Verifikasi email kamu dulu untuk mengajukan upgrade.
                   </p>
                 )}
@@ -268,7 +352,10 @@ function SubscriptionPage() {
       {tab === 'riwayat' && (
         <section className="flex flex-col gap-2">
           {allSubscriptions.length === 0 && (
-            <p className="py-10 text-center text-sm" style={{ color: 'var(--app-text-mute)' }}>
+            <p
+              className="py-10 text-center text-sm"
+              style={{ color: 'var(--app-text-mute)' }}
+            >
               Belum ada transaksi langganan.
             </p>
           )}
@@ -276,10 +363,18 @@ function SubscriptionPage() {
           {allSubscriptions.map((row) => {
             const status = STATUS_LABEL[row.status]
             return (
-              <div key={row.id} className="app-card flex items-center justify-between p-4">
+              <div
+                key={row.id}
+                className="app-card flex items-center justify-between p-4"
+              >
                 <div className="flex flex-col gap-0.5">
-                  <p className="text-sm font-semibold">PRO · {formatIDR(row.amount)}</p>
-                  <p className="text-xs" style={{ color: 'var(--app-text-mute)' }}>
+                  <p className="text-sm font-semibold">
+                    PRO · {formatIDR(row.amount)}
+                  </p>
+                  <p
+                    className="text-xs"
+                    style={{ color: 'var(--app-text-mute)' }}
+                  >
                     {formatDate(row.paidAt ?? row.createdAt)}
                   </p>
                   {row.hasPaymentProof && (
@@ -290,7 +385,10 @@ function SubscriptionPage() {
                     />
                   )}
                 </div>
-                <span className="app-badge" style={{ background: status.bg, color: status.fg }}>
+                <span
+                  className="app-badge"
+                  style={{ background: status.bg, color: status.fg }}
+                >
                   {status.label}
                 </span>
               </div>

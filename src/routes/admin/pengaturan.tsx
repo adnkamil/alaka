@@ -13,6 +13,7 @@ import {
   updateSubscriptionQris,
 } from '../../lib/admin-functions'
 import { logoutUser } from '../../lib/auth-functions'
+import { discountPercent } from '../../lib/price-discount'
 
 const subscriptionSettingsQuery = queryOptions({
   queryKey: ['admin-subscription-settings'],
@@ -43,6 +44,7 @@ function AdminSettingsPage() {
   const [qrisModalOpen, setQrisModalOpen] = useState(false)
   const [priceEditing, setPriceEditing] = useState(false)
   const [priceInput, setPriceInput] = useState('')
+  const [originalInput, setOriginalInput] = useState('')
   const [priceSaving, setPriceSaving] = useState(false)
   const [priceError, setPriceError] = useState<string | null>(null)
 
@@ -66,20 +68,43 @@ function AdminSettingsPage() {
     setPriceInput(
       String(Math.round(Number(subscriptionSettings?.proPrice ?? '0'))),
     )
+    setOriginalInput(
+      subscriptionSettings?.originalPrice
+        ? String(Math.round(Number(subscriptionSettings.originalPrice)))
+        : '',
+    )
     setPriceError(null)
     setPriceEditing(true)
   }
 
+  // Persen dihitung otomatis dari dua input; ditampilkan sebagai preview saat edit.
+  const editPercent = discountPercent(
+    originalInput ? Number(originalInput) : null,
+    priceInput ? Number(priceInput) : null,
+  )
+  const savedOriginal = subscriptionSettings?.originalPrice ?? null
+  const savedPercent = discountPercent(
+    savedOriginal,
+    subscriptionSettings?.proPrice ?? '0',
+  )
+
   async function handleSavePrice() {
-    const value = Number(priceInput.replace(/\D/g, ''))
-    if (!priceInput || Number.isNaN(value) || value < 0) {
-      setPriceError('Harga tidak valid')
+    const promo = Number(priceInput)
+    if (!priceInput || Number.isNaN(promo) || promo < 0) {
+      setPriceError('Harga promo tidak valid')
+      return
+    }
+    const original = originalInput ? Number(originalInput) : null
+    if (original !== null && original <= promo) {
+      setPriceError('Harga awal harus lebih besar dari harga promo')
       return
     }
     setPriceSaving(true)
     setPriceError(null)
     try {
-      await updateSubscriptionPrice({ data: { proPrice: value } })
+      await updateSubscriptionPrice({
+        data: { proPrice: promo, originalPrice: original },
+      })
       await queryClient.invalidateQueries({
         queryKey: ['admin-subscription-settings'],
       })
@@ -176,9 +201,30 @@ function AdminSettingsPage() {
                 Nominal yang wajib ditransfer member saat mengajukan upgrade.
               </p>
               {!priceEditing && (
-                <p className="mt-1 text-base font-bold">
-                  {formatIDR(subscriptionSettings?.proPrice ?? '0')}
-                </p>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  {savedOriginal && (
+                    <span
+                      className="text-xs line-through"
+                      style={{ color: 'var(--app-text-mute)' }}
+                    >
+                      {formatIDR(savedOriginal)}
+                    </span>
+                  )}
+                  <span className="text-base font-bold">
+                    {formatIDR(subscriptionSettings?.proPrice ?? '0')}
+                  </span>
+                  {savedPercent !== null && (
+                    <span
+                      className="app-badge"
+                      style={{
+                        background: 'var(--app-accent-soft)',
+                        color: 'var(--app-accent)',
+                      }}
+                    >
+                      Hemat {savedPercent}%
+                    </span>
+                  )}
+                </div>
               )}
             </div>
             {!priceEditing && (
@@ -194,34 +240,26 @@ function AdminSettingsPage() {
           </div>
 
           {priceEditing && (
-            <div className="mt-3">
-              <div
-                className="flex items-center overflow-hidden rounded-xl border"
-                style={{ borderColor: 'var(--app-border)' }}
-              >
-                <span
-                  className="shrink-0 whitespace-nowrap px-3 text-sm"
-                  style={{ color: 'var(--app-text-soft)' }}
-                >
-                  Rp
-                </span>
-                <input
-                  autoFocus
-                  inputMode="numeric"
-                  value={
-                    priceInput ? Number(priceInput).toLocaleString('id-ID') : ''
-                  }
-                  onChange={(e) => {
-                    const digits = e.target.value
-                      .replace(/\D/g, '')
-                      .replace(/^0+(?=\d)/, '')
-                    setPriceInput(digits)
-                  }}
-                  className="app-input min-w-0 flex-1 border-0 pl-0"
-                  placeholder="29.000"
-                />
-              </div>
-              <div className="mt-2 flex items-center justify-end gap-2">
+            <div className="mt-3 flex flex-col gap-3">
+              <RupiahField
+                label="Harga promo (yang ditransfer member)"
+                value={priceInput}
+                onChange={setPriceInput}
+                placeholder="15.000"
+                autoFocus
+              />
+              <RupiahField
+                label="Harga awal (dicoret, opsional)"
+                value={originalInput}
+                onChange={setOriginalInput}
+                placeholder="50.000"
+              />
+              {editPercent !== null && (
+                <p className="text-xs" style={{ color: 'var(--app-accent)' }}>
+                  Diskon otomatis: <strong>{editPercent}%</strong>
+                </p>
+              )}
+              <div className="flex items-center justify-end gap-2">
                 <button
                   type="button"
                   disabled={priceSaving}
@@ -275,5 +313,51 @@ function AdminSettingsPage() {
         />
       )}
     </main>
+  )
+}
+
+function RupiahField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  autoFocus,
+}: {
+  label: string
+  value: string
+  onChange: (digits: string) => void
+  placeholder: string
+  autoFocus?: boolean
+}) {
+  return (
+    <div>
+      <p
+        className="mb-1 text-xs font-semibold"
+        style={{ color: 'var(--app-text-soft)' }}
+      >
+        {label}
+      </p>
+      <div
+        className="flex items-center overflow-hidden rounded-xl border"
+        style={{ borderColor: 'var(--app-border)' }}
+      >
+        <span
+          className="shrink-0 whitespace-nowrap px-3 text-sm"
+          style={{ color: 'var(--app-text-soft)' }}
+        >
+          Rp
+        </span>
+        <input
+          autoFocus={autoFocus}
+          inputMode="numeric"
+          value={value ? Number(value).toLocaleString('id-ID') : ''}
+          onChange={(e) =>
+            onChange(e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, ''))
+          }
+          className="app-input min-w-0 flex-1 border-0 pl-0"
+          placeholder={placeholder}
+        />
+      </div>
+    </div>
   )
 }

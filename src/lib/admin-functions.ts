@@ -132,7 +132,12 @@ const qrisImageSchema = z
 
 /** Upsert baris singleton `subscription_settings` — dipakai QRIS & harga. */
 async function upsertSubscriptionSettings(
-  patch: Partial<{ qrisImage: string; qrisString: string; proPrice: string }>,
+  patch: Partial<{
+    qrisImage: string
+    qrisString: string
+    proPrice: string
+    originalPrice: string | null
+  }>,
   adminId: string,
 ) {
   const existing = await getSubscriptionSettings()
@@ -179,17 +184,33 @@ export const updateSubscriptionQris = createServerFn({ method: 'POST' })
     return { success: true }
   })
 
-/** Admin atur harga membership PRO. Cuma berlaku buat pengajuan BARU. */
+/**
+ * Admin atur harga membership PRO: harga promo (yang ditransfer member) dan
+ * harga awal opsional (dicoret, cuma tampilan). Cuma berlaku buat pengajuan BARU.
+ */
 export const updateSubscriptionPrice = createServerFn({ method: 'POST' })
   .validator(
-    z.object({
-      proPrice: z.number().nonnegative('Harga tidak boleh negatif'),
-    }),
+    z
+      .object({
+        proPrice: z.number().nonnegative('Harga tidak boleh negatif'),
+        originalPrice: z
+          .number()
+          .nonnegative('Harga awal tidak boleh negatif')
+          .nullable(),
+      })
+      .refine((d) => d.originalPrice === null || d.originalPrice > d.proPrice, {
+        message: 'Harga awal harus lebih besar dari harga promo',
+        path: ['originalPrice'],
+      }),
   )
   .handler(async ({ data }) => {
     const admin = await requireAdminUser()
     await upsertSubscriptionSettings(
-      { proPrice: data.proPrice.toFixed(2) },
+      {
+        proPrice: data.proPrice.toFixed(2),
+        originalPrice:
+          data.originalPrice === null ? null : data.originalPrice.toFixed(2),
+      },
       admin.id,
     )
     return { success: true }
