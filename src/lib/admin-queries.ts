@@ -1,6 +1,6 @@
 import { and, desc, eq, gte, max, sql } from 'drizzle-orm'
 import { db } from '../db'
-import { brands, sessions, subscriptions, users } from '../db/schema'
+import { brands, events, orders, subscriptions, users } from '../db/schema'
 import { applyBrandIdentity } from './brand'
 import { stripProofData } from './payment-proof'
 import { resolveEntitlement } from './subscription'
@@ -65,11 +65,11 @@ export async function findSubscriptionById(id: string) {
 
 export interface AdminMetrics {
   totalUsers: number
-  /** User dengan sesi login baru dalam `ACTIVE_USER_WINDOW_DAYS` hari terakhir. */
+  /** Brand yang membuat/mengubah pesanan dalam `ACTIVE_USER_WINDOW_DAYS` hari terakhir. */
   activeUsers: number
   /**
    * Jendela hari yang dipakai `activeUsers` — ikut dikirim ke client supaya
-   * hint kartu ("Login N hari terakhir") dihitung dari nilai yang sama, bukan
+   * hint kartu ("Aktivitas pesanan N hari terakhir") dihitung dari nilai yang sama, bukan
    * angka yang ditulis ulang di halaman.
    */
   activeWindowDays: number
@@ -91,15 +91,21 @@ const ACTIVE_USER_WINDOW_DAYS = 7
 /**
  * Metrik ringkas buat dashboard admin.
  *
- * CATATAN soal `activeUsers`: dihitung dari baris `sessions` baru (login)
+ * CATATAN soal `activeUsers`: "aktivitas" = MEMBUAT atau MENGUBAH pesanan,
+ * dibaca dari `orders.updated_at` (terisi saat insert dan di-set ulang di
+ * setiap update pesanan/status bayar/impor) lewat `events.brand_id`. Dihitung
  * dalam `ACTIVE_USER_WINDOW_DAYS` hari terakhir — BUKAN dari tabel
- * `activity_logs`. `activity_logs` sudah ada di schema untuk tracking per-aksi
- * yang lebih presisi, tapi belum ada satu pun kode yang menulis ke sana, jadi
- * kalau dipakai sekarang hasilnya akan selalu 0. Proxy login ini gampang
- * diganti begitu `activity_logs` mulai diisi.
+ * `activity_logs`: tabel itu sudah ada di schema untuk tracking per-aksi yang
+ * lebih presisi, tapi belum ada satu pun kode yang menulis ke sana, jadi kalau
+ * dipakai sekarang hasilnya akan selalu 0. Definisi ini gampang diganti begitu
+ * `activity_logs` mulai diisi. Catatan: mencentang checklist belanja
+ * (`items.obtained`) dan menghapus barang tidak menyentuh `orders.updated_at`,
+ * jadi belum terhitung sebagai aktivitas.
  */
 /** Join ke akun PEMILIK sebuah brand (tepat satu per brand). */
-function ownerOf(brandId: typeof subscriptions.brandId) {
+function ownerOf(
+  brandId: typeof subscriptions.brandId | typeof events.brandId,
+) {
   return and(eq(users.brandId, brandId), eq(users.brandRole, 'owner'))
 }
 
@@ -124,14 +130,14 @@ export async function getAdminMetrics(
       .select({ value: sql<string>`count(*)` })
       .from(users)
       .where(and(eq(users.isAdmin, false), eq(users.brandRole, 'owner'))),
-    // Brand aktif = ada akun (pemilik ATAU admin) yang login dalam jendela waktu.
+    // Brand aktif = ada pesanan yang dibuat/diubah dalam jendela waktu
+    // (oleh pemilik ATAU admin brand — pesanan milik brand, bukan akun).
     db
-      .select({ value: sql<string>`count(distinct ${users.brandId})` })
-      .from(sessions)
-      .innerJoin(users, eq(sessions.userId, users.id))
-      .where(
-        and(gte(sessions.createdAt, activeSince), eq(users.isAdmin, false)),
-      ),
+      .select({ value: sql<string>`count(distinct ${events.brandId})` })
+      .from(orders)
+      .innerJoin(events, eq(orders.eventId, events.id))
+      .innerJoin(users, ownerOf(events.brandId))
+      .where(and(gte(orders.updatedAt, activeSince), eq(users.isAdmin, false))),
     // Langganan milik brand: ikuti `subscriptions.brandId` ke akun pemilik
     // (pengaju bisa kosong kalau akunnya sudah dihapus).
     db
@@ -208,9 +214,9 @@ export interface AdminUserRow {
   hasPending: boolean
   /** Jumlah akun admin di brand ini (selain pemilik). */
   adminCount: number
-  /** Login terakhir (baris `sessions` terbaru). `null` kalau belum pernah login. */
-  lastLoginAt: Date | null
-  /** Login dalam `ACTIVE_USER_WINDOW_DAYS` hari terakhir — definisi sama dengan metrik "Active Users". */
+  /** Aktivitas terakhir = pesanan terakhir dibuat/diubah (`max(orders.updated_at)`). `null` kalau belum pernah. */
+  lastActivityAt: Date | null
+  /** Ada aktivitas dalam `ACTIVE_USER_WINDOW_DAYS` hari terakhir — definisi sama dengan metrik "Active Users". */
   isActive: boolean
   /** `SUM(amount)` pengajuan yang PERNAH disetujui (active + expired) — sama dengan metrik "PRO Revenue". */
   revenue: number
@@ -240,7 +246,7 @@ export async function listAdminUsers(
     activeRows,
     pendingRows,
     revenueRows,
-    lastLoginRows,
+    lastActivityRows,
     adminRows,
   ] = await Promise.all([
     db
@@ -277,20 +283,21 @@ export async function listAdminUsers(
       .from(subscriptions)
       .where(sql`${subscriptions.status} in ('active', 'expired')`)
       .groupBy(subscriptions.brandId),
-    // `group by` bikin user yang belum pernah login tidak muncul di hasil —
-    // itu memang yang diinginkan (`lastLoginAt` jadi null). Pakai helper
+    // `group by` bikin brand yang belum punya pesanan tidak muncul di hasil —
+    // itu memang yang diinginkan (`lastActivityAt` jadi null). Pakai helper
     // `max()` dari drizzle (bukan `sql` mentah) supaya hasilnya dipetakan
     // lewat tipe kolomnya: driver mengembalikan timestamp sebagai string, dan
     // mapping itu yang mengubahnya jadi Date — sama seperti `users.createdAt`.
-    // Login terakhir BRAND = login terakhir akun mana pun di brand itu.
+    // Aktivitas terakhir BRAND = pesanan terakhir dibuat/diubah di event mana
+    // pun milik brand itu (`orders.updated_at` terisi saat insert).
     db
       .select({
-        brandId: users.brandId,
-        lastLoginAt: max(sessions.createdAt),
+        brandId: events.brandId,
+        lastActivityAt: max(orders.updatedAt),
       })
-      .from(sessions)
-      .innerJoin(users, eq(sessions.userId, users.id))
-      .groupBy(users.brandId),
+      .from(orders)
+      .innerJoin(events, eq(orders.eventId, events.id))
+      .groupBy(events.brandId),
     db
       .select({
         brandId: users.brandId,
@@ -316,8 +323,8 @@ export async function listAdminUsers(
   const revenueByBrand = new Map<string, number>(
     revenueRows.map((row) => [row.brandId, Number(row.total)]),
   )
-  const lastLoginByBrand = new Map<string, Date | null>(
-    lastLoginRows.map((row) => [row.brandId, row.lastLoginAt]),
+  const lastActivityByBrand = new Map<string, Date | null>(
+    lastActivityRows.map((row) => [row.brandId, row.lastActivityAt]),
   )
   const adminCountByBrand = new Map<string, number>(
     adminRows.map((row) => [row.brandId, Number(row.total)]),
@@ -333,7 +340,7 @@ export async function listAdminUsers(
       },
       now,
     )
-    const lastLoginAt = lastLoginByBrand.get(user.brandId) ?? null
+    const lastActivityAt = lastActivityByBrand.get(user.brandId) ?? null
 
     return {
       id: user.id,
@@ -346,9 +353,10 @@ export async function listAdminUsers(
       proUntil: entitlement.proUntil,
       hasPending: pendingBrandIds.has(user.brandId),
       adminCount: adminCountByBrand.get(user.brandId) ?? 0,
-      lastLoginAt,
+      lastActivityAt,
       isActive:
-        lastLoginAt !== null && lastLoginAt.getTime() >= activeSince.getTime(),
+        lastActivityAt !== null &&
+        lastActivityAt.getTime() >= activeSince.getTime(),
       revenue: revenueByBrand.get(user.brandId) ?? 0,
     }
   })
