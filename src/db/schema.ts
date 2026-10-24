@@ -66,9 +66,9 @@ export const brandInvitationStatusEnum = pgEnum('brand_invitation_status', [
 // aturan fee, metode bayar, langganan) dan identitas brand (nama, foto, template
 // pesan, masa trial). Tabel `users` nantinya cuma berisi akun orangnya.
 //
-// MASIH TAHAP "EXPAND": tabel ini baru ditambahkan dan belum dipakai kode. Kolom
-// brand di `users` (brand_name, avatar_updated_at, wa_message_template,
-// trial_*) tetap jadi sumber kebenaran sampai tahap backfill + switch selesai.
+// Kolom brand lama di `users` (brand_name, avatar_updated_at,
+// wa_message_template, trial_*) sudah dibuang (migrasi 0020): sumber
+// kebenarannya sekarang hanya tabel ini.
 //
 // `brands.id` adalah UUID milik brand sendiri, TIDAK sama dengan id user mana
 // pun. Kode harus selalu memakai `brand.id` / `session.brandId` untuk apa pun
@@ -87,7 +87,7 @@ export const brands = pgTable(
      * event untuk admin ALAKA dan (nanti) Partner Portal. Null = belum diisi.
      */
     waNumber: varchar('wa_number'),
-    /** Awal & akhir masa trial. Default-nya sama persis dengan di `users`. */
+    /** Awal & akhir masa trial.  */
     trialStartedAt: timestamp('trial_started_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -110,26 +110,14 @@ export const brands = pgTable(
 )
 
 // USERS & AUTH
-// Trial 30 hari mulai dari saat user dibuat. Nilai trial diisi DEFAULT kolom di
-// database (bukan diset manual di kode) supaya SEMUA jalur pembuatan user —
-// register email, Google OAuth, seed script — otomatis kebagian trial yang sama.
-// Masa trial & langganan PRO sengaja TIDAK disimpan sebagai satu flag di tabel
-// ini: status akses dihitung di `src/lib/subscription.ts` dari kolom trial di
-// bawah + histori di tabel `subscriptions`.
+// Tabel ini murni akun orangnya. Identitas brand, masa trial, dan langganan ada
+// di tabel `brands` / `subscriptions`; status akses dihitung di
+// `src/lib/subscription.ts`.
 export const users = pgTable(
   'users',
   {
     id: uuid().primaryKey().defaultRandom(),
     name: varchar().notNull(),
-    brandName: varchar('brand_name'),
-    /**
-     * Kapan foto brand terakhir diganti. Fotonya sendiri TIDAK disimpan di DB
-     * (ada di Netlify Blobs, lihat `src/lib/storage.ts`) — kolom ini cuma
-     * penanda "user punya foto" (null = belum ada) sekaligus cache-buster
-     * (`?v=`) di URL gambar.
-     */
-    avatarUpdatedAt: timestamp('avatar_updated_at', { withTimezone: true }),
-    waMessageTemplate: text('wa_message_template'),
     email: varchar().notNull().unique(),
     passwordHash: varchar('password_hash'),
     googleId: varchar('google_id').unique(),
@@ -158,14 +146,6 @@ export const users = pgTable(
      * pemilik brand barunya. `admin` hanya lewat undangan (`brand_invitations`).
      */
     brandRole: brandRoleEnum('brand_role').notNull().default('owner'),
-    /** Awal masa trial (= waktu user dibuat). */
-    trialStartedAt: timestamp('trial_started_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    /** Akhir masa trial (trial_started_at + TRIAL_DAYS hari). */
-    trialEndsAt: timestamp('trial_ends_at', { withTimezone: true })
-      .notNull()
-      .default(sql`now() + interval '${sql.raw(String(TRIAL_DAYS))} days'`),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -180,10 +160,6 @@ export const users = pgTable(
     uniqueIndex('users_one_owner_per_brand')
       .on(table.brandId)
       .where(sql`${table.brandRole} = 'owner'`),
-    check(
-      'users_trial_period_order',
-      sql`${table.trialEndsAt} >= ${table.trialStartedAt}`,
-    ),
   ],
 )
 
