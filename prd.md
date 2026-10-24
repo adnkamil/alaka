@@ -320,7 +320,7 @@ tautan navigasi, tautan "← Dashboard" lama dihapus — pindah halaman cukup le
 | Kartu        | Isi                                                                                                                                                                                                                                                                                                                              |
 | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Total Users  | Jumlah seluruh user terdaftar                                                                                                                                                                                                                                                                                                    |
-| Active Users | User yang punya sesi login baru dalam **7 hari** terakhir (`count(distinct user_id)` dari `sessions`; jendelanya konstanta `ACTIVE_USER_WINDOW_DAYS` dan nilainya ikut dikirim ke client sebagai `activeWindowDays` supaya hint kartu tidak bisa beda dari query-nya), bukan dari `activity_logs` yang belum diisi kode mana pun |
+| Active Users | Brand yang membuat/mengubah pesanan dalam **7 hari** terakhir (`count(distinct events.brand_id)` dari `orders.updated_at`; jendelanya konstanta `ACTIVE_USER_WINDOW_DAYS` dan nilainya ikut dikirim ke client sebagai `activeWindowDays` supaya hint kartu tidak bisa beda dari query-nya), bukan dari `activity_logs` yang belum diisi kode mana pun |
 | PRO Active   | Baris `subscriptions` berstatus `active` **dan** `ends_at`-nya belum lewat                                                                                                                                                                                                                                                       |
 | PRO Pending  | Pengajuan berstatus `pending`                                                                                                                                                                                                                                                                                                    |
 | PRO Revenue  | `SUM(amount)` dari semua pengajuan yang **pernah disetujui** (`active` + `expired`), diformat Rupiah                                                                                                                                                                                                                             |
@@ -355,7 +355,7 @@ dan daftar pengajuan.
 
 Daftar **semua akun** yang terdaftar di aplikasi (`src/routes/admin/customers.tsx`),
 dibuka lewat **tab Customer** di bottom nav admin (4.13). Fokusnya: siapa orangnya,
-status langganannya, apakah masih aktif login, dan berapa total uang yang sudah
+status langganannya, apakah masih aktif (ada aktivitas pesanan), dan berapa total uang yang sudah
 masuk dari dia.
 
 Data datang dari satu server function `fetchAdminUsers` → `listAdminUsers()`
@@ -367,19 +367,19 @@ route). Isi tiap baris:
 | Nama / email      | `users.name`, `users.email`, plus `brand_name` sebagai judul kartu                                                         |
 | Plan + PRO sampai | `resolveEntitlement()` — aturan trial/FREE/PRO **tidak** ditulis ulang di query (lihat 5.1)                                |
 | Pending           | Ada `subscriptions` berstatus `pending` (badge kuning)                                                                     |
-| Status aktif      | Ada sesi login dalam **7 hari** terakhir (`ACTIVE_USER_WINDOW_DAYS`), sama ambangnya dengan kartu "Active Users" di 4.13   |
-| Login terakhir    | `max(sessions.created_at)` per user                                                                                        |
+| Status aktif      | Ada pesanan dibuat/diubah dalam **7 hari** terakhir (`ACTIVE_USER_WINDOW_DAYS`), sama definisinya dengan kartu "Active Users" di 4.13 |
+| Aktivitas terakhir | `max(orders.updated_at)` per brand (lewat `events.brand_id`) — pesanan terakhir dibuat/diubah                              |
 | Total revenue     | `SUM(amount)` dari langganan yang pernah disetujui (`active` + `expired`) — definisi yang sama dengan metrik "PRO Revenue" |
 | Terdaftar         | `users.created_at`                                                                                                         |
 
 Detail teknis:
 
 - **Digabung di memori, bukan lewat `join`.** Semua user diambil sekali, lalu jumlah
-  langganan / revenue / login terakhir diambil sebagai query agregat terpisah
+  langganan / revenue / aktivitas terakhir diambil sebagai query agregat terpisah
   (per user) dan dipetakan ke peta (`Map`) — join langsung ke `users` akan
   menggandakan baris user dan bikin `SUM`-nya salah. Alasan yang sama dipakai di
   metrik dashboard.
-- **`last_login_at` wajib lewat helper `max()` dari drizzle**, bukan `sql` mentah:
+- **`last_activity_at` wajib lewat helper `max()` dari drizzle**, bukan `sql` mentah:
   driver `pg` di sini dikonfigurasi drizzle untuk mengembalikan kolom tanggal sebagai
   **string**, dan mapping tipe kolom itulah yang mengubahnya jadi `Date`. `sql\`max(...)\``mentah tidak dipetakan, sehingga`isActive` gagal (`getTime is not a function`).
 - **Tab & urutan di client** (tanpa round-trip server): tab **Semua / PRO / Trial /
@@ -880,5 +880,5 @@ src/
 - Verifikasi email saat register.
 - Aplikasi mobile native — MVP web/PWA saja.
 - Ekspor Data (kebalikannya: unduh data event/pesanan jadi file). Import dari Excel/CSV **sudah ada** (lihat 4.3.2).
-- Master Control & Activity Logs (tabel `activity_logs` sudah ada di DB, tapi belum ada UI maupun kode yang menulis ke sana — karena itu metrik "Active Users" di dashboard admin sementara dihitung dari baris `sessions`).
+- Master Control & Activity Logs (tabel `activity_logs` sudah ada di DB, tapi belum ada UI maupun kode yang menulis ke sana — karena itu metrik "Active Users" di dashboard admin sementara dihitung dari `orders.updated_at`: pesanan dibuat/diubah).
 - Notifikasi push (service worker sudah ada via Workbox, tapi belum diimplementasi).

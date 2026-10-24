@@ -227,11 +227,11 @@ function CustomerCard({ user }: { user: AdminUserRow }) {
           }
         />
         <Field
-          label="Login terakhir"
+          label="Aktivitas terakhir"
           value={
-            user.lastLoginAt
-              ? formatDateTime(user.lastLoginAt)
-              : 'Belum pernah login'
+            user.lastActivityAt
+              ? formatDateTime(user.lastActivityAt)
+              : 'Belum ada aktivitas'
           }
         />
         <Field label="Total revenue" value={formatIDR(user.revenue)} />

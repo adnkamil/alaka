@@ -217,7 +217,7 @@ function AdminDashboardPage() {
           label="Active Users"
           value={String(metrics.activeUsers)}
           icon={Clock}
-          hint={`Login ${metrics.activeWindowDays} hari terakhir`}
+          hint={`Aktivitas pesanan ${metrics.activeWindowDays} hari terakhir`}
         />
         <MetricCard
           label="PRO Active"
