@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Plus, Trash2, User, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { ChevronDown, Plus, Trash2, User, X } from 'lucide-react'
 import NumberInput from './ui/NumberInput'
 import Switch from './ui/Switch'
 import { customerLabel } from '../lib/customer-matching'
@@ -10,6 +10,11 @@ import {
   isBundleName,
   splitBundleNames,
 } from '../lib/item-bundle'
+import {
+  firstIncompleteItemIndex,
+  itemTitle,
+  openIndexAfterRemove,
+} from '../lib/order-sheet-items'
 import { lineTotal, summarizeItems } from '../lib/order-totals'
 
 interface FeeTier {
@@ -161,8 +166,23 @@ export default function AddOrderSheet({
       ? initialValue.items.map((item) => toDraft(item))
       : [{ ...emptyItem }],
   )
+  // Kartu barang yang sedang terbuka (akordion: satu saja). Form tambah mulai
+  // dengan barang pertama terbuka biar langsung bisa diisi; form edit mulai
+  // tertutup semua supaya daftar barangnya ringkas.
+  const [openIndex, setOpenIndex] = useState<number | null>(
+    initialValue?.items.length ? null : 0,
+  )
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Kartu yang baru dibuka bisa jatuh di luar layar (barang baru ada di paling
+  // bawah, atau isinya memanjang ke bawah) — gulirkan seperlunya saja.
+  useEffect(() => {
+    if (openIndex === null) return
+    document
+      .getElementById(`order-item-${openIndex}`)
+      ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  }, [openIndex])
 
   const parsedTiers = feeTiers.map((tier) => ({
     minPrice: Number(tier.minPrice),
@@ -185,11 +205,18 @@ export default function AddOrderSheet({
   }
 
   function addItem() {
+    // Barang baru langsung terbuka (dan yang lain menutup) supaya bisa diisi.
+    setOpenIndex(items.length)
     setItems((prev) => [...prev, { ...emptyItem }])
   }
 
   function removeItem(index: number) {
+    setOpenIndex((prev) => openIndexAfterRemove(prev, index))
     setItems((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  function toggleItem(index: number) {
+    setOpenIndex((prev) => (prev === index ? null : index))
   }
 
   /** Ubah nama barang ke-`segmentIndex` di dalam paket bundling. */
@@ -298,6 +325,16 @@ export default function AddOrderSheet({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
+    // Isi kartu yang tertutup tidak dirender, jadi `required` bawaan browser
+    // tidak menjangkaunya — cek manual lalu buka kartu yang belum lengkap.
+    const incompleteIndex = firstIncompleteItemIndex(items)
+    if (incompleteIndex !== -1) {
+      setOpenIndex(incompleteIndex)
+      setError(
+        `Lengkapi nama dan harga asli barang ke-${incompleteIndex + 1} dulu.`,
+      )
+      return
+    }
     setIsSubmitting(true)
     try {
       await onSubmit({
@@ -405,269 +442,341 @@ export default function AddOrderSheet({
               </label>
 
               <div className="flex flex-col gap-3">
+                <span
+                  className="block truncate text-sm"
+                  // style={{ color: 'var(--app-text-soft)' }}
+                >
+                  Item
+                </span>
                 {items.map((item, index) => (
-                  <div key={index} className="app-card p-3">
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <span className="text-xs">Nama barang</span>
+                  <div
+                    key={index}
+                    id={`order-item-${index}`}
+                    className="app-card"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => toggleItem(index)}
+                      aria-expanded={openIndex === index}
+                      aria-controls={`order-item-body-${index}`}
+                      className="flex w-full items-center gap-2.5 px-3.5 py-3 text-left"
+                    >
                       <span
-                        className="flex items-center gap-1.5 text-xs font-semibold"
-                        style={{
-                          color: item.bundle
-                            ? 'var(--app-accent)'
-                            : 'var(--app-text-soft)',
-                        }}
+                        className="min-w-0 flex-1 truncate text-sm font-medium"
+                        style={
+                          itemTitle(item)
+                            ? undefined
+                            : { color: 'var(--app-text-mute)' }
+                        }
                       >
-                        Bundling
-                        <Switch
-                          checked={item.bundle}
-                          onChange={(checked) => toggleBundle(index, checked)}
-                          label="Bundling: satu harga untuk beberapa barang"
-                        />
+                        {itemTitle(item) || 'Barang belum diisi'}
                       </span>
-                    </div>
-
-                    {item.bundle ? (
-                      // `text-xs` disamakan dengan label input tunggal di atas
-                      // (mode tanpa bundling). `.app-input` tidak set font-size
-                      // sendiri, jadi tinggi input ikut warisan: tanpa ini
-                      // inputnya jadi lebih tinggi (±8px) daripada mode biasa.
-                      <div className="flex flex-col gap-2 text-xs">
-                        {item.bundleNames.map((bundleName, bundleIndex) => (
-                          <div
-                            key={bundleIndex}
-                            className="flex items-center gap-2"
+                      {item.qty > 1 && (
+                        <span
+                          className="app-badge flex-shrink-0"
+                          style={{
+                            background: 'var(--app-accent-soft)',
+                            color: 'var(--app-accent)',
+                          }}
+                        >
+                          ×{item.qty}
+                        </span>
+                      )}
+                      <span className="flex-shrink-0 whitespace-nowrap text-sm font-semibold">
+                        {lineTotal(item).toLocaleString('id-ID')}
+                      </span>
+                      <ChevronDown
+                        size={18}
+                        className={`flex-shrink-0 transition-transform ${
+                          openIndex === index ? 'rotate-180' : ''
+                        }`}
+                        style={{ color: 'var(--app-text-soft)' }}
+                        aria-hidden="true"
+                      />
+                    </button>
+                    {openIndex === index && (
+                      <div
+                        id={`order-item-body-${index}`}
+                        className="border-t p-3"
+                        style={{ borderColor: 'var(--app-border)' }}
+                      >
+                        <div className="mb-2 flex items-center justify-between gap-2">
+                          <span className="text-xs">Nama barang</span>
+                          <span
+                            className="flex items-center gap-1.5 text-xs font-semibold"
+                            style={{
+                              color: item.bundle
+                                ? 'var(--app-accent)'
+                                : 'var(--app-text-soft)',
+                            }}
                           >
-                            <span
-                              className="w-3 flex-shrink-0 text-right text-xs"
-                              style={{ color: 'var(--app-text-mute)' }}
-                            >
-                              {bundleIndex + 1}.
-                            </span>
-                            {/* Paket harus punya minimal satu nama barang.
+                            Bundling
+                            <Switch
+                              checked={item.bundle}
+                              onChange={(checked) =>
+                                toggleBundle(index, checked)
+                              }
+                              label="Bundling: satu harga untuk beberapa barang"
+                            />
+                          </span>
+                        </div>
+
+                        {item.bundle ? (
+                          // `text-xs` disamakan dengan label input tunggal di atas
+                          // (mode tanpa bundling). `.app-input` tidak set font-size
+                          // sendiri, jadi tinggi input ikut warisan: tanpa ini
+                          // inputnya jadi lebih tinggi (±8px) daripada mode biasa.
+                          <div className="flex flex-col gap-2 text-xs">
+                            {item.bundleNames.map((bundleName, bundleIndex) => (
+                              <div
+                                key={bundleIndex}
+                                className="flex items-center gap-2"
+                              >
+                                <span
+                                  className="w-3 flex-shrink-0 text-right text-xs"
+                                  style={{ color: 'var(--app-text-mute)' }}
+                                >
+                                  {bundleIndex + 1}.
+                                </span>
+                                {/* Paket harus punya minimal satu nama barang.
                                 `required` cuma dipasang waktu SEMUA slot masih
                                 kosong, jadi jastiper bebas mengisi slot mana
                                 saja (slot kosong lain otomatis dibuang waktu
                                 disimpan). */}
+                                <input
+                                  required={
+                                    bundleIndex === 0 &&
+                                    item.bundleNames.every(
+                                      (name) => name.trim().length === 0,
+                                    )
+                                  }
+                                  value={bundleName}
+                                  onChange={(e) =>
+                                    updateBundleName(
+                                      index,
+                                      bundleIndex,
+                                      e.target.value,
+                                    )
+                                  }
+                                  autoComplete="off"
+                                  className="app-input min-w-0"
+                                  aria-label={`Nama barang ${bundleIndex + 1} dalam paket`}
+                                />
+                                {item.bundleNames.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      removeBundleName(index, bundleIndex)
+                                    }
+                                    className="flex-shrink-0"
+                                    style={{ color: 'var(--app-danger)' }}
+                                    aria-label={`Hapus barang ${bundleIndex + 1} dari paket`}
+                                  >
+                                    <X size={15} />
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <button
+                                type="button"
+                                onClick={() => addBundleName(index)}
+                                className="flex items-center gap-1 text-xs font-semibold"
+                                style={{ color: 'var(--app-accent)' }}
+                              >
+                                <Plus size={14} />
+                                Tambah barang
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <label className="relative flex flex-col gap-1 text-xs">
                             <input
-                              required={
-                                bundleIndex === 0 &&
-                                item.bundleNames.every(
-                                  (name) => name.trim().length === 0,
-                                )
-                              }
-                              value={bundleName}
+                              required
+                              value={item.name}
                               onChange={(e) =>
-                                updateBundleName(
-                                  index,
-                                  bundleIndex,
-                                  e.target.value,
+                                updateItem(index, { name: e.target.value })
+                              }
+                              onFocus={() =>
+                                setActiveItemSuggestionIndex(index)
+                              }
+                              onBlur={() =>
+                                setTimeout(
+                                  () => setActiveItemSuggestionIndex(null),
+                                  120,
                                 )
                               }
                               autoComplete="off"
-                              className="app-input min-w-0"
-                              aria-label={`Nama barang ${bundleIndex + 1} dalam paket`}
+                              className="app-input"
+                              aria-label="Nama barang"
                             />
-                            {item.bundleNames.length > 1 && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  removeBundleName(index, bundleIndex)
-                                }
-                                className="flex-shrink-0"
-                                style={{ color: 'var(--app-danger)' }}
-                                aria-label={`Hapus barang ${bundleIndex + 1} dari paket`}
-                              >
-                                <X size={15} />
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <button
-                            type="button"
-                            onClick={() => addBundleName(index)}
-                            className="flex items-center gap-1 text-xs font-semibold"
-                            style={{ color: 'var(--app-accent)' }}
-                          >
-                            <Plus size={14} />
-                            Tambah barang
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <label className="relative flex flex-col gap-1 text-xs">
-                        <input
-                          required
-                          value={item.name}
-                          onChange={(e) =>
-                            updateItem(index, { name: e.target.value })
-                          }
-                          onFocus={() => setActiveItemSuggestionIndex(index)}
-                          onBlur={() =>
-                            setTimeout(
-                              () => setActiveItemSuggestionIndex(null),
-                              120,
-                            )
-                          }
-                          autoComplete="off"
-                          className="app-input"
-                          aria-label="Nama barang"
-                        />
-                        {activeItemSuggestionIndex === index &&
-                          filteredItemNames(item.name).length > 0 && (
-                            <div
-                              className="absolute left-0 right-0 top-full z-10 mt-1 max-h-40 overflow-y-auto rounded-xl border shadow-lg"
-                              style={{
-                                background: 'var(--app-card)',
-                                borderColor: 'var(--app-border)',
-                              }}
-                            >
-                              {filteredItemNames(item.name).map((name) => (
-                                <button
-                                  key={name}
-                                  type="button"
-                                  onMouseDown={(e) => {
-                                    e.preventDefault()
-                                    updateItem(index, { name })
-                                    setActiveItemSuggestionIndex(null)
+                            {activeItemSuggestionIndex === index &&
+                              filteredItemNames(item.name).length > 0 && (
+                                <div
+                                  className="absolute left-0 right-0 top-full z-10 mt-1 max-h-40 overflow-y-auto rounded-xl border shadow-lg"
+                                  style={{
+                                    background: 'var(--app-card)',
+                                    borderColor: 'var(--app-border)',
                                   }}
-                                  className="block w-full truncate px-3 py-2 text-left text-sm"
                                 >
-                                  {name}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                      </label>
-                    )}
-                    {/* Jarak atas dikasih sendiri: baris nama barang di atasnya
+                                  {filteredItemNames(item.name).map((name) => (
+                                    <button
+                                      key={name}
+                                      type="button"
+                                      onMouseDown={(e) => {
+                                        e.preventDefault()
+                                        updateItem(index, { name })
+                                        setActiveItemSuggestionIndex(null)
+                                      }}
+                                      className="block w-full truncate px-3 py-2 text-left text-sm"
+                                    >
+                                      {name}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                          </label>
+                        )}
+                        {/* Jarak atas dikasih sendiri: baris nama barang di atasnya
                         (input tunggal atau daftar paket bundling + tombol
                         "Tambah barang") tidak punya margin bawah. */}
-                    <div className="mt-3 grid grid-cols-2 gap-2">
-                      <label className="relative flex flex-col gap-1 text-xs">
-                        <span className="whitespace-nowrap">Harga asli</span>
-                        <NumberInput
-                          required
-                          value={item.originalPrice}
-                          onChange={(originalPrice) =>
-                            updateItem(index, { originalPrice })
-                          }
-                          onFocus={() => setActivePriceSuggestionIndex(index)}
-                          onBlur={() =>
-                            setTimeout(
-                              () => setActivePriceSuggestionIndex(null),
-                              120,
-                            )
-                          }
-                          className="app-input"
-                        />
-                        {activePriceSuggestionIndex === index &&
-                          pricesForItemName(item.name).length > 0 && (
-                            <div
-                              className="absolute left-0 right-0 top-full z-10 mt-1 max-h-40 overflow-y-auto rounded-xl border shadow-lg"
-                              style={{
-                                background: 'var(--app-card)',
-                                borderColor: 'var(--app-border)',
-                              }}
-                            >
-                              {pricesForItemName(item.name).map((price) => (
-                                <button
-                                  key={price}
-                                  type="button"
-                                  onMouseDown={(e) => {
-                                    e.preventDefault()
-                                    updateItem(index, { originalPrice: price })
-                                    setActivePriceSuggestionIndex(null)
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          <label className="relative flex flex-col gap-1 text-xs">
+                            <span className="whitespace-nowrap">
+                              Harga asli
+                            </span>
+                            <NumberInput
+                              required
+                              value={item.originalPrice}
+                              onChange={(originalPrice) =>
+                                updateItem(index, { originalPrice })
+                              }
+                              onFocus={() =>
+                                setActivePriceSuggestionIndex(index)
+                              }
+                              onBlur={() =>
+                                setTimeout(
+                                  () => setActivePriceSuggestionIndex(null),
+                                  120,
+                                )
+                              }
+                              className="app-input"
+                            />
+                            {activePriceSuggestionIndex === index &&
+                              pricesForItemName(item.name).length > 0 && (
+                                <div
+                                  className="absolute left-0 right-0 top-full z-10 mt-1 max-h-40 overflow-y-auto rounded-xl border shadow-lg"
+                                  style={{
+                                    background: 'var(--app-card)',
+                                    borderColor: 'var(--app-border)',
                                   }}
-                                  className="block w-full truncate px-3 py-2 text-left text-sm"
                                 >
-                                  {price.toLocaleString('id-ID')}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                      </label>
-                      <label className="flex flex-col gap-1 text-xs">
-                        <span className="whitespace-nowrap">Fee jastip</span>
-                        {/* Tidak wajib diisi: kalau dibiarkan kosong, fee
+                                  {pricesForItemName(item.name).map((price) => (
+                                    <button
+                                      key={price}
+                                      type="button"
+                                      onMouseDown={(e) => {
+                                        e.preventDefault()
+                                        updateItem(index, {
+                                          originalPrice: price,
+                                        })
+                                        setActivePriceSuggestionIndex(null)
+                                      }}
+                                      className="block w-full truncate px-3 py-2 text-left text-sm"
+                                    >
+                                      {price.toLocaleString('id-ID')}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                          </label>
+                          <label className="flex flex-col gap-1 text-xs">
+                            <span className="whitespace-nowrap">
+                              Fee jastip
+                            </span>
+                            {/* Tidak wajib diisi: kalau dibiarkan kosong, fee
                             dianggap 0 — jadi barang titipan tanpa fee tetap
                             bisa disimpan tanpa harus mengetik angka dulu. */}
-                        <NumberInput
-                          value={item.fee}
-                          onChange={(fee) => updateItem(index, { fee })}
-                          className="app-input"
-                          placeholder="0"
-                        />
-                      </label>
-                    </div>
-                    <div className="mt-2 flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs">Jumlah</span>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            updateItem(index, {
-                              qty: Math.max(1, item.qty - 1),
-                            })
-                          }
-                          className="flex h-8 w-8 items-center justify-center rounded-lg border text-base font-bold transition-colors"
-                          style={{
-                            borderColor: 'var(--app-border)',
-                            color: 'var(--app-text-soft)',
-                          }}
-                          aria-label="Kurangi jumlah"
-                        >
-                          −
-                        </button>
-                        <input
-                          inputMode="numeric"
-                          value={item.qty}
-                          onChange={(e) => {
-                            const digits = e.target.value.replace(/\D/g, '')
-                            updateItem(index, {
-                              qty:
-                                digits === '' ? 1 : Math.max(1, Number(digits)),
-                            })
-                          }}
-                          className="app-input w-14 px-2 py-1 text-center"
-                          aria-label="Jumlah barang"
-                        />
-                        <button
-                          type="button"
-                          onClick={() =>
-                            updateItem(index, { qty: item.qty + 1 })
-                          }
-                          className="flex h-8 w-8 items-center justify-center rounded-lg border text-base font-bold transition-colors"
-                          style={{
-                            borderColor: 'var(--app-border)',
-                            color: 'var(--app-text-soft)',
-                          }}
-                          aria-label="Tambah jumlah"
-                        >
-                          +
-                        </button>
-                      </div>
-                      {/* `shrink-0 whitespace-nowrap` penting: teksnya ada spasi
+                            <NumberInput
+                              value={item.fee}
+                              onChange={(fee) => updateItem(index, { fee })}
+                              className="app-input"
+                              placeholder="0"
+                            />
+                          </label>
+                        </div>
+                        <div className="mt-2 flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs">Jumlah</span>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                updateItem(index, {
+                                  qty: Math.max(1, item.qty - 1),
+                                })
+                              }
+                              className="flex h-8 w-8 items-center justify-center rounded-lg border text-base font-bold transition-colors"
+                              style={{
+                                borderColor: 'var(--app-border)',
+                                color: 'var(--app-text-soft)',
+                              }}
+                              aria-label="Kurangi jumlah"
+                            >
+                              −
+                            </button>
+                            <input
+                              inputMode="numeric"
+                              value={item.qty}
+                              onChange={(e) => {
+                                const digits = e.target.value.replace(/\D/g, '')
+                                updateItem(index, {
+                                  qty:
+                                    digits === ''
+                                      ? 1
+                                      : Math.max(1, Number(digits)),
+                                })
+                              }}
+                              className="app-input w-14 px-2 py-1 text-center"
+                              aria-label="Jumlah barang"
+                            />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                updateItem(index, { qty: item.qty + 1 })
+                              }
+                              className="flex h-8 w-8 items-center justify-center rounded-lg border text-base font-bold transition-colors"
+                              style={{
+                                borderColor: 'var(--app-border)',
+                                color: 'var(--app-text-soft)',
+                              }}
+                              aria-label="Tambah jumlah"
+                            >
+                              +
+                            </button>
+                          </div>
+                          {/* `shrink-0 whitespace-nowrap` penting: teksnya ada spasi
                           setelah "=", jadi tanpa ini span-nya boleh menyusut dan
                           angkanya turun ke baris kedua waktu ruangnya sempit.
                           Harga harus selalu tampil satu baris. */}
-                      <span
-                        className="shrink-0 whitespace-nowrap text-xs font-semibold"
-                        style={{ color: 'var(--app-text-soft)' }}
-                      >
-                        = {lineTotal(item).toLocaleString('id-ID')}
-                      </span>
-                    </div>
-                    {items.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeItem(index)}
-                        className="mt-2 flex items-center gap-1 text-xs font-semibold"
-                        style={{ color: 'var(--app-danger)' }}
-                      >
-                        <Trash2 size={14} />
-                        Hapus barang
-                      </button>
+                          <span
+                            className="shrink-0 whitespace-nowrap text-xs font-semibold"
+                            style={{ color: 'var(--app-text-soft)' }}
+                          >
+                            = {lineTotal(item).toLocaleString('id-ID')}
+                          </span>
+                        </div>
+                        {items.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeItem(index)}
+                            className="mt-2 flex items-center gap-1 text-xs font-semibold"
+                            style={{ color: 'var(--app-danger)' }}
+                          >
+                            <Trash2 size={14} />
+                            Hapus barang
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                 ))}
@@ -677,6 +786,7 @@ export default function AddOrderSheet({
                 type="button"
                 onClick={addItem}
                 className="app-btn-outline"
+                style={{ color: 'var(--app-accent)' }}
               >
                 + Tambah barang
               </button>
