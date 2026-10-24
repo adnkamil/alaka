@@ -41,7 +41,32 @@ const PLAN_BADGE: Record<PlanKey, { label: string; bg: string; fg: string }> = {
 }
 
 type Tab = 'all' | 'pro' | 'trial' | 'pending' | 'free'
-type SortBy = 'newest' | 'revenue'
+type SortBy = 'activity' | 'newest' | 'revenue'
+
+const SORT_LABEL: Record<SortBy, string> = {
+  activity: 'Aktivitas terbaru',
+  newest: 'Terbaru',
+  revenue: 'Revenue tertinggi',
+}
+const SORT_NEXT: Record<SortBy, SortBy> = {
+  activity: 'newest',
+  newest: 'revenue',
+  revenue: 'activity',
+}
+
+function timeOf(value: Date | string | null) {
+  return value ? new Date(value).getTime() : 0
+}
+
+// Urutan default: akun aktif dulu, lalu yang aktivitas pesanannya paling baru
+// (yang belum pernah ada aktivitas jatuh ke bawah), tie-break user terbaru.
+function compareByActivity(a: AdminUserRow, b: AdminUserRow) {
+  if (a.isActive !== b.isActive) return a.isActive ? -1 : 1
+  return (
+    timeOf(b.lastActivityAt) - timeOf(a.lastActivityAt) ||
+    timeOf(b.createdAt) - timeOf(a.createdAt)
+  )
+}
 
 const TABS: Array<{ key: Tab; label: string }> = [
   { key: 'all', label: 'Semua' },
@@ -56,7 +81,7 @@ const TABS: Array<{ key: Tab; label: string }> = [
 function AdminCustomersPage() {
   const { data: users } = useSuspenseQuery(adminUsersQuery)
   const [tab, setTab] = useState<Tab>('all')
-  const [sortBy, setSortBy] = useState<SortBy>('newest')
+  const [sortBy, setSortBy] = useState<SortBy>('activity')
   const [search, setSearch] = useState('')
 
   const counts: Record<Tab, number> = {
@@ -78,17 +103,17 @@ function AdminCustomersPage() {
         user.email.toLowerCase().includes(keyword)
       )
     })
-    .sort((a, b) =>
-      sortBy === 'revenue'
-        ? b.revenue - a.revenue
-        : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    )
+    .sort((a, b) => {
+      if (sortBy === 'revenue') return b.revenue - a.revenue
+      if (sortBy === 'newest') return timeOf(b.createdAt) - timeOf(a.createdAt)
+      return compareByActivity(a, b)
+    })
 
   return (
     <main className="px-4 pb-6 pt-6">
       <h1 className="mb-1 text-xl font-bold">Customer</h1>
       <p className="mb-4 text-xs" style={{ color: 'var(--app-text-soft)' }}>
-        Semua akun yang terdaftar: status langganan, aktivitas login, dan total
+        Semua akun yang terdaftar: status langganan, aktivitas pesanan, dan total
         revenue dari pengajuan PRO yang sudah disetujui.
       </p>
 
@@ -140,12 +165,12 @@ function AdminCustomersPage() {
         </span>
         <button
           type="button"
-          onClick={() => setSortBy(sortBy === 'newest' ? 'revenue' : 'newest')}
+          onClick={() => setSortBy(SORT_NEXT[sortBy])}
           className="flex items-center gap-1 font-semibold"
           style={{ color: 'var(--app-accent)' }}
         >
           <ArrowUpDown size={13} />
-          {sortBy === 'newest' ? 'Terbaru' : 'Revenue tertinggi'}
+          {SORT_LABEL[sortBy]}
         </button>
       </div>
 
