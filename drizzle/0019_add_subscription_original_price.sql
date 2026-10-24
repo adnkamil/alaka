@@ -1,0 +1,1 @@
+ALTER TABLE "subscription_settings" ADD COLUMN "original_price" numeric(12, 2);

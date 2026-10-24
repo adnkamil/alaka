@@ -113,6 +113,7 @@ export const fetchSubscriptionPaymentInfo = createServerFn({
     qrisImage: settings?.qrisImage ?? null,
     qrisString: settings?.qrisString ?? null,
     proPrice: settings?.proPrice ?? '0',
+    originalPrice: settings?.originalPrice ?? null,
   }
 })
 

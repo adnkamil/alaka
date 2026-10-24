@@ -745,6 +745,11 @@ export const subscriptionSettings = pgTable('subscription_settings', {
   proPrice: decimal('pro_price', { precision: 12, scale: 2 })
     .notNull()
     .default('0'),
+  /**
+   * Harga awal (dicoret) untuk menampilkan diskon ke member. Murni tampilan:
+   * nominal yang ditransfer tetap `proPrice`. Null = tidak ada harga coret.
+   */
+  originalPrice: decimal('original_price', { precision: 12, scale: 2 }),
   updatedAt: timestamp('updated_at', { withTimezone: true })
     .notNull()
     .defaultNow(),
