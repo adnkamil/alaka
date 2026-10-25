@@ -1,8 +1,15 @@
 import { useState } from 'react'
-import { queryOptions, useSuspenseQuery } from '@tanstack/react-query'
+import {
+  queryOptions,
+  useQueryClient,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
-import { ArrowUpDown, Inbox, Search } from 'lucide-react'
-import { fetchAdminUsers } from '../../lib/admin-functions'
+import { ArrowUpDown, Inbox, Search, Trash2 } from 'lucide-react'
+import ConfirmModal from '../../components/ui/ConfirmModal'
+import Toast from '../../components/ui/Toast'
+import { deleteBrandAdmin, fetchAdminUsers } from '../../lib/admin-functions'
+import { getErrorMessage } from '../../lib/error-message'
 import { formatDateTime } from '../../lib/format'
 import type { AdminUserRow } from '../../lib/admin-queries'
 import type { PlanKey } from '../../lib/subscription'
@@ -83,6 +90,7 @@ function AdminCustomersPage() {
   const [tab, setTab] = useState<Tab>('all')
   const [sortBy, setSortBy] = useState<SortBy>('activity')
   const [search, setSearch] = useState('')
+  const [notice, setNotice] = useState<string | null>(null)
 
   const counts: Record<Tab, number> = {
     all: users.length,
@@ -113,8 +121,8 @@ function AdminCustomersPage() {
     <main className="px-4 pb-6 pt-6">
       <h1 className="mb-1 text-xl font-bold">Customer</h1>
       <p className="mb-4 text-xs" style={{ color: 'var(--app-text-soft)' }}>
-        Semua akun yang terdaftar: status langganan, aktivitas pesanan, dan total
-        revenue dari pengajuan PRO yang sudah disetujui.
+        Semua akun yang terdaftar: status langganan, aktivitas pesanan, dan
+        total revenue dari pengajuan PRO yang sudah disetujui.
       </p>
 
       <div
@@ -184,17 +192,49 @@ function AdminCustomersPage() {
       ) : (
         <div className="flex flex-col gap-3">
           {visible.map((user) => (
-            <CustomerCard key={user.id} user={user} />
+            <CustomerCard key={user.id} user={user} onNotice={setNotice} />
           ))}
         </div>
       )}
+
+      {notice && <Toast message={notice} onClose={() => setNotice(null)} />}
     </main>
   )
 }
 
 /** Kartu satu customer: identitas, badge status, aktivitas, dan revenue-nya. */
-function CustomerCard({ user }: { user: AdminUserRow }) {
+function CustomerCard({
+  user,
+  onNotice,
+}: {
+  user: AdminUserRow
+  onNotice: (message: string) => void
+}) {
   const badge = PLAN_BADGE[user.plan]
+  const queryClient = useQueryClient()
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  async function handleDelete() {
+    setDeleting(true)
+    try {
+      const result = await deleteBrandAdmin({ data: { brandId: user.brandId } })
+      setConfirmOpen(false)
+      onNotice(
+        `Brand "${user.brandName || user.name}" dan ${result.deletedUsers} akun dihapus`,
+      )
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['admin-users'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin-metrics'] }),
+        queryClient.invalidateQueries({ queryKey: ['admin-subscriptions'] }),
+      ])
+    } catch (err) {
+      setConfirmOpen(false)
+      onNotice(getErrorMessage(err, 'Gagal menghapus brand'))
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   return (
     <div className="app-card p-4">
@@ -269,6 +309,26 @@ function CustomerCard({ user }: { user: AdminUserRow }) {
           />
         )}
       </div>
+
+      <button
+        type="button"
+        onClick={() => setConfirmOpen(true)}
+        className="mt-3 flex items-center gap-1.5 text-xs font-semibold"
+        style={{ color: 'var(--app-danger)' }}
+      >
+        <Trash2 size={13} />
+        Hapus brand
+      </button>
+
+      <ConfirmModal
+        open={confirmOpen}
+        title={`Hapus brand "${user.brandName || user.name}"?`}
+        content={`Brand ini beserta ${1 + user.adminCount} akun di dalamnya (pemilik dan admin brand) dan SEMUA datanya — event, pesanan, customer, aturan fee, langganan — akan dihapus permanen. Tindakan ini tidak bisa dibatalkan.`}
+        okText="Hapus permanen"
+        loading={deleting}
+        onOk={handleDelete}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </div>
   )
 }

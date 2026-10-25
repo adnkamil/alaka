@@ -6,10 +6,12 @@ import { subscriptionSettings, subscriptions } from '../db/schema'
 import { requireAdminUser } from './admin'
 import {
   findSubscriptionById,
+  deleteBrandWithUsers,
   getAdminMetrics,
   listAdminSubscriptions,
   listAdminUsers,
 } from './admin-queries'
+import { deleteAvatar, deletePaymentProof } from './storage'
 import { nextProWindow } from './subscription'
 import {
   SUBSCRIPTION_STATUSES,
@@ -32,6 +34,36 @@ export const fetchAdminUsers = createServerFn({ method: 'GET' }).handler(
     return listAdminUsers()
   },
 )
+
+/**
+ * Admin hapus satu brand + semua akun di dalamnya (permanen). Data di database
+ * dihapus dulu dalam satu transaksi; file di Blobs (foto brand, bukti
+ * transfer) dibersihkan sesudahnya dan kegagalannya cuma dicatat — file yatim
+ * tidak bisa diakses siapa pun lagi, sedangkan rollback database tidak boleh
+ * ikut gagal gara-gara storage.
+ */
+export const deleteBrandAdmin = createServerFn({ method: 'POST' })
+  .validator(z.object({ brandId: z.string().uuid() }))
+  .handler(async ({ data }) => {
+    await requireAdminUser()
+
+    const result = await deleteBrandWithUsers(data.brandId)
+
+    const cleanups = [
+      deleteAvatar(data.brandId),
+      ...result.subscriptionIds.map((id) => deletePaymentProof(id)),
+    ]
+    for (const outcome of await Promise.allSettled(cleanups)) {
+      if (outcome.status === 'rejected') {
+        console.error(
+          'Gagal membersihkan file brand yang dihapus:',
+          outcome.reason,
+        )
+      }
+    }
+
+    return { success: true, deletedUsers: result.deletedUsers }
+  })
 
 const listSchema = z
   .object({
