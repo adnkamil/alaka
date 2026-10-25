@@ -200,6 +200,8 @@ export async function getAdminMetrics(
 
 export interface AdminUserRow {
   id: string
+  /** Id BRAND-nya — dipakai aksi hapus brand (bukan `id` akun pemilik). */
+  brandId: string
   name: string
   email: string
   brandName: string | null
@@ -344,6 +346,7 @@ export async function listAdminUsers(
 
     return {
       id: user.id,
+      brandId: user.brandId,
       name: user.name,
       email: user.email,
       brandName: user.brandName,
@@ -358,6 +361,65 @@ export async function listAdminUsers(
         lastActivityAt !== null &&
         lastActivityAt.getTime() >= activeSince.getTime(),
       revenue: revenueByBrand.get(user.brandId) ?? 0,
+    }
+  })
+}
+
+export interface DeletedBrandResult {
+  /** Jumlah akun (pemilik + admin brand) yang ikut terhapus. */
+  deletedUsers: number
+  /** Id pengajuan langganan brand — key bukti transfer di Blobs, dibersihkan pemanggil. */
+  subscriptionIds: Array<string>
+}
+
+/**
+ * Hapus SATU brand beserta semua akun di dalamnya (pemilik + admin brand).
+ *
+ * `users.brand_id` sengaja RESTRICT, jadi akunnya harus dihapus dulu baru
+ * brand-nya; setelah itu seluruh data milik brand (event, order, customer,
+ * aturan fee, metode bayar, langganan, undangan, log) ikut hilang lewat
+ * `ON DELETE CASCADE`. Semuanya satu transaksi: gagal di tengah = tidak ada
+ * yang terhapus. Kolom "dibuat oleh"/"direview oleh" di data lain otomatis
+ * jadi null (`ON DELETE SET NULL`).
+ *
+ * Brand yang berisi akun admin ALAKA (`is_admin`) ditolak: itu akun operator
+ * app, bukan customer, dan kalau terhapus admin bisa terkunci dari `/admin`.
+ *
+ * Tidak menyentuh Blobs (foto brand, bukti transfer) — itu tugas
+ * `deleteBrandAdmin` di `admin-functions.ts` setelah transaksi ini sukses.
+ */
+export async function deleteBrandWithUsers(
+  brandId: string,
+): Promise<DeletedBrandResult> {
+  return db.transaction(async (tx) => {
+    const brandRows = await tx
+      .select({ id: brands.id })
+      .from(brands)
+      .where(eq(brands.id, brandId))
+      .for('update')
+    if (brandRows.length === 0) throw new Error('Brand tidak ditemukan')
+
+    const members = await tx
+      .select({ id: users.id, isAdmin: users.isAdmin })
+      .from(users)
+      .where(eq(users.brandId, brandId))
+    if (members.some((member) => member.isAdmin)) {
+      throw new Error(
+        'Brand ini berisi akun admin ALAKA, jadi tidak bisa dihapus',
+      )
+    }
+
+    const subscriptionRows = await tx
+      .select({ id: subscriptions.id })
+      .from(subscriptions)
+      .where(eq(subscriptions.brandId, brandId))
+
+    await tx.delete(users).where(eq(users.brandId, brandId))
+    await tx.delete(brands).where(eq(brands.id, brandId))
+
+    return {
+      deletedUsers: members.length,
+      subscriptionIds: subscriptionRows.map((row) => row.id),
     }
   })
 }
