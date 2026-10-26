@@ -59,7 +59,7 @@ function formatIDR(value: string | number) {
  * seukuran isinya.
  */
 const EXAMPLE_TABLE_COLS =
-  'grid-cols-[3.25rem_minmax(0,1fr)_7.5rem_4.5rem_3.75rem]'
+  'grid-cols-[3.25rem_minmax(0,1fr)_7.5rem_4.5rem_3.75rem_3.75rem]'
 
 /**
  * Import pesanan dari file Excel/CSV: pilih file → preview apa yang bakal masuk
@@ -253,6 +253,7 @@ export default function ImportOrdersModal({
                     <span>No WA</span>
                     <span>item</span>
                     <span>harga</span>
+                    <span>fee</span>
                   </div>
                   <div
                     className={`grid ${EXAMPLE_TABLE_COLS} gap-2 px-3 py-2`}
@@ -263,10 +264,13 @@ export default function ImportOrdersModal({
                     <span className="truncate">08123456789</span>
                     <span className="truncate">Kaos</span>
                     <span className="whitespace-nowrap">15.000</span>
+                    <span className="whitespace-nowrap"></span>
                   </div>
                 </div>
                 <p className="text-xs leading-relaxed">
-                  Urutan kolom bebas, yang penting nama header-nya ada. Satu
+                  Kolom fee opsional: kosongkan untuk dihitung otomatis dari
+                  aturan fee event. Urutan kolom bebas, yang penting nama
+                  header-nya ada. Satu
                   pelanggan boleh muncul di beberapa baris — barangnya otomatis
                   dikumpulkan jadi satu tagihan.
                 </p>

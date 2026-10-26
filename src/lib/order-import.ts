@@ -6,7 +6,7 @@
  *
  * Kolom yang dibaca (dicari dari NAMA header, jadi urutan kolom bebas):
  *
- *   No urut | Nama | No WA | item | harga
+ *   No urut | Nama | No WA | item | harga | fee (opsional)
  *
  * - `No urut` cuma penomoran di file — tidak ikut disimpan. Nomor barisnya
  *   dipakai buat pesan error ("Baris 7: ..."), jadi nomornya sama dengan yang
@@ -15,11 +15,12 @@
  *   Nomor boleh ditulis "0851-5683-2285" atau "+62 851...", dirapikan otomatis.
  * - Format lama `Nama-no wa` (nama + nomor dalam satu sel, mis.
  *   "Nia - 08123456789") tetap didukung untuk file yang sudah ada.
- * - `harga` = harga asli barang. Fee jastip TIDAK diambil dari file, tapi
- *   dihitung dari aturan fee milik event ini (`findFeeForPrice` — aturan yang
- *   sama dipakai form Tambah Pesanan). Kalau event belum punya aturan fee,
- *   atau harganya di luar semua tier, fee-nya **0** (bisa diedit nanti di
- *   pesanannya).
+ * - `harga` = harga asli barang.
+ * - `fee` (opsional) = fee jastip per barang. Kalau diisi, nilai ini yang
+ *   dipakai. Kalau kosong, fee dihitung dari aturan fee milik event ini
+ *   (`findFeeForPrice` — aturan yang sama dengan form Tambah Pesanan). Kalau
+ *   event belum punya aturan fee, atau harganya di luar semua tier, fee-nya
+ *   **0** (bisa diedit nanti di pesanannya).
  *
  * Baris yang nama pelanggan / nama barang / harganya tidak bisa dibaca TIDAK
  * dilewati diam-diam: barisnya dicatat di `errors` dan UI menolak import
@@ -59,6 +60,7 @@ export const IMPORT_TEMPLATE_HEADER = [
   'No WA',
   'item',
   'harga',
+  'fee',
 ]
 
 /**
@@ -69,10 +71,10 @@ export const IMPORT_TEMPLATE_HEADER = [
  * memperlakukannya sebagai bilangan, bukan tulisan.
  */
 export const IMPORT_TEMPLATE_ROWS: Array<Array<string | number>> = [
-  [1, 'Nia', '08123456789', 'Kaos', 15000],
-  [2, 'Nia', '08123456789', 'Sepatu', 250000],
-  [3, 'Budi', '081298765432', 'Tas', 120000],
-  [4, 'Budi', '081298765432', 'Topi', 45000],
+  [1, 'Nia', '08123456789', 'Kaos', 15000, ''],
+  [2, 'Nia', '08123456789', 'Sepatu', 250000, ''],
+  [3, 'Budi', '081298765432', 'Tas', 120000, ''],
+  [4, 'Budi', '081298765432', 'Topi', 45000, ''],
 ]
 
 export interface ImportPreviewItem {
@@ -133,6 +135,8 @@ interface ImportColumns {
   phone: number | null
   item: number
   price: number
+  /** Kolom fee jastip per barang (opsional). */
+  fee: number | null
 }
 
 interface ImportHeader {
@@ -144,6 +148,7 @@ interface ImportHeader {
 const ITEM_HINTS = ['item', 'barang', 'produk']
 const PRICE_HINTS = ['harga', 'price']
 const PHONE_HINTS = ['wa', 'hp', 'telp', 'telepon', 'phone', 'nomor']
+const FEE_HINTS = ['fee']
 
 /** Isi sel dijadikan string; `null`/`undefined` jadi string kosong. */
 function cellText(row: Array<unknown>, column: number | null) {
@@ -166,6 +171,7 @@ function classifyHeader(normalized: string): keyof ImportColumns | null {
   if (PRICE_HINTS.some((hint) => normalized.includes(hint))) return 'price'
   // "Nama Barang" itu kolom barang, bukan nama pelanggan — cek item dulu.
   if (ITEM_HINTS.some((hint) => normalized.includes(hint))) return 'item'
+  if (FEE_HINTS.some((hint) => normalized.includes(hint))) return 'fee'
 
   const hasName = normalized.includes('nama')
   const hasPhone = PHONE_HINTS.some((hint) => normalized.includes(hint))
@@ -193,6 +199,7 @@ export function findImportHeader(
       phone: null,
       item: -1,
       price: -1,
+      fee: null,
     }
 
     rows[index].forEach((cell, column) => {
@@ -206,6 +213,8 @@ export function findImportHeader(
         if (columns.customer === null) columns.customer = column
       } else if (kind === 'name') {
         if (columns.name === null) columns.name = column
+      } else if (kind === 'fee') {
+        if (columns.fee === null) columns.fee = column
       } else if (columns.phone === null) {
         columns.phone = column
       }
@@ -421,7 +430,7 @@ export function buildImportPreview(
   if (!header) {
     return {
       fatalError:
-        'Kolom file-nya tidak dikenali. Pastikan ada baris header berisi: No urut, Nama, No WA, item, harga.',
+        'Kolom file-nya tidak dikenali. Pastikan ada baris header berisi: No urut, Nama, No WA, item, harga (fee opsional).',
       orders: [],
       errors: [],
       emptyRows: 0,
@@ -446,6 +455,7 @@ export function buildImportPreview(
     const phoneRaw = cellText(row, columns.phone)
     const itemRaw = cellText(row, columns.item)
     const priceRaw = cellText(row, columns.price)
+    const feeRaw = cellText(row, columns.fee)
 
     // Baris kosong (mis. sisa format Excel) dilewati tanpa dianggap error.
     if (!customerRaw && !nameRaw && !phoneRaw && !itemRaw && !priceRaw) {
@@ -482,6 +492,17 @@ export function buildImportPreview(
       continue
     }
 
+    // Fee dari file (opsional). Kosong = dihitung dari aturan fee event.
+    const feeFromFile = feeRaw ? parseImportMoney(feeRaw) : null
+    if (feeRaw && feeFromFile === null) {
+      errors.push({
+        rowNumber,
+        message: `Fee "${feeRaw}" tidak bisa dibaca sebagai angka`,
+      })
+      continue
+    }
+    const fee = feeFromFile ?? findFeeForPrice(tiers, price) ?? 0
+
     // Kunci grup pakai nama huruf kecil — sama seperti aturan gabung pesanan
     // (`order-merge.ts`) yang mencocokkan pelanggan dari namanya.
     const key = customerName.toLowerCase()
@@ -513,7 +534,8 @@ export function buildImportPreview(
     const sameLine = order.items.find(
       (item) =>
         item.name.toLowerCase() === itemName.toLowerCase() &&
-        item.originalPrice === price,
+        item.originalPrice === price &&
+        item.fee === fee,
     )
     if (sameLine) {
       sameLine.qty += 1
@@ -521,9 +543,7 @@ export function buildImportPreview(
       order.items.push({
         name: itemName,
         originalPrice: price,
-        // Fee dari aturan fee jastip event ini; 0 kalau tidak ada aturan fee
-        // atau harganya di luar semua tier.
-        fee: findFeeForPrice(tiers, price) ?? 0,
+        fee,
         qty: 1,
       })
     }

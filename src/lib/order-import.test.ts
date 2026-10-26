@@ -420,3 +420,75 @@ describe('buildImportTemplateRows', () => {
     assert.equal(nia.total, 269_000)
   })
 })
+
+describe('kolom fee (opsional)', () => {
+  const HEADER_FEE = ['No urut', 'Nama', 'No WA', 'item', 'harga', 'fee']
+
+  it('header dengan kolom fee dikenali', () => {
+    const header = findImportHeader([HEADER_FEE])
+    assert.ok(header)
+    assert.equal(header.columns.fee, 5)
+  })
+
+  it('fee dari file dipakai dan menggantikan aturan event', () => {
+    const preview = buildImportPreview(
+      [HEADER_FEE, ['1', 'Nia', '08123456789', 'Kaos', 15_000, 7_500]],
+      TIERS,
+    )
+    assert.equal(preview.errors.length, 0)
+    assert.equal(preview.orders[0].items[0].fee, 7_500)
+    assert.equal(preview.orders[0].feeTotal, 7_500)
+  })
+
+  it('fee kosong → dihitung dari aturan fee event', () => {
+    const preview = buildImportPreview(
+      [HEADER_FEE, ['1', 'Nia', '08123456789', 'Kaos', 15_000, '']],
+      TIERS,
+    )
+    assert.equal(preview.errors.length, 0)
+    assert.equal(preview.orders[0].items[0].fee, 4_000)
+  })
+
+  it('fee 0 di file dipakai sebagai 0 (bukan dianggap kosong)', () => {
+    const preview = buildImportPreview(
+      [HEADER_FEE, ['1', 'Nia', '08123456789', 'Kaos', 15_000, 0]],
+      TIERS,
+    )
+    assert.equal(preview.orders[0].items[0].fee, 0)
+  })
+
+  it('fee tidak terbaca → baris error, bukan diam-diam dipakai', () => {
+    const preview = buildImportPreview(
+      [HEADER_FEE, ['1', 'Nia', '08123456789', 'Kaos', 15_000, 'abc']],
+      TIERS,
+    )
+    assert.equal(preview.orders.length, 0)
+    assert.equal(preview.errors.length, 1)
+    assert.equal(preview.errors[0].rowNumber, 2)
+  })
+
+  it('barang sama dengan fee berbeda tidak digabung', () => {
+    const preview = buildImportPreview(
+      [
+        HEADER_FEE,
+        ['1', 'Nia', '08123456789', 'Kaos', 15_000, 4_000],
+        ['2', 'Nia', '08123456789', 'Kaos', 15_000, 5_000],
+      ],
+      TIERS,
+    )
+    assert.equal(preview.orders[0].items.length, 2)
+  })
+
+  it('barang sama dan fee sama digabung dengan qty', () => {
+    const preview = buildImportPreview(
+      [
+        HEADER_FEE,
+        ['1', 'Nia', '08123456789', 'Kaos', 15_000, 4_000],
+        ['2', 'Nia', '08123456789', 'Kaos', 15_000, 4_000],
+      ],
+      TIERS,
+    )
+    assert.equal(preview.orders[0].items.length, 1)
+    assert.equal(preview.orders[0].items[0].qty, 2)
+  })
+})
