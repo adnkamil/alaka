@@ -18,6 +18,8 @@ const GOOGLE_ERROR_MESSAGES: Record<string, string> = {
   google: 'Gagal masuk dengan Google. Coba lagi ya.',
   google_state: 'Sesi login Google kedaluwarsa. Coba lagi.',
   google_config: 'Login Google belum dikonfigurasi di server.',
+  google_partner:
+    'Akun partner masuk dengan email dan kata sandi, bukan lewat Google.',
 }
 
 function LoginPage() {
@@ -39,7 +41,9 @@ function LoginPage() {
       const result = await loginUser({ data: { email, password } })
       // Buang cache sesi/akun sebelumnya (guard `_app` membaca 'current-user').
       queryClient.clear()
-      await navigate({ to: result.isAdmin ? '/admin' : '/' })
+      await navigate({
+        to: result.isPartner ? '/partner' : result.isAdmin ? '/admin' : '/',
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Gagal masuk')
     } finally {

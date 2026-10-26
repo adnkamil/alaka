@@ -1,9 +1,20 @@
 import { Link, useRouterState } from '@tanstack/react-router'
-import { CalendarDays, LayoutDashboard, Settings, Users } from 'lucide-react'
+import {
+  CalendarDays,
+  LayoutDashboard,
+  Settings,
+  Store,
+  Users,
+} from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 interface TabDef {
-  to: '/admin' | '/admin/customers' | '/admin/event' | '/admin/pengaturan'
+  to:
+    | '/admin'
+    | '/admin/customers'
+    | '/admin/event'
+    | '/admin/partner'
+    | '/admin/pengaturan'
   label: string
   icon: LucideIcon
 }
@@ -12,11 +23,12 @@ const TABS: Array<TabDef> = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/admin/customers', label: 'Customer', icon: Users },
   { to: '/admin/event', label: 'Event', icon: CalendarDays },
+  { to: '/admin/partner', label: 'Partner', icon: Store },
   { to: '/admin/pengaturan', label: 'Pengaturan', icon: Settings },
 ]
 
 /**
- * Bottom tab admin — empat halaman admin, jadi navigasinya cukup di sini dan
+ * Bottom tab admin — lima halaman admin, jadi navigasinya cukup di sini dan
  * header tinggal identitas (tanpa tombol). Bentuknya meniru `BottomNav.tsx`
  * member (fixed, max 480px, safe-area) supaya perpindahan halaman terasa sama.
  *

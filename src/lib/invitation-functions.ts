@@ -1,6 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { createSession, hashPassword } from './auth'
+import { isPartnerEmail } from './partner-queries'
 import { acceptInvitation, getInvitationPreview } from './team-queries'
 import { teamErrorMessage } from './team-rules'
 
@@ -53,6 +54,10 @@ const acceptSchema = z.object({
 export const acceptInvitationWithPassword = createServerFn({ method: 'POST' })
   .validator(acceptSchema)
   .handler(async ({ data }) => {
+    // Email partner tidak boleh dipakai membuat akun jastiper/admin brand.
+    if (await isPartnerEmail(data.email)) {
+      throw new Error('Email sudah terdaftar')
+    }
     const passwordHash = await hashPassword(data.password)
     const user = await acceptInvitation(data.token, {
       name: data.name,

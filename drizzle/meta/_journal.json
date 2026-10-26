@@ -148,6 +148,13 @@
       "when": 1792858128265,
       "tag": "0020_drop_users_brand_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1792981798752,
+      "tag": "0021_add_partners",
+      "breakpoints": true
     }
   ]
 }
