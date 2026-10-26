@@ -4,6 +4,7 @@ import {
   fetchCalendarEventParticipants,
 } from './calendar-events-admin-functions'
 import { fetchCurrentUser } from './auth-functions'
+import { fetchAdminPartners, fetchCurrentPartner } from './partner-functions'
 
 /**
  * Satu definisi query "current-user" yang dipakai bersama (guard `_app` dan
@@ -27,3 +28,15 @@ export const adminCalendarEventParticipantsQuery = (id: string) =>
     queryKey: ['admin-calendar-event-participants', id],
     queryFn: () => fetchCalendarEventParticipants({ data: { id } }),
   })
+
+/** Partner yang sedang login (null = belum login sebagai partner). */
+export const currentPartnerQuery = queryOptions({
+  queryKey: ['current-partner'],
+  queryFn: () => fetchCurrentPartner(),
+})
+
+/** Semua partner untuk halaman admin. */
+export const adminPartnersQuery = queryOptions({
+  queryKey: ['admin-partners'],
+  queryFn: () => fetchAdminPartners(),
+})

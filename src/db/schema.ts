@@ -753,3 +753,84 @@ export const emailVerificationTokensRelations = relations(
     }),
   }),
 )
+
+// PARTNER PORTAL
+// Partner = brand/penyelenggara yang memamerkan produk di event kalender dan
+// mengelola katalog + event-nya sendiri lewat `/partner`. Akunnya SENGAJA
+// terpisah dari `users` (yang selalu terikat ke satu brand jastiper lewat
+// `users.brand_id NOT NULL`): satu partner = satu login, jadi semua alur akun
+// jastiper (trial, langganan, tim, data bisnis) tidak tersentuh. Login-nya
+// tetap lewat halaman `/login` yang sama (lihat `loginUser`).
+//
+// Email partner TIDAK boleh sama dengan email di `users` — dijaga di kode
+// (`partner-queries.ts`, `registerUser`, callback Google, undangan admin brand).
+export const partners = pgTable(
+  'partners',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    name: varchar().notNull(),
+    /** Email login. Selalu huruf kecil (dijaga check di bawah). */
+    email: varchar().notNull().unique(),
+    /** Null = undangan belum diterima (kata sandi belum dibuat). */
+    passwordHash: varchar('password_hash'),
+    /** Nomor WhatsApp partner (format lokal). Opsional. */
+    waNumber: varchar('wa_number'),
+    /** Kapan undangan diterima & kata sandi dibuat. Null = masih "Diundang". */
+    activatedAt: timestamp('activated_at', { withTimezone: true }),
+    /** Admin ALAKA yang mendaftarkan. Dikosongkan kalau akunnya dihapus. */
+    createdBy: uuid('created_by').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    check(
+      'partners_email_lowercase',
+      sql`${table.email} = lower(${table.email})`,
+    ),
+  ],
+)
+
+// Sesi login partner (cookie terpisah dari sesi jastiper/admin).
+export const partnerSessions = pgTable(
+  'partner_sessions',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    partnerId: uuid('partner_id')
+      .notNull()
+      .references(() => partners.id, { onDelete: 'cascade' }),
+    token: varchar().notNull().unique(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index('partner_sessions_partner_idx').on(table.partnerId)],
+)
+
+// Token undangan partner: hanya hash sha256 yang disimpan (pola sama dengan
+// `brand_invitations`), sekali pakai (`used_at`), punya masa berlaku. Dipakai
+// juga untuk "kirim ulang undangan": token lama dihanguskan, token baru dibuat.
+export const partnerInvitationTokens = pgTable(
+  'partner_invitation_tokens',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    partnerId: uuid('partner_id')
+      .notNull()
+      .references(() => partners.id, { onDelete: 'cascade' }),
+    tokenHash: varchar('token_hash').notNull().unique(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    usedAt: timestamp('used_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('partner_invitation_tokens_partner_idx').on(table.partnerId),
+  ],
+)

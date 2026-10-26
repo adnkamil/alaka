@@ -17,6 +17,8 @@ import { sendVerificationEmail } from './email-verification-queries'
 import { requireVerifiedEmail } from './email-verified'
 import { getUserEntitlements } from './entitlements'
 import { isValidIndonesianPhone, toLocalPhoneNumber } from './format'
+import { createPartnerSession } from './partner-auth'
+import { findPartnerByEmail, isPartnerEmail } from './partner-queries'
 
 const registerSchema = z.object({
   name: z.string().min(1, 'Nama wajib diisi'),
@@ -31,7 +33,7 @@ export const registerUser = createServerFn({ method: 'POST' })
     const existing = await db.query.users.findFirst({
       where: eq(users.email, data.email),
     })
-    if (existing) {
+    if (existing || (await isPartnerEmail(data.email))) {
       throw new Error('Email sudah terdaftar')
     }
 
@@ -69,7 +71,31 @@ export const loginUser = createServerFn({ method: 'POST' })
     const user = await db.query.users.findFirst({
       where: eq(users.email, data.email),
     })
-    if (!user || !user.passwordHash) {
+
+    // Bukan akun jastiper/admin -> coba akun Partner (tabel terpisah, halaman
+    // login yang sama). Email partner tidak mungkin sama dengan email user
+    // (dijaga saat mendaftarkan partner), jadi urutan ini tidak ambigu.
+    if (!user) {
+      const partner = await findPartnerByEmail(data.email)
+      if (partner?.passwordHash) {
+        const validPartner = await verifyPassword(
+          data.password,
+          partner.passwordHash,
+        )
+        if (validPartner) {
+          await createPartnerSession(partner.id)
+          return {
+            id: partner.id,
+            name: partner.name,
+            email: partner.email,
+            isAdmin: false,
+            isPartner: true,
+          }
+        }
+      }
+      throw new Error('Email atau password salah')
+    }
+    if (!user.passwordHash) {
       throw new Error('Email atau password salah')
     }
 
@@ -84,6 +110,7 @@ export const loginUser = createServerFn({ method: 'POST' })
       name: user.name,
       email: user.email,
       isAdmin: user.isAdmin,
+      isPartner: false,
     }
   })
 

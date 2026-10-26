@@ -13,13 +13,17 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LupaSandiRouteImport } from './routes/lupa-sandi'
+import { Route as PartnerRouteImport } from './routes/partner'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppKeuanganRouteImport } from './routes/_app/keuangan'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminCustomersRouteImport } from './routes/admin/customers'
+import { Route as AdminPartnerRouteImport } from './routes/admin/partner'
 import { Route as AdminPengaturanRouteImport } from './routes/admin/pengaturan'
+import { Route as PartnerIndexRouteImport } from './routes/partner/index'
 import { Route as ResetSandiTokenRouteImport } from './routes/reset-sandi.$token'
+import { Route as UndanganPartnerTokenRouteImport } from './routes/undangan-partner.$token'
 import { Route as UndanganTokenRouteImport } from './routes/undangan.$token'
 import { Route as VerifikasiEmailTokenRouteImport } from './routes/verifikasi-email.$token'
 import { Route as AppEventsEventIdRouteImport } from './routes/_app/events.$eventId'
@@ -66,6 +70,11 @@ const LupaSandiRoute = LupaSandiRouteImport.update({
   path: '/lupa-sandi',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PartnerRoute = PartnerRouteImport.update({
+  id: '/partner',
+  path: '/partner',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
   path: '/register',
@@ -91,14 +100,29 @@ const AdminCustomersRoute = AdminCustomersRouteImport.update({
   path: '/customers',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminPartnerRoute = AdminPartnerRouteImport.update({
+  id: '/partner',
+  path: '/partner',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminPengaturanRoute = AdminPengaturanRouteImport.update({
   id: '/pengaturan',
   path: '/pengaturan',
   getParentRoute: () => AdminRoute,
 } as any)
+const PartnerIndexRoute = PartnerIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PartnerRoute,
+} as any)
 const ResetSandiTokenRoute = ResetSandiTokenRouteImport.update({
   id: '/reset-sandi/$token',
   path: '/reset-sandi/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UndanganPartnerTokenRoute = UndanganPartnerTokenRouteImport.update({
+  id: '/undangan-partner/$token',
+  path: '/undangan-partner/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const UndanganTokenRoute = UndanganTokenRouteImport.update({
@@ -239,14 +263,18 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
   '/lupa-sandi': typeof LupaSandiRoute
+  '/partner': typeof PartnerRouteWithChildren
   '/register': typeof RegisterRoute
   '/keuangan': typeof AppKeuanganRoute
   '/admin/customers': typeof AdminCustomersRoute
+  '/admin/partner': typeof AdminPartnerRoute
   '/admin/pengaturan': typeof AdminPengaturanRoute
   '/reset-sandi/$token': typeof ResetSandiTokenRoute
+  '/undangan-partner/$token': typeof UndanganPartnerTokenRoute
   '/undangan/$token': typeof UndanganTokenRoute
   '/verifikasi-email/$token': typeof VerifikasiEmailTokenRoute
   '/admin/': typeof AdminIndexRoute
+  '/partner/': typeof PartnerIndexRoute
   '/events/$eventId': typeof AppEventsEventIdRoute
   '/events/new': typeof AppEventsNewRoute
   '/kalender/$eventId': typeof AppKalenderEventIdRoute
@@ -278,12 +306,15 @@ export interface FileRoutesByTo {
   '/register': typeof RegisterRoute
   '/keuangan': typeof AppKeuanganRoute
   '/admin/customers': typeof AdminCustomersRoute
+  '/admin/partner': typeof AdminPartnerRoute
   '/admin/pengaturan': typeof AdminPengaturanRoute
   '/reset-sandi/$token': typeof ResetSandiTokenRoute
+  '/undangan-partner/$token': typeof UndanganPartnerTokenRoute
   '/undangan/$token': typeof UndanganTokenRoute
   '/verifikasi-email/$token': typeof VerifikasiEmailTokenRoute
   '/': typeof AppIndexRoute
   '/admin': typeof AdminIndexRoute
+  '/partner': typeof PartnerIndexRoute
   '/events/$eventId': typeof AppEventsEventIdRoute
   '/events/new': typeof AppEventsNewRoute
   '/kalender/$eventId': typeof AppKalenderEventIdRoute
@@ -315,15 +346,19 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/login': typeof LoginRoute
   '/lupa-sandi': typeof LupaSandiRoute
+  '/partner': typeof PartnerRouteWithChildren
   '/register': typeof RegisterRoute
   '/_app/keuangan': typeof AppKeuanganRoute
   '/admin/customers': typeof AdminCustomersRoute
+  '/admin/partner': typeof AdminPartnerRoute
   '/admin/pengaturan': typeof AdminPengaturanRoute
   '/reset-sandi/$token': typeof ResetSandiTokenRoute
+  '/undangan-partner/$token': typeof UndanganPartnerTokenRoute
   '/undangan/$token': typeof UndanganTokenRoute
   '/verifikasi-email/$token': typeof VerifikasiEmailTokenRoute
   '/_app/': typeof AppIndexRoute
   '/admin/': typeof AdminIndexRoute
+  '/partner/': typeof PartnerIndexRoute
   '/_app/events/$eventId': typeof AppEventsEventIdRoute
   '/_app/events/new': typeof AppEventsNewRoute
   '/_app/kalender/$eventId': typeof AppKalenderEventIdRoute
@@ -356,14 +391,18 @@ export interface FileRouteTypes {
     | '/admin'
     | '/login'
     | '/lupa-sandi'
+    | '/partner'
     | '/register'
     | '/keuangan'
     | '/admin/customers'
+    | '/admin/partner'
     | '/admin/pengaturan'
     | '/reset-sandi/$token'
+    | '/undangan-partner/$token'
     | '/undangan/$token'
     | '/verifikasi-email/$token'
     | '/admin/'
+    | '/partner/'
     | '/events/$eventId'
     | '/events/new'
     | '/kalender/$eventId'
@@ -395,12 +434,15 @@ export interface FileRouteTypes {
     | '/register'
     | '/keuangan'
     | '/admin/customers'
+    | '/admin/partner'
     | '/admin/pengaturan'
     | '/reset-sandi/$token'
+    | '/undangan-partner/$token'
     | '/undangan/$token'
     | '/verifikasi-email/$token'
     | '/'
     | '/admin'
+    | '/partner'
     | '/events/$eventId'
     | '/events/new'
     | '/kalender/$eventId'
@@ -431,15 +473,19 @@ export interface FileRouteTypes {
     | '/admin'
     | '/login'
     | '/lupa-sandi'
+    | '/partner'
     | '/register'
     | '/_app/keuangan'
     | '/admin/customers'
+    | '/admin/partner'
     | '/admin/pengaturan'
     | '/reset-sandi/$token'
+    | '/undangan-partner/$token'
     | '/undangan/$token'
     | '/verifikasi-email/$token'
     | '/_app/'
     | '/admin/'
+    | '/partner/'
     | '/_app/events/$eventId'
     | '/_app/events/new'
     | '/_app/kalender/$eventId'
@@ -471,8 +517,10 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   LoginRoute: typeof LoginRoute
   LupaSandiRoute: typeof LupaSandiRoute
+  PartnerRoute: typeof PartnerRouteWithChildren
   RegisterRoute: typeof RegisterRoute
   ResetSandiTokenRoute: typeof ResetSandiTokenRoute
+  UndanganPartnerTokenRoute: typeof UndanganPartnerTokenRoute
   UndanganTokenRoute: typeof UndanganTokenRoute
   VerifikasiEmailTokenRoute: typeof VerifikasiEmailTokenRoute
   ApiAvatarBrandIdRoute: typeof ApiAvatarBrandIdRoute
@@ -513,6 +561,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LupaSandiRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/partner': {
+      id: '/partner'
+      path: '/partner'
+      fullPath: '/partner'
+      preLoaderRoute: typeof PartnerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/register': {
       id: '/register'
       path: '/register'
@@ -548,6 +603,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCustomersRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/partner': {
+      id: '/admin/partner'
+      path: '/partner'
+      fullPath: '/admin/partner'
+      preLoaderRoute: typeof AdminPartnerRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/pengaturan': {
       id: '/admin/pengaturan'
       path: '/pengaturan'
@@ -555,11 +617,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPengaturanRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/partner/': {
+      id: '/partner/'
+      path: '/'
+      fullPath: '/partner/'
+      preLoaderRoute: typeof PartnerIndexRouteImport
+      parentRoute: typeof PartnerRoute
+    }
     '/reset-sandi/$token': {
       id: '/reset-sandi/$token'
       path: '/reset-sandi/$token'
       fullPath: '/reset-sandi/$token'
       preLoaderRoute: typeof ResetSandiTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/undangan-partner/$token': {
+      id: '/undangan-partner/$token'
+      path: '/undangan-partner/$token'
+      fullPath: '/undangan-partner/$token'
+      preLoaderRoute: typeof UndanganPartnerTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/undangan/$token': {
@@ -791,6 +867,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 interface AdminRouteChildren {
   AdminCustomersRoute: typeof AdminCustomersRoute
+  AdminPartnerRoute: typeof AdminPartnerRoute
   AdminPengaturanRoute: typeof AdminPengaturanRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AdminEventEventIdRoute: typeof AdminEventEventIdRoute
@@ -800,6 +877,7 @@ interface AdminRouteChildren {
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminCustomersRoute: AdminCustomersRoute,
+  AdminPartnerRoute: AdminPartnerRoute,
   AdminPengaturanRoute: AdminPengaturanRoute,
   AdminIndexRoute: AdminIndexRoute,
   AdminEventEventIdRoute: AdminEventEventIdRoute,
@@ -809,13 +887,26 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
+interface PartnerRouteChildren {
+  PartnerIndexRoute: typeof PartnerIndexRoute
+}
+
+const PartnerRouteChildren: PartnerRouteChildren = {
+  PartnerIndexRoute: PartnerIndexRoute,
+}
+
+const PartnerRouteWithChildren =
+  PartnerRoute._addFileChildren(PartnerRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   AdminRoute: AdminRouteWithChildren,
   LoginRoute: LoginRoute,
   LupaSandiRoute: LupaSandiRoute,
+  PartnerRoute: PartnerRouteWithChildren,
   RegisterRoute: RegisterRoute,
   ResetSandiTokenRoute: ResetSandiTokenRoute,
+  UndanganPartnerTokenRoute: UndanganPartnerTokenRoute,
   UndanganTokenRoute: UndanganTokenRoute,
   VerifikasiEmailTokenRoute: VerifikasiEmailTokenRoute,
   ApiAvatarBrandIdRoute: ApiAvatarBrandIdRoute,

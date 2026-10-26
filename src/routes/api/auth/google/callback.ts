@@ -9,6 +9,7 @@ import {
 } from '../../../../lib/auth'
 import { createUserWithBrand } from '../../../../lib/brand-queries'
 import { exchangeGoogleCode } from '../../../../lib/google-auth'
+import { isPartnerEmail } from '../../../../lib/partner-queries'
 import { acceptInvitation } from '../../../../lib/team-queries'
 import { TeamError } from '../../../../lib/team-rules'
 
@@ -87,6 +88,13 @@ export const Route = createFileRoute('/api/auth/google/callback')({
           // membuat/menyambung akun — siapa pun bisa mengklaim email orang lain.
           if (profile.email_verified === false) {
             throw new Error('Email Google belum terverifikasi')
+          }
+
+          // Akun Partner masuk lewat email + kata sandi, bukan Google. Menolak di
+          // sini mencegah Google membuat akun jastiper dengan email yang sama
+          // dengan email partner.
+          if (await isPartnerEmail(profile.email)) {
+            return redirectTo(`${origin}/login?error=google_partner`)
           }
 
           // Masuk lewat tautan undangan admin brand: jalurnya TERPISAH dari login
