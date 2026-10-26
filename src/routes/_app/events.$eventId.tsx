@@ -413,9 +413,16 @@ function EventDetailPage() {
     ? event.orders.filter((order) => order.paymentStatus === statusFilter)
     : event.orders
 
-  const filteredOrders = ordersByStatus.filter((order) =>
-    order.customerName.toLowerCase().includes(search.toLowerCase()),
-  )
+  // Diurutkan abjad berdasarkan nama pelanggan (Tab Per Pelanggan).
+  const filteredOrders = ordersByStatus
+    .filter((order) =>
+      order.customerName.toLowerCase().includes(search.toLowerCase()),
+    )
+    .sort((a, b) =>
+      a.customerName.trim().localeCompare(b.customerName.trim(), 'id', {
+        sensitivity: 'base',
+      }),
+    )
 
   // Tab Per Item: checklist belanja dihitung dari SEMUA pesanan, nggak
   // dipengaruhi status pembayaran — yang dipakai cuma filter Dapat/Belum dapat.
