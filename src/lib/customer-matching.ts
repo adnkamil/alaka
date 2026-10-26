@@ -3,17 +3,18 @@
  *
  * Order cuma menyimpan `customer_name` (varchar) + `customer_phone`, TIDAK ada
  * foreign key ke tabel `customers`. Jadi waktu halaman Invoice/Tagihan butuh
- * data tambahan milik pelanggan (no. HP, dan sekarang alamat kirim), order
- * dicocokkan balik ke daftar Customer milik jastiper lewat **nama**.
+ * data tambahan milik pelanggan (no. HP, dan alamat kirim), order dicocokkan
+ * balik ke daftar Customer milik jastiper lewat **nomor HP**.
  *
- * Aturan pencocokannya mengikuti cara `AddOrderSheet` menuliskan nama waktu
- * jastiper memilih saran customer: `customerLabel()` menghasilkan
- * "Nama 4digitTerakhirHP" (mis. "Budi Santoso 6608"). Karena itu pencocokan
- * dilakukan bertingkat (lihat `findCustomerForOrder`).
+ * Nama TIDAK dipakai untuk mencocokkan: nama di pesanan bisa berbeda dengan
+ * nama di Customer (typo, singkatan, atau label "Nama 6608" dari saran), tapi
+ * nomor HP pelanggan yang sama berarti orang yang sama.
  *
  * Modul ini sengaja murni (tanpa `db`) supaya aturannya bisa diuji tanpa
  * database — sama seperti `fee-suggestions.ts` dan `order-totals.ts`.
  */
+
+import { toLocalPhoneNumber } from './format'
 
 /** Bagian customer yang dibutuhkan buat mencocokkan + label saran. */
 export interface MatchableCustomer {
@@ -23,8 +24,7 @@ export interface MatchableCustomer {
 
 /**
  * Label saran customer: "Nama 4digitTerakhirHP" kalau nomornya ada, kalau tidak
- * cukup namanya. Dipakai `AddOrderSheet` waktu menampilkan/mengisi saran dan
- * jadi salah satu bentuk nama yang tersimpan di order.
+ * cukup namanya. Dipakai `AddOrderSheet` waktu menampilkan/mengisi saran.
  */
 export function customerLabel(customer: MatchableCustomer) {
   const last4 = (customer.phone ?? '').replace(/\D/g, '').slice(-4)
@@ -32,35 +32,33 @@ export function customerLabel(customer: MatchableCustomer) {
 }
 
 /**
- * Cari customer yang cocok dengan `customerName` sebuah order.
+ * Kunci pencocokan nomor: semua bentuk ("0812-3456-6608", "+62 812 3456 6608",
+ * "81234566608") diubah ke bentuk lokal "081234566608". Kosong kalau nomor
+ * tidak ada atau terlalu pendek untuk dianggap nomor.
+ */
+export function phoneMatchKey(phone: string | null | undefined): string {
+  const local = toLocalPhoneNumber(phone)
+  return local.length >= 8 ? local : ''
+}
+
+/**
+ * Cari customer yang nomor HP-nya sama dengan `customerPhone` sebuah order.
  *
- * Urutannya:
- * 1. label lengkap persis (format hasil memilih saran di AddOrderSheet),
- * 2. nama persis,
- * 3. nama yang jadi awalan label — di sini nama TERPANJANG yang menang supaya
- *    order "Budi Santoso 6608" tidak ketangkap customer "Budi" hanya karena
- *    kebetulan namanya juga jadi awalan.
+ * - Order tanpa nomor (atau nomornya tidak valid) → `undefined`. Nama tidak
+ *   dipakai sebagai cadangan.
+ * - Customer tanpa nomor tidak pernah cocok.
+ * - Kalau ada lebih dari satu customer dengan nomor yang sama, yang pertama
+ *   di daftar yang dipakai.
  *
- * Nama yang sudah di-trim dibandingkan apa adanya (case-sensitive) supaya
- * konsisten dengan data yang disimpan; tidak ketemu = `undefined` (halaman
- * invoice tetap jalan, cuma tanpa info tambahan).
+ * Tidak ketemu = `undefined` (halaman invoice tetap jalan, cuma tanpa info
+ * tambahan).
  */
 export function findCustomerForOrder<T extends MatchableCustomer>(
   customers: Array<T>,
-  customerName: string,
+  customerPhone: string | null | undefined,
 ): T | undefined {
-  const target = customerName.trim()
-  if (!target) return undefined
+  const key = phoneMatchKey(customerPhone)
+  if (!key) return undefined
 
-  const byLabel = customers.find(
-    (customer) => customerLabel(customer) === target,
-  )
-  if (byLabel) return byLabel
-
-  const byName = customers.find((customer) => customer.name === target)
-  if (byName) return byName
-
-  return customers
-    .filter((customer) => target.startsWith(`${customer.name} `))
-    .sort((a, b) => b.name.length - a.name.length)[0]
+  return customers.find((customer) => phoneMatchKey(customer.phone) === key)
 }

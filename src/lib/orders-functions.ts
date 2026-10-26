@@ -447,7 +447,7 @@ export const getPublicOrderInvoice = createServerFn({ method: 'GET' })
     }
 
     // Alamat kirim pelanggan. Order nggak punya FK ke tabel `customers`, jadi
-    // dicocokkan lewat nama dengan aturan yang sama seperti halaman Invoice
+    // dicocokkan lewat no. HP dengan aturan yang sama seperti halaman Invoice
     // internal (`customer-matching.ts`). Yang tampil cuma alamat milik pelanggan
     // order ini sendiri — bukan data pelanggan lain — senada dengan nama
     // pelanggan yang memang sudah tampil di invoice publik.
@@ -459,7 +459,7 @@ export const getPublicOrderInvoice = createServerFn({ method: 'GET' })
     })
     const matchedCustomer = findCustomerForOrder(
       savedCustomers,
-      order.customerName,
+      order.customerPhone,
     )
 
     return {
@@ -519,9 +519,8 @@ export const getOrderInvoice = createServerFn({ method: 'GET' })
     requireFeature(await getUserEntitlements(user), 'billing')
 
     // Cari data Customer yang tersimpan (no. HP + alamat kirim) dengan
-    // mencocokkan "nama" / "nama 4digitTerakhir" (format yang keisi dari saran
-    // di AddOrderSheet) ke daftar Customer milik user ini. Aturannya dipakai
-    // bareng dengan link tagihan publik, lihat `customer-matching.ts`.
+    // mencocokkan no. HP pesanan ke daftar Customer milik user ini. Aturannya
+    // dipakai bareng dengan link tagihan publik, lihat `customer-matching.ts`.
     const savedCustomers = await db.query.customers.findMany({
       where: and(
         eq(customers.brandId, brandIdOf(user)),
@@ -530,7 +529,7 @@ export const getOrderInvoice = createServerFn({ method: 'GET' })
     })
     const matchedCustomer = findCustomerForOrder(
       savedCustomers,
-      order.customerName,
+      order.customerPhone,
     )
 
     return {
