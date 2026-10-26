@@ -8,6 +8,7 @@ import {
   normalizePhoneNumber,
   parseCsvRows,
   parseImportMoney,
+  parseImportQty,
   splitCustomerNameAndPhone,
 } from './order-import'
 
@@ -412,12 +413,13 @@ describe('buildImportTemplateRows', () => {
     const [nia] = preview.orders
 
     // Kaos 15.000 -> tier 0..19.900 (fee 4.000); Sepatu 250.000 -> di luar semua tier (fee 0).
+    // Sepatu di contoh qty 2 -> subtotal (15.000 + 250.000 x 2) = 515.000.
     assert.deepEqual(
       nia.items.map((item) => item.fee),
       [4_000, 0],
     )
-    assert.equal(nia.subtotal, 265_000)
-    assert.equal(nia.total, 269_000)
+    assert.equal(nia.subtotal, 515_000)
+    assert.equal(nia.total, 519_000)
   })
 })
 
@@ -490,5 +492,88 @@ describe('kolom fee (opsional)', () => {
     )
     assert.equal(preview.orders[0].items.length, 1)
     assert.equal(preview.orders[0].items[0].qty, 2)
+  })
+})
+
+describe('parseImportQty', () => {
+  it('kosong dianggap 1', () => {
+    assert.equal(parseImportQty(''), 1)
+    assert.equal(parseImportQty('   '), 1)
+  })
+
+  it('bilangan bulat dibaca apa adanya (termasuk format Excel 2.0)', () => {
+    assert.equal(parseImportQty('2'), 2)
+    assert.equal(parseImportQty('2.0'), 2)
+    assert.equal(parseImportQty(' 3 '), 3)
+  })
+
+  it('0, negatif, pecahan, dan teks ditolak', () => {
+    assert.equal(parseImportQty('0'), null)
+    assert.equal(parseImportQty('-1'), null)
+    assert.equal(parseImportQty('1.5'), null)
+    assert.equal(parseImportQty('dua'), null)
+    assert.equal(parseImportQty('100000'), null)
+  })
+})
+
+describe('kolom qty', () => {
+  const HEADER_QTY = ['No urut', 'Nama', 'No WA', 'item', 'harga', 'qty', 'fee']
+
+  it('header qty dikenali', () => {
+    const header = findImportHeader([HEADER_QTY])
+    assert.ok(header)
+    assert.equal(header.columns.qty, 5)
+  })
+
+  it('qty dari file dipakai untuk barang baru', () => {
+    const preview = buildImportPreview(
+      [HEADER_QTY, ['1', 'Bar 2030', '08123456789', 'Blitz', 27_000, 2, 3_000]],
+      TIERS,
+    )
+    assert.equal(preview.errors.length, 0)
+    assert.equal(preview.orders[0].items[0].qty, 2)
+    assert.equal(preview.orders[0].subtotal, 54_000)
+    assert.equal(preview.orders[0].feeTotal, 6_000)
+    assert.equal(preview.orders[0].total, 60_000)
+  })
+
+  it('qty kosong → 1', () => {
+    const preview = buildImportPreview(
+      [HEADER_QTY, ['1', 'Nia', '08123456789', 'Kaos', 15_000, '', 4_000]],
+      TIERS,
+    )
+    assert.equal(preview.orders[0].items[0].qty, 1)
+  })
+
+  it('baris barang sama digabung dan qty dijumlahkan', () => {
+    const preview = buildImportPreview(
+      [
+        HEADER_QTY,
+        ['1', 'Nia', '08123456789', 'Kaos', 15_000, 2, 4_000],
+        ['2', 'Nia', '08123456789', 'Kaos', 15_000, 3, 4_000],
+      ],
+      TIERS,
+    )
+    assert.equal(preview.orders[0].items.length, 1)
+    assert.equal(preview.orders[0].items[0].qty, 5)
+  })
+
+  it('qty tidak valid → baris error, pesanan tidak dibuat', () => {
+    const preview = buildImportPreview(
+      [HEADER_QTY, ['1', 'Nia', '08123456789', 'Kaos', 15_000, 'abc', 4_000]],
+      TIERS,
+    )
+    assert.equal(preview.orders.length, 0)
+    assert.equal(preview.errors.length, 1)
+    assert.equal(preview.errors[0].rowNumber, 2)
+  })
+
+  it('file tanpa kolom qty tetap berjalan (qty 1 per baris)', () => {
+    const preview = buildImportPreview(
+      [HEADER, ['1', 'Nia - 08123456789', 'Kaos', 15_000]],
+      TIERS,
+    )
+    assert.equal(preview.errors.length, 0)
+    assert.equal(preview.orders[0].items[0].qty, 1)
   })
 })

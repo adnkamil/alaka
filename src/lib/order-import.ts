@@ -6,7 +6,7 @@
  *
  * Kolom yang dibaca (dicari dari NAMA header, jadi urutan kolom bebas):
  *
- *   No urut | Nama | No WA | item | harga | fee (opsional)
+ *   No urut | Nama | No WA | item | harga | qty (opsional) | fee (opsional)
  *
  * - `No urut` cuma penomoran di file — tidak ikut disimpan. Nomor barisnya
  *   dipakai buat pesan error ("Baris 7: ..."), jadi nomornya sama dengan yang
@@ -60,6 +60,7 @@ export const IMPORT_TEMPLATE_HEADER = [
   'No WA',
   'item',
   'harga',
+  'qty',
   'fee',
 ]
 
@@ -71,10 +72,10 @@ export const IMPORT_TEMPLATE_HEADER = [
  * memperlakukannya sebagai bilangan, bukan tulisan.
  */
 export const IMPORT_TEMPLATE_ROWS: Array<Array<string | number>> = [
-  [1, 'Nia', '08123456789', 'Kaos', 15000, ''],
-  [2, 'Nia', '08123456789', 'Sepatu', 250000, ''],
-  [3, 'Budi', '081298765432', 'Tas', 120000, ''],
-  [4, 'Budi', '081298765432', 'Topi', 45000, ''],
+  [1, 'Nia', '08123456789', 'Kaos', 15000, 1, ''],
+  [2, 'Nia', '08123456789', 'Sepatu', 250000, 2, ''],
+  [3, 'Budi', '081298765432', 'Tas', 120000, 1, ''],
+  [4, 'Budi', '081298765432', 'Topi', 45000, 1, ''],
 ]
 
 export interface ImportPreviewItem {
@@ -137,6 +138,8 @@ interface ImportColumns {
   price: number
   /** Kolom fee jastip per barang (opsional). */
   fee: number | null
+  /** Kolom jumlah barang (opsional, kosong = 1). */
+  qty: number | null
 }
 
 interface ImportHeader {
@@ -149,6 +152,7 @@ const ITEM_HINTS = ['item', 'barang', 'produk']
 const PRICE_HINTS = ['harga', 'price']
 const PHONE_HINTS = ['wa', 'hp', 'telp', 'telepon', 'phone', 'nomor']
 const FEE_HINTS = ['fee']
+const QTY_HINTS = ['qty', 'jumlah']
 
 /** Isi sel dijadikan string; `null`/`undefined` jadi string kosong. */
 function cellText(row: Array<unknown>, column: number | null) {
@@ -172,6 +176,7 @@ function classifyHeader(normalized: string): keyof ImportColumns | null {
   // "Nama Barang" itu kolom barang, bukan nama pelanggan — cek item dulu.
   if (ITEM_HINTS.some((hint) => normalized.includes(hint))) return 'item'
   if (FEE_HINTS.some((hint) => normalized.includes(hint))) return 'fee'
+  if (QTY_HINTS.some((hint) => normalized.includes(hint))) return 'qty'
 
   const hasName = normalized.includes('nama')
   const hasPhone = PHONE_HINTS.some((hint) => normalized.includes(hint))
@@ -200,6 +205,7 @@ export function findImportHeader(
       item: -1,
       price: -1,
       fee: null,
+      qty: null,
     }
 
     rows[index].forEach((cell, column) => {
@@ -215,6 +221,8 @@ export function findImportHeader(
         if (columns.name === null) columns.name = column
       } else if (kind === 'fee') {
         if (columns.fee === null) columns.fee = column
+      } else if (kind === 'qty') {
+        if (columns.qty === null) columns.qty = column
       } else if (columns.phone === null) {
         columns.phone = column
       }
@@ -232,6 +240,19 @@ export function findImportHeader(
 /** Bulatkan ke 2 desimal (skala kolom harga di DB) tanpa error floating. */
 function roundMoney(value: number) {
   return Math.round(value * 100) / 100
+}
+
+/**
+ * Baca qty dari sel. Kosong = 1. Harus bilangan bulat minimal 1 (dan dibatasi
+ * wajar supaya tidak ada salah ketik yang jadi ribuan barang). `null` = tidak
+ * bisa dibaca → baris ditandai error.
+ */
+export function parseImportQty(value: string): number | null {
+  const text = String(value ?? '').trim()
+  if (!text) return 1
+  const parsed = Number(text)
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 1000) return null
+  return parsed
 }
 
 /**
@@ -430,7 +451,7 @@ export function buildImportPreview(
   if (!header) {
     return {
       fatalError:
-        'Kolom file-nya tidak dikenali. Pastikan ada baris header berisi: No urut, Nama, No WA, item, harga (fee opsional).',
+        'Kolom file-nya tidak dikenali. Pastikan ada baris header berisi: No urut, Nama, No WA, item, harga (qty dan fee opsional).',
       orders: [],
       errors: [],
       emptyRows: 0,
@@ -456,6 +477,7 @@ export function buildImportPreview(
     const itemRaw = cellText(row, columns.item)
     const priceRaw = cellText(row, columns.price)
     const feeRaw = cellText(row, columns.fee)
+    const qtyRaw = cellText(row, columns.qty)
 
     // Baris kosong (mis. sisa format Excel) dilewati tanpa dianggap error.
     if (!customerRaw && !nameRaw && !phoneRaw && !itemRaw && !priceRaw) {
@@ -503,6 +525,16 @@ export function buildImportPreview(
     }
     const fee = feeFromFile ?? findFeeForPrice(tiers, price) ?? 0
 
+    // Qty dari file (opsional, kosong = 1). Harus bilangan bulat minimal 1.
+    const qty = parseImportQty(qtyRaw)
+    if (qty === null) {
+      errors.push({
+        rowNumber,
+        message: `Qty "${qtyRaw}" harus berupa angka bulat, minimal 1`,
+      })
+      continue
+    }
+
     // Kunci grup pakai nama huruf kecil — sama seperti aturan gabung pesanan
     // (`order-merge.ts`) yang mencocokkan pelanggan dari namanya.
     const key = customerName.toLowerCase()
@@ -529,8 +561,8 @@ export function buildImportPreview(
     order.rowNumbers.push(rowNumber)
 
     const itemName = itemRaw.replace(/\s{2,}/g, ' ').trim()
-    // Barang yang sama (nama + harga sama) di baris terpisah digabung jadi satu
-    // baris dengan qty bertambah — totalnya identik, hasilnya lebih rapi.
+    // Barang yang sama (nama + harga + fee sama) di baris terpisah digabung jadi
+    // satu baris dengan qty dijumlahkan — totalnya identik, hasilnya lebih rapi.
     const sameLine = order.items.find(
       (item) =>
         item.name.toLowerCase() === itemName.toLowerCase() &&
@@ -538,13 +570,13 @@ export function buildImportPreview(
         item.fee === fee,
     )
     if (sameLine) {
-      sameLine.qty += 1
+      sameLine.qty += qty
     } else {
       order.items.push({
         name: itemName,
         originalPrice: price,
         fee,
-        qty: 1,
+        qty,
       })
     }
 
