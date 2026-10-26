@@ -53,13 +53,13 @@ function formatIDR(value: string | number) {
 }
 
 /**
- * Lebar kolom tabel contoh di layar awal (template dibagi header & isinya):
- * "No urut" dipatok sempit karena cuma nomor, "Nama" ambil sisa lebar supaya
- * nggak kepotong, "No WA" cukup lebar untuk nomor 12 digit, "item"/"harga"
- * seukuran isinya.
+ * Lebar kolom tabel contoh di layar awal. Tiap kolom punya lebar minimum supaya
+ * isinya tidak terpotong ("Nama" tidak boleh turun jadi huruf per baris). Di
+ * layar sempit tabelnya digeser horizontal, bukan dipaksa muat.
  */
 const EXAMPLE_TABLE_COLS =
-  'grid-cols-[3.25rem_minmax(0,1fr)_7.5rem_4.5rem_3.75rem_3.75rem]'
+  'grid-cols-[3rem_minmax(5rem,1fr)_7rem_minmax(4.5rem,1.2fr)_4.5rem_3rem_3.5rem]'
+const EXAMPLE_TABLE_MIN_WIDTH = 'min-w-[34rem]'
 
 /**
  * Import pesanan dari file Excel/CSV: pilih file → preview apa yang bakal masuk
@@ -241,36 +241,38 @@ export default function ImportOrdersModal({
                   yang dibaca:
                 </p>
                 <div
-                  className="app-card overflow-hidden p-0 text-xs"
+                  className="app-card overflow-x-auto p-0 text-xs"
                   style={{ background: 'var(--app-card-hover)' }}
                 >
                   <div
-                    className={`grid ${EXAMPLE_TABLE_COLS} gap-2 border-b px-3 py-2 font-semibold`}
+                    className={`grid ${EXAMPLE_TABLE_COLS} ${EXAMPLE_TABLE_MIN_WIDTH} gap-2 border-b px-3 py-2 font-semibold`}
                     style={{ borderColor: 'var(--app-border)' }}
                   >
-                    <span>No urut</span>
-                    <span>Nama</span>
-                    <span>No WA</span>
-                    <span>item</span>
-                    <span>harga</span>
-                    <span>fee</span>
+                    <span className="whitespace-nowrap">No urut</span>
+                    <span className="whitespace-nowrap">Nama</span>
+                    <span className="whitespace-nowrap">No WA</span>
+                    <span className="whitespace-nowrap">item</span>
+                    <span className="whitespace-nowrap">harga</span>
+                    <span className="whitespace-nowrap">qty</span>
+                    <span className="whitespace-nowrap">fee</span>
                   </div>
                   <div
-                    className={`grid ${EXAMPLE_TABLE_COLS} gap-2 px-3 py-2`}
+                    className={`grid ${EXAMPLE_TABLE_COLS} ${EXAMPLE_TABLE_MIN_WIDTH} gap-2 px-3 py-2`}
                     style={{ color: 'var(--app-text-soft)' }}
                   >
                     <span>1</span>
-                    <span className="truncate">Nia</span>
-                    <span className="truncate">08123456789</span>
-                    <span className="truncate">Kaos</span>
+                    <span className="whitespace-nowrap">Nia</span>
+                    <span className="whitespace-nowrap">08123456789</span>
+                    <span className="whitespace-nowrap">Kaos</span>
                     <span className="whitespace-nowrap">15.000</span>
+                    <span>1</span>
                     <span className="whitespace-nowrap"></span>
                   </div>
                 </div>
                 <p className="text-xs leading-relaxed">
-                  Kolom fee opsional: kosongkan untuk dihitung otomatis dari
-                  aturan fee event. Urutan kolom bebas, yang penting nama
-                  header-nya ada. Satu
+                  Kolom qty dan fee opsional: qty kosong dianggap 1, fee kosong
+                  dihitung otomatis dari aturan fee event. Urutan kolom bebas,
+                  yang penting nama header-nya ada. Satu
                   pelanggan boleh muncul di beberapa baris — barangnya otomatis
                   dikumpulkan jadi satu tagihan.
                 </p>

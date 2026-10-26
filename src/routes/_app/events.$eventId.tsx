@@ -853,7 +853,7 @@ function EventDetailPage() {
                   style={{ color: 'var(--app-text-soft)' }}
                 >
                   {event.isActive
-                    ? 'Kolom file: No urut, Nama, No WA, item, harga, fee (opsional). Kalau fee dikosongkan, diisi otomatis dari aturan fee event ini.'
+                    ? 'Kolom file: No urut, Nama, No WA, item, harga, qty (opsional), fee (opsional). Qty kosong dianggap 1. Kalau fee dikosongkan, diisi otomatis dari aturan fee event ini.'
                     : 'Event nonaktif — aktifkan dulu untuk menambah pesanan lewat import.'}
                 </p>
 
