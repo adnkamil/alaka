@@ -164,3 +164,52 @@ export async function getCalendarBanner(
 export async function deleteCalendarBanner(eventId: string): Promise<void> {
   await calendarBannerStore().delete(eventId)
 }
+
+// --- Foto produk partner -------------------------------------------------
+//
+// Publik seperti avatar/banner (cuma gambar produk, id berupa UUID acak),
+// key = id baris `partner_products`. Format sama dengan avatar (WebP/JPEG).
+
+const PARTNER_PRODUCT_PHOTO_STORE = 'partner-product-photos'
+
+function partnerProductPhotoStore() {
+  // Opsi sama dengan `avatarStore()` (consistency strong, region us-east-2).
+  return getStore({
+    name: PARTNER_PRODUCT_PHOTO_STORE,
+    consistency: 'strong',
+    region: 'us-east-2',
+  })
+}
+
+export async function putPartnerProductPhoto(
+  productId: string,
+  bytes: Uint8Array,
+  contentType: AvatarContentType,
+): Promise<void> {
+  const body = new Blob([new Uint8Array(bytes)], { type: contentType })
+  await partnerProductPhotoStore().set(productId, body, {
+    metadata: { contentType },
+  })
+}
+
+export async function getPartnerProductPhoto(
+  productId: string,
+): Promise<{ data: ArrayBuffer; contentType: AvatarContentType } | null> {
+  const result = await partnerProductPhotoStore().getWithMetadata(productId, {
+    type: 'blob',
+  })
+  if (!result) return null
+
+  const data = await result.data.arrayBuffer()
+  // Tipe dikenali dari isi file, bukan dari metadata.
+  const contentType = detectAvatarContentType(new Uint8Array(data))
+  if (!contentType) return null
+
+  return { data, contentType }
+}
+
+export async function deletePartnerProductPhoto(
+  productId: string,
+): Promise<void> {
+  await partnerProductPhotoStore().delete(productId)
+}

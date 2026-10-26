@@ -41,7 +41,11 @@ import { Route as AdminEventEventIdRouteImport } from './routes/admin/event/$eve
 import { Route as AdminEventNewRouteImport } from './routes/admin/event/new'
 import { Route as ApiAvatarBrandIdRouteImport } from './routes/api/avatar/$brandId'
 import { Route as ApiEventBannerEventIdRouteImport } from './routes/api/event-banner/$eventId'
+import { Route as ApiPartnerProductPhotoIdRouteImport } from './routes/api/partner-product-photo/$id'
 import { Route as ApiSubscriptionProofIdRouteImport } from './routes/api/subscription-proof/$id'
+import { Route as PartnerKatalogIndexRouteImport } from './routes/partner/katalog/index'
+import { Route as PartnerKatalogIdRouteImport } from './routes/partner/katalog/$id'
+import { Route as PartnerKatalogBaruRouteImport } from './routes/partner/katalog/baru'
 import { Route as TagihanEventIdOrderIdRouteImport } from './routes/tagihan.$eventId.$orderId'
 import { Route as AppInvoiceEventIdOrderIdRouteImport } from './routes/_app/invoice.$eventId.$orderId'
 import { Route as AppProfilCustomersIndexRouteImport } from './routes/_app/profil/customers/index'
@@ -210,10 +214,31 @@ const ApiEventBannerEventIdRoute = ApiEventBannerEventIdRouteImport.update({
   path: '/api/event-banner/$eventId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPartnerProductPhotoIdRoute =
+  ApiPartnerProductPhotoIdRouteImport.update({
+    id: '/api/partner-product-photo/$id',
+    path: '/api/partner-product-photo/$id',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiSubscriptionProofIdRoute = ApiSubscriptionProofIdRouteImport.update({
   id: '/api/subscription-proof/$id',
   path: '/api/subscription-proof/$id',
   getParentRoute: () => rootRouteImport,
+} as any)
+const PartnerKatalogIndexRoute = PartnerKatalogIndexRouteImport.update({
+  id: '/katalog/',
+  path: '/katalog/',
+  getParentRoute: () => PartnerRoute,
+} as any)
+const PartnerKatalogIdRoute = PartnerKatalogIdRouteImport.update({
+  id: '/katalog/$id',
+  path: '/katalog/$id',
+  getParentRoute: () => PartnerRoute,
+} as any)
+const PartnerKatalogBaruRoute = PartnerKatalogBaruRouteImport.update({
+  id: '/katalog/baru',
+  path: '/katalog/baru',
+  getParentRoute: () => PartnerRoute,
 } as any)
 const TagihanEventIdOrderIdRoute = TagihanEventIdOrderIdRouteImport.update({
   id: '/tagihan/$eventId/$orderId',
@@ -287,11 +312,15 @@ export interface FileRoutesByFullPath {
   '/admin/event/new': typeof AdminEventNewRoute
   '/api/avatar/$brandId': typeof ApiAvatarBrandIdRoute
   '/api/event-banner/$eventId': typeof ApiEventBannerEventIdRoute
+  '/api/partner-product-photo/$id': typeof ApiPartnerProductPhotoIdRoute
   '/api/subscription-proof/$id': typeof ApiSubscriptionProofIdRoute
+  '/partner/katalog/$id': typeof PartnerKatalogIdRoute
+  '/partner/katalog/baru': typeof PartnerKatalogBaruRoute
   '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
   '/kalender/': typeof AppKalenderIndexRoute
   '/profil/': typeof AppProfilIndexRoute
   '/admin/event/': typeof AdminEventIndexRoute
+  '/partner/katalog/': typeof PartnerKatalogIndexRoute
   '/invoice/$eventId/$orderId': typeof AppInvoiceEventIdOrderIdRoute
   '/profil/fee-rules/$feeRuleId': typeof AppProfilFeeRulesFeeRuleIdRoute
   '/profil/fee-rules/new': typeof AppProfilFeeRulesNewRoute
@@ -327,11 +356,15 @@ export interface FileRoutesByTo {
   '/admin/event/new': typeof AdminEventNewRoute
   '/api/avatar/$brandId': typeof ApiAvatarBrandIdRoute
   '/api/event-banner/$eventId': typeof ApiEventBannerEventIdRoute
+  '/api/partner-product-photo/$id': typeof ApiPartnerProductPhotoIdRoute
   '/api/subscription-proof/$id': typeof ApiSubscriptionProofIdRoute
+  '/partner/katalog/$id': typeof PartnerKatalogIdRoute
+  '/partner/katalog/baru': typeof PartnerKatalogBaruRoute
   '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
   '/kalender': typeof AppKalenderIndexRoute
   '/profil': typeof AppProfilIndexRoute
   '/admin/event': typeof AdminEventIndexRoute
+  '/partner/katalog': typeof PartnerKatalogIndexRoute
   '/invoice/$eventId/$orderId': typeof AppInvoiceEventIdOrderIdRoute
   '/profil/fee-rules/$feeRuleId': typeof AppProfilFeeRulesFeeRuleIdRoute
   '/profil/fee-rules/new': typeof AppProfilFeeRulesNewRoute
@@ -371,11 +404,15 @@ export interface FileRoutesById {
   '/admin/event/new': typeof AdminEventNewRoute
   '/api/avatar/$brandId': typeof ApiAvatarBrandIdRoute
   '/api/event-banner/$eventId': typeof ApiEventBannerEventIdRoute
+  '/api/partner-product-photo/$id': typeof ApiPartnerProductPhotoIdRoute
   '/api/subscription-proof/$id': typeof ApiSubscriptionProofIdRoute
+  '/partner/katalog/$id': typeof PartnerKatalogIdRoute
+  '/partner/katalog/baru': typeof PartnerKatalogBaruRoute
   '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
   '/_app/kalender/': typeof AppKalenderIndexRoute
   '/_app/profil/': typeof AppProfilIndexRoute
   '/admin/event/': typeof AdminEventIndexRoute
+  '/partner/katalog/': typeof PartnerKatalogIndexRoute
   '/_app/invoice/$eventId/$orderId': typeof AppInvoiceEventIdOrderIdRoute
   '/_app/profil/fee-rules/$feeRuleId': typeof AppProfilFeeRulesFeeRuleIdRoute
   '/_app/profil/fee-rules/new': typeof AppProfilFeeRulesNewRoute
@@ -415,11 +452,15 @@ export interface FileRouteTypes {
     | '/admin/event/new'
     | '/api/avatar/$brandId'
     | '/api/event-banner/$eventId'
+    | '/api/partner-product-photo/$id'
     | '/api/subscription-proof/$id'
+    | '/partner/katalog/$id'
+    | '/partner/katalog/baru'
     | '/tagihan/$eventId/$orderId'
     | '/kalender/'
     | '/profil/'
     | '/admin/event/'
+    | '/partner/katalog/'
     | '/invoice/$eventId/$orderId'
     | '/profil/fee-rules/$feeRuleId'
     | '/profil/fee-rules/new'
@@ -455,11 +496,15 @@ export interface FileRouteTypes {
     | '/admin/event/new'
     | '/api/avatar/$brandId'
     | '/api/event-banner/$eventId'
+    | '/api/partner-product-photo/$id'
     | '/api/subscription-proof/$id'
+    | '/partner/katalog/$id'
+    | '/partner/katalog/baru'
     | '/tagihan/$eventId/$orderId'
     | '/kalender'
     | '/profil'
     | '/admin/event'
+    | '/partner/katalog'
     | '/invoice/$eventId/$orderId'
     | '/profil/fee-rules/$feeRuleId'
     | '/profil/fee-rules/new'
@@ -498,11 +543,15 @@ export interface FileRouteTypes {
     | '/admin/event/new'
     | '/api/avatar/$brandId'
     | '/api/event-banner/$eventId'
+    | '/api/partner-product-photo/$id'
     | '/api/subscription-proof/$id'
+    | '/partner/katalog/$id'
+    | '/partner/katalog/baru'
     | '/tagihan/$eventId/$orderId'
     | '/_app/kalender/'
     | '/_app/profil/'
     | '/admin/event/'
+    | '/partner/katalog/'
     | '/_app/invoice/$eventId/$orderId'
     | '/_app/profil/fee-rules/$feeRuleId'
     | '/_app/profil/fee-rules/new'
@@ -525,6 +574,7 @@ export interface RootRouteChildren {
   VerifikasiEmailTokenRoute: typeof VerifikasiEmailTokenRoute
   ApiAvatarBrandIdRoute: typeof ApiAvatarBrandIdRoute
   ApiEventBannerEventIdRoute: typeof ApiEventBannerEventIdRoute
+  ApiPartnerProductPhotoIdRoute: typeof ApiPartnerProductPhotoIdRoute
   ApiSubscriptionProofIdRoute: typeof ApiSubscriptionProofIdRoute
   TagihanEventIdOrderIdRoute: typeof TagihanEventIdOrderIdRoute
   ApiAuthGoogleCallbackRoute: typeof ApiAuthGoogleCallbackRoute
@@ -757,12 +807,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiEventBannerEventIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/partner-product-photo/$id': {
+      id: '/api/partner-product-photo/$id'
+      path: '/api/partner-product-photo/$id'
+      fullPath: '/api/partner-product-photo/$id'
+      preLoaderRoute: typeof ApiPartnerProductPhotoIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/subscription-proof/$id': {
       id: '/api/subscription-proof/$id'
       path: '/api/subscription-proof/$id'
       fullPath: '/api/subscription-proof/$id'
       preLoaderRoute: typeof ApiSubscriptionProofIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/partner/katalog/': {
+      id: '/partner/katalog/'
+      path: '/katalog'
+      fullPath: '/partner/katalog/'
+      preLoaderRoute: typeof PartnerKatalogIndexRouteImport
+      parentRoute: typeof PartnerRoute
+    }
+    '/partner/katalog/$id': {
+      id: '/partner/katalog/$id'
+      path: '/katalog/$id'
+      fullPath: '/partner/katalog/$id'
+      preLoaderRoute: typeof PartnerKatalogIdRouteImport
+      parentRoute: typeof PartnerRoute
+    }
+    '/partner/katalog/baru': {
+      id: '/partner/katalog/baru'
+      path: '/katalog/baru'
+      fullPath: '/partner/katalog/baru'
+      preLoaderRoute: typeof PartnerKatalogBaruRouteImport
+      parentRoute: typeof PartnerRoute
     }
     '/tagihan/$eventId/$orderId': {
       id: '/tagihan/$eventId/$orderId'
@@ -889,10 +967,16 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface PartnerRouteChildren {
   PartnerIndexRoute: typeof PartnerIndexRoute
+  PartnerKatalogIdRoute: typeof PartnerKatalogIdRoute
+  PartnerKatalogBaruRoute: typeof PartnerKatalogBaruRoute
+  PartnerKatalogIndexRoute: typeof PartnerKatalogIndexRoute
 }
 
 const PartnerRouteChildren: PartnerRouteChildren = {
   PartnerIndexRoute: PartnerIndexRoute,
+  PartnerKatalogIdRoute: PartnerKatalogIdRoute,
+  PartnerKatalogBaruRoute: PartnerKatalogBaruRoute,
+  PartnerKatalogIndexRoute: PartnerKatalogIndexRoute,
 }
 
 const PartnerRouteWithChildren =
@@ -911,6 +995,7 @@ const rootRouteChildren: RootRouteChildren = {
   VerifikasiEmailTokenRoute: VerifikasiEmailTokenRoute,
   ApiAvatarBrandIdRoute: ApiAvatarBrandIdRoute,
   ApiEventBannerEventIdRoute: ApiEventBannerEventIdRoute,
+  ApiPartnerProductPhotoIdRoute: ApiPartnerProductPhotoIdRoute,
   ApiSubscriptionProofIdRoute: ApiSubscriptionProofIdRoute,
   TagihanEventIdOrderIdRoute: TagihanEventIdOrderIdRoute,
   ApiAuthGoogleCallbackRoute: ApiAuthGoogleCallbackRoute,

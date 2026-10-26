@@ -5,6 +5,10 @@ import {
 } from './calendar-events-admin-functions'
 import { fetchCurrentUser } from './auth-functions'
 import { fetchAdminPartners, fetchCurrentPartner } from './partner-functions'
+import {
+  fetchPartnerProduct,
+  fetchPartnerProducts,
+} from './partner-product-functions'
 
 /**
  * Satu definisi query "current-user" yang dipakai bersama (guard `_app` dan
@@ -40,3 +44,15 @@ export const adminPartnersQuery = queryOptions({
   queryKey: ['admin-partners'],
   queryFn: () => fetchAdminPartners(),
 })
+
+/** Katalog produk partner yang sedang login. */
+export const partnerProductsQuery = queryOptions({
+  queryKey: ['partner-products'],
+  queryFn: () => fetchPartnerProducts(),
+})
+
+export const partnerProductQuery = (id: string) =>
+  queryOptions({
+    queryKey: ['partner-product', id],
+    queryFn: () => fetchPartnerProduct({ data: { id } }),
+  })

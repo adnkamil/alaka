@@ -1,5 +1,5 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { createFileRoute } from '@tanstack/react-router'
+import { Link, createFileRoute } from '@tanstack/react-router'
 import { CalendarDays, Package } from 'lucide-react'
 import { currentPartnerQuery } from '../../lib/queries'
 import { formatPhoneNumber } from '../../lib/format'
@@ -40,16 +40,24 @@ function PartnerHomePage() {
         </dl>
       </div>
 
-      <div className="app-card flex flex-col gap-3 p-4">
-        <p className="text-sm font-semibold">Segera hadir</p>
-        <div className="flex items-start gap-3 text-sm">
-          <span className="app-icon-tile h-9 w-9 shrink-0">
-            <Package size={16} />
-          </span>
-          <p style={{ color: 'var(--app-text-soft)' }}>
-            Katalog produk dan harga brand kamu.
+      <Link
+        to="/partner/katalog"
+        className="app-card mb-4 flex items-center gap-3 p-4 no-underline"
+        style={{ color: 'inherit' }}
+      >
+        <span className="app-icon-tile h-10 w-10 shrink-0">
+          <Package size={18} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold">Katalog produk</p>
+          <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
+            Atur produk, harga, dan foto brand kamu.
           </p>
         </div>
+      </Link>
+
+      <div className="app-card flex flex-col gap-3 p-4">
+        <p className="text-sm font-semibold">Segera hadir</p>
         <div className="flex items-start gap-3 text-sm">
           <span className="app-icon-tile h-9 w-9 shrink-0">
             <CalendarDays size={16} />
