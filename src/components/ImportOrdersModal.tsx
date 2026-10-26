@@ -54,10 +54,12 @@ function formatIDR(value: string | number) {
 
 /**
  * Lebar kolom tabel contoh di layar awal (template dibagi header & isinya):
- * "No urut" dipatok sempit karena cuma nomor, "Nama-no wa" ambil sisa lebar
- * supaya nama + nomornya nggak kepotong, "item"/"harga" cukup seukuran isinya.
+ * "No urut" dipatok sempit karena cuma nomor, "Nama" ambil sisa lebar supaya
+ * nggak kepotong, "No WA" cukup lebar untuk nomor 12 digit, "item"/"harga"
+ * seukuran isinya.
  */
-const EXAMPLE_TABLE_COLS = 'grid-cols-[3.25rem_minmax(0,1fr)_4.5rem_3.75rem]'
+const EXAMPLE_TABLE_COLS =
+  'grid-cols-[3.25rem_minmax(0,1fr)_7.5rem_4.5rem_3.75rem]'
 
 /**
  * Import pesanan dari file Excel/CSV: pilih file → preview apa yang bakal masuk
@@ -247,7 +249,8 @@ export default function ImportOrdersModal({
                     style={{ borderColor: 'var(--app-border)' }}
                   >
                     <span>No urut</span>
-                    <span>Nama-no wa</span>
+                    <span>Nama</span>
+                    <span>No WA</span>
                     <span>item</span>
                     <span>harga</span>
                   </div>
@@ -256,7 +259,8 @@ export default function ImportOrdersModal({
                     style={{ color: 'var(--app-text-soft)' }}
                   >
                     <span>1</span>
-                    <span className="truncate">Nia - 08123456789</span>
+                    <span className="truncate">Nia</span>
+                    <span className="truncate">08123456789</span>
                     <span className="truncate">Kaos</span>
                     <span className="whitespace-nowrap">15.000</span>
                   </div>

@@ -6,14 +6,15 @@
  *
  * Kolom yang dibaca (dicari dari NAMA header, jadi urutan kolom bebas):
  *
- *   No urut | Nama-no wa | item | harga
+ *   No urut | Nama | No WA | item | harga
  *
  * - `No urut` cuma penomoran di file — tidak ikut disimpan. Nomor barisnya
  *   dipakai buat pesan error ("Baris 7: ..."), jadi nomornya sama dengan yang
  *   kelihatan di Excel.
- * - `Nama-no wa` isinya nama pelanggan + nomor WA dalam satu sel (mis.
- *   "Nia - 08123456789"); pemisahnya dideteksi otomatis. Kalau file malah
- *   memisahkan "Nama" dan "No WA" jadi dua kolom, itu juga didukung.
+ * - `Nama` = nama pelanggan. `No WA` = nomor WA pelanggan (boleh kosong).
+ *   Nomor boleh ditulis "0851-5683-2285" atau "+62 851...", dirapikan otomatis.
+ * - Format lama `Nama-no wa` (nama + nomor dalam satu sel, mis.
+ *   "Nia - 08123456789") tetap didukung untuk file yang sudah ada.
  * - `harga` = harga asli barang. Fee jastip TIDAK diambil dari file, tapi
  *   dihitung dari aturan fee milik event ini (`findFeeForPrice` — aturan yang
  *   sama dipakai form Tambah Pesanan). Kalau event belum punya aturan fee,
@@ -52,7 +53,13 @@ export const IMPORT_TEMPLATE_FILE_NAME = 'template-import-pesanan.xlsx'
  * Header template — sengaja sama persis dengan nama kolom yang dikenali
  * pembaca (`classifyHeader`), biar file hasil unduhan langsung kebaca.
  */
-export const IMPORT_TEMPLATE_HEADER = ['No urut', 'Nama-no wa', 'item', 'harga']
+export const IMPORT_TEMPLATE_HEADER = [
+  'No urut',
+  'Nama',
+  'No WA',
+  'item',
+  'harga',
+]
 
 /**
  * Contoh isi template: **4 baris data untuk 2 pelanggan** (masing-masing 2
@@ -62,10 +69,10 @@ export const IMPORT_TEMPLATE_HEADER = ['No urut', 'Nama-no wa', 'item', 'harga']
  * memperlakukannya sebagai bilangan, bukan tulisan.
  */
 export const IMPORT_TEMPLATE_ROWS: Array<Array<string | number>> = [
-  [1, 'Nia - 08123456789', 'Kaos', 15000],
-  [2, 'Nia - 08123456789', 'Sepatu', 250000],
-  [3, 'Budi - 081298765432', 'Tas', 120000],
-  [4, 'Budi - 081298765432', 'Topi', 45000],
+  [1, 'Nia', '08123456789', 'Kaos', 15000],
+  [2, 'Nia', '08123456789', 'Sepatu', 250000],
+  [3, 'Budi', '081298765432', 'Tas', 120000],
+  [4, 'Budi', '081298765432', 'Topi', 45000],
 ]
 
 export interface ImportPreviewItem {
@@ -414,7 +421,7 @@ export function buildImportPreview(
   if (!header) {
     return {
       fatalError:
-        'Kolom file-nya tidak dikenali. Pastikan ada baris header berisi: No urut, Nama-no wa, item, harga.',
+        'Kolom file-nya tidak dikenali. Pastikan ada baris header berisi: No urut, Nama, No WA, item, harga.',
       orders: [],
       errors: [],
       emptyRows: 0,
