@@ -6,6 +6,7 @@ import {
   useNavigate,
 } from '@tanstack/react-router'
 import { LogOut } from 'lucide-react'
+import PartnerBottomNav from '../components/PartnerBottomNav'
 import { logoutPartner } from '../lib/partner-functions'
 import { currentPartnerQuery } from '../lib/queries'
 
@@ -40,7 +41,7 @@ function PartnerLayout() {
   }
 
   return (
-    <div className="app-shell">
+    <div className="app-shell app-shell--with-nav">
       <header
         className="sticky top-0 z-10 flex items-center gap-2 border-b px-4 py-3"
         style={{
@@ -74,6 +75,7 @@ function PartnerLayout() {
         </button>
       </header>
       <Outlet />
+      <PartnerBottomNav />
     </div>
   )
 }

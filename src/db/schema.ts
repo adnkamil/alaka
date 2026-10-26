@@ -834,3 +834,35 @@ export const partnerInvitationTokens = pgTable(
     index('partner_invitation_tokens_partner_idx').on(table.partnerId),
   ],
 )
+
+// Katalog produk milik partner. Dikelola partner sendiri lewat `/partner/katalog`.
+// Harga dalam rupiah (decimal 12,2 seperti kolom harga lain). Produk tidak
+// dihapus, cukup dinonaktifkan (`is_active = false`): nanti produk dipakai di
+// event, jadi baris yang sudah terpakai tidak boleh hilang.
+export const partnerProducts = pgTable(
+  'partner_products',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    partnerId: uuid('partner_id')
+      .notNull()
+      .references(() => partners.id, { onDelete: 'cascade' }),
+    name: varchar().notNull(),
+    /** Kode/SKU buatan partner. Opsional dan tidak harus unik. */
+    code: varchar(),
+    price: decimal('price', { precision: 12, scale: 2 }).notNull(),
+    description: text(),
+    isActive: boolean('is_active').notNull().default(true),
+    /** Kapan foto terakhir diganti; null = belum ada foto. Dipakai sebagai `?v=`. */
+    photoUpdatedAt: timestamp('photo_updated_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('partner_products_partner_idx').on(table.partnerId),
+    check('partner_products_price_nonneg', sql`${table.price} >= 0`),
+  ],
+)
