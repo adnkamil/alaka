@@ -213,3 +213,44 @@ export async function deletePartnerProductPhoto(
 ): Promise<void> {
   await partnerProductPhotoStore().delete(productId)
 }
+
+// --- Katalog PDF partner -------------------------------------------------
+//
+// Satu berkas per partner, key = id partner. TIDAK publik: hanya diambil lewat
+// `/api/partner-catalog/$partnerId` yang mewajibkan login. Metadata (nama,
+// ukuran, waktu) ada di kolom `partners.catalog_pdf_*`.
+
+const PARTNER_CATALOG_STORE = 'partner-catalog-pdfs'
+
+function partnerCatalogStore() {
+  return getStore({
+    name: PARTNER_CATALOG_STORE,
+    consistency: 'strong',
+    region: 'us-east-2',
+  })
+}
+
+export async function putPartnerCatalogPdf(
+  partnerId: string,
+  bytes: Uint8Array,
+): Promise<void> {
+  const body = new Blob([new Uint8Array(bytes)], { type: 'application/pdf' })
+  await partnerCatalogStore().set(partnerId, body)
+}
+
+export async function getPartnerCatalogPdf(
+  partnerId: string,
+): Promise<ArrayBuffer | null> {
+  // `getWithMetadata` (bukan `get`) supaya berkas yang tidak ada bertipe null,
+  // sama dengan fungsi storage lain di file ini.
+  const result = await partnerCatalogStore().getWithMetadata(partnerId, {
+    type: 'blob',
+  })
+  return result ? result.data.arrayBuffer() : null
+}
+
+export async function deletePartnerCatalogPdf(
+  partnerId: string,
+): Promise<void> {
+  await partnerCatalogStore().delete(partnerId)
+}

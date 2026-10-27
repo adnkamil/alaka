@@ -32,9 +32,8 @@ export async function createPartnerSession(partnerId: string) {
   return token
 }
 
-/** Partner yang sedang login (atau null). */
-export async function getCurrentPartner() {
-  const token = getCookie(PARTNER_SESSION_COOKIE_NAME)
+/** Partner pemilik sesi `token` (atau null kalau tidak ada / kedaluwarsa). */
+export async function getPartnerBySessionToken(token: string | undefined) {
   if (!token) return null
 
   const rows = await db
@@ -50,6 +49,34 @@ export async function getCurrentPartner() {
   // jaga-jaga: tanpa aktivasi, tidak dianggap login.
   if (!row.partner.activatedAt) return null
   return row.partner
+}
+
+/** Partner yang sedang login (atau null). Hanya untuk server function. */
+export async function getCurrentPartner() {
+  return getPartnerBySessionToken(getCookie(PARTNER_SESSION_COOKIE_NAME))
+}
+
+/**
+ * Sama seperti `getCurrentPartner`, tapi untuk route API mentah: helper cookie
+ * TanStack Start tidak jalan di sana, jadi cookie dibaca manual dari header.
+ */
+export async function getPartnerFromRequest(request: Request) {
+  const header = request.headers.get('cookie') ?? ''
+  for (const part of header.split(';')) {
+    const index = part.indexOf('=')
+    if (index === -1) continue
+    if (part.slice(0, index).trim() === PARTNER_SESSION_COOKIE_NAME) {
+      try {
+        return await getPartnerBySessionToken(
+          decodeURIComponent(part.slice(index + 1).trim()),
+        )
+      } catch {
+        // Cookie rusak (percent-encoding tidak valid) = tidak login.
+        return null
+      }
+    }
+  }
+  return null
 }
 
 export class PartnerRequiredError extends Error {

@@ -6,6 +6,7 @@ import { calendarEvents } from '../db/schema'
 import { getSessionUser } from './auth'
 import { MONTH_KEY_PATTERN, calendarBannerSrc, monthRange } from './calendar'
 import { brandIdOf } from './brand'
+import { getEventPartnerShowcase } from './partner-showcase-queries'
 import { requireBrandPermission } from './brand-permissions'
 import {
   findJoinedEventId,
@@ -121,10 +122,15 @@ export const getCalendarEvent = createServerFn({ method: 'GET' })
     const event = rows.at(0)
     if (!event) throw new Error('Event tidak ditemukan')
     const { bannerUpdatedAt, endedAt, ...rest } = event
-    const myEventId = await findJoinedEventId(brandIdOf(user), event.id)
+    const [myEventId, showcase] = await Promise.all([
+      findJoinedEventId(brandIdOf(user), event.id),
+      // Null untuk event buatan admin; untuk event partner: produk unggulan + katalog PDF.
+      getEventPartnerShowcase(event.id),
+    ])
     return {
       ...rest,
       myEventId,
+      showcase,
       // Link event yang sudah diakhiri tetap bisa dibuka (mis. dari chat),
       // tapi halamannya menandai bahwa event sudah berakhir.
       isEnded: endedAt !== null,

@@ -31,6 +31,6 @@ test('toggleSelection menambah/melepas tanpa mengubah himpunan asli', () => {
   assert.deepEqual([...toggleSelection(added, 'a')], ['b'])
 })
 
-test('batas produk per event masuk akal', () => {
-  assert.equal(MAX_EVENT_PRODUCTS, 300)
+test('batas produk unggulan per event', () => {
+  assert.equal(MAX_EVENT_PRODUCTS, 6)
 })
