@@ -14,6 +14,12 @@ export const MAX_PARTNER_INVITATIONS_PER_DAY = 5
 
 export const PARTNER_PASSWORD_MIN_LENGTH = 8
 
+/** Atur ulang kata sandi: link berlaku 1 jam, sama dengan akun jastiper. */
+export const PARTNER_RESET_TTL_MINUTES = 60
+/** Batas minta link per partner per jendela waktu — cegah spam ke email orang. */
+export const PARTNER_RESET_WINDOW_MINUTES = 15
+export const MAX_PARTNER_RESET_REQUESTS_PER_WINDOW = 3
+
 export const PARTNER_SESSION_COOKIE_NAME = 'alaka_partner_session'
 
 /** Email partner disimpan huruf kecil; pembandingan juga huruf kecil. */
@@ -44,6 +50,9 @@ export type PartnerErrorCode =
   | 'UNDANGAN_TIDAK_DITEMUKAN'
   | 'UNDANGAN_KEDALUWARSA'
   | 'UNDANGAN_SUDAH_DIPAKAI'
+  | 'BELUM_AKTIF'
+  | 'TERLALU_BANYAK_PERMINTAAN'
+  | 'LINK_RESET_TIDAK_VALID'
 
 const PARTNER_ERROR_MESSAGES: Record<PartnerErrorCode, string> = {
   NAMA_KOSONG: 'Nama partner wajib diisi.',
@@ -58,6 +67,11 @@ const PARTNER_ERROR_MESSAGES: Record<PartnerErrorCode, string> = {
   UNDANGAN_KEDALUWARSA:
     'Undangan ini sudah kedaluwarsa. Minta admin ALAKA mengirim ulang.',
   UNDANGAN_SUDAH_DIPAKAI: 'Undangan ini sudah dipakai. Silakan masuk.',
+  BELUM_AKTIF:
+    'Akun partner ini belum diaktifkan. Buka link undangan di emailmu, atau minta admin ALAKA mengirim ulang undangan.',
+  TERLALU_BANYAK_PERMINTAAN:
+    'Terlalu banyak permintaan. Coba lagi dalam beberapa menit.',
+  LINK_RESET_TIDAK_VALID: 'Link atur ulang tidak valid atau sudah kedaluwarsa',
 }
 
 export class PartnerError extends Error {

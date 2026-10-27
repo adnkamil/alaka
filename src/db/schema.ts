@@ -911,3 +911,27 @@ export const partnerEventProducts = pgTable(
     index('partner_event_products_product_idx').on(table.productId),
   ],
 )
+
+// Token atur ulang kata sandi PARTNER. Pola sama dengan `password_reset_tokens`
+// (hanya hash sha256 yang disimpan, sekali pakai, ada masa berlaku), dipisah
+// karena akun partner ada di tabel sendiri. `used_at` juga dipakai untuk
+// menghanguskan token lama saat partner meminta link baru — barisnya TIDAK
+// dihapus, supaya hitungan batas permintaan per jendela waktu tetap benar.
+export const partnerPasswordResetTokens = pgTable(
+  'partner_password_reset_tokens',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    partnerId: uuid('partner_id')
+      .notNull()
+      .references(() => partners.id, { onDelete: 'cascade' }),
+    tokenHash: varchar('token_hash').notNull().unique(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    usedAt: timestamp('used_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('partner_password_reset_tokens_partner_idx').on(table.partnerId),
+  ],
+)

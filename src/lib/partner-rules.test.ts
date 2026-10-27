@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
+  MAX_PARTNER_RESET_REQUESTS_PER_WINDOW,
   PARTNER_INVITATION_TTL_DAYS,
+  PARTNER_RESET_TTL_MINUTES,
+  PARTNER_RESET_WINDOW_MINUTES,
   PartnerError,
   isPlausiblePartnerEmail,
   normalizePartnerEmail,
@@ -35,4 +38,21 @@ test('PartnerError membawa kode dan pesan yang ramah', () => {
 
 test('masa berlaku undangan partner sama dengan undangan admin brand (7 hari)', () => {
   assert.equal(PARTNER_INVITATION_TTL_DAYS, 7)
+})
+
+test('kode error atur ulang kata sandi punya pesan sendiri', () => {
+  for (const code of [
+    'BELUM_AKTIF',
+    'TERLALU_BANYAK_PERMINTAAN',
+    'LINK_RESET_TIDAK_VALID',
+  ] as const) {
+    assert.ok(partnerErrorMessage(code).length > 10, code)
+    assert.equal(new PartnerError(code).code, code)
+  }
+})
+
+test('batas atur ulang: 1 jam berlaku, 3 permintaan per 15 menit', () => {
+  assert.equal(PARTNER_RESET_TTL_MINUTES, 60)
+  assert.equal(PARTNER_RESET_WINDOW_MINUTES, 15)
+  assert.equal(MAX_PARTNER_RESET_REQUESTS_PER_WINDOW, 3)
 })

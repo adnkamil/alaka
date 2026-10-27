@@ -22,6 +22,7 @@ import { Route as AdminCustomersRouteImport } from './routes/admin/customers'
 import { Route as AdminPartnerRouteImport } from './routes/admin/partner'
 import { Route as AdminPengaturanRouteImport } from './routes/admin/pengaturan'
 import { Route as PartnerIndexRouteImport } from './routes/partner/index'
+import { Route as ResetSandiPartnerTokenRouteImport } from './routes/reset-sandi-partner.$token'
 import { Route as ResetSandiTokenRouteImport } from './routes/reset-sandi.$token'
 import { Route as UndanganPartnerTokenRouteImport } from './routes/undangan-partner.$token'
 import { Route as UndanganTokenRouteImport } from './routes/undangan.$token'
@@ -124,6 +125,11 @@ const PartnerIndexRoute = PartnerIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PartnerRoute,
+} as any)
+const ResetSandiPartnerTokenRoute = ResetSandiPartnerTokenRouteImport.update({
+  id: '/reset-sandi-partner/$token',
+  path: '/reset-sandi-partner/$token',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ResetSandiTokenRoute = ResetSandiTokenRouteImport.update({
   id: '/reset-sandi/$token',
@@ -331,6 +337,7 @@ export interface FileRoutesByFullPath {
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/partner': typeof AdminPartnerRoute
   '/admin/pengaturan': typeof AdminPengaturanRoute
+  '/reset-sandi-partner/$token': typeof ResetSandiPartnerTokenRoute
   '/reset-sandi/$token': typeof ResetSandiTokenRoute
   '/undangan-partner/$token': typeof UndanganPartnerTokenRoute
   '/undangan/$token': typeof UndanganTokenRoute
@@ -380,6 +387,7 @@ export interface FileRoutesByTo {
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/partner': typeof AdminPartnerRoute
   '/admin/pengaturan': typeof AdminPengaturanRoute
+  '/reset-sandi-partner/$token': typeof ResetSandiPartnerTokenRoute
   '/reset-sandi/$token': typeof ResetSandiTokenRoute
   '/undangan-partner/$token': typeof UndanganPartnerTokenRoute
   '/undangan/$token': typeof UndanganTokenRoute
@@ -434,6 +442,7 @@ export interface FileRoutesById {
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/partner': typeof AdminPartnerRoute
   '/admin/pengaturan': typeof AdminPengaturanRoute
+  '/reset-sandi-partner/$token': typeof ResetSandiPartnerTokenRoute
   '/reset-sandi/$token': typeof ResetSandiTokenRoute
   '/undangan-partner/$token': typeof UndanganPartnerTokenRoute
   '/undangan/$token': typeof UndanganTokenRoute
@@ -489,6 +498,7 @@ export interface FileRouteTypes {
     | '/admin/customers'
     | '/admin/partner'
     | '/admin/pengaturan'
+    | '/reset-sandi-partner/$token'
     | '/reset-sandi/$token'
     | '/undangan-partner/$token'
     | '/undangan/$token'
@@ -538,6 +548,7 @@ export interface FileRouteTypes {
     | '/admin/customers'
     | '/admin/partner'
     | '/admin/pengaturan'
+    | '/reset-sandi-partner/$token'
     | '/reset-sandi/$token'
     | '/undangan-partner/$token'
     | '/undangan/$token'
@@ -591,6 +602,7 @@ export interface FileRouteTypes {
     | '/admin/customers'
     | '/admin/partner'
     | '/admin/pengaturan'
+    | '/reset-sandi-partner/$token'
     | '/reset-sandi/$token'
     | '/undangan-partner/$token'
     | '/undangan/$token'
@@ -641,6 +653,7 @@ export interface RootRouteChildren {
   LupaSandiRoute: typeof LupaSandiRoute
   PartnerRoute: typeof PartnerRouteWithChildren
   RegisterRoute: typeof RegisterRoute
+  ResetSandiPartnerTokenRoute: typeof ResetSandiPartnerTokenRoute
   ResetSandiTokenRoute: typeof ResetSandiTokenRoute
   UndanganPartnerTokenRoute: typeof UndanganPartnerTokenRoute
   UndanganTokenRoute: typeof UndanganTokenRoute
@@ -747,6 +760,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/partner/'
       preLoaderRoute: typeof PartnerIndexRouteImport
       parentRoute: typeof PartnerRoute
+    }
+    '/reset-sandi-partner/$token': {
+      id: '/reset-sandi-partner/$token'
+      path: '/reset-sandi-partner/$token'
+      fullPath: '/reset-sandi-partner/$token'
+      preLoaderRoute: typeof ResetSandiPartnerTokenRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/reset-sandi/$token': {
       id: '/reset-sandi/$token'
@@ -1115,6 +1135,7 @@ const rootRouteChildren: RootRouteChildren = {
   LupaSandiRoute: LupaSandiRoute,
   PartnerRoute: PartnerRouteWithChildren,
   RegisterRoute: RegisterRoute,
+  ResetSandiPartnerTokenRoute: ResetSandiPartnerTokenRoute,
   ResetSandiTokenRoute: ResetSandiTokenRoute,
   UndanganPartnerTokenRoute: UndanganPartnerTokenRoute,
   UndanganTokenRoute: UndanganTokenRoute,

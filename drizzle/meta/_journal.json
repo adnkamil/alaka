@@ -183,6 +183,13 @@
       "when": 1793082191192,
       "tag": "0025_add_partner_catalog_pdf",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1793099837181,
+      "tag": "0026_add_partner_password_reset",
+      "breakpoints": true
     }
   ]
 }
