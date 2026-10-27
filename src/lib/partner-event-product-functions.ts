@@ -29,7 +29,12 @@ export const setPartnerEventProducts = createServerFn({ method: 'POST' })
   .validator(
     z.object({
       id: z.string().uuid(),
-      productIds: z.array(z.string().uuid()).max(MAX_EVENT_PRODUCTS),
+      productIds: z
+        .array(z.string().uuid())
+        .max(
+          MAX_EVENT_PRODUCTS,
+          `Maksimal ${MAX_EVENT_PRODUCTS} produk unggulan per event`,
+        ),
     }),
   )
   .handler(async ({ data }) => {

@@ -789,6 +789,16 @@ export const partners = pgTable(
     waNumber: varchar('wa_number'),
     /** Kapan undangan diterima & kata sandi dibuat. Null = masih "Diundang". */
     activatedAt: timestamp('activated_at', { withTimezone: true }),
+    /**
+     * Katalog PDF partner (satu berkas per partner, tampil di halaman semua
+     * event miliknya). Berkasnya di Netlify Blobs dengan key = id partner;
+     * kolom ini hanya metadata. Semua null = belum ada katalog.
+     */
+    catalogPdfName: varchar('catalog_pdf_name'),
+    catalogPdfSize: integer('catalog_pdf_size'),
+    catalogPdfUpdatedAt: timestamp('catalog_pdf_updated_at', {
+      withTimezone: true,
+    }),
     /** Admin ALAKA yang mendaftarkan. Dikosongkan kalau akunnya dihapus. */
     createdBy: uuid('created_by').references(() => users.id, {
       onDelete: 'set null',

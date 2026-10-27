@@ -4,6 +4,7 @@ import {
   fetchCalendarEventParticipants,
 } from './calendar-events-admin-functions'
 import { fetchCurrentUser } from './auth-functions'
+import { fetchOwnPartnerCatalog } from './partner-catalog-functions'
 import { fetchPartnerDashboard } from './partner-dashboard-functions'
 import { fetchPartnerEventProducts } from './partner-event-product-functions'
 import { fetchAdminPartners, fetchCurrentPartner } from './partner-functions'
@@ -93,4 +94,10 @@ export const partnerEventProductsQuery = (id: string) =>
 export const partnerDashboardQuery = queryOptions({
   queryKey: ['partner-dashboard'],
   queryFn: () => fetchPartnerDashboard(),
+})
+
+/** Katalog PDF partner yang sedang login (null = belum ada). */
+export const partnerCatalogQuery = queryOptions({
+  queryKey: ['partner-catalog'],
+  queryFn: () => fetchOwnPartnerCatalog(),
 })

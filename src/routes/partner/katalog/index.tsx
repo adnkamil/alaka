@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { Inbox, Package, Plus, Search } from 'lucide-react'
+import PartnerCatalogCard from '../../../components/PartnerCatalogCard'
 import Toast from '../../../components/ui/Toast'
 import { getErrorMessage } from '../../../lib/error-message'
 import { setPartnerProductActive } from '../../../lib/partner-product-functions'
@@ -9,12 +10,15 @@ import {
   formatRupiah,
   partnerProductPhotoUrl,
 } from '../../../lib/partner-product-rules'
-import { partnerProductsQuery } from '../../../lib/queries'
+import { partnerCatalogQuery, partnerProductsQuery } from '../../../lib/queries'
 import type { PartnerProductRow } from '../../../lib/partner-product-queries'
 
 export const Route = createFileRoute('/partner/katalog/')({
   loader: ({ context }) =>
-    context.queryClient.ensureQueryData(partnerProductsQuery),
+    Promise.all([
+      context.queryClient.ensureQueryData(partnerProductsQuery),
+      context.queryClient.ensureQueryData(partnerCatalogQuery),
+    ]),
   component: PartnerCatalogPage,
 })
 
@@ -79,6 +83,8 @@ function PartnerCatalogPage() {
           Tambah produk
         </Link>
       </div>
+
+      <PartnerCatalogCard />
 
       <div
         className="mb-3 flex items-center gap-2 rounded-xl border px-3"

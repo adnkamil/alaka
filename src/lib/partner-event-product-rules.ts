@@ -1,5 +1,9 @@
-/** Batas produk yang bisa dibawa di satu event (jaga ukuran request). */
-export const MAX_EVENT_PRODUCTS = 300
+/**
+ * Produk unggulan per event: jastiper hanya melihat beberapa produk di halaman
+ * event; katalog lengkapnya lewat PDF. Dipakai di pilihan partner (server + UI)
+ * dan di etalase jastiper, jadi cukup diubah di sini.
+ */
+export const MAX_EVENT_PRODUCTS = 6
 
 /**
  * Susun daftar pilihan produk untuk layar "Kelola produk": produk aktif +

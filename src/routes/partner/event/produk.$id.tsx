@@ -5,6 +5,7 @@ import { ArrowLeft, Package } from 'lucide-react'
 import { getErrorMessage } from '../../../lib/error-message'
 import { setPartnerEventProducts } from '../../../lib/partner-event-product-functions'
 import {
+  MAX_EVENT_PRODUCTS,
   selectableProducts,
   toggleSelection,
 } from '../../../lib/partner-event-product-rules'
@@ -77,7 +78,17 @@ function EventProductsPage() {
       </Link>
       <h1 className="text-xl font-bold">Produk di Event</h1>
       <p className="mb-4 text-xs" style={{ color: 'var(--app-text-soft)' }}>
-        {event.name} · {selected.size} dari {options.length} produk dipilih
+        {event.name} · {selected.size} dari {MAX_EVENT_PRODUCTS} produk unggulan
+      </p>
+      <p
+        className="mb-4 rounded-xl px-3 py-2 text-xs"
+        style={{
+          background: 'var(--app-accent-soft)',
+          color: 'var(--app-text-soft)',
+        }}
+      >
+        Jastiper melihat produk unggulan ini di halaman event. Untuk katalog
+        lengkap, unggah PDF di menu Katalog.
       </p>
 
       {options.length === 0 ? (
@@ -99,13 +110,6 @@ function EventProductsPage() {
           <div className="mb-3 flex gap-3 text-xs font-semibold">
             <button
               type="button"
-              onClick={() => setSelected(new Set(options.map((p) => p.id)))}
-              style={{ color: 'var(--app-accent)' }}
-            >
-              Pilih semua
-            </button>
-            <button
-              type="button"
               onClick={() => setSelected(new Set())}
               style={{ color: 'var(--app-text-soft)' }}
             >
@@ -120,17 +124,21 @@ function EventProductsPage() {
                 product.photoUpdatedAt,
               )
               const checked = selected.has(product.id)
+              // Sudah penuh: produk lain tidak bisa dicentang sampai ada yang dilepas.
+              const full = !checked && selected.size >= MAX_EVENT_PRODUCTS
               return (
                 <label
                   key={product.id}
                   className="app-card flex cursor-pointer items-center gap-3 p-3"
                   style={{
                     borderColor: checked ? 'var(--app-accent)' : undefined,
+                    opacity: full ? 0.5 : 1,
                   }}
                 >
                   <input
                     type="checkbox"
                     checked={checked}
+                    disabled={full}
                     onChange={() =>
                       setSelected((s) => toggleSelection(s, product.id))
                     }

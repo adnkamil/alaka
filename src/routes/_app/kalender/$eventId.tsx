@@ -18,6 +18,7 @@ import { currentUserQuery } from '../../../lib/queries'
 import { todayIsoDateInAppTimeZone } from '../../../lib/timezone'
 import { EventDescription } from '../../../components/EventDescription'
 import JoinEventSheet from '../../../components/JoinEventSheet'
+import PartnerShowcase from '../../../components/PartnerShowcase'
 
 const calendarEventQuery = (id: string) =>
   queryOptions({
@@ -149,6 +150,8 @@ function CalendarEventDetailPage() {
             <EventDescription text={event.description} />
           </section>
         )}
+
+        {event.showcase && <PartnerShowcase showcase={event.showcase} />}
 
         <section className="mt-6">
           <h2 className="mb-2 text-sm font-semibold">Brand yang dipamerkan</h2>

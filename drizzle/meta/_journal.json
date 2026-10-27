@@ -176,6 +176,13 @@
       "when": 1793064737092,
       "tag": "0024_add_partner_event_products",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1793082191192,
+      "tag": "0025_add_partner_catalog_pdf",
+      "breakpoints": true
     }
   ]
 }
