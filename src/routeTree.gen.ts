@@ -43,6 +43,9 @@ import { Route as ApiAvatarBrandIdRouteImport } from './routes/api/avatar/$brand
 import { Route as ApiEventBannerEventIdRouteImport } from './routes/api/event-banner/$eventId'
 import { Route as ApiPartnerProductPhotoIdRouteImport } from './routes/api/partner-product-photo/$id'
 import { Route as ApiSubscriptionProofIdRouteImport } from './routes/api/subscription-proof/$id'
+import { Route as PartnerEventIndexRouteImport } from './routes/partner/event/index'
+import { Route as PartnerEventIdRouteImport } from './routes/partner/event/$id'
+import { Route as PartnerEventBaruRouteImport } from './routes/partner/event/baru'
 import { Route as PartnerKatalogIndexRouteImport } from './routes/partner/katalog/index'
 import { Route as PartnerKatalogIdRouteImport } from './routes/partner/katalog/$id'
 import { Route as PartnerKatalogBaruRouteImport } from './routes/partner/katalog/baru'
@@ -54,6 +57,7 @@ import { Route as AppProfilFeeRulesFeeRuleIdRouteImport } from './routes/_app/pr
 import { Route as AppProfilFeeRulesNewRouteImport } from './routes/_app/profil/fee-rules/new'
 import { Route as ApiAuthGoogleIndexRouteImport } from './routes/api/auth/google/index'
 import { Route as ApiAuthGoogleCallbackRouteImport } from './routes/api/auth/google/callback'
+import { Route as PartnerEventUbahIdRouteImport } from './routes/partner/event/ubah.$id'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -225,6 +229,21 @@ const ApiSubscriptionProofIdRoute = ApiSubscriptionProofIdRouteImport.update({
   path: '/api/subscription-proof/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PartnerEventIndexRoute = PartnerEventIndexRouteImport.update({
+  id: '/event/',
+  path: '/event/',
+  getParentRoute: () => PartnerRoute,
+} as any)
+const PartnerEventIdRoute = PartnerEventIdRouteImport.update({
+  id: '/event/$id',
+  path: '/event/$id',
+  getParentRoute: () => PartnerRoute,
+} as any)
+const PartnerEventBaruRoute = PartnerEventBaruRouteImport.update({
+  id: '/event/baru',
+  path: '/event/baru',
+  getParentRoute: () => PartnerRoute,
+} as any)
 const PartnerKatalogIndexRoute = PartnerKatalogIndexRouteImport.update({
   id: '/katalog/',
   path: '/katalog/',
@@ -282,6 +301,11 @@ const ApiAuthGoogleCallbackRoute = ApiAuthGoogleCallbackRouteImport.update({
   path: '/api/auth/google/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PartnerEventUbahIdRoute = PartnerEventUbahIdRouteImport.update({
+  id: '/event/ubah/$id',
+  path: '/event/ubah/$id',
+  getParentRoute: () => PartnerRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -314,17 +338,21 @@ export interface FileRoutesByFullPath {
   '/api/event-banner/$eventId': typeof ApiEventBannerEventIdRoute
   '/api/partner-product-photo/$id': typeof ApiPartnerProductPhotoIdRoute
   '/api/subscription-proof/$id': typeof ApiSubscriptionProofIdRoute
+  '/partner/event/$id': typeof PartnerEventIdRoute
+  '/partner/event/baru': typeof PartnerEventBaruRoute
   '/partner/katalog/$id': typeof PartnerKatalogIdRoute
   '/partner/katalog/baru': typeof PartnerKatalogBaruRoute
   '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
   '/kalender/': typeof AppKalenderIndexRoute
   '/profil/': typeof AppProfilIndexRoute
   '/admin/event/': typeof AdminEventIndexRoute
+  '/partner/event/': typeof PartnerEventIndexRoute
   '/partner/katalog/': typeof PartnerKatalogIndexRoute
   '/invoice/$eventId/$orderId': typeof AppInvoiceEventIdOrderIdRoute
   '/profil/fee-rules/$feeRuleId': typeof AppProfilFeeRulesFeeRuleIdRoute
   '/profil/fee-rules/new': typeof AppProfilFeeRulesNewRoute
   '/api/auth/google/callback': typeof ApiAuthGoogleCallbackRoute
+  '/partner/event/ubah/$id': typeof PartnerEventUbahIdRoute
   '/profil/customers/': typeof AppProfilCustomersIndexRoute
   '/profil/fee-rules/': typeof AppProfilFeeRulesIndexRoute
   '/api/auth/google/': typeof ApiAuthGoogleIndexRoute
@@ -358,17 +386,21 @@ export interface FileRoutesByTo {
   '/api/event-banner/$eventId': typeof ApiEventBannerEventIdRoute
   '/api/partner-product-photo/$id': typeof ApiPartnerProductPhotoIdRoute
   '/api/subscription-proof/$id': typeof ApiSubscriptionProofIdRoute
+  '/partner/event/$id': typeof PartnerEventIdRoute
+  '/partner/event/baru': typeof PartnerEventBaruRoute
   '/partner/katalog/$id': typeof PartnerKatalogIdRoute
   '/partner/katalog/baru': typeof PartnerKatalogBaruRoute
   '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
   '/kalender': typeof AppKalenderIndexRoute
   '/profil': typeof AppProfilIndexRoute
   '/admin/event': typeof AdminEventIndexRoute
+  '/partner/event': typeof PartnerEventIndexRoute
   '/partner/katalog': typeof PartnerKatalogIndexRoute
   '/invoice/$eventId/$orderId': typeof AppInvoiceEventIdOrderIdRoute
   '/profil/fee-rules/$feeRuleId': typeof AppProfilFeeRulesFeeRuleIdRoute
   '/profil/fee-rules/new': typeof AppProfilFeeRulesNewRoute
   '/api/auth/google/callback': typeof ApiAuthGoogleCallbackRoute
+  '/partner/event/ubah/$id': typeof PartnerEventUbahIdRoute
   '/profil/customers': typeof AppProfilCustomersIndexRoute
   '/profil/fee-rules': typeof AppProfilFeeRulesIndexRoute
   '/api/auth/google': typeof ApiAuthGoogleIndexRoute
@@ -406,17 +438,21 @@ export interface FileRoutesById {
   '/api/event-banner/$eventId': typeof ApiEventBannerEventIdRoute
   '/api/partner-product-photo/$id': typeof ApiPartnerProductPhotoIdRoute
   '/api/subscription-proof/$id': typeof ApiSubscriptionProofIdRoute
+  '/partner/event/$id': typeof PartnerEventIdRoute
+  '/partner/event/baru': typeof PartnerEventBaruRoute
   '/partner/katalog/$id': typeof PartnerKatalogIdRoute
   '/partner/katalog/baru': typeof PartnerKatalogBaruRoute
   '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
   '/_app/kalender/': typeof AppKalenderIndexRoute
   '/_app/profil/': typeof AppProfilIndexRoute
   '/admin/event/': typeof AdminEventIndexRoute
+  '/partner/event/': typeof PartnerEventIndexRoute
   '/partner/katalog/': typeof PartnerKatalogIndexRoute
   '/_app/invoice/$eventId/$orderId': typeof AppInvoiceEventIdOrderIdRoute
   '/_app/profil/fee-rules/$feeRuleId': typeof AppProfilFeeRulesFeeRuleIdRoute
   '/_app/profil/fee-rules/new': typeof AppProfilFeeRulesNewRoute
   '/api/auth/google/callback': typeof ApiAuthGoogleCallbackRoute
+  '/partner/event/ubah/$id': typeof PartnerEventUbahIdRoute
   '/_app/profil/customers/': typeof AppProfilCustomersIndexRoute
   '/_app/profil/fee-rules/': typeof AppProfilFeeRulesIndexRoute
   '/api/auth/google/': typeof ApiAuthGoogleIndexRoute
@@ -454,17 +490,21 @@ export interface FileRouteTypes {
     | '/api/event-banner/$eventId'
     | '/api/partner-product-photo/$id'
     | '/api/subscription-proof/$id'
+    | '/partner/event/$id'
+    | '/partner/event/baru'
     | '/partner/katalog/$id'
     | '/partner/katalog/baru'
     | '/tagihan/$eventId/$orderId'
     | '/kalender/'
     | '/profil/'
     | '/admin/event/'
+    | '/partner/event/'
     | '/partner/katalog/'
     | '/invoice/$eventId/$orderId'
     | '/profil/fee-rules/$feeRuleId'
     | '/profil/fee-rules/new'
     | '/api/auth/google/callback'
+    | '/partner/event/ubah/$id'
     | '/profil/customers/'
     | '/profil/fee-rules/'
     | '/api/auth/google/'
@@ -498,17 +538,21 @@ export interface FileRouteTypes {
     | '/api/event-banner/$eventId'
     | '/api/partner-product-photo/$id'
     | '/api/subscription-proof/$id'
+    | '/partner/event/$id'
+    | '/partner/event/baru'
     | '/partner/katalog/$id'
     | '/partner/katalog/baru'
     | '/tagihan/$eventId/$orderId'
     | '/kalender'
     | '/profil'
     | '/admin/event'
+    | '/partner/event'
     | '/partner/katalog'
     | '/invoice/$eventId/$orderId'
     | '/profil/fee-rules/$feeRuleId'
     | '/profil/fee-rules/new'
     | '/api/auth/google/callback'
+    | '/partner/event/ubah/$id'
     | '/profil/customers'
     | '/profil/fee-rules'
     | '/api/auth/google'
@@ -545,17 +589,21 @@ export interface FileRouteTypes {
     | '/api/event-banner/$eventId'
     | '/api/partner-product-photo/$id'
     | '/api/subscription-proof/$id'
+    | '/partner/event/$id'
+    | '/partner/event/baru'
     | '/partner/katalog/$id'
     | '/partner/katalog/baru'
     | '/tagihan/$eventId/$orderId'
     | '/_app/kalender/'
     | '/_app/profil/'
     | '/admin/event/'
+    | '/partner/event/'
     | '/partner/katalog/'
     | '/_app/invoice/$eventId/$orderId'
     | '/_app/profil/fee-rules/$feeRuleId'
     | '/_app/profil/fee-rules/new'
     | '/api/auth/google/callback'
+    | '/partner/event/ubah/$id'
     | '/_app/profil/customers/'
     | '/_app/profil/fee-rules/'
     | '/api/auth/google/'
@@ -821,6 +869,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSubscriptionProofIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/partner/event/': {
+      id: '/partner/event/'
+      path: '/event'
+      fullPath: '/partner/event/'
+      preLoaderRoute: typeof PartnerEventIndexRouteImport
+      parentRoute: typeof PartnerRoute
+    }
+    '/partner/event/$id': {
+      id: '/partner/event/$id'
+      path: '/event/$id'
+      fullPath: '/partner/event/$id'
+      preLoaderRoute: typeof PartnerEventIdRouteImport
+      parentRoute: typeof PartnerRoute
+    }
+    '/partner/event/baru': {
+      id: '/partner/event/baru'
+      path: '/event/baru'
+      fullPath: '/partner/event/baru'
+      preLoaderRoute: typeof PartnerEventBaruRouteImport
+      parentRoute: typeof PartnerRoute
+    }
     '/partner/katalog/': {
       id: '/partner/katalog/'
       path: '/katalog'
@@ -898,6 +967,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthGoogleCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/partner/event/ubah/$id': {
+      id: '/partner/event/ubah/$id'
+      path: '/event/ubah/$id'
+      fullPath: '/partner/event/ubah/$id'
+      preLoaderRoute: typeof PartnerEventUbahIdRouteImport
+      parentRoute: typeof PartnerRoute
+    }
   }
 }
 
@@ -967,16 +1043,24 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface PartnerRouteChildren {
   PartnerIndexRoute: typeof PartnerIndexRoute
+  PartnerEventIdRoute: typeof PartnerEventIdRoute
+  PartnerEventBaruRoute: typeof PartnerEventBaruRoute
   PartnerKatalogIdRoute: typeof PartnerKatalogIdRoute
   PartnerKatalogBaruRoute: typeof PartnerKatalogBaruRoute
+  PartnerEventIndexRoute: typeof PartnerEventIndexRoute
   PartnerKatalogIndexRoute: typeof PartnerKatalogIndexRoute
+  PartnerEventUbahIdRoute: typeof PartnerEventUbahIdRoute
 }
 
 const PartnerRouteChildren: PartnerRouteChildren = {
   PartnerIndexRoute: PartnerIndexRoute,
+  PartnerEventIdRoute: PartnerEventIdRoute,
+  PartnerEventBaruRoute: PartnerEventBaruRoute,
   PartnerKatalogIdRoute: PartnerKatalogIdRoute,
   PartnerKatalogBaruRoute: PartnerKatalogBaruRoute,
+  PartnerEventIndexRoute: PartnerEventIndexRoute,
   PartnerKatalogIndexRoute: PartnerKatalogIndexRoute,
+  PartnerEventUbahIdRoute: PartnerEventUbahIdRoute,
 }
 
 const PartnerRouteWithChildren =

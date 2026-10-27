@@ -6,6 +6,11 @@ import {
 import { fetchCurrentUser } from './auth-functions'
 import { fetchAdminPartners, fetchCurrentPartner } from './partner-functions'
 import {
+  fetchOwnPartnerEventParticipants,
+  fetchPartnerEvent,
+  fetchPartnerEvents,
+} from './partner-event-functions'
+import {
   fetchPartnerProduct,
   fetchPartnerProducts,
 } from './partner-product-functions'
@@ -55,4 +60,22 @@ export const partnerProductQuery = (id: string) =>
   queryOptions({
     queryKey: ['partner-product', id],
     queryFn: () => fetchPartnerProduct({ data: { id } }),
+  })
+
+/** Event milik partner yang sedang login. */
+export const partnerEventsQuery = queryOptions({
+  queryKey: ['partner-events'],
+  queryFn: () => fetchPartnerEvents(),
+})
+
+export const partnerEventQuery = (id: string) =>
+  queryOptions({
+    queryKey: ['partner-event', id],
+    queryFn: () => fetchPartnerEvent({ data: { id } }),
+  })
+
+export const partnerEventParticipantsQuery = (id: string) =>
+  queryOptions({
+    queryKey: ['partner-event-participants', id],
+    queryFn: () => fetchOwnPartnerEventParticipants({ data: { id } }),
   })

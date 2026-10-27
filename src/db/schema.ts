@@ -697,6 +697,14 @@ export const calendarEvents = pgTable(
     createdBy: uuid('created_by').references(() => users.id, {
       onDelete: 'set null',
     }),
+    /**
+     * Partner pemilik event (dibuat lewat Partner Portal). Null = event buatan
+     * admin ALAKA. SET NULL: kalau partnernya dihapus, event dan jastiper yang
+     * sudah ikut tetap utuh — eventnya menjadi event milik admin.
+     */
+    partnerId: uuid('partner_id').references(() => partners.id, {
+      onDelete: 'set null',
+    }),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -704,7 +712,10 @@ export const calendarEvents = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (table) => [index('calendar_event_date_idx').on(table.eventDate)],
+  (table) => [
+    index('calendar_event_date_idx').on(table.eventDate),
+    index('calendar_event_partner_idx').on(table.partnerId),
+  ],
 )
 
 export const subscriptionSettings = pgTable('subscription_settings', {
