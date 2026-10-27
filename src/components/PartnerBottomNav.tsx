@@ -1,9 +1,9 @@
 import { Link, useRouterState } from '@tanstack/react-router'
-import { CalendarDays, Home, Package } from 'lucide-react'
+import { CalendarDays, Home, Package, User } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 interface TabDef {
-  to: '/partner' | '/partner/katalog' | '/partner/event'
+  to: '/partner' | '/partner/katalog' | '/partner/event' | '/partner/profil'
   label: string
   icon: LucideIcon
 }
@@ -12,6 +12,7 @@ const TABS: Array<TabDef> = [
   { to: '/partner', label: 'Beranda', icon: Home },
   { to: '/partner/katalog', label: 'Katalog', icon: Package },
   { to: '/partner/event', label: 'Event', icon: CalendarDays },
+  { to: '/partner/profil', label: 'Profil', icon: User },
 ]
 
 /**

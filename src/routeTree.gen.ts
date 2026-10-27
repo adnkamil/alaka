@@ -22,6 +22,7 @@ import { Route as AdminCustomersRouteImport } from './routes/admin/customers'
 import { Route as AdminPartnerRouteImport } from './routes/admin/partner'
 import { Route as AdminPengaturanRouteImport } from './routes/admin/pengaturan'
 import { Route as PartnerIndexRouteImport } from './routes/partner/index'
+import { Route as PartnerProfilRouteImport } from './routes/partner/profil'
 import { Route as ResetSandiPartnerTokenRouteImport } from './routes/reset-sandi-partner.$token'
 import { Route as ResetSandiTokenRouteImport } from './routes/reset-sandi.$token'
 import { Route as UndanganPartnerTokenRouteImport } from './routes/undangan-partner.$token'
@@ -124,6 +125,11 @@ const AdminPengaturanRoute = AdminPengaturanRouteImport.update({
 const PartnerIndexRoute = PartnerIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => PartnerRoute,
+} as any)
+const PartnerProfilRoute = PartnerProfilRouteImport.update({
+  id: '/profil',
+  path: '/profil',
   getParentRoute: () => PartnerRoute,
 } as any)
 const ResetSandiPartnerTokenRoute = ResetSandiPartnerTokenRouteImport.update({
@@ -337,6 +343,7 @@ export interface FileRoutesByFullPath {
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/partner': typeof AdminPartnerRoute
   '/admin/pengaturan': typeof AdminPengaturanRoute
+  '/partner/profil': typeof PartnerProfilRoute
   '/reset-sandi-partner/$token': typeof ResetSandiPartnerTokenRoute
   '/reset-sandi/$token': typeof ResetSandiTokenRoute
   '/undangan-partner/$token': typeof UndanganPartnerTokenRoute
@@ -387,6 +394,7 @@ export interface FileRoutesByTo {
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/partner': typeof AdminPartnerRoute
   '/admin/pengaturan': typeof AdminPengaturanRoute
+  '/partner/profil': typeof PartnerProfilRoute
   '/reset-sandi-partner/$token': typeof ResetSandiPartnerTokenRoute
   '/reset-sandi/$token': typeof ResetSandiTokenRoute
   '/undangan-partner/$token': typeof UndanganPartnerTokenRoute
@@ -442,6 +450,7 @@ export interface FileRoutesById {
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/partner': typeof AdminPartnerRoute
   '/admin/pengaturan': typeof AdminPengaturanRoute
+  '/partner/profil': typeof PartnerProfilRoute
   '/reset-sandi-partner/$token': typeof ResetSandiPartnerTokenRoute
   '/reset-sandi/$token': typeof ResetSandiTokenRoute
   '/undangan-partner/$token': typeof UndanganPartnerTokenRoute
@@ -498,6 +507,7 @@ export interface FileRouteTypes {
     | '/admin/customers'
     | '/admin/partner'
     | '/admin/pengaturan'
+    | '/partner/profil'
     | '/reset-sandi-partner/$token'
     | '/reset-sandi/$token'
     | '/undangan-partner/$token'
@@ -548,6 +558,7 @@ export interface FileRouteTypes {
     | '/admin/customers'
     | '/admin/partner'
     | '/admin/pengaturan'
+    | '/partner/profil'
     | '/reset-sandi-partner/$token'
     | '/reset-sandi/$token'
     | '/undangan-partner/$token'
@@ -602,6 +613,7 @@ export interface FileRouteTypes {
     | '/admin/customers'
     | '/admin/partner'
     | '/admin/pengaturan'
+    | '/partner/profil'
     | '/reset-sandi-partner/$token'
     | '/reset-sandi/$token'
     | '/undangan-partner/$token'
@@ -759,6 +771,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/partner/'
       preLoaderRoute: typeof PartnerIndexRouteImport
+      parentRoute: typeof PartnerRoute
+    }
+    '/partner/profil': {
+      id: '/partner/profil'
+      path: '/profil'
+      fullPath: '/partner/profil'
+      preLoaderRoute: typeof PartnerProfilRouteImport
       parentRoute: typeof PartnerRoute
     }
     '/reset-sandi-partner/$token': {
@@ -1102,6 +1121,7 @@ const AdminRouteChildren: AdminRouteChildren = {
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface PartnerRouteChildren {
+  PartnerProfilRoute: typeof PartnerProfilRoute
   PartnerIndexRoute: typeof PartnerIndexRoute
   PartnerEventIdRoute: typeof PartnerEventIdRoute
   PartnerEventBaruRoute: typeof PartnerEventBaruRoute
@@ -1114,6 +1134,7 @@ interface PartnerRouteChildren {
 }
 
 const PartnerRouteChildren: PartnerRouteChildren = {
+  PartnerProfilRoute: PartnerProfilRoute,
   PartnerIndexRoute: PartnerIndexRoute,
   PartnerEventIdRoute: PartnerEventIdRoute,
   PartnerEventBaruRoute: PartnerEventBaruRoute,
