@@ -1,9 +1,9 @@
 import { Link, useRouterState } from '@tanstack/react-router'
-import { Home, Package } from 'lucide-react'
+import { CalendarDays, Home, Package } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 interface TabDef {
-  to: '/partner' | '/partner/katalog'
+  to: '/partner' | '/partner/katalog' | '/partner/event'
   label: string
   icon: LucideIcon
 }
@@ -11,12 +11,13 @@ interface TabDef {
 const TABS: Array<TabDef> = [
   { to: '/partner', label: 'Beranda', icon: Home },
   { to: '/partner/katalog', label: 'Katalog', icon: Package },
+  { to: '/partner/event', label: 'Event', icon: CalendarDays },
 ]
 
 /**
  * Bottom tab Partner Portal. Bentuk dan cara menentukan tab aktif sama dengan
  * `AdminBottomNav` (berdasarkan pathname, bukan `activeProps`, supaya Beranda
- * tidak ikut menyala di `/partner/katalog`). Tab Event menyusul.
+ * tidak ikut menyala di `/partner/katalog`).
  */
 export default function PartnerBottomNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })

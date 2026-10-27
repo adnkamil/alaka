@@ -162,6 +162,13 @@
       "when": 1793000259149,
       "tag": "0022_add_partner_products",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1793063096716,
+      "tag": "0023_add_calendar_event_partner",
+      "breakpoints": true
     }
   ]
 }

@@ -39,6 +39,12 @@ interface CalendarEventFormProps {
   onSubmit: (value: CalendarEventFormValue) => Promise<void>
   /** Hanya diisi saat mengubah event yang sudah ada. */
   onDelete?: () => void
+  /**
+   * Tampilkan isian "Brand yang dipamerkan". Default true (admin). Partner
+   * menyembunyikannya: brand yang dipamerkan di event partner = partner itu
+   * sendiri, diisi server, bukan diketik.
+   */
+  showExhibitors?: boolean
 }
 
 /**
@@ -51,6 +57,7 @@ export default function CalendarEventForm({
   onCancel,
   onSubmit,
   onDelete,
+  showExhibitors = true,
 }: CalendarEventFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [name, setName] = useState(initialValue.name)
@@ -329,68 +336,70 @@ export default function CalendarEventForm({
         />
       </label>
 
-      <div className="flex flex-col gap-2">
-        <label
-          htmlFor="calendar-exhibitor-input"
-          className="text-sm font-medium"
-        >
-          Brand yang dipamerkan (opsional)
-        </label>
-        <div className="flex gap-2">
-          <input
-            id="calendar-exhibitor-input"
-            value={exhibitorInput}
-            maxLength={CALENDAR_EVENT_LIMITS.exhibitor * 4}
-            onChange={(e) => setExhibitorInput(e.target.value)}
-            onKeyDown={(e) => {
-              // Enter menambah brand, bukan mengirim form.
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                addExhibitors()
-              }
-            }}
-            className="app-input"
-            placeholder="Ketik nama brand, pisahkan dengan koma"
-          />
-          {/* `.app-btn-primary` tidak ada di @layer, jadi padding bawaannya
+      {showExhibitors && (
+        <div className="flex flex-col gap-2">
+          <label
+            htmlFor="calendar-exhibitor-input"
+            className="text-sm font-medium"
+          >
+            Brand yang dipamerkan (opsional)
+          </label>
+          <div className="flex gap-2">
+            <input
+              id="calendar-exhibitor-input"
+              value={exhibitorInput}
+              maxLength={CALENDAR_EVENT_LIMITS.exhibitor * 4}
+              onChange={(e) => setExhibitorInput(e.target.value)}
+              onKeyDown={(e) => {
+                // Enter menambah brand, bukan mengirim form.
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  addExhibitors()
+                }
+              }}
+              className="app-input"
+              placeholder="Ketik nama brand, pisahkan dengan koma"
+            />
+            {/* `.app-btn-primary` tidak ada di @layer, jadi padding bawaannya
               mengalahkan utility padding Tailwind. Ukuran tombol ikon ini
               diatur lewat `style` supaya pasti kotak setinggi kolom input. */}
-          <button
-            type="button"
-            onClick={addExhibitors}
-            disabled={exhibitorInput.trim() === ''}
-            className="app-btn-primary flex-shrink-0 self-stretch"
-            style={{ width: '3rem', padding: 0 }}
-            aria-label="Tambah brand"
-          >
-            <Plus size={20} />
-          </button>
-        </div>
-        {exhibitors.length > 0 && (
-          <ul className="flex flex-wrap gap-2">
-            {exhibitors.map((brand) => (
-              <li
-                key={brand}
-                className="app-badge app-badge-accent gap-1.5 pr-1.5"
-              >
-                {brand}
-                <button
-                  type="button"
-                  onClick={() =>
-                    setExhibitors((current) =>
-                      current.filter((item) => item !== brand),
-                    )
-                  }
-                  aria-label={`Hapus ${brand}`}
-                  className="rounded-full"
+            <button
+              type="button"
+              onClick={addExhibitors}
+              disabled={exhibitorInput.trim() === ''}
+              className="app-btn-primary flex-shrink-0 self-stretch"
+              style={{ width: '3rem', padding: 0 }}
+              aria-label="Tambah brand"
+            >
+              <Plus size={20} />
+            </button>
+          </div>
+          {exhibitors.length > 0 && (
+            <ul className="flex flex-wrap gap-2">
+              {exhibitors.map((brand) => (
+                <li
+                  key={brand}
+                  className="app-badge app-badge-accent gap-1.5 pr-1.5"
                 >
-                  <X size={12} />
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+                  {brand}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExhibitors((current) =>
+                        current.filter((item) => item !== brand),
+                      )
+                    }
+                    aria-label={`Hapus ${brand}`}
+                    className="rounded-full"
+                  >
+                    <X size={12} />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {error && (
         <p className="text-sm" style={{ color: 'var(--app-danger)' }}>
