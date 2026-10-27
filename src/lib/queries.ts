@@ -4,6 +4,8 @@ import {
   fetchCalendarEventParticipants,
 } from './calendar-events-admin-functions'
 import { fetchCurrentUser } from './auth-functions'
+import { fetchPartnerDashboard } from './partner-dashboard-functions'
+import { fetchPartnerEventProducts } from './partner-event-product-functions'
 import { fetchAdminPartners, fetchCurrentPartner } from './partner-functions'
 import {
   fetchOwnPartnerEventParticipants,
@@ -79,3 +81,16 @@ export const partnerEventParticipantsQuery = (id: string) =>
     queryKey: ['partner-event-participants', id],
     queryFn: () => fetchOwnPartnerEventParticipants({ data: { id } }),
   })
+
+/** Produk yang dibawa di satu event partner. */
+export const partnerEventProductsQuery = (id: string) =>
+  queryOptions({
+    queryKey: ['partner-event-products', id],
+    queryFn: () => fetchPartnerEventProducts({ data: { id } }),
+  })
+
+/** Angka ringkasan Beranda Partner Portal. */
+export const partnerDashboardQuery = queryOptions({
+  queryKey: ['partner-dashboard'],
+  queryFn: () => fetchPartnerDashboard(),
+})

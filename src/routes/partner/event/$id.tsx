@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { ArrowLeft, CalendarDays, MapPin, Pencil } from 'lucide-react'
+import { ArrowLeft, CalendarDays, MapPin, Package, Pencil } from 'lucide-react'
 import CalendarEventParticipants from '../../../components/CalendarEventParticipants'
 import { EventDescription } from '../../../components/EventDescription'
 import PartnerEventStatusBadge from '../../../components/PartnerEventStatusBadge'
@@ -12,7 +12,12 @@ import { getErrorMessage } from '../../../lib/error-message'
 import { setOwnPartnerEventEnded } from '../../../lib/partner-event-functions'
 import { partnerEventStatus } from '../../../lib/partner-event-rules'
 import {
+  formatRupiah,
+  partnerProductPhotoUrl,
+} from '../../../lib/partner-product-rules'
+import {
   partnerEventParticipantsQuery,
+  partnerEventProductsQuery,
   partnerEventQuery,
 } from '../../../lib/queries'
 import { todayIsoDateInAppTimeZone } from '../../../lib/timezone'
@@ -24,11 +29,12 @@ export const Route = createFileRoute('/partner/event/$id')({
       context.queryClient.ensureQueryData(
         partnerEventParticipantsQuery(params.id),
       ),
+      context.queryClient.ensureQueryData(partnerEventProductsQuery(params.id)),
     ]),
   component: PartnerEventDetailPage,
 })
 
-type Tab = 'info' | 'jastiper'
+type Tab = 'info' | 'produk' | 'jastiper'
 
 function PartnerEventDetailPage() {
   const { id } = Route.useParams()
@@ -36,6 +42,7 @@ function PartnerEventDetailPage() {
   const { data: participants } = useSuspenseQuery(
     partnerEventParticipantsQuery(id),
   )
+  const { data: products } = useSuspenseQuery(partnerEventProductsQuery(id))
   const queryClient = useQueryClient()
   const [tab, setTab] = useState<Tab>('info')
   const [confirmEnd, setConfirmEnd] = useState(false)
@@ -147,6 +154,7 @@ function PartnerEventDetailPage() {
         {(
           [
             { key: 'info', label: 'Info' },
+            { key: 'produk', label: `Produk ${products.length}` },
             { key: 'jastiper', label: `Jastiper ${participants.length}` },
           ] as const
         ).map((item) => (
@@ -169,7 +177,7 @@ function PartnerEventDetailPage() {
         ))}
       </div>
 
-      {tab === 'info' ? (
+      {tab === 'info' && (
         <section className="app-card p-4">
           {event.description ? (
             <EventDescription text={event.description} />
@@ -179,7 +187,70 @@ function PartnerEventDetailPage() {
             </p>
           )}
         </section>
-      ) : (
+      )}
+
+      {tab === 'produk' && (
+        <section className="flex flex-col gap-3">
+          <Link
+            to="/partner/event/produk/$id"
+            params={{ id }}
+            className="app-btn-outline flex items-center justify-center gap-1.5 no-underline"
+          >
+            <Package size={14} />
+            Kelola produk
+          </Link>
+          {products.length === 0 ? (
+            <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
+              Belum ada produk yang dipilih untuk event ini.
+            </p>
+          ) : (
+            products.map((product) => {
+              const photoUrl = partnerProductPhotoUrl(
+                product.id,
+                product.photoUpdatedAt,
+              )
+              return (
+                <div
+                  key={product.id}
+                  className="app-card flex items-center gap-3 p-3"
+                >
+                  <div
+                    className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl"
+                    style={{
+                      background: 'var(--app-accent-soft)',
+                      color: 'var(--app-accent)',
+                    }}
+                  >
+                    {photoUrl ? (
+                      <img
+                        src={photoUrl}
+                        alt=""
+                        loading="lazy"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <Package size={20} />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">
+                      {product.name}
+                    </p>
+                    <p
+                      className="text-xs font-bold"
+                      style={{ color: 'var(--app-accent)' }}
+                    >
+                      {formatRupiah(product.price)}
+                    </p>
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </section>
+      )}
+
+      {tab === 'jastiper' && (
         <CalendarEventParticipants participants={participants} />
       )}
 

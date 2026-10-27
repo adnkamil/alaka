@@ -20,7 +20,9 @@ export type PartnerProductRow = {
   createdAt: Date
 }
 
-function toRow(row: typeof partnerProducts.$inferSelect): PartnerProductRow {
+export function toRow(
+  row: typeof partnerProducts.$inferSelect,
+): PartnerProductRow {
   return {
     id: row.id,
     name: row.name,
