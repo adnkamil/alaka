@@ -9,6 +9,7 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -875,5 +876,28 @@ export const partnerProducts = pgTable(
   (table) => [
     index('partner_products_partner_idx').on(table.partnerId),
     check('partner_products_price_nonneg', sql`${table.price} >= 0`),
+  ],
+)
+
+// Produk yang dibawa partner ke satu event. Partner memilih sebagian dari
+// katalognya sendiri untuk tiap event (tab "Produk" di detail event). Baris ikut
+// terhapus bersama event atau produknya, jadi tidak ada tautan yatim. Harga
+// selalu harga katalog — belum ada harga khusus per event.
+export const partnerEventProducts = pgTable(
+  'partner_event_products',
+  {
+    calendarEventId: uuid('calendar_event_id')
+      .notNull()
+      .references(() => calendarEvents.id, { onDelete: 'cascade' }),
+    productId: uuid('product_id')
+      .notNull()
+      .references(() => partnerProducts.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.calendarEventId, table.productId] }),
+    index('partner_event_products_product_idx').on(table.productId),
   ],
 )

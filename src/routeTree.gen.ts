@@ -57,6 +57,7 @@ import { Route as AppProfilFeeRulesFeeRuleIdRouteImport } from './routes/_app/pr
 import { Route as AppProfilFeeRulesNewRouteImport } from './routes/_app/profil/fee-rules/new'
 import { Route as ApiAuthGoogleIndexRouteImport } from './routes/api/auth/google/index'
 import { Route as ApiAuthGoogleCallbackRouteImport } from './routes/api/auth/google/callback'
+import { Route as PartnerEventProdukIdRouteImport } from './routes/partner/event/produk.$id'
 import { Route as PartnerEventUbahIdRouteImport } from './routes/partner/event/ubah.$id'
 
 const AppRoute = AppRouteImport.update({
@@ -301,6 +302,11 @@ const ApiAuthGoogleCallbackRoute = ApiAuthGoogleCallbackRouteImport.update({
   path: '/api/auth/google/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PartnerEventProdukIdRoute = PartnerEventProdukIdRouteImport.update({
+  id: '/event/produk/$id',
+  path: '/event/produk/$id',
+  getParentRoute: () => PartnerRoute,
+} as any)
 const PartnerEventUbahIdRoute = PartnerEventUbahIdRouteImport.update({
   id: '/event/ubah/$id',
   path: '/event/ubah/$id',
@@ -352,6 +358,7 @@ export interface FileRoutesByFullPath {
   '/profil/fee-rules/$feeRuleId': typeof AppProfilFeeRulesFeeRuleIdRoute
   '/profil/fee-rules/new': typeof AppProfilFeeRulesNewRoute
   '/api/auth/google/callback': typeof ApiAuthGoogleCallbackRoute
+  '/partner/event/produk/$id': typeof PartnerEventProdukIdRoute
   '/partner/event/ubah/$id': typeof PartnerEventUbahIdRoute
   '/profil/customers/': typeof AppProfilCustomersIndexRoute
   '/profil/fee-rules/': typeof AppProfilFeeRulesIndexRoute
@@ -400,6 +407,7 @@ export interface FileRoutesByTo {
   '/profil/fee-rules/$feeRuleId': typeof AppProfilFeeRulesFeeRuleIdRoute
   '/profil/fee-rules/new': typeof AppProfilFeeRulesNewRoute
   '/api/auth/google/callback': typeof ApiAuthGoogleCallbackRoute
+  '/partner/event/produk/$id': typeof PartnerEventProdukIdRoute
   '/partner/event/ubah/$id': typeof PartnerEventUbahIdRoute
   '/profil/customers': typeof AppProfilCustomersIndexRoute
   '/profil/fee-rules': typeof AppProfilFeeRulesIndexRoute
@@ -452,6 +460,7 @@ export interface FileRoutesById {
   '/_app/profil/fee-rules/$feeRuleId': typeof AppProfilFeeRulesFeeRuleIdRoute
   '/_app/profil/fee-rules/new': typeof AppProfilFeeRulesNewRoute
   '/api/auth/google/callback': typeof ApiAuthGoogleCallbackRoute
+  '/partner/event/produk/$id': typeof PartnerEventProdukIdRoute
   '/partner/event/ubah/$id': typeof PartnerEventUbahIdRoute
   '/_app/profil/customers/': typeof AppProfilCustomersIndexRoute
   '/_app/profil/fee-rules/': typeof AppProfilFeeRulesIndexRoute
@@ -504,6 +513,7 @@ export interface FileRouteTypes {
     | '/profil/fee-rules/$feeRuleId'
     | '/profil/fee-rules/new'
     | '/api/auth/google/callback'
+    | '/partner/event/produk/$id'
     | '/partner/event/ubah/$id'
     | '/profil/customers/'
     | '/profil/fee-rules/'
@@ -552,6 +562,7 @@ export interface FileRouteTypes {
     | '/profil/fee-rules/$feeRuleId'
     | '/profil/fee-rules/new'
     | '/api/auth/google/callback'
+    | '/partner/event/produk/$id'
     | '/partner/event/ubah/$id'
     | '/profil/customers'
     | '/profil/fee-rules'
@@ -603,6 +614,7 @@ export interface FileRouteTypes {
     | '/_app/profil/fee-rules/$feeRuleId'
     | '/_app/profil/fee-rules/new'
     | '/api/auth/google/callback'
+    | '/partner/event/produk/$id'
     | '/partner/event/ubah/$id'
     | '/_app/profil/customers/'
     | '/_app/profil/fee-rules/'
@@ -967,6 +979,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthGoogleCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/partner/event/produk/$id': {
+      id: '/partner/event/produk/$id'
+      path: '/event/produk/$id'
+      fullPath: '/partner/event/produk/$id'
+      preLoaderRoute: typeof PartnerEventProdukIdRouteImport
+      parentRoute: typeof PartnerRoute
+    }
     '/partner/event/ubah/$id': {
       id: '/partner/event/ubah/$id'
       path: '/event/ubah/$id'
@@ -1049,6 +1068,7 @@ interface PartnerRouteChildren {
   PartnerKatalogBaruRoute: typeof PartnerKatalogBaruRoute
   PartnerEventIndexRoute: typeof PartnerEventIndexRoute
   PartnerKatalogIndexRoute: typeof PartnerKatalogIndexRoute
+  PartnerEventProdukIdRoute: typeof PartnerEventProdukIdRoute
   PartnerEventUbahIdRoute: typeof PartnerEventUbahIdRoute
 }
 
@@ -1060,6 +1080,7 @@ const PartnerRouteChildren: PartnerRouteChildren = {
   PartnerKatalogBaruRoute: PartnerKatalogBaruRoute,
   PartnerEventIndexRoute: PartnerEventIndexRoute,
   PartnerKatalogIndexRoute: PartnerKatalogIndexRoute,
+  PartnerEventProdukIdRoute: PartnerEventProdukIdRoute,
   PartnerEventUbahIdRoute: PartnerEventUbahIdRoute,
 }
 
