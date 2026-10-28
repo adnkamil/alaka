@@ -8,6 +8,8 @@ import { resolveAppUrl } from './app-url'
 import { createSession, hashPassword, revokeAllSessions } from './auth'
 import { findBrand } from './brand-queries'
 import { sendMail } from './mailer'
+import { sendPartnerPasswordReset } from './partner-password-reset-service'
+import { findPartnerByEmail } from './partner-queries'
 import { buildPasswordResetMail } from './password-reset-mail'
 
 const TOKEN_TTL_MS = 60 * 60 * 1000 // 1 jam
@@ -47,7 +49,17 @@ export const requestPasswordReset = createServerFn({ method: 'POST' })
     const user = await db.query.users.findFirst({
       where: sql`lower(${users.email}) = ${email}`,
     })
-    if (!user) throw new Error('Email ini belum terdaftar')
+    if (!user) {
+      // Bukan akun jastiper -> mungkin akun Partner (tabel terpisah, halaman
+      // "lupa kata sandi" yang sama). Email partner tidak mungkin sama dengan
+      // email user, jadi urutan ini tidak ambigu.
+      const partner = await findPartnerByEmail(email)
+      if (partner) {
+        await sendPartnerPasswordReset(partner)
+        return { ok: true }
+      }
+      throw new Error('Email ini belum terdaftar')
+    }
 
     // Akun Google tidak punya kata sandi: tidak ada yang bisa diatur ulang.
     // (Akun Google yang sudah punya kata sandi tetap boleh atur ulang.)

@@ -790,6 +790,12 @@ export const partners = pgTable(
     /** Kapan undangan diterima & kata sandi dibuat. Null = masih "Diundang". */
     activatedAt: timestamp('activated_at', { withTimezone: true }),
     /**
+     * Dinonaktifkan admin. Terisi = tidak bisa login/atur ulang/terima undangan
+     * dan semua sesinya dimatikan; datanya (produk, event) tetap utuh dan bisa
+     * diaktifkan lagi. Null = normal.
+     */
+    disabledAt: timestamp('disabled_at', { withTimezone: true }),
+    /**
      * Katalog PDF partner (satu berkas per partner, tampil di halaman semua
      * event miliknya). Berkasnya di Netlify Blobs dengan key = id partner;
      * kolom ini hanya metadata. Semua null = belum ada katalog.
@@ -909,5 +915,29 @@ export const partnerEventProducts = pgTable(
   (table) => [
     primaryKey({ columns: [table.calendarEventId, table.productId] }),
     index('partner_event_products_product_idx').on(table.productId),
+  ],
+)
+
+// Token atur ulang kata sandi PARTNER. Pola sama dengan `password_reset_tokens`
+// (hanya hash sha256 yang disimpan, sekali pakai, ada masa berlaku), dipisah
+// karena akun partner ada di tabel sendiri. `used_at` juga dipakai untuk
+// menghanguskan token lama saat partner meminta link baru — barisnya TIDAK
+// dihapus, supaya hitungan batas permintaan per jendela waktu tetap benar.
+export const partnerPasswordResetTokens = pgTable(
+  'partner_password_reset_tokens',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    partnerId: uuid('partner_id')
+      .notNull()
+      .references(() => partners.id, { onDelete: 'cascade' }),
+    tokenHash: varchar('token_hash').notNull().unique(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    usedAt: timestamp('used_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('partner_password_reset_tokens_partner_idx').on(table.partnerId),
   ],
 )

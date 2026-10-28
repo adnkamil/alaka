@@ -4,12 +4,18 @@ import { requireAdminUser } from './admin'
 import { resolveAppUrl } from './app-url'
 import { hashPassword } from './auth'
 import { sendMail } from './mailer'
+import { deletePartnerCatalogPdf, deletePartnerProductPhoto } from './storage'
 import {
   createPartnerSession,
   destroyPartnerSession,
   getCurrentPartner,
 } from './partner-auth'
 import { buildPartnerInvitationMail } from './partner-mail'
+import {
+  deletePartnerById,
+  setPartnerDisabled,
+  updatePartnerByAdmin,
+} from './partner-admin-queries'
 import {
   acceptPartnerInvitation,
   createPartner,
@@ -107,6 +113,61 @@ export const resendAdminPartnerInvitation = createServerFn({ method: 'POST' })
       throw new Error('Email undangan gagal dikirim. Coba lagi sebentar.')
     }
     return { email: partner.email }
+  })
+
+/** Ubah nama / email / WhatsApp partner (lihat `updatePartnerByAdmin`). */
+export const updateAdminPartner = createServerFn({ method: 'POST' })
+  .validator(createPartnerSchema.extend({ id: z.string().uuid() }))
+  .handler(async ({ data }) => {
+    await requireAdminUser()
+    const { id, ...fields } = data
+    const { partner, inviteToken } = await updatePartnerByAdmin(id, fields)
+
+    // Email partner yang masih "Diundang" diganti: undangan baru dikirim ke
+    // alamat baru (yang lama sudah hangus).
+    if (inviteToken) {
+      try {
+        await sendInvitationMail(partner, inviteToken)
+      } catch (error) {
+        console.error('Email undangan partner tidak terkirim:', error)
+        throw new Error(
+          'Data tersimpan, tapi email undangan gagal dikirim. Coba "Kirim ulang undangan".',
+        )
+      }
+    }
+    return { partner, invitationSent: inviteToken !== null }
+  })
+
+/** Nonaktifkan atau aktifkan kembali partner. */
+export const setAdminPartnerDisabled = createServerFn({ method: 'POST' })
+  .validator(z.object({ id: z.string().uuid(), disabled: z.boolean() }))
+  .handler(async ({ data }) => {
+    await requireAdminUser()
+    return setPartnerDisabled(data.id, data.disabled)
+  })
+
+/**
+ * Hapus partner permanen. Berkas di storage (foto produk, katalog PDF) dibersihkan
+ * best-effort sesudah barisnya terhapus — kalau gagal, sisanya tidak terlihat
+ * siapa pun karena key-nya berupa id yang sudah tidak ada.
+ */
+export const deleteAdminPartner = createServerFn({ method: 'POST' })
+  .validator(z.object({ id: z.string().uuid() }))
+  .handler(async ({ data }) => {
+    await requireAdminUser()
+    const info = await deletePartnerById(data.id)
+
+    const results = await Promise.allSettled([
+      ...info.productIds.map((id) => deletePartnerProductPhoto(id)),
+      ...(info.hadCatalog ? [deletePartnerCatalogPdf(data.id)] : []),
+    ])
+    const failed = results.filter((r) => r.status === 'rejected').length
+    if (failed > 0) {
+      console.error(
+        `Gagal membersihkan ${failed} berkas storage partner ${data.id}`,
+      )
+    }
+    return { ok: true }
   })
 
 // ---------- Terima undangan (publik) ----------

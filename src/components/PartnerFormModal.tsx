@@ -13,16 +13,23 @@ export interface PartnerFormValue {
 interface PartnerFormModalProps {
   onClose: () => void
   onSubmit: (value: PartnerFormValue) => Promise<void>
+  /** Diisi saat mengubah partner yang sudah ada; kosong = mendaftarkan baru. */
+  initial?: PartnerFormValue
+  /** Catatan di bawah isian (default: penjelasan undangan email). */
+  note?: string
 }
 
-/** Form admin untuk mendaftarkan partner baru; undangan dikirim lewat email. */
+/** Form admin untuk mendaftarkan partner baru (undangan lewat email) atau mengubah yang sudah ada. */
 export default function PartnerFormModal({
   onClose,
   onSubmit,
+  initial,
+  note,
 }: PartnerFormModalProps) {
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [waNumber, setWaNumber] = useState('')
+  const editing = initial !== undefined
+  const [name, setName] = useState(initial?.name ?? '')
+  const [email, setEmail] = useState(initial?.email ?? '')
+  const [waNumber, setWaNumber] = useState(initial?.waNumber ?? '')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -46,7 +53,12 @@ export default function PartnerFormModal({
         waNumber: wa ? toLocalPhoneNumber(wa) : '',
       })
     } catch (err) {
-      setError(getErrorMessage(err, 'Gagal mendaftarkan partner'))
+      setError(
+        getErrorMessage(
+          err,
+          editing ? 'Gagal menyimpan partner' : 'Gagal mendaftarkan partner',
+        ),
+      )
     } finally {
       setIsSubmitting(false)
     }
@@ -78,7 +90,7 @@ export default function PartnerFormModal({
               <Store size={18} />
             </span>
             <h3 className="text-base font-bold leading-tight">
-              Tambah Partner
+              {editing ? 'Ubah Partner' : 'Tambah Partner'}
             </h3>
           </div>
           <button
@@ -98,7 +110,7 @@ export default function PartnerFormModal({
             Nama partner
             <input
               required
-              autoFocus
+              autoFocus={!editing}
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="app-input"
@@ -130,8 +142,8 @@ export default function PartnerFormModal({
           </label>
 
           <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
-            Partner menerima email berisi tautan untuk membuat kata sandi
-            sendiri, lalu masuk lewat halaman login biasa.
+            {note ??
+              'Partner menerima email berisi tautan untuk membuat kata sandi sendiri, lalu masuk lewat halaman login biasa.'}
           </p>
 
           {error && (
@@ -160,7 +172,13 @@ export default function PartnerFormModal({
               className="rounded-xl px-4 py-2 text-xs font-semibold text-white shadow-sm transition-opacity hover:opacity-90 disabled:opacity-50"
               style={{ background: 'var(--app-accent)' }}
             >
-              {isSubmitting ? 'Mengirim...' : 'Kirim undangan'}
+              {isSubmitting
+                ? editing
+                  ? 'Menyimpan...'
+                  : 'Mengirim...'
+                : editing
+                  ? 'Simpan'
+                  : 'Kirim undangan'}
             </button>
           </div>
         </form>
