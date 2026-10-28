@@ -1,52 +1,98 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  CATALOG_PDF_MAX_BASE64_LENGTH,
-  CATALOG_PDF_MAX_BYTES,
-  formatFileSize,
-  isPdfBytes,
-  partnerCatalogUrl,
-  safeCatalogFileName,
+  CATALOG_URL_MAX_LENGTH,
+  catalogDownloadUrl,
+  catalogHost,
+  parseCatalogUrl,
 } from './partner-catalog-rules.ts'
 
-test('isPdfBytes mengenali PDF dari isinya, bukan dari nama', () => {
-  const pdf = new TextEncoder().encode('%PDF-1.7\n...')
-  assert.equal(isPdfBytes(pdf), true)
-  assert.equal(isPdfBytes(new TextEncoder().encode('<html>')), false)
-  assert.equal(isPdfBytes(new Uint8Array([0x25, 0x50])), false)
-  assert.equal(isPdfBytes(new Uint8Array()), false)
+test('link kosong = hapus link', () => {
+  assert.deepEqual(parseCatalogUrl(''), { ok: true, url: null })
+  assert.deepEqual(parseCatalogUrl('   '), { ok: true, url: null })
 })
 
-test('safeCatalogFileName membersihkan path, kutip, dan karakter kontrol', () => {
-  assert.equal(safeCatalogFileName('Katalog Q4.pdf', 'X'), 'Katalog Q4.pdf')
-  assert.equal(safeCatalogFileName('katalog.PDF', 'X'), 'katalog.pdf')
-  assert.equal(safeCatalogFileName('../../etc/passwd', 'X'), 'etc passwd.pdf')
-  assert.equal(safeCatalogFileName('a"b\r\nc.pdf', 'X'), 'a b c.pdf')
-  assert.equal(safeCatalogFileName('.hidden.pdf', 'X'), 'hidden.pdf')
-  assert.equal(safeCatalogFileName('...', 'Katalog A'), 'Katalog A.pdf')
+test('link https yang wajar diterima dan dinormalkan', () => {
+  const r = parseCatalogUrl(
+    '  https://Drive.Google.com/file/d/abc123/view?usp=sharing ',
+  )
+  assert.deepEqual(r, {
+    ok: true,
+    url: 'https://drive.google.com/file/d/abc123/view?usp=sharing',
+  })
+  assert.equal(parseCatalogUrl('https://example.com/katalog.pdf').ok, true)
+})
+
+test('skema selain https ditolak', () => {
+  for (const bad of [
+    'http://example.com/k.pdf',
+    'javascript:alert(1)',
+    'data:text/html,<script>1</script>',
+    'ftp://example.com/k.pdf',
+    'file:///etc/passwd',
+    '//example.com/k.pdf',
+  ]) {
+    assert.equal(parseCatalogUrl(bad).ok, false, bad)
+  }
+})
+
+test('bukan URL, tanpa skema, kredensial, localhost, dan IP ditolak', () => {
+  for (const bad of [
+    'katalog saya',
+    'example.com/k.pdf',
+    'https://user:pass@example.com/k.pdf',
+    'https://user@example.com/k.pdf',
+    'https://localhost/k.pdf',
+    'https://intranet/k.pdf',
+    'https://127.0.0.1/k.pdf',
+    'https://192.168.1.5/k.pdf',
+    'https://[::1]/k.pdf',
+  ]) {
+    assert.equal(parseCatalogUrl(bad).ok, false, bad)
+  }
+})
+
+test('link terlalu panjang ditolak', () => {
+  const long = `https://example.com/${'a'.repeat(CATALOG_URL_MAX_LENGTH)}`
+  assert.equal(parseCatalogUrl(long).ok, false)
+})
+
+test('link berkas Google Drive diubah ke bentuk unduh langsung', () => {
+  const direct = 'https://drive.google.com/uc?export=download&id=1AbC_dEf-9'
   assert.equal(
-    safeCatalogFileName('   .pdf', 'Katalog Wikibex'),
-    'Katalog Wikibex.pdf',
+    catalogDownloadUrl(
+      'https://drive.google.com/file/d/1AbC_dEf-9/view?usp=sharing',
+    ),
+    direct,
   )
-  assert.equal(safeCatalogFileName('', ''), 'Katalog.pdf')
-  assert.ok(safeCatalogFileName('x'.repeat(300), 'F').length <= 84)
-})
-
-test('formatFileSize dalam KB/MB berformat Indonesia', () => {
-  assert.equal(formatFileSize(500), '1 KB')
-  assert.equal(formatFileSize(150 * 1024), '150 KB')
-  assert.equal(formatFileSize(2.5 * 1024 * 1024), '2,5 MB')
-})
-
-test('batas base64 cukup untuk batas byte', () => {
-  assert.ok(
-    CATALOG_PDF_MAX_BASE64_LENGTH >= Math.ceil(CATALOG_PDF_MAX_BYTES / 3) * 4,
-  )
-})
-
-test('URL katalog memuat versi', () => {
   assert.equal(
-    partnerCatalogUrl('p1', new Date(1700000000000)),
-    '/api/partner-catalog/p1?v=1700000000000',
+    catalogDownloadUrl('https://drive.google.com/open?id=1AbC_dEf-9'),
+    direct,
   )
+  assert.equal(
+    catalogDownloadUrl(
+      'https://drive.google.com/uc?id=1AbC_dEf-9&export=download',
+    ),
+    direct,
+  )
+})
+
+test('link non-berkas (folder Drive, situs lain) dipakai apa adanya', () => {
+  for (const url of [
+    'https://drive.google.com/drive/folders/1abc',
+    'https://drive.google.com/open?id=bad id!',
+    'https://example.com/k.pdf',
+    'https://docs.google.com/document/d/1abc/edit',
+  ]) {
+    assert.equal(catalogDownloadUrl(url), url)
+  }
+})
+
+test('catalogHost menampilkan nama situs tanpa www', () => {
+  assert.equal(catalogHost('https://www.example.com/k.pdf'), 'example.com')
+  assert.equal(
+    catalogHost('https://drive.google.com/file/d/x/view'),
+    'drive.google.com',
+  )
+  assert.equal(catalogHost('bukan url'), '')
 })

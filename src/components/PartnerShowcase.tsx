@@ -1,11 +1,11 @@
-import { Download, Package, Store } from 'lucide-react'
-import { formatFileSize } from '../lib/partner-catalog-rules'
+import { Download, Package } from 'lucide-react'
+import PartnerLogo from './PartnerLogo'
 import { formatRupiah } from '../lib/partner-product-rules'
 import type { PartnerShowcase as PartnerShowcaseData } from '../lib/partner-showcase-queries'
 
 /**
  * Etalase partner di halaman event jastiper (read-only): beberapa produk
- * unggulan + tombol unduh katalog PDF lengkap. Tidak tampil kalau partner
+ * unggulan + tombol unduh katalog lengkap (link yang ditempel partner). Tidak tampil kalau partner
  * belum memilih produk dan belum mengunggah katalog.
  */
 export default function PartnerShowcase({
@@ -18,8 +18,12 @@ export default function PartnerShowcase({
 
   return (
     <section className="mt-6">
-      <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold">
-        <Store size={14} style={{ color: 'var(--app-accent)' }} />
+      <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold">
+        <PartnerLogo
+          name={showcase.partnerName}
+          logoUrl={showcase.logoUrl}
+          size={24}
+        />
         Produk dari {showcase.partnerName}
       </h2>
 
@@ -63,14 +67,28 @@ export default function PartnerShowcase({
       )}
 
       {catalog && (
-        <a
-          href={catalog.url}
-          download
-          className="app-btn-outline mt-3 flex items-center justify-center gap-2 no-underline"
-        >
-          <Download size={16} />
-          Unduh katalog lengkap (PDF · {formatFileSize(catalog.size)})
-        </a>
+        <>
+          {/* Link milik partner di situs lain (mis. Google Drive): dibuka di tab
+              baru, `noopener noreferrer` supaya halaman itu tidak mendapat akses
+              ke halaman ALAKA. */}
+          <a
+            href={catalog.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="app-btn-outline mt-3 flex items-center justify-center gap-2 no-underline"
+          >
+            <Download size={16} />
+            Unduh katalog lengkap
+          </a>
+          {catalog.host && (
+            <p
+              className="mt-1 text-center text-[11px]"
+              style={{ color: 'var(--app-text-mute)' }}
+            >
+              Dibuka di {catalog.host}
+            </p>
+          )}
+        </>
       )}
     </section>
   )

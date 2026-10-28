@@ -3,9 +3,16 @@ import { z } from 'zod'
 import { hashPassword, verifyPassword } from './auth'
 import { createPartnerSession, requirePartner } from './partner-auth'
 import {
+  AVATAR_MAX_DATA_URL_LENGTH,
+  parseAvatarDataUrl,
+} from './avatar-validation'
+import {
   replacePartnerPassword,
+  setPartnerLogoUpdatedAt,
   updatePartnerProfile,
 } from './partner-profile-queries'
+import { partnerLogoUrl } from './partner-logo-rules'
+import { deletePartnerLogo, putPartnerLogo } from './storage'
 import { normalizePartnerProfile } from './partner-profile-rules'
 import { PARTNER_PASSWORD_MIN_LENGTH } from './partner-rules'
 
@@ -64,4 +71,45 @@ export const changeOwnPartnerPassword = createServerFn({ method: 'POST' })
     // Perangkat lain keluar; perangkat ini dapat sesi baru supaya tidak ikut keluar.
     await createPartnerSession(partner.id)
     return { ok: true }
+  })
+
+/**
+ * Ganti atau hapus logo partner. Logo = foto persegi kecil (WebP/JPEG hasil
+ * resize di client), aturan dan batasnya sama dengan foto brand jastiper. Isinya
+ * dicek ulang di server (`parseAvatarDataUrl`) — client tidak dipercaya.
+ */
+export const updateOwnPartnerLogo = createServerFn({ method: 'POST' })
+  .validator(
+    z.discriminatedUnion('action', [
+      z.object({
+        action: z.literal('replace'),
+        dataUrl: z
+          .string()
+          .max(AVATAR_MAX_DATA_URL_LENGTH, 'Logo terlalu besar'),
+      }),
+      z.object({ action: z.literal('remove') }),
+    ]),
+  )
+  .handler(async ({ data }) => {
+    const partner = await requirePartner()
+
+    if (data.action === 'replace') {
+      const { bytes, contentType } = parseAvatarDataUrl(data.dataUrl)
+      // Simpan berkas dulu, baru tandai di DB: kalau DB gagal, yang tersisa
+      // cuma berkas yang ditimpa pada unggahan berikutnya.
+      await putPartnerLogo(partner.id, bytes, contentType)
+      const now = new Date()
+      await setPartnerLogoUpdatedAt(partner.id, now)
+      return { logoUrl: partnerLogoUrl(partner.id, now) }
+    }
+
+    // Tandai di DB dulu supaya tampilan langsung kembali ke inisial; berkas
+    // dihapus sesudahnya (kalau gagal, berkas yatim tidak terlihat siapa pun).
+    await setPartnerLogoUpdatedAt(partner.id, null)
+    try {
+      await deletePartnerLogo(partner.id)
+    } catch (err) {
+      console.error('Gagal menghapus logo partner dari storage:', err)
+    }
+    return { logoUrl: null }
   })

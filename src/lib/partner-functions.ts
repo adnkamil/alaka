@@ -4,12 +4,17 @@ import { requireAdminUser } from './admin'
 import { resolveAppUrl } from './app-url'
 import { hashPassword } from './auth'
 import { sendMail } from './mailer'
-import { deletePartnerCatalogPdf, deletePartnerProductPhoto } from './storage'
+import {
+  deletePartnerCatalogPdf,
+  deletePartnerLogo,
+  deletePartnerProductPhoto,
+} from './storage'
 import {
   createPartnerSession,
   destroyPartnerSession,
   getCurrentPartner,
 } from './partner-auth'
+import { partnerLogoUrl } from './partner-logo-rules'
 import { buildPartnerInvitationMail } from './partner-mail'
 import {
   deletePartnerById,
@@ -160,6 +165,7 @@ export const deleteAdminPartner = createServerFn({ method: 'POST' })
     const results = await Promise.allSettled([
       ...info.productIds.map((id) => deletePartnerProductPhoto(id)),
       ...(info.hadCatalog ? [deletePartnerCatalogPdf(data.id)] : []),
+      ...(info.hadLogo ? [deletePartnerLogo(data.id)] : []),
     ])
     const failed = results.filter((r) => r.status === 'rejected').length
     if (failed > 0) {
@@ -225,6 +231,7 @@ export const fetchCurrentPartner = createServerFn({ method: 'GET' }).handler(
       name: partner.name,
       email: partner.email,
       waNumber: partner.waNumber,
+      logoUrl: partnerLogoUrl(partner.id, partner.logoUpdatedAt),
     }
   },
 )

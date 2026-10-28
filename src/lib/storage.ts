@@ -214,11 +214,11 @@ export async function deletePartnerProductPhoto(
   await partnerProductPhotoStore().delete(productId)
 }
 
-// --- Katalog PDF partner -------------------------------------------------
+// --- Katalog PDF partner (LEGACY) ---------------------------------------
 //
-// Satu berkas per partner, key = id partner. TIDAK publik: hanya diambil lewat
-// `/api/partner-catalog/$partnerId` yang mewajibkan login. Metadata (nama,
-// ukuran, waktu) ada di kolom `partners.catalog_pdf_*`.
+// Unggah PDF sudah diganti link katalog (`partners.catalog_url`). Hanya fungsi
+// hapus yang dipertahankan, untuk membersihkan berkas lama di Blobs (key = id
+// partner) saat partner dihapus. Berkas lama itu tidak lagi disajikan di mana pun.
 
 const PARTNER_CATALOG_STORE = 'partner-catalog-pdfs'
 
@@ -230,27 +230,52 @@ function partnerCatalogStore() {
   })
 }
 
-export async function putPartnerCatalogPdf(
-  partnerId: string,
-  bytes: Uint8Array,
-): Promise<void> {
-  const body = new Blob([new Uint8Array(bytes)], { type: 'application/pdf' })
-  await partnerCatalogStore().set(partnerId, body)
-}
-
-export async function getPartnerCatalogPdf(
-  partnerId: string,
-): Promise<ArrayBuffer | null> {
-  // `getWithMetadata` (bukan `get`) supaya berkas yang tidak ada bertipe null,
-  // sama dengan fungsi storage lain di file ini.
-  const result = await partnerCatalogStore().getWithMetadata(partnerId, {
-    type: 'blob',
-  })
-  return result ? result.data.arrayBuffer() : null
-}
-
 export async function deletePartnerCatalogPdf(
   partnerId: string,
 ): Promise<void> {
   await partnerCatalogStore().delete(partnerId)
+}
+
+// --- Logo partner --------------------------------------------------------
+//
+// Publik seperti avatar brand (cuma gambar logo, id berupa UUID acak), key = id
+// partner. Format sama dengan avatar (WebP/JPEG persegi hasil resize di client).
+
+const PARTNER_LOGO_STORE = 'partner-logos'
+
+function partnerLogoStore() {
+  return getStore({
+    name: PARTNER_LOGO_STORE,
+    consistency: 'strong',
+    region: 'us-east-2',
+  })
+}
+
+export async function putPartnerLogo(
+  partnerId: string,
+  bytes: Uint8Array,
+  contentType: AvatarContentType,
+): Promise<void> {
+  const body = new Blob([new Uint8Array(bytes)], { type: contentType })
+  await partnerLogoStore().set(partnerId, body, { metadata: { contentType } })
+}
+
+export async function getPartnerLogo(
+  partnerId: string,
+): Promise<{ data: ArrayBuffer; contentType: AvatarContentType } | null> {
+  const result = await partnerLogoStore().getWithMetadata(partnerId, {
+    type: 'blob',
+  })
+  if (!result) return null
+
+  const data = await result.data.arrayBuffer()
+  // Tipe dikenali dari isi file, bukan dari metadata.
+  const contentType = detectAvatarContentType(new Uint8Array(data))
+  if (!contentType) return null
+
+  return { data, contentType }
+}
+
+export async function deletePartnerLogo(partnerId: string): Promise<void> {
+  await partnerLogoStore().delete(partnerId)
 }

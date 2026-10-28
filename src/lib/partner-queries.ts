@@ -5,6 +5,7 @@ import {
   generateInvitationToken,
   hashInvitationToken,
 } from './invitation-token'
+import { partnerLogoUrl } from './partner-logo-rules'
 import {
   MAX_PARTNER_INVITATIONS_PER_DAY,
   PARTNER_INVITATION_TTL_DAYS,
@@ -73,6 +74,8 @@ export type PartnerRow = {
   activatedAt: Date | null
   disabledAt: Date | null
   createdAt: Date
+  /** Alamat logo partner (null = belum ada logo). */
+  logoUrl: string | null
   /** Jumlah produk di katalog partner (aktif maupun nonaktif). */
   productCount: number
   /** Jumlah event milik partner (termasuk yang sudah selesai). */
@@ -95,6 +98,7 @@ export function toPartnerRow(
     activatedAt: row.activatedAt,
     disabledAt: row.disabledAt,
     createdAt: row.createdAt,
+    logoUrl: partnerLogoUrl(row.id, row.logoUpdatedAt),
     ...counts,
   }
 }

@@ -805,6 +805,18 @@ export const partners = pgTable(
     catalogPdfUpdatedAt: timestamp('catalog_pdf_updated_at', {
       withTimezone: true,
     }),
+    /**
+     * Link unduh katalog yang ditempel partner (mis. dari Google Drive). Ini
+     * PENGGANTI unggah PDF: kolom `catalog_pdf_*` di atas tidak dipakai lagi dan
+     * dibiarkan dulu (bukan dihapus) sampai dipastikan tidak ada data yang perlu
+     * dibersihkan. Null = belum ada link.
+     */
+    catalogUrl: varchar('catalog_url'),
+    /**
+     * Kapan logo terakhir diganti; null = belum ada logo. Berkasnya di Netlify
+     * Blobs dengan key = id partner; nilai ini dipakai sebagai `?v=` URL logo.
+     */
+    logoUpdatedAt: timestamp('logo_updated_at', { withTimezone: true }),
     /** Admin ALAKA yang mendaftarkan. Dikosongkan kalau akunnya dihapus. */
     createdBy: uuid('created_by').references(() => users.id, {
       onDelete: 'set null',
