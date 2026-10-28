@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Check, ChevronDown } from 'lucide-react'
+import { Check, ChevronDown, Info } from 'lucide-react'
 import { useBackToClose } from '../lib/back-to-close'
+import { joinDisclosureText } from '../lib/join-disclosure'
 
 type FeeRuleOption = { id: string; name: string }
 
@@ -14,6 +15,11 @@ type Props = {
   hasWaNumber: boolean
   /** Hanya pemilik brand yang boleh mengisi nomor WhatsApp di Profil. */
   canEditWaNumber: boolean
+  /**
+   * Nama partner pemilik event. Diisi hanya untuk event milik partner: dipakai
+   * untuk keterangan data apa yang akan dilihat partner setelah jastiper ikut.
+   */
+  organizerName?: string | null
   onConfirm: (feeRuleId: string | null) => Promise<void>
   onClose: () => void
 }
@@ -29,6 +35,7 @@ export default function JoinEventSheet({
   feeRules,
   hasWaNumber,
   canEditWaNumber,
+  organizerName,
   onConfirm,
   onClose,
 }: Props) {
@@ -183,6 +190,23 @@ export default function JoinEventSheet({
             </button>
           </div>
         </div>
+
+        {organizerName && (
+          <div
+            className="mt-4 flex items-start gap-2 rounded-xl px-3 py-2.5 text-xs"
+            style={{
+              background: 'var(--app-accent-soft)',
+              color: 'var(--app-text-soft)',
+            }}
+          >
+            <Info
+              size={14}
+              className="mt-0.5 shrink-0"
+              style={{ color: 'var(--app-accent)' }}
+            />
+            <p>{joinDisclosureText(organizerName)}</p>
+          </div>
+        )}
 
         {!hasWaNumber && (
           <p
