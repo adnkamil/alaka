@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Manrope:wght@400;500;600;700;800&family=Roboto:wght@400;500;700&display=swap');
 @import 'tailwindcss';
 @plugin "@tailwindcss/typography";
 
@@ -481,7 +481,11 @@ a {
 :root {
   --app-bg: var(--brand-bg);
   --app-card: var(--brand-surface);
-  --app-card-hover: color-mix(in oklab, var(--brand-surface) 92%, var(--brand-ink) 8%);
+  --app-card-hover: color-mix(
+    in oklab,
+    var(--brand-surface) 92%,
+    var(--brand-ink) 8%
+  );
   --app-border: var(--brand-border);
   --app-text: var(--brand-ink);
   --app-text-soft: var(--brand-ink-soft);
@@ -734,4 +738,114 @@ a {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* ==========================================================
+   PARTNER MOBILE (scoped) — mengikuti desain Figma
+   "ALAKA – Partner Portal" (mobile, light mode saja).
+   Dipasang di wrapper layout /partner. Hanya meng-override
+   variabel --app-* di dalam .pm, jadi halaman lain tidak terpengaruh.
+   ========================================================== */
+.pm {
+  --app-bg: #fbf3e6;
+  --app-card: #ffffff;
+  --app-card-hover: #fbf3e6;
+  --app-border: #eadfcc;
+  --app-text: #2b2118;
+  --app-text-soft: #7a6b5a;
+  --app-text-mute: #a89a86;
+  --app-accent: #b6584b;
+  --app-accent-strong: #9c463b;
+  --app-accent-soft: #f3dfd9;
+  --app-success: #3f7d58;
+  --app-success-soft: #e1f0e6;
+  --pm-input: #fffdf8;
+  --pm-tint: #f3ead9;
+  --pm-muted: #eee7da;
+  --pm-gold: #8a6a3a;
+  color-scheme: light;
+  background: #fbf3e6;
+  color: #2b2118;
+}
+
+.pm .app-card {
+  border-radius: 16px;
+}
+
+@layer components {
+  .pm .app-input {
+    height: 46px;
+    padding: 0 14px;
+    border-radius: 12px;
+    background: var(--pm-input);
+    font-size: 14px;
+    font-weight: 500;
+  }
+}
+
+.pm .app-btn-primary,
+.pm .app-btn-outline {
+  min-height: 50px;
+  padding: 0 20px;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.pm .app-btn-outline {
+  min-height: 46px;
+  background: #ffffff;
+}
+
+.pm .app-badge {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.pm .app-icon-tile {
+  border-radius: 12px;
+}
+
+.pm-display {
+  font-family: 'Roboto', ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+  color: #2b2118;
+}
+
+.pm-num {
+  font-family: 'Roboto', ui-sans-serif, system-ui, sans-serif;
+  font-weight: 500;
+}
+
+.pm-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  border: 1px solid var(--app-border);
+  background: #ffffff;
+  color: #2b2118;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.pm-chip--active {
+  border-color: var(--app-accent);
+  background: var(--app-accent);
+  color: #ffffff;
+}
+
+.pm-footer {
+  position: fixed;
+  bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  z-index: 30;
+  width: 100%;
+  max-width: 480px;
+  transform: translateX(-50%);
+  padding: 12px 20px;
+  background: #fbf3e6;
 }

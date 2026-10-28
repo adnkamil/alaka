@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { ImagePlus, Trash2 } from 'lucide-react'
+import { Trash2, Upload } from 'lucide-react'
 import { getErrorMessage } from '../lib/error-message'
 import {
   PRODUCT_CODE_MAX,
@@ -43,7 +43,33 @@ interface PartnerProductFormProps {
   onSubmit: (value: PartnerProductFormValue) => Promise<void>
 }
 
-/** Form tambah/ubah produk partner (dipakai halaman `baru` dan `$id`). */
+const FORM_ID = 'partner-product-form'
+
+/** Label kolom di atas input, seperti di desain Figma. */
+function Field({
+  label,
+  children,
+}: {
+  label: string
+  children: React.ReactNode
+}) {
+  return (
+    <label className="flex flex-col gap-1.5">
+      <span
+        className="text-xs font-semibold"
+        style={{ color: 'var(--app-text-soft)' }}
+      >
+        {label}
+      </span>
+      {children}
+    </label>
+  )
+}
+
+/**
+ * Form tambah/ubah produk partner (dipakai halaman `baru` dan `$id`).
+ * Tombol simpan menempel di bawah (`.pm-footer`) seperti di desain Figma.
+ */
 export default function PartnerProductForm({
   initial,
   submitLabel,
@@ -121,55 +147,12 @@ export default function PartnerProductForm({
   }
 
   return (
-    <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-      <div className="flex items-center gap-4">
-        <div
-          className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-2xl border"
-          style={{
-            borderColor: 'var(--app-border)',
-            background: 'var(--app-accent-soft)',
-            color: 'var(--app-accent)',
-          }}
-        >
-          {previewUrl ? (
-            <img
-              src={previewUrl}
-              alt="Foto produk"
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <ImagePlus size={28} />
-          )}
-        </div>
-        <div className="flex flex-col items-start gap-2">
-          <button
-            type="button"
-            disabled={photoBusy}
-            onClick={() => fileInput.current?.click()}
-            className="app-btn-outline"
-            style={{ width: 'auto', padding: '0.5rem 0.9rem' }}
-          >
-            {photoBusy
-              ? 'Memproses...'
-              : previewUrl
-                ? 'Ganti foto'
-                : 'Unggah foto'}
-          </button>
-          {previewUrl && (
-            <button
-              type="button"
-              onClick={handleRemovePhoto}
-              className="flex items-center gap-1 text-xs font-semibold"
-              style={{ color: 'var(--app-danger)' }}
-            >
-              <Trash2 size={13} />
-              Hapus foto
-            </button>
-          )}
-          <p className="text-[11px]" style={{ color: 'var(--app-text-mute)' }}>
-            Otomatis dipotong kotak dan dikecilkan.
-          </p>
-        </div>
+    <>
+      <form
+        id={FORM_ID}
+        className="flex flex-col gap-3.5 pb-[120px]"
+        onSubmit={handleSubmit}
+      >
         <input
           ref={fileInput}
           type="file"
@@ -177,23 +160,65 @@ export default function PartnerProductForm({
           className="hidden"
           onChange={handlePickPhoto}
         />
-      </div>
+        <button
+          type="button"
+          disabled={photoBusy}
+          onClick={() => fileInput.current?.click()}
+          className="flex w-full flex-col items-center justify-center gap-1.5 overflow-hidden rounded-2xl border disabled:opacity-60"
+          style={{
+            borderColor: 'var(--app-border)',
+            background: 'var(--pm-input)',
+            minHeight: 120,
+          }}
+        >
+          {previewUrl ? (
+            <img
+              src={previewUrl}
+              alt="Foto produk"
+              className="h-32 w-full object-cover"
+            />
+          ) : (
+            <>
+              <Upload size={24} style={{ color: 'var(--app-accent)' }} />
+              <span
+                className="text-[13px] font-bold"
+                style={{ color: 'var(--app-accent)' }}
+              >
+                {photoBusy ? 'Memproses...' : 'Unggah foto produk'}
+              </span>
+              <span
+                className="text-[11px]"
+                style={{ color: 'var(--app-text-soft)' }}
+              >
+                JPG/PNG, otomatis dikonversi ke WebP
+              </span>
+            </>
+          )}
+        </button>
+        {previewUrl && (
+          <button
+            type="button"
+            onClick={handleRemovePhoto}
+            className="flex items-center gap-1 self-start text-xs font-semibold"
+            style={{ color: 'var(--app-danger)' }}
+          >
+            <Trash2 size={13} />
+            Hapus foto
+          </button>
+        )}
 
-      <label className="flex flex-col gap-1 text-sm font-medium">
-        Nama produk
-        <input
-          required
-          maxLength={PRODUCT_NAME_MAX}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="app-input"
-          placeholder="mis. Kemeja Koko Premium"
-        />
-      </label>
+        <Field label="Nama produk">
+          <input
+            required
+            maxLength={PRODUCT_NAME_MAX}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="app-input"
+            placeholder="mis. Kemeja Koko Premium"
+          />
+        </Field>
 
-      <div className="grid grid-cols-2 gap-3">
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          Kode (opsional)
+        <Field label="Kode produk (opsional)">
           <input
             maxLength={PRODUCT_CODE_MAX}
             value={code}
@@ -201,9 +226,9 @@ export default function PartnerProductForm({
             className="app-input"
             placeholder="KKP-001"
           />
-        </label>
-        <label className="flex flex-col gap-1 text-sm font-medium">
-          Harga (Rp)
+        </Field>
+
+        <Field label="Harga">
           <input
             required
             inputMode="numeric"
@@ -212,60 +237,74 @@ export default function PartnerProductForm({
             className="app-input"
             placeholder="189000"
           />
-        </label>
+        </Field>
+        {price !== null && priceText.trim() !== '' && (
+          <p
+            className="-mt-2 text-xs"
+            style={{ color: 'var(--app-text-soft)' }}
+          >
+            {formatRupiah(price)}
+          </p>
+        )}
+
+        <Field label="Deskripsi">
+          <textarea
+            rows={4}
+            maxLength={PRODUCT_DESCRIPTION_MAX}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            className="app-input resize-none"
+            style={{ height: 92, padding: '13px 14px' }}
+            placeholder="Bahan, ukuran, atau catatan lain"
+          />
+        </Field>
+
+        <div
+          className="flex items-center justify-between gap-3 rounded-2xl border bg-white p-3.5"
+          style={{ borderColor: 'var(--app-border)' }}
+        >
+          <div className="flex flex-col gap-0.5">
+            <span className="text-sm font-bold">Tampilkan di katalog</span>
+            <span
+              className="text-[11px]"
+              style={{ color: 'var(--app-text-soft)' }}
+            >
+              Jastiper bisa memilih produk ini saat ikut event.
+            </span>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={isActive}
+            aria-label="Tampilkan di katalog"
+            onClick={() => setIsActive((v) => !v)}
+            className="relative h-[26px] w-[46px] shrink-0 rounded-full transition-colors"
+            style={{ background: isActive ? '#3f7d58' : '#d9cfbf' }}
+          >
+            <span
+              className="absolute top-[3px] h-5 w-5 rounded-full bg-white shadow transition-all"
+              style={{ left: isActive ? 23 : 3 }}
+            />
+          </button>
+        </div>
+
+        {error && (
+          <p className="text-sm" style={{ color: 'var(--app-danger)' }}>
+            {error}
+          </p>
+        )}
+      </form>
+
+      <div className="pm-footer">
+        <button
+          type="submit"
+          form={FORM_ID}
+          disabled={isSubmitting || photoBusy}
+          className="app-btn-primary w-full"
+        >
+          {isSubmitting ? 'Menyimpan...' : submitLabel}
+        </button>
       </div>
-      {price !== null && priceText.trim() !== '' && (
-        <p className="-mt-2 text-xs" style={{ color: 'var(--app-text-soft)' }}>
-          {formatRupiah(price)}
-        </p>
-      )}
-
-      <label className="flex flex-col gap-1 text-sm font-medium">
-        Deskripsi (opsional)
-        <textarea
-          rows={4}
-          maxLength={PRODUCT_DESCRIPTION_MAX}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          className="app-input"
-          placeholder="Bahan, ukuran, atau catatan lain"
-        />
-      </label>
-
-      <label
-        className="flex items-start justify-between gap-3 rounded-2xl border p-3"
-        style={{
-          borderColor: 'var(--app-border)',
-          background: 'var(--app-card)',
-        }}
-      >
-        <span className="flex flex-col gap-0.5 text-sm">
-          <span className="font-semibold">Tampilkan di katalog</span>
-          <span className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
-            Produk nonaktif disembunyikan, tapi datanya tetap tersimpan.
-          </span>
-        </span>
-        <input
-          type="checkbox"
-          checked={isActive}
-          onChange={(e) => setIsActive(e.target.checked)}
-          className="mt-1 h-5 w-5 shrink-0"
-        />
-      </label>
-
-      {error && (
-        <p className="text-sm" style={{ color: 'var(--app-danger)' }}>
-          {error}
-        </p>
-      )}
-
-      <button
-        type="submit"
-        disabled={isSubmitting || photoBusy}
-        className="app-btn-primary"
-      >
-        {isSubmitting ? 'Menyimpan...' : submitLabel}
-      </button>
-    </form>
+    </>
   )
 }

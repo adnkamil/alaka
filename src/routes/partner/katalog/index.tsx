@@ -66,64 +66,35 @@ function PartnerCatalogPage() {
   }
 
   return (
-    <main className="px-4 pb-6 pt-6">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold">Katalog Produk</h1>
-          <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
-            {counts.all} produk · {counts.aktif} aktif
-          </p>
-        </div>
-        <Link
-          to="/partner/katalog/baru"
-          className="flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-semibold text-white no-underline shadow-sm"
-          style={{ background: 'var(--app-accent)' }}
-        >
-          <Plus size={14} />
-          Tambah produk
-        </Link>
-      </div>
-
-      <PartnerCatalogCard />
+    <main className="flex flex-col gap-3.5 px-5 pb-[150px] pt-4">
+      <h1 className="pm-display text-[22px] leading-tight">Katalog Produk</h1>
 
       <div
-        className="mb-3 flex items-center gap-2 rounded-xl border px-3"
+        className="flex h-[46px] items-center gap-2 rounded-xl border px-3.5"
         style={{
           borderColor: 'var(--app-border)',
-          background: 'var(--app-card)',
+          background: 'var(--pm-input)',
         }}
       >
-        <Search size={16} style={{ color: 'var(--app-text-mute)' }} />
+        <Search size={18} style={{ color: 'var(--app-text-mute)' }} />
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Cari nama atau kode produk"
-          className="app-input min-w-0 flex-1 border-0 pl-0"
+          placeholder="Cari produk"
+          className="min-w-0 flex-1 border-0 bg-transparent text-sm font-medium outline-none"
+          style={{ color: 'var(--app-text)' }}
         />
       </div>
 
-      <div className="mb-4 flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2">
         {TABS.map((t) => (
           <button
             key={t.key}
             type="button"
             onClick={() => setTab(t.key)}
-            className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all ${
-              tab === t.key
-                ? 'border-[var(--app-accent)] bg-[var(--app-accent)] text-white shadow-sm'
-                : 'border-[var(--app-border)] bg-[var(--app-card)] text-[var(--app-text-soft)] hover:border-[var(--app-accent)]'
-            }`}
+            className={`pm-chip ${tab === t.key ? 'pm-chip--active' : ''}`}
           >
-            <span>{t.label}</span>
-            <span
-              className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-                tab === t.key
-                  ? 'bg-white/20 text-white'
-                  : 'bg-[var(--app-accent-soft)] text-[var(--app-accent)]'
-              }`}
-            >
-              {counts[t.key]}
-            </span>
+            {t.label} {counts[t.key]}
           </button>
         ))}
       </div>
@@ -138,7 +109,7 @@ function PartnerCatalogPage() {
           </p>
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3.5">
           {visible.map((product) => (
             <ProductRow
               key={product.id}
@@ -148,6 +119,18 @@ function PartnerCatalogPage() {
           ))}
         </div>
       )}
+
+      <PartnerCatalogCard />
+
+      <div className="pm-footer">
+        <Link
+          to="/partner/katalog/baru"
+          className="app-btn-primary w-full gap-2 no-underline"
+        >
+          <Plus size={18} />
+          Tambah produk
+        </Link>
+      </div>
 
       {notice && <Toast message={notice} onClose={() => setNotice(null)} />}
     </main>
@@ -173,8 +156,8 @@ function ProductRow({
         <div
           className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl"
           style={{
-            background: 'var(--app-accent-soft)',
-            color: 'var(--app-accent)',
+            background: 'var(--pm-tint)',
+            color: 'var(--app-text-mute)',
           }}
         >
           {photoUrl ? (
@@ -189,11 +172,8 @@ function ProductRow({
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold">{product.name}</p>
-          <p
-            className="text-sm font-bold"
-            style={{ color: 'var(--app-accent)' }}
-          >
+          <p className="truncate text-sm font-bold">{product.name}</p>
+          <p className="pm-num text-sm" style={{ color: 'var(--app-accent)' }}>
             {formatRupiah(product.price)}
           </p>
           {product.code && (
@@ -213,7 +193,7 @@ function ProductRow({
         style={{
           background: product.isActive
             ? 'var(--app-success-soft)'
-            : 'var(--app-accent-soft)',
+            : 'var(--pm-muted)',
           color: product.isActive
             ? 'var(--app-success)'
             : 'var(--app-text-soft)',

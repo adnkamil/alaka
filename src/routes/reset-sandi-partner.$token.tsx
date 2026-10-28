@@ -60,12 +60,14 @@ function ResetSandiPartnerPage() {
 
   if (!data.valid) {
     return (
-      <main className="app-shell mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6 py-10">
+      <main className="app-shell pm mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6 py-10">
         <div className="mb-6 flex flex-col items-center text-center">
           <span className="app-icon-tile mb-4 h-14 w-14">
             <LinkIcon size={26} />
           </span>
-          <h1 className="mb-1 text-2xl font-bold">Link sudah tidak berlaku</h1>
+          <h1 className="mb-1 pm-display text-[26px] leading-tight">
+            Link sudah tidak berlaku
+          </h1>
           <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
             Link atur ulang kata sandi cuma bisa dipakai sekali dan berlaku 1
             jam. Minta link baru ya.
@@ -83,12 +85,14 @@ function ResetSandiPartnerPage() {
   }
 
   return (
-    <main className="app-shell mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6 py-10">
+    <main className="app-shell pm mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6 py-10">
       <div className="mb-6 flex flex-col items-center text-center">
         <span className="app-icon-tile mb-4 h-14 w-14">
           <Store size={26} />
         </span>
-        <h1 className="mb-1 text-2xl font-bold">Buat kata sandi baru</h1>
+        <h1 className="mb-1 pm-display text-[26px] leading-tight">
+          Buat kata sandi baru
+        </h1>
         <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
           Setelah disimpan, kamu langsung masuk ke Partner Portal dan perangkat
           lain yang masih login akan keluar.

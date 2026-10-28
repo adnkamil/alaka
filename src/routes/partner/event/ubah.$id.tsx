@@ -1,7 +1,7 @@
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { ArrowLeft } from 'lucide-react'
-import CalendarEventForm from '../../../components/CalendarEventForm'
+import PartnerEventForm from '../../../components/PartnerEventForm'
 import { updateOwnPartnerEvent } from '../../../lib/partner-event-functions'
 import { partnerEventQuery } from '../../../lib/queries'
 import type { CalendarEventFormValue } from '../../../components/CalendarEventForm'
@@ -30,20 +30,23 @@ function EditPartnerEventPage() {
   }
 
   return (
-    <main className="px-4 pb-8 pt-4">
-      <Link
-        to="/partner/event/$id"
-        params={{ id }}
-        className="mb-3 inline-flex items-center gap-1 text-xs font-semibold no-underline"
-        style={{ color: 'var(--app-accent)' }}
-      >
-        <ArrowLeft size={14} />
-        Detail event
-      </Link>
-      <h1 className="mb-4 text-xl font-bold">Ubah Event</h1>
+    <main className="flex flex-col gap-4 px-5 pt-4">
+      <header className="flex items-center gap-3">
+        <Link
+          to="/partner/event/$id"
+          params={{ id }}
+          aria-label="Kembali"
+          className="-ml-1 flex size-8 items-center justify-center"
+          style={{ color: 'var(--app-text)' }}
+        >
+          <ArrowLeft size={22} />
+        </Link>
+        <h1 className="pm-display text-[22px] leading-tight">Ubah Event</h1>
+      </header>
 
-      <CalendarEventForm
-        showExhibitors={false}
+      <PartnerEventForm
+        currentBannerSrc={event.bannerSrc}
+        submitLabel="Simpan perubahan"
         initialValue={{
           name: event.name,
           location: event.location,
@@ -51,12 +54,7 @@ function EditPartnerEventPage() {
           endDate: event.endDate,
           isOnline: event.isOnline,
           description: event.description ?? '',
-          exhibitors: [],
         }}
-        currentBannerSrc={event.bannerSrc}
-        onCancel={() =>
-          void navigate({ to: '/partner/event/$id', params: { id } })
-        }
         onSubmit={handleSubmit}
       />
     </main>
