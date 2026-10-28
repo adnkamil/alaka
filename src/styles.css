@@ -849,3 +849,79 @@ a {
   padding: 12px 20px;
   background: #fbf3e6;
 }
+
+/* ----------------------------------------------------------
+   PARTNER DESKTOP (>= 1024px) — sidebar + topbar (Figma
+   "D2 Beranda Partner"). Di bawah breakpoint ini sidebar &
+   topbar disembunyikan dan tampilan mobile di atas dipakai.
+   ---------------------------------------------------------- */
+.pm-sidebar,
+.pm-topbar {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .pm-root {
+    display: grid;
+    grid-template-columns: 248px minmax(0, 1fr);
+    min-height: 100dvh;
+  }
+
+  .pm-sidebar {
+    position: sticky;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    padding: 24px 20px;
+    background: #ffffff;
+    border-right: 1px solid var(--app-border);
+  }
+
+  .pm-main {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+  }
+
+  .pm-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    height: 72px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 0 32px;
+    background: #ffffff;
+    border-bottom: 1px solid var(--app-border);
+  }
+
+  /* Halaman partner yang belum punya layout desktop tetap berupa kolom
+     480px, ditaruh di tengah area konten. */
+  .pm-content {
+    flex: 1;
+    max-width: none;
+    padding-bottom: 32px;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .pm-content > main {
+    max-width: 480px;
+    margin-inline: auto;
+  }
+
+  /* Halaman yang sudah punya layout desktop memenuhi lebar konten. */
+  .pm-content > main.pm-wide {
+    max-width: 1600px;
+    padding: 28px 32px 32px;
+  }
+
+  .pm-footer {
+    bottom: 0;
+    left: calc(248px + (100% - 248px) / 2);
+    max-width: 480px;
+  }
+}
