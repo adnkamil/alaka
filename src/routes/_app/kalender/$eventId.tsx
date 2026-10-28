@@ -216,6 +216,7 @@ function CalendarEventDetailPage() {
           dateLabel={formatDateRange(event.eventDate, event.endDate)}
           hasWaNumber={Boolean(user?.waNumber)}
           canEditWaNumber={user?.brandRole === 'owner'}
+          organizerName={event.showcase?.partnerName ?? null}
           onConfirm={handleJoin}
           onClose={() => setShowJoinSheet(false)}
         />
