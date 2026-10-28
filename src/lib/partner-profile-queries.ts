@@ -63,3 +63,14 @@ export async function replacePartnerPassword(
       .where(eq(partnerSessions.partnerId, partnerId))
   })
 }
+
+/** Tandai logo baru (Date) atau hapus logo (null). Berkasnya diurus pemanggil. */
+export async function setPartnerLogoUpdatedAt(
+  partnerId: string,
+  logoUpdatedAt: Date | null,
+): Promise<void> {
+  await db
+    .update(partners)
+    .set({ logoUpdatedAt, updatedAt: new Date() })
+    .where(eq(partners.id, partnerId))
+}

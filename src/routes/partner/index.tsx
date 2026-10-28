@@ -1,6 +1,7 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { CalendarDays, Package, Plus, ShoppingBag, Users } from 'lucide-react'
+import PartnerLogo from '../../components/PartnerLogo'
 import { formatDate, formatPhoneNumber } from '../../lib/format'
 import {
   currentPartnerQuery,
@@ -99,12 +100,14 @@ function PartnerHomePage() {
   return (
     <main className="flex flex-col gap-[18px] px-5 pb-6 pt-2">
       <header className="flex items-center gap-3 pt-2">
-        <span
-          className="pm-display flex size-11 shrink-0 items-center justify-center rounded-full text-[15px]"
-          style={{ background: 'var(--app-accent-soft)', color: '#9c463b' }}
-        >
-          {initialsOf(partner.name)}
-        </span>
+        <PartnerLogo
+          name={partner.name}
+          logoUrl={partner.logoUrl}
+          size={44}
+          shape="circle"
+          initials={initialsOf(partner.name)}
+          className="pm-display"
+        />
         <div className="min-w-0 flex-1">
           <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
             Halo,

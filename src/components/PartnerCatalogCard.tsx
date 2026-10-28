@@ -1,190 +1,152 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
-import { Download, FileText, Trash2, Upload } from 'lucide-react'
-import ConfirmModal from './ui/ConfirmModal'
+import { ExternalLink, FileText } from 'lucide-react'
 import { getErrorMessage } from '../lib/error-message'
-import { formatDate } from '../lib/format'
+import { saveOwnPartnerCatalogUrl } from '../lib/partner-catalog-functions'
 import {
-  deletePartnerCatalog,
-  uploadPartnerCatalog,
-} from '../lib/partner-catalog-functions'
-import {
-  CATALOG_PDF_MAX_BYTES,
-  formatFileSize,
+  CATALOG_URL_MAX_LENGTH,
+  parseCatalogUrl,
 } from '../lib/partner-catalog-rules'
 import { partnerCatalogQuery } from '../lib/queries'
 
-/** Isi berkas jadi base64 (tanpa awalan `data:...;base64,`). */
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onerror = () => reject(new Error('Berkas tidak bisa dibaca'))
-    reader.onload = () => {
-      const result = String(reader.result)
-      resolve(result.slice(result.indexOf(',') + 1))
-    }
-    reader.readAsDataURL(file)
-  })
-}
-
 /**
- * Kartu katalog PDF di halaman Katalog partner: unggah / ganti / hapus / unduh.
- * Satu katalog per partner; jastiper mengunduhnya dari halaman semua event
- * milik partner ini.
+ * Kartu link katalog di halaman Katalog partner. Katalog lengkap tidak
+ * diunggah ke ALAKA: partner menempel link unduh (mis. Google Drive) dan
+ * jastiper membukanya dari halaman event milik partner ini.
  */
 export default function PartnerCatalogCard() {
   const { data: catalog } = useSuspenseQuery(partnerCatalogQuery)
   const queryClient = useQueryClient()
-  const fileInput = useRef<HTMLInputElement>(null)
-  const [busy, setBusy] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [value, setValue] = useState(catalog?.url ?? '')
+  const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [saved, setSaved] = useState(false)
 
-  async function refresh() {
-    await queryClient.invalidateQueries({ queryKey: ['partner-catalog'] })
-  }
-
-  async function handlePick(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    // Reset supaya memilih berkas yang sama dua kali tetap memicu onChange.
-    e.target.value = ''
-    if (!file) return
+  async function save(next: string) {
     setError(null)
+    setSaved(false)
 
-    if (file.size > CATALOG_PDF_MAX_BYTES) {
-      setError(
-        `Ukuran PDF maksimal ${formatFileSize(CATALOG_PDF_MAX_BYTES)}. Kompres dulu, lalu coba lagi.`,
-      )
-      return
-    }
-    if (file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name)) {
-      setError('Berkas harus berupa PDF.')
+    const checked = parseCatalogUrl(next)
+    if (!checked.ok) {
+      setError(checked.error)
       return
     }
 
-    setBusy(true)
+    setSaving(true)
     try {
-      await uploadPartnerCatalog({
-        data: { fileName: file.name, dataBase64: await fileToBase64(file) },
-      })
-      await refresh()
+      await saveOwnPartnerCatalogUrl({ data: { url: next } })
+      await queryClient.invalidateQueries({ queryKey: ['partner-catalog'] })
+      // Jastiper yang sedang membuka event ikut mendapat link terbaru.
+      await queryClient.invalidateQueries({ queryKey: ['calendar-event'] })
+      setValue(checked.url ?? '')
+      setSaved(true)
     } catch (err) {
-      setError(getErrorMessage(err, 'Gagal mengunggah katalog'))
+      setError(getErrorMessage(err, 'Gagal menyimpan link katalog'))
     } finally {
-      setBusy(false)
+      setSaving(false)
     }
   }
 
-  async function handleDelete() {
-    setBusy(true)
-    setError(null)
-    try {
-      await deletePartnerCatalog()
-      await refresh()
-      setConfirmDelete(false)
-    } catch (err) {
-      setError(getErrorMessage(err, 'Gagal menghapus katalog'))
-      setConfirmDelete(false)
-    } finally {
-      setBusy(false)
-    }
-  }
+  const unchanged = value.trim() === (catalog?.url ?? '')
 
   return (
     <section className="app-card mb-4 p-4">
-      <div className="mb-2 flex items-center gap-2">
+      <div className="mb-3 flex items-center gap-2">
         <span className="app-icon-tile h-9 w-9 shrink-0">
           <FileText size={16} />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">Katalog PDF</p>
+          <p className="text-sm font-semibold">Link katalog lengkap</p>
           <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
             Jastiper bisa mengunduhnya di halaman event kamu.
           </p>
         </div>
       </div>
 
-      {catalog ? (
-        <div className="flex flex-col gap-2">
-          <p className="truncate text-sm font-medium">{catalog.name}</p>
-          <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
-            {formatFileSize(catalog.size)} · diunggah{' '}
-            {formatDate(catalog.updatedAt)}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <a
-              href={catalog.url}
-              download
-              className="app-btn-outline flex items-center gap-1.5 no-underline"
-              style={{ width: 'auto', padding: '0.45rem 0.8rem' }}
-            >
-              <Download size={14} />
-              Unduh
-            </a>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => fileInput.current?.click()}
-              className="app-btn-outline flex items-center gap-1.5"
-              style={{ width: 'auto', padding: '0.45rem 0.8rem' }}
-            >
-              <Upload size={14} />
-              {busy ? 'Mengunggah...' : 'Ganti'}
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => setConfirmDelete(true)}
-              className="app-btn-outline flex items-center gap-1.5"
-              style={{
-                width: 'auto',
-                padding: '0.45rem 0.8rem',
-                color: 'var(--app-danger)',
-              }}
-            >
-              <Trash2 size={14} />
-              Hapus
-            </button>
-          </div>
-        </div>
-      ) : (
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => fileInput.current?.click()}
-          className="app-btn-outline flex items-center justify-center gap-1.5"
-        >
-          <Upload size={14} />
-          {busy ? 'Mengunggah...' : 'Unggah katalog PDF'}
-        </button>
-      )}
+      <label className="flex flex-col gap-1 text-sm font-medium">
+        Link unduh katalog (PDF)
+        <input
+          type="url"
+          inputMode="url"
+          maxLength={CATALOG_URL_MAX_LENGTH}
+          value={value}
+          onChange={(e) => {
+            setValue(e.target.value)
+            setSaved(false)
+          }}
+          className="app-input"
+          placeholder="https://drive.google.com/file/d/..."
+        />
+      </label>
 
-      <p className="mt-2 text-[11px]" style={{ color: 'var(--app-text-mute)' }}>
-        Maksimal {formatFileSize(CATALOG_PDF_MAX_BYTES)}. Hanya satu katalog
-        yang aktif; mengunggah lagi akan menggantinya.
-      </p>
+      <div
+        className="mt-2 rounded-xl px-3 py-2 text-xs"
+        style={{
+          background: 'var(--app-accent-soft)',
+          color: 'var(--app-text-soft)',
+        }}
+      >
+        <p className="mb-1 font-semibold">Pakai Google Drive?</p>
+        <ol className="ml-4 list-decimal space-y-0.5">
+          <li>Unggah PDF katalog ke Google Drive.</li>
+          <li>Klik kanan file → Bagikan → Bagikan.</li>
+          <li>
+            Ubah akses umum jadi &quot;Siapa saja yang memiliki link&quot;
+            (Pelihat).
+          </li>
+          <li>Salin link, lalu tempel di sini.</li>
+        </ol>
+        <p className="mt-1">
+          Kalau akses tidak dibuka untuk umum, jastiper tidak bisa mengunduh.
+          Link dari layanan lain (Dropbox, situs sendiri) juga bisa.
+        </p>
+      </div>
+
       {error && (
         <p className="mt-2 text-sm" style={{ color: 'var(--app-danger)' }}>
           {error}
         </p>
       )}
+      {saved && !error && (
+        <p className="mt-2 text-sm" style={{ color: 'var(--app-success)' }}>
+          {value.trim() ? 'Link katalog disimpan.' : 'Link katalog dihapus.'}
+        </p>
+      )}
 
-      <input
-        ref={fileInput}
-        type="file"
-        accept="application/pdf,.pdf"
-        className="hidden"
-        onChange={handlePick}
-      />
-      <ConfirmModal
-        open={confirmDelete}
-        title="Hapus katalog PDF?"
-        content="Tombol unduh katalog hilang dari halaman event kamu. Kamu bisa mengunggah katalog baru kapan saja."
-        okText="Hapus"
-        loading={busy}
-        onOk={handleDelete}
-        onCancel={() => setConfirmDelete(false)}
-      />
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          disabled={saving || unchanged}
+          onClick={() => void save(value)}
+          className="app-btn-primary"
+          style={{ width: 'auto', padding: '0.5rem 1rem' }}
+        >
+          {saving ? 'Menyimpan...' : 'Simpan'}
+        </button>
+        {catalog && (
+          <>
+            <a
+              href={catalog.downloadUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="app-btn-outline flex items-center gap-1.5 no-underline"
+              style={{ width: 'auto', padding: '0.5rem 0.9rem' }}
+            >
+              <ExternalLink size={14} />
+              Coba buka
+            </a>
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => void save('')}
+              className="text-xs font-semibold disabled:opacity-50"
+              style={{ color: 'var(--app-danger)' }}
+            >
+              Hapus link
+            </button>
+          </>
+        )}
+      </div>
     </section>
   )
 }

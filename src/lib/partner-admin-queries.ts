@@ -187,7 +187,9 @@ export async function setPartnerDisabled(
 export type DeletedPartnerInfo = {
   /** Id produk yang ikut terhapus (untuk membersihkan foto di storage). */
   productIds: Array<string>
+  /** Berkas katalog PDF lama (fitur unggah yang sudah diganti link). */
   hadCatalog: boolean
+  hadLogo: boolean
 }
 
 /**
@@ -201,7 +203,10 @@ export async function deletePartnerById(
 ): Promise<DeletedPartnerInfo> {
   return db.transaction(async (tx) => {
     const found = await tx
-      .select({ catalog: partners.catalogPdfName })
+      .select({
+        catalog: partners.catalogPdfName,
+        logo: partners.logoUpdatedAt,
+      })
       .from(partners)
       .where(eq(partners.id, id))
       .for('update')
@@ -215,6 +220,7 @@ export async function deletePartnerById(
     return {
       productIds: products.map((p) => p.id),
       hadCatalog: found[0].catalog !== null,
+      hadLogo: found[0].logo !== null,
     }
   })
 }

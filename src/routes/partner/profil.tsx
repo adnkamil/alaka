@@ -1,13 +1,16 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { Eye, EyeOff, KeyRound, LogOut, Mail, Store } from 'lucide-react'
+import PartnerLogo from '../../components/PartnerLogo'
 import Toast from '../../components/ui/Toast'
+import { blobToDataUrl, fileToAvatarBlob } from '../../lib/avatar-image'
 import { getErrorMessage } from '../../lib/error-message'
 import { formatPhoneNumber } from '../../lib/format'
 import { logoutPartner } from '../../lib/partner-functions'
 import {
   changeOwnPartnerPassword,
+  updateOwnPartnerLogo,
   updateOwnPartnerProfile,
 } from '../../lib/partner-profile-functions'
 import {
@@ -31,6 +34,7 @@ function PartnerProfilePage() {
   return (
     <main className="flex flex-col gap-4 px-5 pt-4">
       <h1 className="pm-display text-[22px] leading-tight">Profil</h1>
+      <LogoCard name={partner.name} logoUrl={partner.logoUrl} />
       <ProfileForm
         initialName={partner.name}
         initialWaNumber={partner.waNumber ?? ''}
@@ -282,5 +286,104 @@ function PasswordForm() {
       </button>
       {notice && <Toast message={notice} onClose={() => setNotice(null)} />}
     </form>
+  )
+}
+
+function LogoCard({ name, logoUrl }: { name: string; logoUrl: string | null }) {
+  const queryClient = useQueryClient()
+  const router = useRouter()
+  const fileInput = useRef<HTMLInputElement>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+
+  async function refresh() {
+    // Logo baru tampil di header (konteks route) dan di etalase jastiper.
+    await queryClient.invalidateQueries({ queryKey: ['current-partner'] })
+    await queryClient.invalidateQueries({ queryKey: ['calendar-event'] })
+    await router.invalidate()
+  }
+
+  async function handlePick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    // Reset supaya memilih berkas yang sama dua kali tetap memicu onChange.
+    e.target.value = ''
+    if (!file) return
+    setError(null)
+    setBusy(true)
+    try {
+      const blob = await fileToAvatarBlob(file)
+      await updateOwnPartnerLogo({
+        data: { action: 'replace', dataUrl: await blobToDataUrl(blob) },
+      })
+      await refresh()
+      setNotice('Logo disimpan')
+    } catch (err) {
+      setError(getErrorMessage(err, 'Logo tidak bisa diproses'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleRemove() {
+    setError(null)
+    setBusy(true)
+    try {
+      await updateOwnPartnerLogo({ data: { action: 'remove' } })
+      await refresh()
+      setNotice('Logo dihapus')
+    } catch (err) {
+      setError(getErrorMessage(err, 'Gagal menghapus logo'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="app-card flex items-center gap-4 p-4">
+      <PartnerLogo name={name} logoUrl={logoUrl} size={72} />
+      <div className="flex min-w-0 flex-1 flex-col items-start gap-2">
+        <p className="text-sm font-semibold">Logo partner</p>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => fileInput.current?.click()}
+            className="app-btn-outline"
+            style={{ width: 'auto', padding: '0.4rem 0.8rem' }}
+          >
+            {busy ? 'Memproses...' : logoUrl ? 'Ganti logo' : 'Unggah logo'}
+          </button>
+          {logoUrl && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void handleRemove()}
+              className="text-xs font-semibold disabled:opacity-50"
+              style={{ color: 'var(--app-danger)' }}
+            >
+              Hapus
+            </button>
+          )}
+        </div>
+        <p className="text-[11px]" style={{ color: 'var(--app-text-mute)' }}>
+          Otomatis dipotong kotak dan dikecilkan. Tampil di header dan di
+          halaman event.
+        </p>
+        {error && (
+          <p className="text-xs" style={{ color: 'var(--app-danger)' }}>
+            {error}
+          </p>
+        )}
+      </div>
+      <input
+        ref={fileInput}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handlePick}
+      />
+      {notice && <Toast message={notice} onClose={() => setNotice(null)} />}
+    </section>
   )
 }

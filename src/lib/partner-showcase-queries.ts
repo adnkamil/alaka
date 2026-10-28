@@ -6,7 +6,8 @@ import {
   partnerProducts,
   partners,
 } from '../db/schema'
-import { partnerCatalogUrl } from './partner-catalog-rules'
+import { catalogDownloadUrl, catalogHost } from './partner-catalog-rules'
+import { partnerLogoUrl } from './partner-logo-rules'
 import { MAX_EVENT_PRODUCTS } from './partner-event-product-rules'
 import { partnerProductPhotoUrl } from './partner-product-rules'
 
@@ -20,13 +21,15 @@ import { partnerProductPhotoUrl } from './partner-product-rules'
 export type PartnerShowcase = {
   partnerId: string
   partnerName: string
+  logoUrl: string | null
   products: Array<{
     id: string
     name: string
     price: number
     photoUrl: string | null
   }>
-  catalog: { name: string; size: number; url: string } | null
+  /** Link katalog lengkap (sudah dalam bentuk yang dibuka tombol Unduh). */
+  catalog: { url: string; host: string } | null
 }
 
 /** Etalase untuk satu event kalender, atau null kalau bukan event partner. */
@@ -37,9 +40,8 @@ export async function getEventPartnerShowcase(
     .select({
       partnerId: partners.id,
       partnerName: partners.name,
-      catalogName: partners.catalogPdfName,
-      catalogSize: partners.catalogPdfSize,
-      catalogUpdatedAt: partners.catalogPdfUpdatedAt,
+      logoUpdatedAt: partners.logoUpdatedAt,
+      catalogUrl: partners.catalogUrl,
     })
     .from(calendarEvents)
     .innerJoin(partners, eq(calendarEvents.partnerId, partners.id))
@@ -66,28 +68,20 @@ export async function getEventPartnerShowcase(
     .orderBy(asc(partnerProducts.name))
     .limit(MAX_EVENT_PRODUCTS)
 
-  const hasCatalog =
-    partner.catalogName !== null &&
-    partner.catalogSize !== null &&
-    partner.catalogUpdatedAt !== null
-
   return {
     partnerId: partner.partnerId,
     partnerName: partner.partnerName,
+    logoUrl: partnerLogoUrl(partner.partnerId, partner.logoUpdatedAt),
     products: rows.map(({ product }) => ({
       id: product.id,
       name: product.name,
       price: Number(product.price),
       photoUrl: partnerProductPhotoUrl(product.id, product.photoUpdatedAt),
     })),
-    catalog: hasCatalog
+    catalog: partner.catalogUrl
       ? {
-          name: partner.catalogName as string,
-          size: partner.catalogSize as number,
-          url: partnerCatalogUrl(
-            partner.partnerId,
-            partner.catalogUpdatedAt as Date,
-          ),
+          url: catalogDownloadUrl(partner.catalogUrl),
+          host: catalogHost(partner.catalogUrl),
         }
       : null,
   }

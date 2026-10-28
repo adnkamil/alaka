@@ -3,6 +3,7 @@ import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { Inbox, Mail, Pencil, Plus, Power, Search, Trash2 } from 'lucide-react'
 import PartnerFormModal from '../../components/PartnerFormModal'
+import PartnerLogo from '../../components/PartnerLogo'
 import ConfirmModal from '../../components/ui/ConfirmModal'
 import Toast from '../../components/ui/Toast'
 import { getErrorMessage } from '../../lib/error-message'
@@ -274,6 +275,7 @@ function PartnerCard({
   return (
     <div className="app-card p-4">
       <div className="flex items-start justify-between gap-3">
+        <PartnerLogo name={partner.name} logoUrl={partner.logoUrl} size={44} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold">{partner.name}</p>
           <p

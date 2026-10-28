@@ -1,61 +1,90 @@
 /**
- * Aturan katalog PDF partner — murni, tanpa `db`/storage, dipakai UI dan server.
+ * Aturan link katalog partner — murni, tanpa `db`, dipakai UI dan server.
  *
- * Batas 4 MB: berkas dikirim lewat server function sebagai base64 (+33%), dan
- * fungsi Netlify menolak body di atas ~6 MB. 4 MB -> ~5,4 MB di kabel, masih
- * aman. Katalog yang lebih besar perlu dikompres dulu oleh partner.
+ * Katalog lengkap TIDAK diunggah ke ALAKA: partner menempel link unduh (mis.
+ * dari Google Drive) dan jastiper membukanya di halaman event.
  */
-export const CATALOG_PDF_MAX_BYTES = 4 * 1024 * 1024
 
-/** Panjang maksimum string base64 untuk `CATALOG_PDF_MAX_BYTES` (+ sedikit sisa). */
-export const CATALOG_PDF_MAX_BASE64_LENGTH =
-  Math.ceil((CATALOG_PDF_MAX_BYTES * 4) / 3) + 8
+export const CATALOG_URL_MAX_LENGTH = 2000
 
-const PDF_MAGIC = [0x25, 0x50, 0x44, 0x46, 0x2d] // "%PDF-"
+export type CatalogUrlResult =
+  { ok: true; url: string | null } | { ok: false; error: string }
 
-/** Isi berkas diawali "%PDF-"? Tipe diputuskan dari isi, bukan nama/MIME. */
-export function isPdfBytes(bytes: Uint8Array): boolean {
-  if (bytes.length < PDF_MAGIC.length) return false
-  return PDF_MAGIC.every((byte, i) => bytes[i] === byte)
+/**
+ * Validasi link yang ditempel partner. Kosong = hapus link (`url: null`).
+ * Hanya `https://`; menolak `javascript:`/`http:`/`data:`, link yang memuat
+ * nama pengguna/kata sandi, `localhost`, dan alamat IP — link ini akan diketuk
+ * jastiper, jadi harus alamat situs yang wajar. Hasilnya link yang sudah
+ * dinormalkan (`URL.href`).
+ */
+export function parseCatalogUrl(input: string): CatalogUrlResult {
+  const raw = input.trim()
+  if (!raw) return { ok: true, url: null }
+  if (raw.length > CATALOG_URL_MAX_LENGTH) {
+    return { ok: false, error: 'Link terlalu panjang' }
+  }
+
+  let url: URL
+  try {
+    url = new URL(raw)
+  } catch {
+    return { ok: false, error: 'Link tidak valid. Awali dengan https://' }
+  }
+  if (url.protocol !== 'https:') {
+    return { ok: false, error: 'Link harus diawali https://' }
+  }
+  if (url.username || url.password) {
+    return {
+      ok: false,
+      error: 'Link tidak boleh memuat nama pengguna atau kata sandi',
+    }
+  }
+  const host = url.hostname
+  const isIp = /^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.startsWith('[')
+  if (!host.includes('.') || isIp) {
+    return {
+      ok: false,
+      error: 'Gunakan link dari situs, bukan alamat lokal atau IP',
+    }
+  }
+  return { ok: true, url: url.href }
+}
+
+const DRIVE_HOST = 'drive.google.com'
+
+/** Id berkas dari link Google Drive (`/file/d/<id>/view`, `/open?id=`, `/uc?id=`). */
+function driveFileId(url: URL): string | null {
+  if (url.hostname !== DRIVE_HOST) return null
+  const match = /^\/file\/d\/([A-Za-z0-9_-]+)/.exec(url.pathname)
+  if (match) return match[1]
+  if (url.pathname === '/open' || url.pathname === '/uc') {
+    const id = url.searchParams.get('id')
+    if (id && /^[A-Za-z0-9_-]+$/.test(id)) return id
+  }
+  return null
 }
 
 /**
- * Nama berkas yang aman dipakai di header unduhan: tanpa path / karakter
- * kontrol / tanda kutip, berakhiran `.pdf`, maksimal 80 karakter. Kalau nama
- * dari partner tidak bisa dipakai, pakai `fallback` (mis. "Katalog Wikibex").
+ * Link yang dipakai tombol "Unduh katalog". Link berkas Google Drive diubah ke
+ * bentuk unduh langsung supaya jastiper tidak berhenti di halaman pratinjau
+ * Drive; link lain (folder Drive, situs lain) dipakai apa adanya.
  */
-export function safeCatalogFileName(raw: string, fallback: string): string {
-  const withoutExt = raw.replace(/\.pdf$/i, '')
-  const cleaned = withoutExt
-    // eslint-disable-next-line no-control-regex
-    .replace(/[\u0000-\u001f\u007f"\\/:*?<>|]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    // Titik di depan = berkas tersembunyi / sisa "../"; buang.
-    .replace(/^[.\s]+/, '')
-    .slice(0, 80)
-    .trim()
-  if (cleaned) return `${cleaned}.pdf`
-  const fb = fallback
-    // eslint-disable-next-line no-control-regex
-    .replace(/[\u0000-\u001f\u007f"\\/:*?<>|]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .replace(/^[.\s]+/, '')
-    .slice(0, 80)
-    .trim()
-  return `${fb || 'Katalog'}.pdf`
+export function catalogDownloadUrl(storedUrl: string): string {
+  let url: URL
+  try {
+    url = new URL(storedUrl)
+  } catch {
+    return storedUrl
+  }
+  const id = driveFileId(url)
+  return id ? `https://${DRIVE_HOST}/uc?export=download&id=${id}` : storedUrl
 }
 
-export function formatFileSize(bytes: number): string {
-  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1).replace('.', ',')} MB`
-}
-
-/** Alamat unduhan katalog partner; `version` mengganti URL saat berkas diganti. */
-export function partnerCatalogUrl(
-  partnerId: string,
-  updatedAt: Date | string,
-): string {
-  return `/api/partner-catalog/${partnerId}?v=${new Date(updatedAt).getTime()}`
+/** Nama situs untuk ditampilkan di samping tombol (tanpa "www."). */
+export function catalogHost(storedUrl: string): string {
+  try {
+    return new URL(storedUrl).hostname.replace(/^www\./, '')
+  } catch {
+    return ''
+  }
 }
