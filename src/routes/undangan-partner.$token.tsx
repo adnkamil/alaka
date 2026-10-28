@@ -27,11 +27,13 @@ function PartnerInvitationPage() {
 
   if (preview.state === 'invalid') {
     return (
-      <main className="app-shell mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6 py-10 text-center">
+      <main className="app-shell pm mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6 py-10 text-center">
         <span className="app-icon-tile mx-auto mb-4 h-14 w-14">
           <Store size={26} />
         </span>
-        <h1 className="mb-2 text-2xl font-bold">Undangan tidak bisa dipakai</h1>
+        <h1 className="mb-2 pm-display text-[26px] leading-tight">
+          Undangan tidak bisa dipakai
+        </h1>
         <p className="mb-6 text-sm" style={{ color: 'var(--app-text-soft)' }}>
           {preview.message}
         </p>
@@ -64,12 +66,14 @@ function PartnerInvitationPage() {
   }
 
   return (
-    <main className="app-shell mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6 py-10">
+    <main className="app-shell pm mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6 py-10">
       <div className="mb-6 flex flex-col items-center text-center">
         <span className="app-icon-tile mb-4 h-14 w-14">
           <Store size={26} />
         </span>
-        <h1 className="mb-1 text-2xl font-bold">Buat kata sandi</h1>
+        <h1 className="mb-1 pm-display text-[26px] leading-tight">
+          Buat kata sandi
+        </h1>
         <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
           <strong>{preview.partnerName}</strong> sudah didaftarkan sebagai
           Partner ALAKA. Buat kata sandi untuk masuk.

@@ -30,16 +30,18 @@ function NewPartnerProductPage() {
   }
 
   return (
-    <main className="px-4 pb-6 pt-4">
-      <Link
-        to="/partner/katalog"
-        className="mb-3 inline-flex items-center gap-1 text-xs font-semibold no-underline"
-        style={{ color: 'var(--app-accent)' }}
-      >
-        <ArrowLeft size={14} />
-        Katalog
-      </Link>
-      <h1 className="mb-4 text-xl font-bold">Tambah Produk</h1>
+    <main className="flex flex-col gap-4 px-5 pt-4">
+      <header className="flex items-center gap-3">
+        <Link
+          to="/partner/katalog"
+          aria-label="Kembali"
+          className="-ml-1 flex size-8 items-center justify-center"
+          style={{ color: 'var(--app-text)' }}
+        >
+          <ArrowLeft size={22} />
+        </Link>
+        <h1 className="pm-display text-[22px] leading-tight">Tambah Produk</h1>
+      </header>
       <PartnerProductForm submitLabel="Simpan produk" onSubmit={handleSubmit} />
     </main>
   )

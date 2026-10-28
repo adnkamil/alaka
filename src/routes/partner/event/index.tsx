@@ -1,7 +1,14 @@
 import { useState } from 'react'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { CalendarDays, Inbox, MapPin, Plus, Users } from 'lucide-react'
+import {
+  CalendarDays,
+  ChevronRight,
+  Image as ImageIcon,
+  Inbox,
+  MapPin,
+  Plus,
+} from 'lucide-react'
 import PartnerEventStatusBadge from '../../../components/PartnerEventStatusBadge'
 import { formatDateRange } from '../../../lib/calendar'
 import { partnerEventStatus } from '../../../lib/partner-event-rules'
@@ -33,56 +40,22 @@ function PartnerEventListPage() {
     event,
     status: partnerEventStatus(event, today),
   }))
-  const counts: Record<Tab, number> = {
-    all: withStatus.length,
-    berjalan: withStatus.filter((e) => e.status === 'berjalan').length,
-    mendatang: withStatus.filter((e) => e.status === 'mendatang').length,
-    selesai: withStatus.filter((e) => e.status === 'selesai').length,
-  }
   const visible =
     tab === 'all' ? withStatus : withStatus.filter((e) => e.status === tab)
 
   return (
-    <main className="px-4 pb-6 pt-6">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold">Event</h1>
-          <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
-            Event kamu tampil di kalender semua jastiper.
-          </p>
-        </div>
-        <Link
-          to="/partner/event/baru"
-          className="flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-semibold text-white no-underline shadow-sm"
-          style={{ background: 'var(--app-accent)' }}
-        >
-          <Plus size={14} />
-          Buat event
-        </Link>
-      </div>
+    <main className="flex flex-col gap-3.5 px-5 pb-[150px] pt-4">
+      <h1 className="pm-display text-[22px] leading-tight">Event</h1>
 
-      <div className="mb-4 flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2">
         {TABS.map((t) => (
           <button
             key={t.key}
             type="button"
             onClick={() => setTab(t.key)}
-            className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all ${
-              tab === t.key
-                ? 'border-[var(--app-accent)] bg-[var(--app-accent)] text-white shadow-sm'
-                : 'border-[var(--app-border)] bg-[var(--app-card)] text-[var(--app-text-soft)] hover:border-[var(--app-accent)]'
-            }`}
+            className={`pm-chip ${tab === t.key ? 'pm-chip--active' : ''}`}
           >
-            <span>{t.label}</span>
-            <span
-              className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-                tab === t.key
-                  ? 'bg-white/20 text-white'
-                  : 'bg-[var(--app-accent-soft)] text-[var(--app-accent)]'
-              }`}
-            >
-              {counts[t.key]}
-            </span>
+            {t.label}
           </button>
         ))}
       </div>
@@ -97,7 +70,7 @@ function PartnerEventListPage() {
           </p>
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3.5">
           {visible.map(({ event, status }) => (
             <Link
               key={event.id}
@@ -107,12 +80,10 @@ function PartnerEventListPage() {
               style={{ color: 'inherit' }}
             >
               <div
-                className="flex w-full items-center justify-center overflow-hidden"
+                className="flex h-[84px] w-full items-center justify-center overflow-hidden"
                 style={{
-                  aspectRatio: '16 / 7',
-                  background:
-                    'linear-gradient(135deg, var(--app-accent) 0%, var(--app-accent-strong) 100%)',
-                  color: 'white',
+                  background: event.bannerSrc ? undefined : 'var(--pm-tint)',
+                  color: 'var(--app-text-mute)',
                 }}
               >
                 {event.bannerSrc ? (
@@ -123,43 +94,63 @@ function PartnerEventListPage() {
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <CalendarDays size={28} />
+                  <ImageIcon size={26} />
                 )}
               </div>
               <div className="flex flex-col gap-1.5 p-3">
                 <div className="flex items-start justify-between gap-2">
-                  <p className="text-sm font-bold">{event.name}</p>
+                  <p className="pm-display text-base leading-snug">
+                    {event.name}
+                  </p>
                   <PartnerEventStatusBadge status={status} />
                 </div>
                 <p
                   className="flex items-center gap-1.5 text-xs"
                   style={{ color: 'var(--app-text-soft)' }}
                 >
-                  <CalendarDays size={13} />
+                  <CalendarDays size={14} />
                   {formatDateRange(event.eventDate, event.endDate)}
                 </p>
                 <p
                   className="flex items-center gap-1.5 text-xs"
                   style={{ color: 'var(--app-text-soft)' }}
                 >
-                  <MapPin size={13} />
+                  <MapPin size={14} />
                   <span className="truncate">
                     {event.isOnline ? 'Online · ' : ''}
                     {event.location}
                   </span>
                 </p>
-                <p
-                  className="flex items-center gap-1.5 text-xs font-semibold"
-                  style={{ color: 'var(--app-accent)' }}
-                >
-                  <Users size={13} />
-                  {event.participantCount} jastiper ikut
-                </p>
+                <div className="flex items-center justify-between pt-0.5">
+                  <span
+                    className="app-badge"
+                    style={{
+                      background: 'var(--app-success-soft)',
+                      color: 'var(--app-success)',
+                    }}
+                  >
+                    {event.participantCount} jastiper ikut
+                  </span>
+                  <ChevronRight
+                    size={18}
+                    style={{ color: 'var(--app-text-mute)' }}
+                  />
+                </div>
               </div>
             </Link>
           ))}
         </div>
       )}
+
+      <div className="pm-footer">
+        <Link
+          to="/partner/event/baru"
+          className="app-btn-primary w-full gap-2 no-underline"
+        >
+          <Plus size={18} />
+          Buat event
+        </Link>
+      </div>
     </main>
   )
 }

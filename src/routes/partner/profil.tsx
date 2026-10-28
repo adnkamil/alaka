@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, useRouter } from '@tanstack/react-router'
-import { Eye, EyeOff, KeyRound, Mail, Store } from 'lucide-react'
+import { Eye, EyeOff, KeyRound, LogOut, Mail, Store } from 'lucide-react'
 import Toast from '../../components/ui/Toast'
 import { getErrorMessage } from '../../lib/error-message'
 import { formatPhoneNumber } from '../../lib/format'
+import { logoutPartner } from '../../lib/partner-functions'
 import {
   changeOwnPartnerPassword,
   updateOwnPartnerProfile,
@@ -28,15 +29,40 @@ function PartnerProfilePage() {
   if (!partner) return null
 
   return (
-    <main className="flex flex-col gap-4 px-4 pb-6 pt-6">
-      <h1 className="text-xl font-bold">Profil</h1>
+    <main className="flex flex-col gap-4 px-5 pt-4">
+      <h1 className="pm-display text-[22px] leading-tight">Profil</h1>
       <ProfileForm
         initialName={partner.name}
         initialWaNumber={partner.waNumber ?? ''}
       />
       <EmailCard email={partner.email} />
       <PasswordForm />
+      <LogoutButton />
     </main>
+  )
+}
+
+/** Keluar dari Partner Portal (sebelumnya ada di header global partner). */
+function LogoutButton() {
+  const queryClient = useQueryClient()
+  const router = useRouter()
+
+  async function handleLogout() {
+    await logoutPartner()
+    queryClient.clear()
+    await router.navigate({ to: '/login' })
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleLogout}
+      className="app-btn-outline w-full"
+      style={{ color: 'var(--app-accent)' }}
+    >
+      <LogOut size={16} />
+      Keluar
+    </button>
   )
 }
 
@@ -91,7 +117,7 @@ function ProfileForm({
         <p className="text-sm font-semibold">Data partner</p>
       </div>
 
-      <label className="flex flex-col gap-1 text-sm font-medium">
+      <label className="flex flex-col gap-1.5 text-xs font-semibold">
         Nama partner
         <input
           required
@@ -108,7 +134,7 @@ function ProfileForm({
         </span>
       </label>
 
-      <label className="flex flex-col gap-1 text-sm font-medium">
+      <label className="flex flex-col gap-1.5 text-xs font-semibold">
         No. WhatsApp (opsional)
         <input
           type="tel"
@@ -210,7 +236,7 @@ function PasswordForm() {
         </button>
       </div>
 
-      <label className="flex flex-col gap-1 text-sm font-medium">
+      <label className="flex flex-col gap-1.5 text-xs font-semibold">
         Kata sandi lama
         <input
           type={type}
@@ -221,7 +247,7 @@ function PasswordForm() {
           className="app-input"
         />
       </label>
-      <label className="flex flex-col gap-1 text-sm font-medium">
+      <label className="flex flex-col gap-1.5 text-xs font-semibold">
         Kata sandi baru
         <input
           type={type}
@@ -234,7 +260,7 @@ function PasswordForm() {
           className="app-input"
         />
       </label>
-      <label className="flex flex-col gap-1 text-sm font-medium">
+      <label className="flex flex-col gap-1.5 text-xs font-semibold">
         Konfirmasi kata sandi baru
         <input
           type={type}

@@ -2,6 +2,11 @@ import { useState } from 'react'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { ArrowLeft, Package } from 'lucide-react'
+import {
+  ProductCheckRow,
+  ProductSearchInput,
+  matchesProductQuery,
+} from '../../../components/PartnerProductPicker'
 import { getErrorMessage } from '../../../lib/error-message'
 import { setPartnerEventProducts } from '../../../lib/partner-event-product-functions'
 import {
@@ -9,10 +14,6 @@ import {
   selectableProducts,
   toggleSelection,
 } from '../../../lib/partner-event-product-rules'
-import {
-  formatRupiah,
-  partnerProductPhotoUrl,
-} from '../../../lib/partner-product-rules'
 import {
   partnerEventProductsQuery,
   partnerEventQuery,
@@ -40,12 +41,14 @@ function EventProductsPage() {
   const [selected, setSelected] = useState<Set<string>>(
     () => new Set(current.map((p) => p.id)),
   )
+  const [query, setQuery] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Produk nonaktif hanya tampil kalau sudah terpilih (supaya bisa dilepas).
   const alreadySelected = new Set(current.map((p) => p.id))
   const options = selectableProducts(catalog, alreadySelected)
+  const visible = options.filter((p) => matchesProductQuery(p, query))
 
   async function handleSave() {
     setError(null)
@@ -66,22 +69,26 @@ function EventProductsPage() {
   }
 
   return (
-    <main className="px-4 pb-24 pt-4">
-      <Link
-        to="/partner/event/$id"
-        params={{ id }}
-        className="mb-3 inline-flex items-center gap-1 text-xs font-semibold no-underline"
-        style={{ color: 'var(--app-accent)' }}
-      >
-        <ArrowLeft size={14} />
-        Detail event
-      </Link>
-      <h1 className="text-xl font-bold">Produk di Event</h1>
-      <p className="mb-4 text-xs" style={{ color: 'var(--app-text-soft)' }}>
+    <main className="flex flex-col gap-4 px-5 pb-[150px] pt-4">
+      <header className="flex items-center gap-3">
+        <Link
+          to="/partner/event/$id"
+          params={{ id }}
+          aria-label="Kembali"
+          className="-ml-1 flex size-8 items-center justify-center"
+          style={{ color: 'var(--app-text)' }}
+        >
+          <ArrowLeft size={22} />
+        </Link>
+        <h1 className="pm-display text-[22px] leading-tight">
+          Produk di Event
+        </h1>
+      </header>
+      <p className="-mt-2 text-xs" style={{ color: 'var(--app-text-soft)' }}>
         {event.name} · {selected.size} dari {MAX_EVENT_PRODUCTS} produk unggulan
       </p>
       <p
-        className="mb-4 rounded-xl px-3 py-2 text-xs"
+        className="rounded-xl px-3.5 py-2.5 text-xs leading-relaxed"
         style={{
           background: 'var(--app-accent-soft)',
           color: 'var(--app-text-soft)',
@@ -107,110 +114,67 @@ function EventProductsPage() {
         </div>
       ) : (
         <>
-          <div className="mb-3 flex gap-3 text-xs font-semibold">
+          <ProductSearchInput value={query} onChange={setQuery} />
+          <div className="flex items-center justify-between">
+            <p
+              className="text-xs font-semibold"
+              style={{ color: 'var(--app-text-soft)' }}
+            >
+              Pilih produk
+            </p>
             <button
               type="button"
               onClick={() => setSelected(new Set())}
-              style={{ color: 'var(--app-text-soft)' }}
+              className="text-xs font-bold"
+              style={{ color: 'var(--app-accent)' }}
             >
               Kosongkan
             </button>
           </div>
 
-          <div className="flex flex-col gap-2">
-            {options.map((product) => {
-              const photoUrl = partnerProductPhotoUrl(
-                product.id,
-                product.photoUpdatedAt,
-              )
-              const checked = selected.has(product.id)
-              // Sudah penuh: produk lain tidak bisa dicentang sampai ada yang dilepas.
-              const full = !checked && selected.size >= MAX_EVENT_PRODUCTS
-              return (
-                <label
-                  key={product.id}
-                  className="app-card flex cursor-pointer items-center gap-3 p-3"
-                  style={{
-                    borderColor: checked ? 'var(--app-accent)' : undefined,
-                    opacity: full ? 0.5 : 1,
-                  }}
-                >
-                  <input
-                    type="checkbox"
+          {visible.length === 0 ? (
+            <p
+              className="py-6 text-center text-sm"
+              style={{ color: 'var(--app-text-soft)' }}
+            >
+              Tidak ada produk yang cocok dengan &ldquo;{query.trim()}&rdquo;.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-2.5">
+              {visible.map((product) => {
+                const checked = selected.has(product.id)
+                // Sudah penuh: produk lain tidak bisa dicentang sampai ada yang dilepas.
+                const full = !checked && selected.size >= MAX_EVENT_PRODUCTS
+                return (
+                  <ProductCheckRow
+                    key={product.id}
+                    product={product}
                     checked={checked}
                     disabled={full}
-                    onChange={() =>
+                    onToggle={() =>
                       setSelected((s) => toggleSelection(s, product.id))
                     }
-                    className="h-5 w-5 shrink-0"
                   />
-                  <div
-                    className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl"
-                    style={{
-                      background: 'var(--app-accent-soft)',
-                      color: 'var(--app-accent)',
-                    }}
-                  >
-                    {photoUrl ? (
-                      <img
-                        src={photoUrl}
-                        alt=""
-                        loading="lazy"
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <Package size={20} />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">
-                      {product.name}
-                    </p>
-                    <p
-                      className="text-xs font-bold"
-                      style={{ color: 'var(--app-accent)' }}
-                    >
-                      {formatRupiah(product.price)}
-                    </p>
-                  </div>
-                  {!product.isActive && (
-                    <span
-                      className="app-badge shrink-0"
-                      style={{
-                        background: 'var(--app-border)',
-                        color: 'var(--app-text-soft)',
-                      }}
-                    >
-                      Nonaktif
-                    </span>
-                  )}
-                </label>
-              )
-            })}
-          </div>
+                )
+              })}
+            </div>
+          )}
         </>
       )}
 
       {error && (
-        <p className="mt-3 text-sm" style={{ color: 'var(--app-danger)' }}>
+        <p className="text-sm" style={{ color: 'var(--app-danger)' }}>
           {error}
         </p>
       )}
 
       {options.length > 0 && (
-        <div
-          className="fixed bottom-14 left-1/2 z-30 w-full -translate-x-1/2 border-t px-4 py-3"
-          style={{
-            maxWidth: 480,
-            background: 'var(--app-card)',
-            borderColor: 'var(--app-border)',
-          }}
-        >
+        <div className="pm-footer">
           <button
             type="button"
             disabled={saving}
             onClick={() => void handleSave()}
-            className="app-btn-primary"
+            className="app-btn-primary w-full"
           >
             {saving ? 'Menyimpan...' : `Simpan (${selected.size} produk)`}
           </button>

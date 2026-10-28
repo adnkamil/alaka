@@ -1,13 +1,5 @@
-import { useQueryClient } from '@tanstack/react-query'
-import {
-  Outlet,
-  createFileRoute,
-  redirect,
-  useNavigate,
-} from '@tanstack/react-router'
-import { LogOut } from 'lucide-react'
+import { Outlet, createFileRoute, redirect } from '@tanstack/react-router'
 import PartnerBottomNav from '../components/PartnerBottomNav'
-import { logoutPartner } from '../lib/partner-functions'
 import { currentPartnerQuery } from '../lib/queries'
 
 // Proteksi di sini cuma buat UX (redirect kalau belum login sebagai partner).
@@ -29,51 +21,11 @@ export const Route = createFileRoute('/partner')({
   component: PartnerLayout,
 })
 
+// `.pm` memasang palet & gaya mobile partner sesuai desain Figma (lihat
+// src/styles.css). Header global dihapus; tombol Keluar pindah ke Profil.
 function PartnerLayout() {
-  const { partner } = Route.useRouteContext()
-  const navigate = useNavigate()
-  const queryClient = useQueryClient()
-
-  async function handleLogout() {
-    await logoutPartner()
-    queryClient.clear()
-    await navigate({ to: '/login' })
-  }
-
   return (
-    <div className="app-shell app-shell--with-nav">
-      <header
-        className="sticky top-0 z-10 flex items-center gap-2 border-b px-4 py-3"
-        style={{
-          borderColor: 'var(--app-border)',
-          background: 'var(--app-card)',
-        }}
-      >
-        <span
-          className="app-icon-tile h-8 w-8"
-          style={{ fontSize: '0.75rem', fontWeight: 700 }}
-        >
-          A
-        </span>
-        <div className="min-w-0 flex-1 leading-tight">
-          <p className="text-sm font-bold">ALAKA Partner</p>
-          <p
-            className="truncate text-xs"
-            style={{ color: 'var(--app-text-soft)' }}
-          >
-            {partner.name}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-semibold"
-          style={{ color: 'var(--app-accent)' }}
-        >
-          <LogOut size={14} />
-          Keluar
-        </button>
-      </header>
+    <div className="app-shell app-shell--with-nav pm">
       <Outlet />
       <PartnerBottomNav />
     </div>

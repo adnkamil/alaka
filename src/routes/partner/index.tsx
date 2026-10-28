@@ -1,15 +1,13 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { CalendarDays, Package, Plus, ShoppingBag, Users } from 'lucide-react'
-import PartnerEventStatusBadge from '../../components/PartnerEventStatusBadge'
 import { formatDate, formatPhoneNumber } from '../../lib/format'
-import { formatDateRange } from '../../lib/calendar'
-import { partnerEventStatus } from '../../lib/partner-event-rules'
 import {
   currentPartnerQuery,
   partnerDashboardQuery,
   partnerEventsQuery,
 } from '../../lib/queries'
+import { partnerEventStatus } from '../../lib/partner-event-rules'
 import { todayIsoDateInAppTimeZone } from '../../lib/timezone'
 import type { LucideIcon } from 'lucide-react'
 
@@ -28,6 +26,14 @@ export const Route = createFileRoute('/partner/')({
   component: PartnerHomePage,
 })
 
+/** Inisial dari nama brand, mis. "Wikibex Official" → "WO". */
+function initialsOf(name: string) {
+  const words = name.trim().split(/\s+/).filter(Boolean)
+  if (words.length === 0) return '?'
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase()
+  return (words[0][0] + words[1][0]).toUpperCase()
+}
+
 function StatCard({
   label,
   value,
@@ -38,14 +44,36 @@ function StatCard({
   icon: LucideIcon
 }) {
   return (
-    <div className="app-card flex flex-col gap-1.5 p-3">
+    <div className="app-card flex flex-1 flex-col gap-1.5 p-3.5">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
+        <p
+          className="text-xs font-medium"
+          style={{ color: 'var(--app-text-soft)' }}
+        >
           {label}
         </p>
-        <Icon size={15} style={{ color: 'var(--app-accent)' }} />
+        <Icon size={16} style={{ color: 'var(--app-accent)' }} />
       </div>
-      <p className="text-2xl font-bold">{value}</p>
+      <p className="pm-display text-[30px] leading-none">{value}</p>
+    </div>
+  )
+}
+
+/** Kotak tanggal (hari + bulan singkat), seperti DateBadge di Figma. */
+function DateBadge({ date }: { date: string }) {
+  const d = new Date(`${date}T00:00:00`)
+  const day = d.getDate()
+  const month = d
+    .toLocaleDateString('id-ID', { month: 'short' })
+    .replace('.', '')
+    .toUpperCase()
+  return (
+    <div
+      className="flex h-14 w-[52px] shrink-0 flex-col items-center justify-center rounded-xl"
+      style={{ background: 'var(--app-accent-soft)', color: '#9c463b' }}
+    >
+      <p className="pm-display text-xl leading-none">{day}</p>
+      <p className="mt-1 text-[10px] font-bold leading-none">{month}</p>
     </div>
   )
 }
@@ -69,57 +97,77 @@ function PartnerHomePage() {
     )
 
   return (
-    <main className="px-4 pb-6 pt-6">
-      <h1 className="mb-1 text-xl font-bold">Halo, {partner.name}</h1>
-      <p className="mb-4 text-xs" style={{ color: 'var(--app-text-soft)' }}>
-        Ringkasan brand kamu di ALAKA.
-      </p>
+    <main className="flex flex-col gap-[18px] px-5 pb-6 pt-2">
+      <header className="flex items-center gap-3 pt-2">
+        <span
+          className="pm-display flex size-11 shrink-0 items-center justify-center rounded-full text-[15px]"
+          style={{ background: 'var(--app-accent-soft)', color: '#9c463b' }}
+        >
+          {initialsOf(partner.name)}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
+            Halo,
+          </p>
+          <p className="pm-display truncate text-lg">{partner.name}</p>
+        </div>
+        <span
+          className="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold"
+          style={{ background: 'var(--pm-tint)', color: 'var(--pm-gold)' }}
+        >
+          PARTNER
+        </span>
+      </header>
 
-      <div className="mb-4 grid grid-cols-2 gap-3">
-        <StatCard
-          label="Produk aktif"
-          value={dashboard.activeProducts}
-          icon={Package}
-        />
-        <StatCard
-          label="Event aktif"
-          value={upcoming.length}
-          icon={CalendarDays}
-        />
-        <StatCard
-          label="Jastiper bergabung"
-          value={dashboard.jastiperCount}
-          icon={Users}
-        />
-        <StatCard
-          label="Pesanan masuk"
-          value={dashboard.orderCount}
-          icon={ShoppingBag}
-        />
+      <div className="flex flex-col gap-2.5">
+        <div className="flex gap-2.5">
+          <StatCard
+            label="Produk aktif"
+            value={dashboard.activeProducts}
+            icon={Package}
+          />
+          <StatCard
+            label="Event aktif"
+            value={upcoming.length}
+            icon={CalendarDays}
+          />
+        </div>
+        <div className="flex gap-2.5">
+          <StatCard
+            label="Jastiper bergabung"
+            value={dashboard.jastiperCount}
+            icon={Users}
+          />
+          <StatCard
+            label="Pesanan masuk"
+            value={dashboard.orderCount}
+            icon={ShoppingBag}
+          />
+        </div>
       </div>
 
-      <div className="mb-5 grid grid-cols-2 gap-3">
+      <div className="flex gap-2.5">
         <Link
           to="/partner/katalog/baru"
-          className="app-btn-outline flex items-center justify-center gap-1.5 no-underline"
+          className="app-btn-outline flex-1 gap-2 no-underline"
         >
-          <Plus size={14} />
+          <Plus size={18} />
           Tambah produk
         </Link>
         <Link
           to="/partner/event/baru"
-          className="app-btn-primary flex items-center justify-center gap-1.5 no-underline"
+          className="app-btn-primary flex-1 gap-2 no-underline"
         >
-          <Plus size={14} />
+          <Plus size={18} />
           Buat event
         </Link>
       </div>
 
-      <div className="mb-2 flex items-center justify-between">
-        <h2 className="text-base font-bold">Event berjalan dan mendatang</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="pm-display text-[17px]">Event berjalan</h2>
         <Link
           to="/partner/event"
-          className="text-xs font-semibold no-underline"
+          className="text-xs font-bold no-underline"
           style={{ color: 'var(--app-accent)' }}
         >
           Lihat semua
@@ -127,14 +175,14 @@ function PartnerHomePage() {
       </div>
       {upcoming.length === 0 ? (
         <div
-          className="app-card mb-5 p-4 text-sm"
+          className="app-card p-4 text-sm"
           style={{ color: 'var(--app-text-soft)' }}
         >
           Belum ada event aktif.
         </div>
       ) : (
-        <div className="mb-5 flex flex-col gap-2">
-          {upcoming.slice(0, 3).map(({ event, status }) => (
+        <div className="flex flex-col gap-2.5">
+          {upcoming.slice(0, 3).map(({ event }) => (
             <Link
               key={event.id}
               to="/partner/event/$id"
@@ -142,32 +190,40 @@ function PartnerHomePage() {
               className="app-card flex items-center gap-3 p-3 no-underline"
               style={{ color: 'inherit' }}
             >
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold">{event.name}</p>
+              <DateBadge date={event.eventDate} />
+              <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
+                <p className="truncate text-sm font-bold">{event.name}</p>
                 <p
                   className="truncate text-xs"
                   style={{ color: 'var(--app-text-soft)' }}
                 >
-                  {formatDateRange(event.eventDate, event.endDate)} ·{' '}
-                  {event.participantCount} jastiper
+                  {event.isOnline ? 'Online' : 'Offline'} · {event.location}
                 </p>
               </div>
-              <PartnerEventStatusBadge status={status} />
+              <span
+                className="app-badge shrink-0"
+                style={{
+                  background: 'var(--app-success-soft)',
+                  color: 'var(--app-success)',
+                }}
+              >
+                {event.participantCount} jastiper
+              </span>
             </Link>
           ))}
         </div>
       )}
 
-      <h2 className="mb-2 text-base font-bold">Jastiper terbaru</h2>
+      <h2 className="pm-display text-[17px]">Jastiper terbaru</h2>
       {dashboard.recentJoins.length === 0 ? (
         <div
-          className="app-card mb-5 p-4 text-sm"
+          className="app-card p-4 text-sm"
           style={{ color: 'var(--app-text-soft)' }}
         >
           Belum ada jastiper yang ikut event kamu.
         </div>
       ) : (
-        <div className="app-card mb-5 flex flex-col divide-y p-1">
+        <div className="app-card flex flex-col divide-y p-1">
           {dashboard.recentJoins.map((join, i) => (
             <div key={i} className="flex flex-col px-3 py-2">
               <p className="text-sm font-semibold">
