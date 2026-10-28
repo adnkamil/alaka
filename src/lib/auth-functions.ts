@@ -19,6 +19,7 @@ import { getUserEntitlements } from './entitlements'
 import { isValidIndonesianPhone, toLocalPhoneNumber } from './format'
 import { createPartnerSession } from './partner-auth'
 import { findPartnerByEmail, isPartnerEmail } from './partner-queries'
+import { partnerErrorMessage } from './partner-rules'
 
 const registerSchema = z.object({
   name: z.string().min(1, 'Nama wajib diisi'),
@@ -83,6 +84,11 @@ export const loginUser = createServerFn({ method: 'POST' })
           partner.passwordHash,
         )
         if (validPartner) {
+          // Dicek SETELAH kata sandi benar, supaya status akun tidak bocor ke
+          // orang yang cuma menebak email.
+          if (partner.disabledAt) {
+            throw new Error(partnerErrorMessage('DINONAKTIFKAN'))
+          }
           await createPartnerSession(partner.id)
           return {
             id: partner.id,

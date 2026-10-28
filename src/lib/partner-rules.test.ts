@@ -27,6 +27,19 @@ test('status partner: Diundang sampai kata sandi dibuat', () => {
   assert.equal(partnerStatus({ activatedAt: null }), 'diundang')
   assert.equal(partnerStatus({ activatedAt: new Date() }), 'aktif')
   assert.equal(partnerStatus({ activatedAt: '2026-10-26T00:00:00Z' }), 'aktif')
+  // Dinonaktifkan mengalahkan status lain, termasuk yang masih "Diundang".
+  assert.equal(
+    partnerStatus({ activatedAt: new Date(), disabledAt: new Date() }),
+    'nonaktif',
+  )
+  assert.equal(
+    partnerStatus({ activatedAt: null, disabledAt: '2026-10-26T00:00:00Z' }),
+    'nonaktif',
+  )
+  assert.equal(
+    partnerStatus({ activatedAt: null, disabledAt: null }),
+    'diundang',
+  )
 })
 
 test('PartnerError membawa kode dan pesan yang ramah', () => {

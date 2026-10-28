@@ -31,12 +31,17 @@ export function isPlausiblePartnerEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 }
 
-/** "Diundang" = belum membuat kata sandi; "Aktif" = sudah. */
-export type PartnerStatus = 'aktif' | 'diundang'
+/**
+ * "Nonaktif" = dinonaktifkan admin (mengalahkan status lain); "Diundang" =
+ * belum membuat kata sandi; "Aktif" = sudah.
+ */
+export type PartnerStatus = 'aktif' | 'diundang' | 'nonaktif'
 
 export function partnerStatus(partner: {
   activatedAt: Date | string | null
+  disabledAt?: Date | string | null
 }): PartnerStatus {
+  if (partner.disabledAt) return 'nonaktif'
   return partner.activatedAt ? 'aktif' : 'diundang'
 }
 
@@ -53,6 +58,7 @@ export type PartnerErrorCode =
   | 'BELUM_AKTIF'
   | 'TERLALU_BANYAK_PERMINTAAN'
   | 'LINK_RESET_TIDAK_VALID'
+  | 'DINONAKTIFKAN'
 
 const PARTNER_ERROR_MESSAGES: Record<PartnerErrorCode, string> = {
   NAMA_KOSONG: 'Nama partner wajib diisi.',
@@ -71,6 +77,7 @@ const PARTNER_ERROR_MESSAGES: Record<PartnerErrorCode, string> = {
     'Akun partner ini belum diaktifkan. Buka link undangan di emailmu, atau minta admin ALAKA mengirim ulang undangan.',
   TERLALU_BANYAK_PERMINTAAN:
     'Terlalu banyak permintaan. Coba lagi dalam beberapa menit.',
+  DINONAKTIFKAN: 'Akun partner ini dinonaktifkan. Hubungi admin ALAKA.',
   LINK_RESET_TIDAK_VALID: 'Link atur ulang tidak valid atau sudah kedaluwarsa',
 }
 

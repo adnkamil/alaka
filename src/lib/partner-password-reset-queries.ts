@@ -24,7 +24,11 @@ import {
 
 const MINUTE_MS = 60 * 1000
 
-type PartnerForReset = { id: string; activatedAt: Date | null }
+type PartnerForReset = {
+  id: string
+  activatedAt: Date | null
+  disabledAt?: Date | null
+}
 
 /**
  * Terbitkan token atur ulang untuk partner. Mengembalikan token MENTAH (untuk
@@ -35,6 +39,7 @@ type PartnerForReset = { id: string; activatedAt: Date | null }
 export async function issuePartnerPasswordReset(
   partner: PartnerForReset,
 ): Promise<string> {
+  if (partner.disabledAt) throw new PartnerError('DINONAKTIFKAN')
   if (!partner.activatedAt) throw new PartnerError('BELUM_AKTIF')
 
   return db.transaction(async (tx) => {
@@ -97,11 +102,13 @@ export async function isPartnerResetTokenValid(
   const rows = await db
     .select({ id: partnerPasswordResetTokens.id })
     .from(partnerPasswordResetTokens)
+    .innerJoin(partners, eq(partners.id, partnerPasswordResetTokens.partnerId))
     .where(
       and(
         eq(partnerPasswordResetTokens.tokenHash, hashInvitationToken(rawToken)),
         isNull(partnerPasswordResetTokens.usedAt),
         gt(partnerPasswordResetTokens.expiresAt, new Date()),
+        isNull(partners.disabledAt),
       ),
     )
     .limit(1)
@@ -144,8 +151,16 @@ export async function completePartnerPasswordReset(
         activatedAt: sql`coalesce(${partners.activatedAt}, now())`,
         updatedAt: now,
       })
-      .where(eq(partners.id, claimed[0].partnerId))
+      .where(
+        and(
+          eq(partners.id, claimed[0].partnerId),
+          // Dinonaktifkan admin: kata sandi tidak boleh berubah. Melempar di
+          // dalam transaksi membatalkan "klaim" token di atas juga.
+          isNull(partners.disabledAt),
+        ),
+      )
       .returning()
+    if (updated.length === 0) throw new PartnerError('DINONAKTIFKAN')
     await tx
       .delete(partnerSessions)
       .where(eq(partnerSessions.partnerId, claimed[0].partnerId))

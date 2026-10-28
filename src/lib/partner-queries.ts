@@ -71,10 +71,21 @@ export type PartnerRow = {
   waNumber: string | null
   status: PartnerStatus
   activatedAt: Date | null
+  disabledAt: Date | null
   createdAt: Date
+  /** Jumlah produk di katalog partner (aktif maupun nonaktif). */
+  productCount: number
+  /** Jumlah event milik partner (termasuk yang sudah selesai). */
+  eventCount: number
 }
 
-function toPartnerRow(row: typeof partners.$inferSelect): PartnerRow {
+export function toPartnerRow(
+  row: typeof partners.$inferSelect,
+  counts: { productCount: number; eventCount: number } = {
+    productCount: 0,
+    eventCount: 0,
+  },
+): PartnerRow {
   return {
     id: row.id,
     name: row.name,
@@ -82,17 +93,31 @@ function toPartnerRow(row: typeof partners.$inferSelect): PartnerRow {
     waNumber: row.waNumber,
     status: partnerStatus(row),
     activatedAt: row.activatedAt,
+    disabledAt: row.disabledAt,
     createdAt: row.createdAt,
+    ...counts,
   }
 }
 
-/** Semua partner untuk halaman admin (terbaru di atas). */
+/** Semua partner untuk halaman admin (terbaru di atas), lengkap dengan jumlah produk & event. */
 export async function listPartners(): Promise<Array<PartnerRow>> {
+  // Subquery memakai nama tabel lengkap (bukan `${table.col}`): untuk query
+  // satu-tabel Drizzle membuang awalan tabel dari kolom, sehingga
+  // `partner_id = id` akan membandingkan kolom dengan dirinya sendiri.
   const rows = await db
-    .select()
+    .select({
+      partner: partners,
+      productCount: sql<number>`(select count(*) from "partner_products" "pp" where "pp"."partner_id" = "partners"."id")::int`,
+      eventCount: sql<number>`(select count(*) from "calendar_event" "ce" where "ce"."partner_id" = "partners"."id")::int`,
+    })
     .from(partners)
     .orderBy(sql`${partners.createdAt} desc`, asc(partners.name))
-  return rows.map(toPartnerRow)
+  return rows.map((row) =>
+    toPartnerRow(row.partner, {
+      productCount: row.productCount,
+      eventCount: row.eventCount,
+    }),
+  )
 }
 
 async function insertToken(tx: Tx, partnerId: string) {
@@ -164,6 +189,7 @@ export async function reissuePartnerInvitation(partnerId: string) {
       .for('update')
     if (found.length === 0) throw new PartnerError('PARTNER_TIDAK_DITEMUKAN')
     const partner = found[0]
+    if (partner.disabledAt) throw new PartnerError('DINONAKTIFKAN')
     if (partner.activatedAt) throw new PartnerError('SUDAH_AKTIF')
 
     const since = new Date(Date.now() - DAY_MS)
@@ -219,6 +245,7 @@ async function findToken(executor: Pick<Tx, 'select'>, rawToken: string) {
       email: partners.email,
       name: partners.name,
       activatedAt: partners.activatedAt,
+      disabledAt: partners.disabledAt,
     })
     .from(partnerInvitationTokens)
     .innerJoin(partners, eq(partners.id, partnerInvitationTokens.partnerId))
@@ -231,6 +258,7 @@ function tokenProblem(
   row: NonNullable<Awaited<ReturnType<typeof findToken>>>,
   now: Date,
 ): PartnerErrorCode | null {
+  if (row.disabledAt) return 'DINONAKTIFKAN'
   if (row.usedAt || row.activatedAt) return 'UNDANGAN_SUDAH_DIPAKAI'
   if (row.expiresAt <= now) return 'UNDANGAN_KEDALUWARSA'
   return null

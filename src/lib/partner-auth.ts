@@ -48,6 +48,8 @@ export async function getPartnerBySessionToken(token: string | undefined) {
   // Partner yang belum membuat kata sandi tidak mungkin punya sesi, tapi
   // jaga-jaga: tanpa aktivasi, tidak dianggap login.
   if (!row.partner.activatedAt) return null
+  // Dinonaktifkan admin: sesinya dihapus saat dinonaktifkan, ini jaring pengaman.
+  if (row.partner.disabledAt) return null
   return row.partner
 }
 

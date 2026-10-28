@@ -21,6 +21,7 @@ export async function sendPartnerPasswordReset(partner: {
   name: string
   email: string
   activatedAt: Date | null
+  disabledAt?: Date | null
 }): Promise<void> {
   const token = await issuePartnerPasswordReset(partner)
 
