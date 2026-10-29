@@ -1,5 +1,7 @@
 import { useRef, useState } from 'react'
+import { Link } from '@tanstack/react-router'
 import {
+  Package,
   CalendarDays,
   ChevronRight,
   MapPin,
@@ -16,6 +18,7 @@ import {
   isEndDateValid,
 } from '../lib/calendar-event-input'
 import { MAX_EVENT_PRODUCTS } from '../lib/partner-event-product-rules'
+import { partnerProductPhotoUrl } from '../lib/partner-product-rules'
 import { PartnerProductPickerSheet } from './PartnerProductPicker'
 import type { CalendarEventFormValue } from './CalendarEventForm'
 import type { PartnerProductRow } from '../lib/partner-product-queries'
@@ -29,6 +32,11 @@ interface PartnerEventFormProps {
   /** URL banner yang sudah tersimpan (null = belum ada). */
   currentBannerSrc?: string | null
   submitLabel: string
+  /** Judul & penunjuk halaman untuk header desktop (>= lg). */
+  title: string
+  breadcrumb: string
+  /** Tujuan tombol Batal desktop: detail event (kalau ada id) atau daftar. */
+  cancelEventId?: string
   /**
    * Katalog partner untuk memilih produk unggulan. Kalau tidak diisi (mis.
    * Ubah event), bagian pilihan produk tidak tampil.
@@ -65,11 +73,19 @@ function Field({
  * Nilai yang dikirim sama dengan `CalendarEventForm`, jadi handler
  * `createPartnerEvent` tidak berubah. Partner tidak mengisi brand pameran
  * (diisi server).
+ *
+ * Mobile: satu kolom, tombol simpan menempel di bawah. Desktop (>= lg):
+ * header Batal/Simpan, kartu informasi di kiri, banner & produk di kanan
+ * (Figma "D6 Buat Event"). Satu DOM saja; urutan mobile diatur dengan `order`
+ * dan `contents`.
  */
 export default function PartnerEventForm({
   initialValue,
   currentBannerSrc = null,
   submitLabel,
+  title,
+  breadcrumb,
+  cancelEventId,
   products,
   onSubmit,
 }: PartnerEventFormProps) {
@@ -147,117 +163,66 @@ export default function PartnerEventForm({
     if (currentBannerSrc) setRemoveBanner(true)
   }
 
+  const submitText = busy ? 'Menyimpan...' : submitLabel
+  const selectedProducts = (products ?? []).filter((p) =>
+    productIds.includes(p.id),
+  )
+  const cancelClass = 'app-btn-outline no-underline'
+  const buttonStyle = { minHeight: 44, fontSize: 14 }
+
   return (
     <>
       <form
         id={FORM_ID}
-        className="flex flex-col gap-3.5 pb-[120px]"
+        className="flex flex-col gap-3.5 pb-[120px] lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-x-5 lg:gap-y-5 lg:pb-0"
         onSubmit={handleSubmit}
       >
-        {/* Offline / Online */}
-        <div
-          className="flex rounded-xl p-1"
-          style={{ background: 'var(--pm-muted)' }}
-          role="radiogroup"
-          aria-label="Jenis event"
-        >
-          {[
-            { value: false, label: 'Offline' },
-            { value: true, label: 'Online' },
-          ].map((opt) => (
-            <button
-              key={opt.label}
-              type="button"
-              role="radio"
-              aria-checked={isOnline === opt.value}
-              onClick={() => setIsOnline(opt.value)}
-              className="flex-1 rounded-[10px] py-2 text-sm font-semibold transition-colors"
-              style={{
-                background: isOnline === opt.value ? '#ffffff' : 'transparent',
-                color:
-                  isOnline === opt.value
-                    ? 'var(--app-accent)'
-                    : 'var(--app-text-soft)',
-              }}
+        <header className="hidden items-start justify-between gap-4 lg:col-span-2 lg:row-start-1 lg:flex">
+          <div>
+            <h1 className="pm-display text-[26px] leading-tight">{title}</h1>
+            <p
+              className="mt-1 text-[13px]"
+              style={{ color: 'var(--app-text-soft)' }}
             >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-
-        <Field label="Nama event">
-          <input
-            required
-            autoFocus
-            maxLength={CALENDAR_EVENT_LIMITS.name}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="app-input"
-            placeholder="cth. Imbex Fair 2026"
-          />
-        </Field>
-
-        <div className="grid grid-cols-2 gap-2.5">
-          <Field label="Mulai">
-            <div className="relative">
-              <CalendarDays
-                size={18}
-                className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2"
-                style={iconStyle}
-              />
-              <input
-                type="date"
-                required
-                value={eventDate}
-                onChange={(e) => {
-                  const value = e.target.value
-                  setEventDate(value)
-                  // Tanggal selesai yang jadi lebih awal dari mulai dikosongkan.
-                  if (endDate && endDate < value) setEndDate(null)
-                }}
-                className="app-input pl-10"
-              />
-            </div>
-          </Field>
-          <Field label="Selesai">
-            <div className="relative">
-              <CalendarDays
-                size={18}
-                className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2"
-                style={iconStyle}
-              />
-              <input
-                type="date"
-                min={eventDate}
-                value={endDate ?? ''}
-                onChange={(e) => setEndDate(e.target.value || null)}
-                className="app-input pl-10"
-              />
-            </div>
-          </Field>
-        </div>
-
-        <Field label={isOnline ? 'Platform / tempat PO' : 'Lokasi'}>
-          <div className="relative">
-            <MapPin
-              size={18}
-              className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2"
-              style={iconStyle}
-            />
-            <input
-              required
-              maxLength={CALENDAR_EVENT_LIMITS.location}
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              className="app-input pl-10"
-              placeholder={
-                isOnline
-                  ? 'cth. Instagram Live'
-                  : 'cth. Istora Senayan, Jakarta'
-              }
-            />
+              <Link
+                to="/partner/event"
+                className="no-underline"
+                style={{ color: 'inherit' }}
+              >
+                Event
+              </Link>{' '}
+              / {breadcrumb}
+            </p>
           </div>
-        </Field>
+          <div className="flex gap-3">
+            {cancelEventId ? (
+              <Link
+                to="/partner/event/$id"
+                params={{ id: cancelEventId }}
+                className={cancelClass}
+                style={buttonStyle}
+              >
+                Batal
+              </Link>
+            ) : (
+              <Link
+                to="/partner/event"
+                className={cancelClass}
+                style={buttonStyle}
+              >
+                Batal
+              </Link>
+            )}
+            <button
+              type="submit"
+              disabled={busy}
+              className="app-btn-primary"
+              style={buttonStyle}
+            >
+              {submitText}
+            </button>
+          </div>
+        </header>
 
         <input
           ref={fileInput}
@@ -266,101 +231,299 @@ export default function PartnerEventForm({
           className="hidden"
           onChange={handlePickBanner}
         />
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => fileInput.current?.click()}
-          className="flex w-full items-center gap-3 rounded-2xl border p-3.5 text-left disabled:opacity-60"
-          style={{
-            borderColor: 'var(--app-border)',
-            background: 'var(--pm-input)',
-          }}
-        >
-          {previewSrc ? (
-            <img
-              src={previewSrc}
-              alt="Pratinjau banner"
-              className="h-12 w-20 shrink-0 rounded-xl object-cover"
-            />
-          ) : (
-            <Upload
-              size={22}
-              className="shrink-0"
-              style={{ color: 'var(--app-accent)' }}
-            />
-          )}
-          <span className="flex flex-col gap-0.5">
-            <span
-              className="text-[13px] font-bold"
-              style={{ color: 'var(--app-accent)' }}
-            >
-              {busy
-                ? 'Memproses...'
-                : previewSrc
-                  ? 'Ganti banner event'
-                  : 'Unggah banner event'}
-            </span>
-            <span
-              className="text-[11px]"
-              style={{ color: 'var(--app-text-soft)' }}
-            >
-              Rasio 16:9, maks. 1000px
-            </span>
-          </span>
-        </button>
-        {previewSrc && (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={handleRemoveBanner}
-            className="-mt-2 self-start text-xs font-semibold disabled:opacity-50"
-            style={{ color: 'var(--app-danger)' }}
-          >
-            Hapus banner
-          </button>
-        )}
 
-        <Field label="Deskripsi">
-          <textarea
-            rows={4}
-            maxLength={CALENDAR_EVENT_LIMITS.description}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="app-input resize-none"
-            style={{ height: 92, padding: '13px 14px' }}
-            placeholder="Tentang event ini"
-          />
-        </Field>
+        {/* Kartu informasi: di mobile hanya pembungkus transparan. */}
+        <div className="contents pm-lg-card lg:col-start-1 lg:row-start-2 lg:flex lg:flex-col lg:gap-4 lg:p-6">
+          <h2 className="pm-display order-1 hidden text-base lg:block">
+            Informasi event
+          </h2>
 
-        {products && (
-          <button
-            type="button"
-            onClick={() => setPickerOpen(true)}
-            className="flex w-full items-center gap-3 rounded-2xl border bg-white p-3.5 text-left"
-            style={{ borderColor: 'var(--app-border)' }}
+          {/* Offline / Online */}
+          <div
+            className="order-1 flex rounded-xl p-1 lg:w-[276px]"
+            style={{ background: 'var(--pm-muted)' }}
+            role="radiogroup"
+            aria-label="Jenis event"
           >
-            <ShoppingBag
-              size={22}
-              className="shrink-0"
-              style={{ color: 'var(--app-accent)' }}
-            />
-            <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-              <span className="text-sm font-bold">Produk di event ini</span>
-              <span
-                className="text-[11px]"
-                style={{ color: 'var(--app-text-soft)' }}
+            {[
+              { value: false, label: 'Offline' },
+              { value: true, label: 'Online' },
+            ].map((opt) => (
+              <button
+                key={opt.label}
+                type="button"
+                role="radio"
+                aria-checked={isOnline === opt.value}
+                onClick={() => setIsOnline(opt.value)}
+                className="flex-1 rounded-[10px] py-2 text-sm font-semibold transition-colors"
+                style={{
+                  background:
+                    isOnline === opt.value ? '#ffffff' : 'transparent',
+                  color:
+                    isOnline === opt.value
+                      ? 'var(--app-accent)'
+                      : 'var(--app-text-soft)',
+                }}
               >
-                {productIds.length === 0
-                  ? 'Opsional, bisa diubah nanti'
-                  : `${productIds.length} dari ${MAX_EVENT_PRODUCTS} produk dipilih`}
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="order-1 flex flex-col gap-3.5 lg:gap-4">
+            <Field label="Nama event">
+              <input
+                required
+                autoFocus
+                maxLength={CALENDAR_EVENT_LIMITS.name}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="app-input"
+                placeholder="cth. Imbex Fair 2026"
+              />
+            </Field>
+
+            <div className="grid grid-cols-2 gap-2.5 lg:gap-4">
+              <Field label="Tanggal mulai">
+                <div className="relative">
+                  <CalendarDays
+                    size={18}
+                    className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2"
+                    style={iconStyle}
+                  />
+                  <input
+                    type="date"
+                    required
+                    value={eventDate}
+                    onChange={(e) => {
+                      const value = e.target.value
+                      setEventDate(value)
+                      // Tanggal selesai yang jadi lebih awal dari mulai dikosongkan.
+                      if (endDate && endDate < value) setEndDate(null)
+                    }}
+                    className="app-input pl-10"
+                  />
+                </div>
+              </Field>
+              <Field label="Tanggal selesai">
+                <div className="relative">
+                  <CalendarDays
+                    size={18}
+                    className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2"
+                    style={iconStyle}
+                  />
+                  <input
+                    type="date"
+                    min={eventDate}
+                    value={endDate ?? ''}
+                    onChange={(e) => setEndDate(e.target.value || null)}
+                    className="app-input pl-10"
+                  />
+                </div>
+              </Field>
+            </div>
+
+            <Field label={isOnline ? 'Platform / tempat PO' : 'Lokasi'}>
+              <div className="relative">
+                <MapPin
+                  size={18}
+                  className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2"
+                  style={iconStyle}
+                />
+                <input
+                  required
+                  maxLength={CALENDAR_EVENT_LIMITS.location}
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  className="app-input pl-10"
+                  placeholder={
+                    isOnline
+                      ? 'cth. Instagram Live'
+                      : 'cth. Istora Senayan, Jakarta'
+                  }
+                />
+              </div>
+            </Field>
+          </div>
+
+          <div className="order-3">
+            <Field label="Deskripsi">
+              <textarea
+                rows={4}
+                maxLength={CALENDAR_EVENT_LIMITS.description}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="app-input resize-none !h-[92px] lg:!h-[132px]"
+                style={{ padding: '13px 14px' }}
+                placeholder="Tentang event ini"
+              />
+            </Field>
+          </div>
+        </div>
+
+        <div className="contents lg:col-start-2 lg:row-start-2 lg:flex lg:flex-col lg:gap-5">
+          <div className="order-2 flex flex-col gap-3.5 pm-lg-card lg:gap-3 lg:p-5">
+            <h2 className="pm-display hidden text-base lg:block">
+              Banner event
+            </h2>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => fileInput.current?.click()}
+              className="flex w-full items-center gap-3 rounded-2xl border p-3.5 text-left disabled:opacity-60 lg:min-h-[158px] lg:flex-col lg:justify-center lg:overflow-hidden lg:p-0 lg:text-center"
+              style={{
+                borderColor: 'var(--app-border)',
+                background: 'var(--pm-input)',
+              }}
+            >
+              {previewSrc ? (
+                <img
+                  src={previewSrc}
+                  alt="Pratinjau banner"
+                  className="h-12 w-20 shrink-0 rounded-xl object-cover lg:h-[158px] lg:w-full lg:rounded-none"
+                />
+              ) : (
+                <Upload
+                  size={22}
+                  className="shrink-0"
+                  style={{ color: 'var(--app-accent)' }}
+                />
+              )}
+              <span className="flex flex-col gap-0.5 lg:items-center lg:pb-3">
+                <span
+                  className="text-[13px] font-bold"
+                  style={{ color: 'var(--app-accent)' }}
+                >
+                  {busy
+                    ? 'Memproses...'
+                    : previewSrc
+                      ? 'Ganti banner event'
+                      : 'Unggah banner event'}
+                </span>
+                <span
+                  className="text-[11px]"
+                  style={{ color: 'var(--app-text-soft)' }}
+                >
+                  Rasio 16:9, maks. 1000px
+                </span>
               </span>
-            </span>
-            <ChevronRight size={18} className="shrink-0" style={iconStyle} />
-          </button>
-        )}
+            </button>
+            {previewSrc && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={handleRemoveBanner}
+                className="-mt-2 self-start text-xs font-semibold disabled:opacity-50 lg:mt-0"
+                style={{ color: 'var(--app-danger)' }}
+              >
+                Hapus banner
+              </button>
+            )}
+          </div>
+
+          {products && (
+            <>
+              <button
+                type="button"
+                onClick={() => setPickerOpen(true)}
+                className="order-4 flex w-full items-center gap-3 rounded-2xl border bg-white p-3.5 text-left lg:hidden"
+                style={{ borderColor: 'var(--app-border)' }}
+              >
+                <ShoppingBag
+                  size={22}
+                  className="shrink-0"
+                  style={{ color: 'var(--app-accent)' }}
+                />
+                <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <span className="text-sm font-bold">Produk di event ini</span>
+                  <span
+                    className="text-[11px]"
+                    style={{ color: 'var(--app-text-soft)' }}
+                  >
+                    {productIds.length === 0
+                      ? 'Opsional, bisa diubah nanti'
+                      : `${productIds.length} dari ${MAX_EVENT_PRODUCTS} produk dipilih`}
+                  </span>
+                </span>
+                <ChevronRight
+                  size={18}
+                  className="shrink-0"
+                  style={iconStyle}
+                />
+              </button>
+
+              <div className="pm-lg-card hidden flex-col gap-3 p-5 lg:flex">
+                <div className="flex items-center justify-between">
+                  <h2 className="pm-display text-base">Produk di event</h2>
+                  <span
+                    className="app-badge"
+                    style={{
+                      background: 'var(--app-success-soft)',
+                      color: 'var(--app-success)',
+                    }}
+                  >
+                    {productIds.length} / {MAX_EVENT_PRODUCTS}
+                  </span>
+                </div>
+                {selectedProducts.length === 0 ? (
+                  <p
+                    className="text-[13px]"
+                    style={{ color: 'var(--app-text-soft)' }}
+                  >
+                    Opsional, bisa diubah nanti.
+                  </p>
+                ) : (
+                  <ul className="flex flex-col gap-2.5">
+                    {selectedProducts.map((p) => {
+                      const photoUrl = partnerProductPhotoUrl(
+                        p.id,
+                        p.photoUpdatedAt,
+                      )
+                      return (
+                        <li key={p.id} className="flex items-center gap-3">
+                          <div
+                            className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg"
+                            style={{
+                              background: 'var(--pm-tint)',
+                              color: 'var(--pm-gold)',
+                            }}
+                          >
+                            {photoUrl ? (
+                              <img
+                                src={photoUrl}
+                                alt=""
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <Package size={15} />
+                            )}
+                          </div>
+                          <span className="truncate text-sm font-medium">
+                            {p.name}
+                          </span>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setPickerOpen(true)}
+                  className="self-start text-xs font-semibold"
+                  style={{ color: 'var(--app-accent)' }}
+                >
+                  Kelola pilihan produk
+                </button>
+              </div>
+            </>
+          )}
+        </div>
 
         {error && (
-          <p className="text-sm" style={{ color: 'var(--app-danger)' }}>
+          <p
+            className="order-5 text-sm lg:col-span-2 lg:row-start-3"
+            style={{ color: 'var(--app-danger)' }}
+          >
             {error}
           </p>
         )}
@@ -379,14 +542,14 @@ export default function PartnerEventForm({
         />
       )}
 
-      <div className="pm-footer">
+      <div className="pm-footer lg:hidden">
         <button
           type="submit"
           form={FORM_ID}
           disabled={busy}
           className="app-btn-primary w-full"
         >
-          {busy ? 'Menyimpan...' : submitLabel}
+          {submitText}
         </button>
       </div>
     </>

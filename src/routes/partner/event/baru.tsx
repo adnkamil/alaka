@@ -48,8 +48,8 @@ function NewPartnerEventPage() {
   }
 
   return (
-    <main className="flex flex-col gap-4 px-5 pt-4">
-      <header className="flex items-center gap-3">
+    <main className="pm-wide flex flex-col gap-4 px-5 pt-4">
+      <header className="flex items-center gap-3 lg:hidden">
         <Link
           to="/partner/event"
           aria-label="Kembali"
@@ -62,6 +62,8 @@ function NewPartnerEventPage() {
       </header>
 
       <PartnerEventForm
+        title="Buat Event"
+        breadcrumb="Buat event"
         submitLabel="Simpan event"
         products={products}
         initialValue={{
