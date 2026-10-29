@@ -30,10 +30,10 @@ function AdminEventListPage() {
   const visible = tab === 'upcoming' ? upcoming : past
 
   return (
-    <main className="mx-auto max-w-lg px-4 pb-8 pt-6">
+    <main className="pm-wide mx-auto max-w-lg px-4 pb-8 pt-6">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold">Event</h1>
+          <h1 className="text-xl font-bold lg:text-[26px]">Event</h1>
           <p className="mt-1 text-sm" style={{ color: 'var(--app-text-soft)' }}>
             Event yang tampil di kalender semua user.
           </p>
@@ -82,7 +82,7 @@ function AdminEventListPage() {
               : 'Belum ada event yang selesai.'}
         </p>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 lg:grid lg:grid-cols-2 lg:gap-4">
           {visible.map((event) => (
             <Link
               key={event.id}

@@ -197,8 +197,8 @@ function AdminDashboardPage() {
   }
 
   return (
-    <main className="px-4 pb-6 pt-6">
-      <h1 className="mb-1 text-xl font-bold">Dashboard</h1>
+    <main className="pm-wide px-4 pb-6 pt-6">
+      <h1 className="mb-1 text-xl font-bold lg:text-[26px]">Dashboard</h1>
       <p className="mb-6 text-xs" style={{ color: 'var(--app-text-soft)' }}>
         Ringkasan user &amp; verifikasi langganan PRO.
       </p>
@@ -207,7 +207,7 @@ function AdminDashboardPage() {
           `sm:grid-cols-2`: `sm:` itu breakpoint viewport, jadi di layar ponsel
           (< 640px) ia tidak pernah aktif dan kartu jatuh menumpuk satu-satu —
           padahal shell 480px ini cukup buat dua kartu. */}
-      <section className="grid grid-cols-2 gap-3">
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-5 lg:gap-4">
         <MetricCard
           label="Total Users"
           value={String(metrics.totalUsers)}
@@ -245,7 +245,7 @@ function AdminDashboardPage() {
         <button
           type="button"
           onClick={() => setTab('pending')}
-          className="app-btn-primary mt-6 flex w-full items-center justify-center gap-2"
+          className="app-btn-primary mt-6 flex w-full items-center justify-center gap-2 lg:w-fit lg:px-6"
         >
           <CreditCard size={16} />
           Tinjau {metrics.proPending} pengajuan pending
@@ -253,12 +253,12 @@ function AdminDashboardPage() {
       )}
 
       <section className="mt-8">
-        <h2 className="mb-1 text-base font-bold">Langganan PRO</h2>
+        <h2 className="mb-1 text-base font-bold lg:text-lg">Langganan PRO</h2>
         <p className="mb-4 text-xs" style={{ color: 'var(--app-text-soft)' }}>
           Verifikasi pengajuan &amp; pantau status langganan user.
         </p>
 
-        <div className="mb-4 grid grid-cols-3 gap-2">
+        <div className="mb-4 grid grid-cols-3 gap-2 lg:max-w-[460px]">
           {(
             [
               { key: 'pending', label: 'Pending', count: pending.length },
@@ -307,7 +307,7 @@ function AdminDashboardPage() {
             </p>
           </div>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 lg:grid lg:grid-cols-2 lg:items-start lg:gap-4">
             {visible.map((sub) => (
               <SubscriptionCard
                 key={sub.id}

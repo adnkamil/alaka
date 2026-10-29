@@ -31,7 +31,7 @@ function AdminEventNewPage() {
   }
 
   return (
-    <main className="mx-auto max-w-lg px-4 pb-8 pt-6">
+    <main className="pm-wide mx-auto max-w-lg px-4 pb-8 pt-6 lg:max-w-[760px]! lg:mx-0!">
       <header className="mb-5 flex items-center gap-3">
         <Link
           to="/admin/event"
@@ -40,7 +40,7 @@ function AdminEventNewPage() {
         >
           <ArrowLeft size={22} />
         </Link>
-        <h1 className="text-xl font-bold">Tambah Event</h1>
+        <h1 className="text-xl font-bold lg:text-[26px]">Tambah Event</h1>
       </header>
 
       <CalendarEventForm

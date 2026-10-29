@@ -97,7 +97,7 @@ function AdminEventDetailPage() {
   }
 
   return (
-    <main className="mx-auto max-w-lg px-4 pb-8 pt-6">
+    <main className="pm-wide mx-auto max-w-lg px-4 pb-8 pt-6 lg:max-w-[760px]! lg:mx-0!">
       <header className="mb-5 flex items-center gap-3">
         <Link
           to="/admin/event"
