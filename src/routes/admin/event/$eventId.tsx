@@ -97,7 +97,7 @@ function AdminEventDetailPage() {
   }
 
   return (
-    <main className="mx-auto max-w-lg px-4 pb-8 pt-6">
+    <main className="pm-wide mx-auto max-w-lg px-4 pb-8 pt-6 lg:max-w-[760px]! lg:mx-0!">
       <header className="mb-5 flex items-center gap-3">
         <Link
           to="/admin/event"
@@ -106,7 +106,7 @@ function AdminEventDetailPage() {
         >
           <ArrowLeft size={22} />
         </Link>
-        <h1 className="min-w-0 break-words text-xl font-bold">
+        <h1 className="min-w-0 break-words pm-display text-[22px] leading-tight">
           {event?.name ?? 'Event'}
         </h1>
       </header>

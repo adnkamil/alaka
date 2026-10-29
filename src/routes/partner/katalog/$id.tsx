@@ -37,8 +37,8 @@ function EditPartnerProductPage() {
   }
 
   return (
-    <main className="flex flex-col gap-4 px-5 pt-4">
-      <header className="flex items-center gap-3">
+    <main className="pm-wide flex flex-col gap-4 px-5 pt-4">
+      <header className="flex items-center gap-3 lg:hidden">
         <Link
           to="/partner/katalog"
           aria-label="Kembali"
@@ -58,6 +58,8 @@ function EditPartnerProductPage() {
           isActive: product.isActive,
           photoUrl: partnerProductPhotoUrl(product.id, product.photoUpdatedAt),
         }}
+        title="Ubah Produk"
+        breadcrumb="Ubah produk"
         submitLabel="Simpan perubahan"
         onSubmit={handleSubmit}
       />

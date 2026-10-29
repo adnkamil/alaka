@@ -1,5 +1,7 @@
 import { Outlet, createFileRoute, redirect } from '@tanstack/react-router'
 import AdminBottomNav from '../components/AdminBottomNav'
+import AdminSidebar from '../components/AdminSidebar'
+import AdminTopbar from '../components/AdminTopbar'
 import { currentUserQuery } from '../lib/queries'
 
 // Proteksi di sini cuma buat UX (redirect kalau bukan admin). Proteksi yang
@@ -24,29 +26,22 @@ export const Route = createFileRoute('/admin')({
 })
 
 /**
- * Layout admin: header cuma identitas, navigasi antar halaman admin ada di
- * `AdminBottomNav` (Dashboard / Customer / Event / Pengaturan). `app-shell--with-nav`
+ * Layout admin, bergaya sama dengan Partner Portal (palet `.pm`). Mobile:
+ * `AdminBottomNav`. Desktop (>= lg):
+ * sidebar + topbar (Figma "D8 Admin"); halaman yang belum punya layout desktop
+ * tampil sebagai kolom 480px di tengah area konten. `app-shell--with-nav`
  * menyediakan ruang di bawah supaya isi terakhir tidak tertutup nav yang fixed.
  */
 function AdminLayout() {
   return (
-    <div className="app-shell app-shell--with-nav">
-      <header
-        className="sticky top-0 z-10 flex items-center gap-2 border-b px-4 py-3"
-        style={{
-          borderColor: 'var(--app-border)',
-          background: 'var(--app-card)',
-        }}
-      >
-        <span
-          className="app-icon-tile h-8 w-8"
-          style={{ fontSize: '0.75rem', fontWeight: 700 }}
-        >
-          A
-        </span>
-        <span className="text-sm font-bold">Admin ALAKA</span>
-      </header>
-      <Outlet />
+    <div className="pm pm-root">
+      <AdminSidebar />
+      <div className="pm-main">
+        <AdminTopbar />
+        <div className="app-shell app-shell--with-nav pm-content">
+          <Outlet />
+        </div>
+      </div>
       <AdminBottomNav />
     </div>
   )

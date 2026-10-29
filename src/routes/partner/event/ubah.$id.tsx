@@ -30,8 +30,8 @@ function EditPartnerEventPage() {
   }
 
   return (
-    <main className="flex flex-col gap-4 px-5 pt-4">
-      <header className="flex items-center gap-3">
+    <main className="pm-wide flex flex-col gap-4 px-5 pt-4">
+      <header className="flex items-center gap-3 lg:hidden">
         <Link
           to="/partner/event/$id"
           params={{ id }}
@@ -45,6 +45,9 @@ function EditPartnerEventPage() {
       </header>
 
       <PartnerEventForm
+        title="Ubah Event"
+        breadcrumb="Ubah event"
+        cancelEventId={id}
         currentBannerSrc={event.bannerSrc}
         submitLabel="Simpan perubahan"
         initialValue={{

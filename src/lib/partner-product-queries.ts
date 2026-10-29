@@ -1,4 +1,4 @@
-import { and, desc, eq } from 'drizzle-orm'
+import { and, desc, eq, sql } from 'drizzle-orm'
 import { db } from '../db'
 import { partnerProducts } from '../db/schema'
 
@@ -20,6 +20,11 @@ export type PartnerProductRow = {
   createdAt: Date
 }
 
+/** Baris katalog + jumlah event yang membawa produk ini (untuk tabel desktop). */
+export type PartnerProductListRow = PartnerProductRow & {
+  eventCount: number
+}
+
 export function toRow(
   row: typeof partnerProducts.$inferSelect,
 ): PartnerProductRow {
@@ -37,13 +42,18 @@ export function toRow(
 
 export async function listPartnerProducts(
   partnerId: string,
-): Promise<Array<PartnerProductRow>> {
+): Promise<Array<PartnerProductListRow>> {
+  // Nama tabel ditulis lengkap di subquery (bukan `${partnerProducts.id}`):
+  // Drizzle membuang prefiks tabel pada kolom di dalam `sql` subquery.
   const rows = await db
-    .select()
+    .select({
+      product: partnerProducts,
+      eventCount: sql<number>`(select count(*)::int from partner_event_products pep where pep.product_id = "partner_products"."id")`,
+    })
     .from(partnerProducts)
     .where(eq(partnerProducts.partnerId, partnerId))
     .orderBy(desc(partnerProducts.createdAt))
-  return rows.map(toRow)
+  return rows.map((r) => ({ ...toRow(r.product), eventCount: r.eventCount }))
 }
 
 export async function getPartnerProduct(

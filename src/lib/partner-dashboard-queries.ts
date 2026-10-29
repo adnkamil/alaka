@@ -20,6 +20,12 @@ export type PartnerDashboard = {
   /** Brand jastiper berbeda yang ikut di semua event partner. */
   jastiperCount: number
   orderCount: number
+  /** Produk aktif yang dibuat sejak awal bulan (WIB). */
+  productsThisMonth: number
+  /** Jastiper berbeda yang ikut event partner dalam 7 hari terakhir. */
+  jastipersThisWeek: number
+  /** Pesanan masuk di event hasil "Ikut Event" dalam 7 hari terakhir. */
+  ordersThisWeek: number
   /** Jastiper yang paling baru ikut (maks 5). */
   recentJoins: Array<{
     brandName: string | null
@@ -33,7 +39,10 @@ export async function getPartnerDashboard(
 ): Promise<PartnerDashboard> {
   const [products, aggregate, recent] = await Promise.all([
     db
-      .select({ n: sql<number>`count(*)::int` })
+      .select({
+        n: sql<number>`count(*)::int`,
+        thisMonth: sql<number>`count(*) filter (where ${partnerProducts.createdAt} >= date_trunc('month', now() at time zone 'Asia/Jakarta') at time zone 'Asia/Jakarta')::int`,
+      })
       .from(partnerProducts)
       .where(
         and(
@@ -45,6 +54,8 @@ export async function getPartnerDashboard(
       .select({
         jastipers: sql<number>`count(distinct ${events.brandId})::int`,
         orderCount: sql<number>`count(${orders.id})::int`,
+        jastipersThisWeek: sql<number>`count(distinct ${events.brandId}) filter (where ${events.createdAt} >= now() - interval '7 days')::int`,
+        ordersThisWeek: sql<number>`count(${orders.id}) filter (where ${orders.createdAt} >= now() - interval '7 days')::int`,
       })
       .from(events)
       .innerJoin(calendarEvents, eq(events.calendarEventId, calendarEvents.id))
@@ -68,6 +79,9 @@ export async function getPartnerDashboard(
     activeProducts: products[0].n,
     jastiperCount: aggregate[0].jastipers,
     orderCount: aggregate[0].orderCount,
+    productsThisMonth: products[0].thisMonth,
+    jastipersThisWeek: aggregate[0].jastipersThisWeek,
+    ordersThisWeek: aggregate[0].ordersThisWeek,
     recentJoins: recent,
   }
 }
