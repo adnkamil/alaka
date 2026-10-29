@@ -919,6 +919,14 @@ a {
     padding: 28px 32px 32px;
   }
 
+  /* Kartu yang baru berbentuk kartu di desktop (mis. form produk); di mobile
+     elemennya polos. Padding diatur lewat utilitas `lg:p-*`. */
+  .pm-lg-card {
+    border: 1px solid var(--app-border);
+    background: var(--app-card);
+    border-radius: 16px;
+  }
+
   .pm-footer {
     bottom: 0;
     left: calc(248px + (100% - 248px) / 2);

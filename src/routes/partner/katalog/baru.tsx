@@ -30,8 +30,8 @@ function NewPartnerProductPage() {
   }
 
   return (
-    <main className="flex flex-col gap-4 px-5 pt-4">
-      <header className="flex items-center gap-3">
+    <main className="pm-wide flex flex-col gap-4 px-5 pt-4">
+      <header className="flex items-center gap-3 lg:hidden">
         <Link
           to="/partner/katalog"
           aria-label="Kembali"
@@ -42,7 +42,12 @@ function NewPartnerProductPage() {
         </Link>
         <h1 className="pm-display text-[22px] leading-tight">Tambah Produk</h1>
       </header>
-      <PartnerProductForm submitLabel="Simpan produk" onSubmit={handleSubmit} />
+      <PartnerProductForm
+        title="Tambah Produk"
+        breadcrumb="Tambah produk"
+        submitLabel="Simpan produk"
+        onSubmit={handleSubmit}
+      />
     </main>
   )
 }

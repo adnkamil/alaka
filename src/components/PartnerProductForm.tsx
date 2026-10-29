@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { Link } from '@tanstack/react-router'
 import { Trash2, Upload } from 'lucide-react'
 import { getErrorMessage } from '../lib/error-message'
 import {
@@ -40,6 +41,9 @@ export interface PartnerProductFormInitial {
 interface PartnerProductFormProps {
   initial?: PartnerProductFormInitial
   submitLabel: string
+  /** Judul & penunjuk halaman untuk header desktop (>= lg). */
+  title: string
+  breadcrumb: string
   onSubmit: (value: PartnerProductFormValue) => Promise<void>
 }
 
@@ -68,11 +72,16 @@ function Field({
 
 /**
  * Form tambah/ubah produk partner (dipakai halaman `baru` dan `$id`).
- * Tombol simpan menempel di bawah (`.pm-footer`) seperti di desain Figma.
+ * Mobile: satu kolom, tombol simpan menempel di bawah (`.pm-footer`).
+ * Desktop (>= lg): header dengan Batal/Simpan, kartu informasi di kiri, foto
+ * & toggle katalog di kanan (Figma "D4 Tambah Produk"). Satu DOM saja; urutan
+ * mobile diatur dengan `order`.
  */
 export default function PartnerProductForm({
   initial,
   submitLabel,
+  title,
+  breadcrumb,
   onSubmit,
 }: PartnerProductFormProps) {
   const fileInput = useRef<HTMLInputElement>(null)
@@ -146,13 +155,51 @@ export default function PartnerProductForm({
     }
   }
 
+  const submitText = isSubmitting ? 'Menyimpan...' : submitLabel
+
   return (
     <>
       <form
         id={FORM_ID}
-        className="flex flex-col gap-3.5 pb-[120px]"
+        className="flex flex-col gap-3.5 pb-[120px] lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start lg:gap-x-4 lg:gap-y-5 lg:pb-0"
         onSubmit={handleSubmit}
       >
+        <header className="hidden items-start justify-between gap-4 lg:col-span-2 lg:row-start-1 lg:flex">
+          <div>
+            <h1 className="pm-display text-[26px] leading-tight">{title}</h1>
+            <p
+              className="mt-1 text-[13px]"
+              style={{ color: 'var(--app-text-soft)' }}
+            >
+              <Link
+                to="/partner/katalog"
+                className="no-underline"
+                style={{ color: 'inherit' }}
+              >
+                Katalog
+              </Link>{' '}
+              / {breadcrumb}
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Link
+              to="/partner/katalog"
+              className="app-btn-outline no-underline"
+              style={{ minHeight: 44, fontSize: 14 }}
+            >
+              Batal
+            </Link>
+            <button
+              type="submit"
+              disabled={isSubmitting || photoBusy}
+              className="app-btn-primary"
+              style={{ minHeight: 44, fontSize: 14 }}
+            >
+              {submitText}
+            </button>
+          </div>
+        </header>
+
         <input
           ref={fileInput}
           type="file"
@@ -160,149 +207,168 @@ export default function PartnerProductForm({
           className="hidden"
           onChange={handlePickPhoto}
         />
-        <button
-          type="button"
-          disabled={photoBusy}
-          onClick={() => fileInput.current?.click()}
-          className="flex w-full flex-col items-center justify-center gap-1.5 overflow-hidden rounded-2xl border disabled:opacity-60"
-          style={{
-            borderColor: 'var(--app-border)',
-            background: 'var(--pm-input)',
-            minHeight: 120,
-          }}
-        >
-          {previewUrl ? (
-            <img
-              src={previewUrl}
-              alt="Foto produk"
-              className="h-32 w-full object-cover"
+
+        <div className="order-2 flex flex-col gap-3.5 pm-lg-card lg:col-start-1 lg:row-start-2 lg:gap-4 lg:p-6">
+          <h2 className="pm-display hidden text-base lg:block">
+            Informasi produk
+          </h2>
+
+          <Field label="Nama produk">
+            <input
+              required
+              maxLength={PRODUCT_NAME_MAX}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="app-input"
+              placeholder="mis. Kemeja Koko Premium"
             />
-          ) : (
-            <>
-              <Upload size={24} style={{ color: 'var(--app-accent)' }} />
-              <span
-                className="text-[13px] font-bold"
-                style={{ color: 'var(--app-accent)' }}
+          </Field>
+
+          <div className="flex flex-col gap-3.5 lg:grid lg:grid-cols-2 lg:gap-4">
+            <Field label="Kode produk (opsional)">
+              <input
+                maxLength={PRODUCT_CODE_MAX}
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                className="app-input"
+                placeholder="KKP-001"
+              />
+            </Field>
+
+            <Field label="Harga">
+              <input
+                required
+                inputMode="numeric"
+                value={priceText}
+                onChange={(e) => setPriceText(e.target.value)}
+                className="app-input"
+                placeholder="189000"
+              />
+              {price !== null && priceText.trim() !== '' && (
+                <span
+                  className="text-xs"
+                  style={{ color: 'var(--app-text-soft)' }}
+                >
+                  {formatRupiah(price)}
+                </span>
+              )}
+            </Field>
+          </div>
+
+          <Field label="Deskripsi">
+            <textarea
+              rows={4}
+              maxLength={PRODUCT_DESCRIPTION_MAX}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="app-input resize-none !h-[92px] lg:!h-[132px]"
+              style={{ padding: '13px 14px' }}
+              placeholder="Bahan, ukuran, atau catatan lain"
+            />
+          </Field>
+        </div>
+
+        <div className="contents lg:col-start-2 lg:row-start-2 lg:flex lg:flex-col lg:gap-4">
+          <div className="order-1 flex flex-col gap-3.5 pm-lg-card lg:gap-3 lg:p-5">
+            <h2 className="pm-display hidden text-base lg:block">
+              Foto produk
+            </h2>
+            <button
+              type="button"
+              disabled={photoBusy}
+              onClick={() => fileInput.current?.click()}
+              className="flex w-full flex-col items-center justify-center gap-1.5 overflow-hidden rounded-2xl border disabled:opacity-60 lg:min-h-[176px]"
+              style={{
+                borderColor: 'var(--app-border)',
+                background: 'var(--pm-input)',
+                minHeight: 120,
+              }}
+            >
+              {previewUrl ? (
+                <img
+                  src={previewUrl}
+                  alt="Foto produk"
+                  className="h-32 w-full object-cover lg:h-44"
+                />
+              ) : (
+                <>
+                  <Upload size={24} style={{ color: 'var(--app-accent)' }} />
+                  <span
+                    className="text-[13px] font-bold"
+                    style={{ color: 'var(--app-accent)' }}
+                  >
+                    {photoBusy ? 'Memproses...' : 'Unggah foto produk'}
+                  </span>
+                  <span
+                    className="text-[11px]"
+                    style={{ color: 'var(--app-text-soft)' }}
+                  >
+                    JPG/PNG, otomatis dikonversi ke WebP
+                  </span>
+                </>
+              )}
+            </button>
+            {previewUrl && (
+              <button
+                type="button"
+                onClick={handleRemovePhoto}
+                className="flex items-center gap-1 self-start text-xs font-semibold"
+                style={{ color: 'var(--app-danger)' }}
               >
-                {photoBusy ? 'Memproses...' : 'Unggah foto produk'}
-              </span>
+                <Trash2 size={13} />
+                Hapus foto
+              </button>
+            )}
+          </div>
+
+          <div
+            className="order-3 flex items-center justify-between gap-3 rounded-2xl border bg-white p-3.5 lg:p-5"
+            style={{ borderColor: 'var(--app-border)' }}
+          >
+            <div className="flex flex-col gap-0.5">
+              <span className="text-sm font-bold">Tampilkan di katalog</span>
               <span
                 className="text-[11px]"
                 style={{ color: 'var(--app-text-soft)' }}
               >
-                JPG/PNG, otomatis dikonversi ke WebP
+                Jastiper bisa memilih produk ini saat ikut event.
               </span>
-            </>
-          )}
-        </button>
-        {previewUrl && (
-          <button
-            type="button"
-            onClick={handleRemovePhoto}
-            className="flex items-center gap-1 self-start text-xs font-semibold"
-            style={{ color: 'var(--app-danger)' }}
-          >
-            <Trash2 size={13} />
-            Hapus foto
-          </button>
-        )}
-
-        <Field label="Nama produk">
-          <input
-            required
-            maxLength={PRODUCT_NAME_MAX}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="app-input"
-            placeholder="mis. Kemeja Koko Premium"
-          />
-        </Field>
-
-        <Field label="Kode produk (opsional)">
-          <input
-            maxLength={PRODUCT_CODE_MAX}
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            className="app-input"
-            placeholder="KKP-001"
-          />
-        </Field>
-
-        <Field label="Harga">
-          <input
-            required
-            inputMode="numeric"
-            value={priceText}
-            onChange={(e) => setPriceText(e.target.value)}
-            className="app-input"
-            placeholder="189000"
-          />
-        </Field>
-        {price !== null && priceText.trim() !== '' && (
-          <p
-            className="-mt-2 text-xs"
-            style={{ color: 'var(--app-text-soft)' }}
-          >
-            {formatRupiah(price)}
-          </p>
-        )}
-
-        <Field label="Deskripsi">
-          <textarea
-            rows={4}
-            maxLength={PRODUCT_DESCRIPTION_MAX}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="app-input resize-none"
-            style={{ height: 92, padding: '13px 14px' }}
-            placeholder="Bahan, ukuran, atau catatan lain"
-          />
-        </Field>
-
-        <div
-          className="flex items-center justify-between gap-3 rounded-2xl border bg-white p-3.5"
-          style={{ borderColor: 'var(--app-border)' }}
-        >
-          <div className="flex flex-col gap-0.5">
-            <span className="text-sm font-bold">Tampilkan di katalog</span>
-            <span
-              className="text-[11px]"
-              style={{ color: 'var(--app-text-soft)' }}
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={isActive}
+              aria-label="Tampilkan di katalog"
+              onClick={() => setIsActive((v) => !v)}
+              className="relative h-[26px] w-[46px] shrink-0 rounded-full transition-colors"
+              style={{ background: isActive ? '#3f7d58' : '#d9cfbf' }}
             >
-              Jastiper bisa memilih produk ini saat ikut event.
-            </span>
+              <span
+                className="absolute top-[3px] h-5 w-5 rounded-full bg-white shadow transition-all"
+                style={{ left: isActive ? 23 : 3 }}
+              />
+            </button>
           </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={isActive}
-            aria-label="Tampilkan di katalog"
-            onClick={() => setIsActive((v) => !v)}
-            className="relative h-[26px] w-[46px] shrink-0 rounded-full transition-colors"
-            style={{ background: isActive ? '#3f7d58' : '#d9cfbf' }}
-          >
-            <span
-              className="absolute top-[3px] h-5 w-5 rounded-full bg-white shadow transition-all"
-              style={{ left: isActive ? 23 : 3 }}
-            />
-          </button>
         </div>
 
         {error && (
-          <p className="text-sm" style={{ color: 'var(--app-danger)' }}>
+          <p
+            className="order-4 text-sm lg:col-span-2 lg:row-start-3"
+            style={{ color: 'var(--app-danger)' }}
+          >
             {error}
           </p>
         )}
       </form>
 
-      <div className="pm-footer">
+      <div className="pm-footer lg:hidden">
         <button
           type="submit"
           form={FORM_ID}
           disabled={isSubmitting || photoBusy}
           className="app-btn-primary w-full"
         >
-          {isSubmitting ? 'Menyimpan...' : submitLabel}
+          {submitText}
         </button>
       </div>
     </>
