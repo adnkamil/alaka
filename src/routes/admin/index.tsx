@@ -198,7 +198,9 @@ function AdminDashboardPage() {
 
   return (
     <main className="pm-wide px-4 pb-6 pt-6">
-      <h1 className="mb-1 text-xl font-bold lg:text-[26px]">Dashboard</h1>
+      <h1 className="mb-1 pm-display text-[22px] leading-tight lg:text-[26px]">
+        Dashboard
+      </h1>
       <p className="mb-6 text-xs" style={{ color: 'var(--app-text-soft)' }}>
         Ringkasan user &amp; verifikasi langganan PRO.
       </p>
@@ -270,11 +272,7 @@ function AdminDashboardPage() {
               key={t.key}
               type="button"
               onClick={() => setTab(t.key)}
-              className={`flex items-center justify-center gap-1.5 rounded-xl border px-1 py-2 text-xs font-semibold transition-all ${
-                tab === t.key
-                  ? 'border-[var(--app-accent)] bg-[var(--app-accent)] text-white shadow-sm'
-                  : 'border-[var(--app-border)] bg-[var(--app-card)] text-[var(--app-text-soft)] hover:border-[var(--app-accent)]'
-              }`}
+              className={`pm-chip justify-center ${tab === t.key ? 'pm-chip--active' : ''}`}
             >
               <span>{t.label}</span>
               <span

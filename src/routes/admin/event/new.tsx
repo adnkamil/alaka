@@ -40,7 +40,9 @@ function AdminEventNewPage() {
         >
           <ArrowLeft size={22} />
         </Link>
-        <h1 className="text-xl font-bold lg:text-[26px]">Tambah Event</h1>
+        <h1 className="pm-display text-[22px] leading-tight lg:text-[26px]">
+          Tambah Event
+        </h1>
       </header>
 
       <CalendarEventForm

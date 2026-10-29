@@ -121,7 +121,9 @@ function AdminPartnerPage() {
     <>
       <main className="px-4 pb-6 pt-6 lg:hidden">
         <div className="mb-1 flex items-center justify-between gap-3">
-          <h1 className="text-xl font-bold">Kelola Partner</h1>
+          <h1 className="pm-display text-[22px] leading-tight">
+            Kelola Partner
+          </h1>
           <button
             type="button"
             onClick={() => setFormOpen(true)}
@@ -159,11 +161,7 @@ function AdminPartnerPage() {
               key={t.key}
               type="button"
               onClick={() => setTab(t.key)}
-              className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all ${
-                tab === t.key
-                  ? 'border-[var(--app-accent)] bg-[var(--app-accent)] text-white shadow-sm'
-                  : 'border-[var(--app-border)] bg-[var(--app-card)] text-[var(--app-text-soft)] hover:border-[var(--app-accent)]'
-              }`}
+              className={`pm-chip ${tab === t.key ? 'pm-chip--active' : ''}`}
             >
               <span>{t.label}</span>
               <span

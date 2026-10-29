@@ -120,7 +120,9 @@ function AdminSettingsPage() {
 
   return (
     <main className="pm-wide px-4 pb-6 pt-6 lg:max-w-[760px]! lg:mx-0!">
-      <h1 className="mb-1 text-xl font-bold lg:text-[26px]">Pengaturan</h1>
+      <h1 className="mb-1 pm-display text-[22px] leading-tight lg:text-[26px]">
+        Pengaturan
+      </h1>
       <p className="mb-6 text-xs" style={{ color: 'var(--app-text-soft)' }}>
         Pengaturan pembayaran PRO yang dipakai member saat mengajukan upgrade.
       </p>

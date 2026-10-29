@@ -106,7 +106,7 @@ function AdminEventDetailPage() {
         >
           <ArrowLeft size={22} />
         </Link>
-        <h1 className="min-w-0 break-words text-xl font-bold">
+        <h1 className="min-w-0 break-words pm-display text-[22px] leading-tight">
           {event?.name ?? 'Event'}
         </h1>
       </header>

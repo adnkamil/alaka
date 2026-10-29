@@ -33,7 +33,9 @@ function AdminEventListPage() {
     <main className="pm-wide mx-auto max-w-lg px-4 pb-8 pt-6">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold lg:text-[26px]">Event</h1>
+          <h1 className="pm-display text-[22px] leading-tight lg:text-[26px]">
+            Event
+          </h1>
           <p className="mt-1 text-sm" style={{ color: 'var(--app-text-soft)' }}>
             Event yang tampil di kalender semua user.
           </p>
@@ -60,13 +62,7 @@ function AdminEventListPage() {
             role="tab"
             aria-selected={tab === item.key}
             onClick={() => setTab(item.key)}
-            className="rounded-full px-3 py-1.5 text-xs font-semibold"
-            style={{
-              background:
-                tab === item.key ? 'var(--app-accent)' : 'var(--app-card)',
-              color: tab === item.key ? 'white' : 'var(--app-text-soft)',
-              border: '1px solid var(--app-border)',
-            }}
+            className={`pm-chip ${tab === item.key ? 'pm-chip--active' : ''}`}
           >
             {item.label} ({item.count})
           </button>

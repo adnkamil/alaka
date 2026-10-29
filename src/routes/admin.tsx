@@ -26,33 +26,19 @@ export const Route = createFileRoute('/admin')({
 })
 
 /**
- * Layout admin. Mobile: header identitas + `AdminBottomNav`. Desktop (>= lg):
+ * Layout admin, bergaya sama dengan Partner Portal (palet `.pm`). Mobile:
+ * `AdminBottomNav`. Desktop (>= lg):
  * sidebar + topbar (Figma "D8 Admin"); halaman yang belum punya layout desktop
  * tampil sebagai kolom 480px di tengah area konten. `app-shell--with-nav`
  * menyediakan ruang di bawah supaya isi terakhir tidak tertutup nav yang fixed.
  */
 function AdminLayout() {
   return (
-    <div className="pm-root adm-palette">
+    <div className="pm pm-root">
       <AdminSidebar />
       <div className="pm-main">
         <AdminTopbar />
         <div className="app-shell app-shell--with-nav pm-content">
-          <header
-            className="sticky top-0 z-10 flex items-center gap-2 border-b px-4 py-3 lg:hidden"
-            style={{
-              borderColor: 'var(--app-border)',
-              background: 'var(--app-card)',
-            }}
-          >
-            <span
-              className="app-icon-tile h-8 w-8"
-              style={{ fontSize: '0.75rem', fontWeight: 700 }}
-            >
-              A
-            </span>
-            <span className="text-sm font-bold">Admin ALAKA</span>
-          </header>
           <Outlet />
         </div>
       </div>

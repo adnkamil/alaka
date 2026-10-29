@@ -120,7 +120,7 @@ function AdminCustomersPage() {
   return (
     <>
       <main className="px-4 pb-6 pt-6 lg:hidden">
-        <h1 className="mb-1 text-xl font-bold">Customer</h1>
+        <h1 className="pm-display text-[22px] leading-tight mb-1">Customer</h1>
         <p className="mb-4 text-xs" style={{ color: 'var(--app-text-soft)' }}>
           Semua akun yang terdaftar: status langganan, aktivitas pesanan, dan
           total revenue dari pengajuan PRO yang sudah disetujui.
@@ -148,11 +148,7 @@ function AdminCustomersPage() {
               key={t.key}
               type="button"
               onClick={() => setTab(t.key)}
-              className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all ${
-                tab === t.key
-                  ? 'border-[var(--app-accent)] bg-[var(--app-accent)] text-white shadow-sm'
-                  : 'border-[var(--app-border)] bg-[var(--app-card)] text-[var(--app-text-soft)] hover:border-[var(--app-accent)]'
-              }`}
+              className={`pm-chip ${tab === t.key ? 'pm-chip--active' : ''}`}
             >
               <span>{t.label}</span>
               <span
