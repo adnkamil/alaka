@@ -861,6 +861,32 @@ a {
 }
 
 @media (min-width: 1024px) {
+  /* Palet krem Partner Portal untuk admin di desktop saja (mobile admin
+     tetap memakai tema aplikasi). */
+  .adm-palette {
+    --app-bg: #fbf3e6;
+    --app-card: #ffffff;
+    --app-card-hover: #fbf3e6;
+    --app-border: #eadfcc;
+    --app-text: #2b2118;
+    --app-text-soft: #7a6b5a;
+    --app-text-mute: #a89a86;
+    --app-accent: #b6584b;
+    --app-accent-strong: #9c463b;
+    --app-accent-soft: #f3dfd9;
+    --app-success: #3f7d58;
+    --app-success-soft: #e1f0e6;
+    --pm-input: #fffdf8;
+    --pm-tint: #f3ead9;
+    --pm-muted: #eee7da;
+    --pm-gold: #8a6a3a;
+    color-scheme: light;
+    background: #fbf3e6;
+    color: #2b2118;
+  }
+}
+
+@media (min-width: 1024px) {
   .pm-root {
     display: grid;
     grid-template-columns: 248px minmax(0, 1fr);

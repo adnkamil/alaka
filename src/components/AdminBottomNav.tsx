@@ -1,31 +1,5 @@
 import { Link, useRouterState } from '@tanstack/react-router'
-import {
-  CalendarDays,
-  LayoutDashboard,
-  Settings,
-  Store,
-  Users,
-} from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
-
-interface TabDef {
-  to:
-    | '/admin'
-    | '/admin/customers'
-    | '/admin/event'
-    | '/admin/partner'
-    | '/admin/pengaturan'
-  label: string
-  icon: LucideIcon
-}
-
-const TABS: Array<TabDef> = [
-  { to: '/admin', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/admin/customers', label: 'Customer', icon: Users },
-  { to: '/admin/event', label: 'Event', icon: CalendarDays },
-  { to: '/admin/partner', label: 'Partner', icon: Store },
-  { to: '/admin/pengaturan', label: 'Pengaturan', icon: Settings },
-]
+import { ADMIN_TABS, isAdminTabActive } from './admin-nav-items'
 
 /**
  * Bottom tab admin — lima halaman admin, jadi navigasinya cukup di sini dan
@@ -39,11 +13,10 @@ const TABS: Array<TabDef> = [
  */
 export default function AdminBottomNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
-  const current = pathname.replace(/\/+$/, '')
 
   return (
     <nav
-      className="fixed bottom-0 left-1/2 z-40 w-full -translate-x-1/2 border-t"
+      className="fixed bottom-0 left-1/2 z-40 w-full -translate-x-1/2 border-t lg:hidden"
       style={{
         maxWidth: 480,
         borderColor: 'var(--app-border)',
@@ -52,13 +25,9 @@ export default function AdminBottomNav() {
       }}
     >
       <div className="mx-auto flex max-w-lg items-stretch justify-between px-2 py-1.5">
-        {TABS.map((tab) => {
+        {ADMIN_TABS.map((tab) => {
           const Icon = tab.icon
-          // Dashboard (`/admin`) cuma aktif persis; tab lain juga aktif di
-          // halaman turunannya (mis. `/admin/event/<id>` menyalakan tab Event).
-          const active =
-            current === tab.to ||
-            (tab.to !== '/admin' && current.startsWith(`${tab.to}/`))
+          const active = isAdminTabActive(pathname, tab.to)
           return (
             <Link
               key={tab.to}
