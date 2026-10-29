@@ -2,7 +2,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { asc, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '../db'
-import { calendarEvents } from '../db/schema'
+import { calendarEvents, partners, users } from '../db/schema'
 import { requireAdminUser } from './admin'
 import { calendarBannerSrc } from './calendar'
 import { listCalendarEventParticipants } from './calendar-join-queries'
@@ -62,11 +62,23 @@ export const fetchAdminCalendarEvents = createServerFn({
   await requireAdminUser()
 
   const rows = await db
-    .select()
+    .select({
+      event: calendarEvents,
+      partnerName: partners.name,
+      partnerEmail: partners.email,
+      adminName: users.name,
+      adminEmail: users.email,
+      // Jastiper = brand berbeda yang punya event belanja hasil "Ikut Event".
+      // Nama tabel ditulis lengkap: Drizzle membuang prefiks tabel pada kolom
+      // di dalam `sql` subquery.
+      jastiperCount: sql<number>`(select count(distinct e.brand_id)::int from events e where e.calendar_event_id = "calendar_event"."id")`,
+    })
     .from(calendarEvents)
+    .leftJoin(partners, eq(partners.id, calendarEvents.partnerId))
+    .leftJoin(users, eq(users.id, calendarEvents.createdBy))
     .orderBy(asc(calendarEvents.eventDate), asc(calendarEvents.name))
 
-  return rows.map((row) => ({
+  return rows.map(({ event: row, ...extra }) => ({
     id: row.id,
     name: row.name,
     location: row.location,
@@ -77,6 +89,22 @@ export const fetchAdminCalendarEvents = createServerFn({
     description: row.description,
     exhibitors: row.exhibitors,
     bannerSrc: calendarBannerSrc(row.id, row.bannerUpdatedAt),
+    jastiperCount: extra.jastiperCount,
+    /**
+     * Pembuat event: partner (lewat Partner Portal) atau admin ALAKA. Event
+     * seed / partner yang sudah dihapus tidak punya akun → `email` null.
+     */
+    creator: row.partnerId
+      ? {
+          kind: 'partner' as const,
+          name: extra.partnerName ?? 'Partner',
+          email: extra.partnerEmail,
+        }
+      : {
+          kind: 'admin' as const,
+          name: extra.adminName ?? 'Admin ALAKA',
+          email: extra.adminEmail,
+        },
   }))
 })
 

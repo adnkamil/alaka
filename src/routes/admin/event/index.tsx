@@ -14,7 +14,8 @@ export const Route = createFileRoute('/admin/event/')({
 
 type Tab = 'upcoming' | 'past'
 
-const COLUMNS = 'grid-cols-[minmax(0,1fr)_150px_200px_90px_100px_70px]'
+const COLUMNS =
+  'grid-cols-[minmax(0,1fr)_150px_170px_190px_90px_80px_100px_60px]'
 
 function AdminEventListPage() {
   const { data: events } = useSuspenseQuery(adminCalendarEventsQuery)
@@ -132,6 +133,14 @@ function AdminEventListPage() {
                     {event.isEnded && (
                       <span className="app-badge">Diakhiri</span>
                     )}
+                    <span className="app-badge">
+                      {event.creator.kind === 'partner'
+                        ? `Partner: ${event.creator.name}`
+                        : 'Admin'}
+                    </span>
+                    <span className="app-badge">
+                      {event.jastiperCount} jastiper
+                    </span>
                   </span>
                 </span>
               </Link>
@@ -146,7 +155,9 @@ function AdminEventListPage() {
               <span>Event</span>
               <span>Tanggal</span>
               <span>Lokasi</span>
+              <span>Pembuat</span>
               <span>Tipe</span>
+              <span>Jastiper</span>
               <span>Status</span>
               <span>Aksi</span>
             </div>
@@ -197,11 +208,41 @@ function AdminEventListPage() {
                   <MapPin size={13} className="shrink-0" />
                   <span className="truncate">{event.location}</span>
                 </span>
+                <div className="min-w-0">
+                  <p className="flex items-center gap-2 text-[13px] font-semibold">
+                    <span
+                      className="app-badge shrink-0"
+                      style={
+                        event.creator.kind === 'partner'
+                          ? {
+                              background: 'var(--app-success-soft)',
+                              color: 'var(--app-success)',
+                            }
+                          : {
+                              background: 'var(--pm-tint)',
+                              color: 'var(--pm-gold)',
+                            }
+                      }
+                    >
+                      {event.creator.kind === 'partner' ? 'Partner' : 'Admin'}
+                    </span>
+                    <span className="truncate">{event.creator.name}</span>
+                  </p>
+                  {event.creator.email && (
+                    <p
+                      className="truncate text-[11px]"
+                      style={{ color: 'var(--app-text-mute)' }}
+                    >
+                      {event.creator.email}
+                    </p>
+                  )}
+                </div>
                 <div>
                   <span className="app-badge app-badge-accent">
                     {event.isOnline ? 'Online' : 'Offline'}
                   </span>
                 </div>
+                <span className="text-sm font-bold">{event.jastiperCount}</span>
                 <div>
                   <span className="app-badge">
                     {event.isEnded
