@@ -307,16 +307,44 @@ function AdminDashboardPage() {
             </p>
           </div>
         ) : (
-          <div className="flex flex-col gap-3 lg:grid lg:grid-cols-2 lg:items-start lg:gap-4">
-            {visible.map((sub) => (
-              <SubscriptionCard
-                key={sub.id}
-                sub={sub}
-                onApprove={() => setReviewTarget({ sub, mode: 'approve' })}
-                onReject={() => setReviewTarget({ sub, mode: 'reject' })}
-              />
-            ))}
-          </div>
+          <>
+            <div className="flex flex-col gap-3 lg:hidden">
+              {visible.map((sub) => (
+                <SubscriptionCard
+                  key={sub.id}
+                  sub={sub}
+                  onApprove={() => setReviewTarget({ sub, mode: 'approve' })}
+                  onReject={() => setReviewTarget({ sub, mode: 'reject' })}
+                />
+              ))}
+            </div>
+
+            <div className="app-card hidden overflow-hidden lg:block">
+              <div
+                className={`grid ${SUB_COLUMNS} items-center gap-4 px-5 py-3.5 text-[11px] font-bold uppercase tracking-wide`}
+                style={{
+                  background: 'var(--pm-tint)',
+                  color: 'var(--pm-gold)',
+                }}
+              >
+                <span>Customer</span>
+                <span>Nominal</span>
+                <span>Metode</span>
+                <span>Diajukan</span>
+                <span>Berlaku</span>
+                <span>Status</span>
+                <span>Aksi</span>
+              </div>
+              {visible.map((sub) => (
+                <SubscriptionTableRow
+                  key={sub.id}
+                  sub={sub}
+                  onApprove={() => setReviewTarget({ sub, mode: 'approve' })}
+                  onReject={() => setReviewTarget({ sub, mode: 'reject' })}
+                />
+              ))}
+            </div>
+          </>
         )}
       </section>
 
@@ -331,6 +359,107 @@ function AdminDashboardPage() {
         }}
       />
     </main>
+  )
+}
+
+const SUB_COLUMNS =
+  'grid-cols-[minmax(0,1fr)_110px_150px_150px_150px_90px_170px]'
+
+/** Satu baris tabel pengajuan langganan di desktop. */
+function SubscriptionTableRow({
+  sub,
+  onApprove,
+  onReject,
+}: {
+  sub: AdminSubscriptionRow
+  onApprove: () => void
+  onReject: () => void
+}) {
+  const method = sub.paymentMethod
+    ? `${PAYMENT_METHOD_LABEL[sub.paymentMethod] ?? sub.paymentMethod}${
+        sub.paymentProvider ? ` (${sub.paymentProvider})` : ''
+      }`
+    : '-'
+  // Catatan user/admin & pengirim/referensi tidak muat di kolom; tampil di
+  // baris bawah supaya tidak ada informasi dari kartu mobile yang hilang.
+  const extras = [
+    sub.paymentSenderName && `Pengirim: ${sub.paymentSenderName}`,
+    sub.paymentReference && `Referensi: ${sub.paymentReference}`,
+    sub.paymentNote && `Catatan user: ${sub.paymentNote}`,
+    sub.reviewNote && `Catatan admin: ${sub.reviewNote}`,
+  ].filter(Boolean)
+
+  return (
+    <div className="border-t" style={{ borderColor: 'var(--app-border)' }}>
+      <div className={`grid ${SUB_COLUMNS} items-center gap-4 px-5 py-3`}>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-bold">
+            {sub.userBrandName || sub.userName}
+          </p>
+          <p
+            className="truncate text-[11px]"
+            style={{ color: 'var(--app-text-soft)' }}
+          >
+            {sub.userName} · {sub.userEmail}
+          </p>
+        </div>
+        <div>
+          <p className="text-[13px] font-bold">{formatIDR(sub.amount)}</p>
+          <p className="text-[11px]" style={{ color: 'var(--app-text-mute)' }}>
+            {sub.durationDays} hari
+          </p>
+        </div>
+        <span className="text-[13px]">{method}</span>
+        <span className="text-[13px]" style={{ color: 'var(--app-text-soft)' }}>
+          {formatDateTime(sub.paidAt ?? sub.createdAt)}
+        </span>
+        <span className="text-[13px]" style={{ color: 'var(--app-text-soft)' }}>
+          {sub.status === 'active' && sub.endsAt
+            ? `s/d ${formatDateTime(sub.endsAt)}`
+            : sub.reviewedAt
+              ? formatDateTime(sub.reviewedAt)
+              : '-'}
+        </span>
+        <div>
+          <StatusBadge status={sub.status} />
+        </div>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] font-semibold">
+          {sub.hasPaymentProof && (
+            <PaymentProofViewer
+              src={paymentProofUrl(sub.id)}
+              label="Bukti"
+              className="flex items-center gap-1 text-[13px] font-semibold"
+            />
+          )}
+          {sub.status === 'pending' && (
+            <>
+              <button
+                type="button"
+                onClick={onApprove}
+                style={{ color: 'var(--app-success)' }}
+              >
+                Setujui
+              </button>
+              <button
+                type="button"
+                onClick={onReject}
+                style={{ color: 'var(--app-danger)' }}
+              >
+                Tolak
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+      {extras.length > 0 && (
+        <p
+          className="px-5 pb-3 text-[11px] leading-relaxed"
+          style={{ color: 'var(--app-text-soft)' }}
+        >
+          {extras.join(' · ')}
+        </p>
+      )}
+    </div>
   )
 }
 
