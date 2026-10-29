@@ -539,10 +539,51 @@ export const items = pgTable('items', {
   qty: integer().notNull().default(1),
   // Checklist belanja (live shopping): true = barang sudah didapat/dibeli di toko.
   obtained: boolean().notNull().default(false),
+  // Bundling (paket). `is_bundle` = true untuk bundle baru; bundle lama yang
+  // namanya digabung " + " tetap false dan tidak punya item_components.
+  isBundle: boolean('is_bundle').notNull().default(false),
+  // Diisi hanya untuk barang dari produk partner.
+  partnerVariantId: uuid('partner_variant_id').references(
+    () => partnerVariants.id,
+    { onDelete: 'set null' },
+  ),
+  // Diisi kalau baris ini memakai paket. Di-set null kalau aturan dihapus.
+  partnerRuleId: uuid('partner_rule_id').references(
+    () => partnerPricingRules.id,
+    { onDelete: 'set null' },
+  ),
+  // HPP per unit baris ini (harga paket untuk bundle, harga varian untuk satuan).
+  // Disimpan sebagai snapshot supaya tidak berubah saat aturan diubah/dihapus.
+  hpp: decimal({ precision: 12, scale: 2 }),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),
 })
+
+// Isi sebuah bundle, satu baris per barang. Total pcs = items.qty * qty di sini.
+// Nama, ukuran, dan variasi disimpan sebagai snapshot.
+export const itemComponents = pgTable(
+  'item_components',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    itemId: uuid('item_id')
+      .notNull()
+      .references(() => items.id, { onDelete: 'cascade' }),
+    partnerVariantId: uuid('partner_variant_id').references(
+      () => partnerVariants.id,
+      { onDelete: 'set null' },
+    ),
+    productName: varchar('product_name').notNull(),
+    size: varchar(),
+    variation: varchar(),
+    qty: integer().notNull().default(1),
+  },
+  (table) => [
+    index('item_components_item_idx').on(table.itemId),
+    index('item_components_variant_idx').on(table.partnerVariantId),
+    check('item_components_qty_pos', sql`${table.qty} > 0`),
+  ],
+)
 
 // ACTIVITY LOGS
 export const activityLogs = pgTable('activity_logs', {
@@ -889,7 +930,10 @@ export const partnerProducts = pgTable(
     name: varchar().notNull(),
     /** Kode/SKU buatan partner. Opsional dan tidak harus unik. */
     code: varchar(),
-    price: decimal('price', { precision: 12, scale: 2 }).notNull(),
+    /** Harga induk. Dipakai hanya kalau `has_variants` = false. */
+    price: decimal('price', { precision: 12, scale: 2 }),
+    /** Toggle "Buat varian". Kalau true, harga ada di tiap varian. */
+    hasVariants: boolean('has_variants').notNull().default(false),
     description: text(),
     isActive: boolean('is_active').notNull().default(true),
     /** Kapan foto terakhir diganti; null = belum ada foto. Dipakai sebagai `?v=`. */
@@ -904,6 +948,10 @@ export const partnerProducts = pgTable(
   (table) => [
     index('partner_products_partner_idx').on(table.partnerId),
     check('partner_products_price_nonneg', sql`${table.price} >= 0`),
+    check(
+      'partner_products_price_required',
+      sql`${table.hasVariants} OR ${table.price} IS NOT NULL`,
+    ),
   ],
 )
 
@@ -927,6 +975,138 @@ export const partnerEventProducts = pgTable(
   (table) => [
     primaryKey({ columns: [table.calendarEventId, table.productId] }),
     index('partner_event_products_product_idx').on(table.productId),
+  ],
+)
+
+// ===== Katalog varian partner =====
+// Grup opsi per produk. Nama grup dikunci ke dua jenis: ukuran dan variasi.
+export const partnerOptionTypeEnum = pgEnum('partner_option_type', [
+  'ukuran',
+  'variasi',
+])
+
+export const partnerOptionGroups = pgTable(
+  'partner_option_groups',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    partnerProductId: uuid('partner_product_id')
+      .notNull()
+      .references(() => partnerProducts.id, { onDelete: 'cascade' }),
+    type: partnerOptionTypeEnum().notNull(),
+    position: integer().notNull().default(0),
+  },
+  (table) => [
+    uniqueIndex('partner_option_groups_product_type_uq').on(
+      table.partnerProductId,
+      table.type,
+    ),
+  ],
+)
+
+// Nilai di dalam grup, misalnya S/M/L atau Marine Cove. Nama bebas diisi partner.
+// `image_url` hanya dipakai di grup variasi (foto motif).
+export const partnerOptionValues = pgTable(
+  'partner_option_values',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    optionGroupId: uuid('option_group_id')
+      .notNull()
+      .references(() => partnerOptionGroups.id, { onDelete: 'cascade' }),
+    name: varchar().notNull(),
+    position: integer().notNull().default(0),
+    imageUrl: varchar('image_url'),
+  },
+  (table) => [
+    uniqueIndex('partner_option_values_group_name_uq').on(
+      table.optionGroupId,
+      table.name,
+    ),
+  ],
+)
+
+// Satu baris per kombinasi yang benar-benar dijual. Kombinasi yang tidak dijual
+// tidak punya baris. Kolom stok dan pre-order disiapkan, belum dipakai.
+export const partnerVariants = pgTable(
+  'partner_variants',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    partnerProductId: uuid('partner_product_id')
+      .notNull()
+      .references(() => partnerProducts.id, { onDelete: 'cascade' }),
+    price: decimal('price', { precision: 12, scale: 2 }).notNull(),
+    sku: varchar(),
+    isActive: boolean('is_active').notNull().default(true),
+    trackStock: boolean('track_stock').notNull().default(false),
+    stockQty: integer('stock_qty'),
+    allowPreorder: boolean('allow_preorder').notNull().default(false),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('partner_variants_product_idx').on(table.partnerProductId),
+    check('partner_variants_price_nonneg', sql`${table.price} >= 0`),
+  ],
+)
+
+// Penghubung varian ke nilainya. Setiap varian punya tepat satu nilai per grup;
+// aturan ini dijaga di aplikasi.
+export const partnerVariantValues = pgTable(
+  'partner_variant_values',
+  {
+    variantId: uuid('variant_id')
+      .notNull()
+      .references(() => partnerVariants.id, { onDelete: 'cascade' }),
+    optionValueId: uuid('option_value_id')
+      .notNull()
+      .references(() => partnerOptionValues.id, { onDelete: 'cascade' }),
+  },
+  (table) => [
+    primaryKey({ columns: [table.variantId, table.optionValueId] }),
+    index('partner_variant_values_option_idx').on(table.optionValueId),
+  ],
+)
+
+// Aturan paket milik partner, misalnya "3 pcs Rp100.000". `bundle_price` adalah
+// HPP per paket (harga beli jastiper ke partner).
+export const partnerPricingRules = pgTable(
+  'partner_pricing_rules',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    partnerId: uuid('partner_id')
+      .notNull()
+      .references(() => partners.id, { onDelete: 'cascade' }),
+    name: varchar().notNull(),
+    minQty: integer('min_qty').notNull(),
+    bundlePrice: decimal('bundle_price', { precision: 12, scale: 2 }).notNull(),
+    isActive: boolean('is_active').notNull().default(true),
+    position: integer().notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('partner_pricing_rules_partner_idx').on(table.partnerId),
+    check('partner_pricing_rules_min_qty_pos', sql`${table.minQty} > 0`),
+    check('partner_pricing_rules_price_nonneg', sql`${table.bundlePrice} >= 0`),
+  ],
+)
+
+// Produk yang masuk sebuah aturan. Satu produk hanya boleh di satu aturan,
+// dijaga oleh unique pada partner_product_id.
+export const partnerRuleProducts = pgTable(
+  'partner_rule_products',
+  {
+    ruleId: uuid('rule_id')
+      .notNull()
+      .references(() => partnerPricingRules.id, { onDelete: 'cascade' }),
+    partnerProductId: uuid('partner_product_id')
+      .notNull()
+      .references(() => partnerProducts.id, { onDelete: 'cascade' }),
+  },
+  (table) => [
+    primaryKey({ columns: [table.ruleId, table.partnerProductId] }),
+    uniqueIndex('partner_rule_products_product_uq').on(table.partnerProductId),
   ],
 )
 
