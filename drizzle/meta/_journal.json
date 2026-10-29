@@ -211,6 +211,13 @@
       "when": 1793268427194,
       "tag": "0029_partner_variants_and_bundles",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1793290843322,
+      "tag": "0030_partner_subscriptions",
+      "breakpoints": true
     }
   ]
 }

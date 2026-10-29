@@ -619,6 +619,52 @@ export const usersRelations = relations(users, ({ many }) => ({
 // Histori langganan milik user. Admin yang memverifikasi (`reviewedBy`) sengaja
 // tidak dibuatkan relation supaya relasi user <-> subscriptions tetap satu arah
 // dan tidak ambigu waktu dipakai di `db.query`.
+// Langganan PRO untuk akun partner. Terpisah dari `subscriptions` (milik brand
+// jastiper). Kolomnya mengikuti `subscriptions`, dengan bukti transfer disimpan
+// di Blobs dan hanya ditandai lewat `payment_proof_stored`.
+export const partnerSubscriptions = pgTable(
+  'partner_subscriptions',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    partnerId: uuid('partner_id')
+      .notNull()
+      .references(() => partners.id, { onDelete: 'cascade' }),
+    planCode: varchar('plan_code').notNull().default(PRO_PLAN_CODE),
+    status: subscriptionStatusEnum().notNull().default('pending'),
+    durationDays: integer('duration_days').notNull().default(PRO_DURATION_DAYS),
+    startedAt: timestamp('started_at', { withTimezone: true }),
+    endsAt: timestamp('ends_at', { withTimezone: true }),
+    amount: decimal({ precision: 12, scale: 2 }).notNull().default('0'),
+    paymentMethod: paymentMethodTypeEnum('payment_method'),
+    paymentProvider: varchar('payment_provider'),
+    paymentSenderName: varchar('payment_sender_name'),
+    paymentReference: varchar('payment_reference'),
+    paymentProofStored: boolean('payment_proof_stored')
+      .notNull()
+      .default(false),
+    paymentNote: text('payment_note'),
+    paidAt: timestamp('paid_at', { withTimezone: true }),
+    reviewedBy: uuid('reviewed_by').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
+    reviewNote: text('review_note'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('partner_subscriptions_partner_created_idx').on(
+      table.partnerId,
+      table.createdAt,
+    ),
+    index('partner_subscriptions_status_idx').on(table.status),
+  ],
+)
+
 export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
   user: one(users, {
     fields: [subscriptions.userId],
