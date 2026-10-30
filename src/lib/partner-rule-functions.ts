@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { requirePartner } from './partner-auth'
 import { hasPartnerPro } from './partner-entitlement'
 import { assertRuleProductsUnique } from './partner-pricing'
+import { syncDefaultVariant } from './partner-default-variant'
 
 const idSchema = z.uuid()
 
@@ -56,6 +57,10 @@ export const listPartnerRules = createServerFn({ method: 'GET' }).handler(
             ),
           )
       : []
+    // Pemulihan untuk produk yang sudah masuk aturan sebelum varian default ada.
+    for (const partnerProductId of new Set(links.map((l) => l.partnerProductId))) {
+      await syncDefaultVariant(db, partnerProductId)
+    }
     return rules.map((rule) => ({
       id: rule.id,
       name: rule.name,
@@ -148,6 +153,13 @@ export const savePartnerRule = createServerFn({ method: 'POST' })
           partnerProductId,
         })),
       )
+      // Produk tanpa varian wajib punya varian Standar supaya bisa dipilih di paket.
+      for (const partnerProductId of data.productIds) {
+        await syncDefaultVariant(
+          tx as unknown as typeof import('../db').db,
+          partnerProductId,
+        )
+      }
       return { id: ruleId! }
     })
   })
@@ -224,6 +236,10 @@ export const setPartnerProductRule = createServerFn({ method: 'POST' })
         await tx
           .insert(partnerRuleProducts)
           .values({ ruleId: data.ruleId, partnerProductId: data.productId })
+        await syncDefaultVariant(
+          tx as unknown as typeof import('../db').db,
+          data.productId,
+        )
       }
       return { ok: true as const }
     })

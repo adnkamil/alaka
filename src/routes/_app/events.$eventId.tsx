@@ -1654,7 +1654,7 @@ function EventDetailPage() {
           })}
       </div>
 
-      {event.isActive && partnerCatalog?.enabled && (
+      {event.isActive && partnerCatalog?.enabled && !bundleFlow && (
         <div className="pointer-events-none fixed inset-x-0 bottom-24 z-40 mx-auto flex max-w-lg justify-end px-6">
           <button
             onClick={() => {
@@ -1662,7 +1662,7 @@ function EventDetailPage() {
               setBundleFlow({ name: '' })
             }}
             className="pointer-events-auto rounded-full px-4 py-2 text-sm font-semibold shadow-lg"
-            style={{ background: 'var(--app-surface)', color: 'var(--app-accent)' }}
+            style={{ background: 'var(--app-card)', color: 'var(--app-accent)' }}
           >
             Pakai paket
           </button>
@@ -1673,7 +1673,7 @@ function EventDetailPage() {
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40">
           <div
             className="flex w-full max-w-lg flex-col gap-3 rounded-t-2xl p-4"
-            style={{ background: 'var(--app-surface)' }}
+            style={{ background: 'var(--app-card)' }}
           >
             <p className="font-semibold">Ubah harga paket</p>
             <p className="text-sm">{bundlePriceEdit.name}</p>
@@ -1723,7 +1723,7 @@ function EventDetailPage() {
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40">
           <div
             className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-2xl"
-            style={{ background: 'var(--app-surface)' }}
+            style={{ background: 'var(--app-card)' }}
           >
             {bundleFlow.name === '' ? (
               <div className="flex flex-col gap-3 p-4">
@@ -1759,7 +1759,7 @@ function EventDetailPage() {
         </div>
       )}
 
-      {event.isActive && (
+      {event.isActive && !bundleFlow && (
         <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 mx-auto flex max-w-lg justify-end px-6">
           <button
             onClick={() => openSheet({ type: 'create' })}

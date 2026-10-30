@@ -1,3 +1,4 @@
+import { syncDefaultVariant } from './partner-default-variant'
 import { createServerFn } from '@tanstack/react-start'
 import { and, eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
@@ -181,6 +182,10 @@ export const savePartnerProductVariants = createServerFn({ method: 'POST' })
           .update(partnerProducts)
           .set({ hasVariants: false, price: String(data.price) })
           .where(eq(partnerProducts.id, data.productId))
+        await syncDefaultVariant(
+          tx as unknown as typeof import('../db').db,
+          data.productId,
+        )
         return { ok: true as const }
       }
 

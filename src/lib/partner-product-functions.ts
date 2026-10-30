@@ -1,3 +1,4 @@
+import { syncDefaultVariant } from './partner-default-variant'
 import { randomUUID } from 'node:crypto'
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
@@ -125,6 +126,10 @@ export const updateOwnPartnerProduct = createServerFn({ method: 'POST' })
       photoUpdatedAt,
     )
     if (!updated) throw new Error('Produk tidak ditemukan')
+
+    // Harga produk bisa berubah: samakan varian Standar (produk tanpa varian).
+    const { db } = await import('../db')
+    await syncDefaultVariant(db, id)
 
     if (photo.action === 'remove') {
       // DB sudah menandai "tanpa foto"; kalau penghapusan file gagal, file
