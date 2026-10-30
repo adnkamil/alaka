@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, asc, eq, inArray, isNull } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNotNull, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '../db'
 import { customers, events, items, orders, paymentMethods } from '../db/schema'
@@ -17,6 +17,7 @@ import { EmailNotVerifiedError, isEmailVerified } from './email-verified'
 import { findCustomerForOrder } from './customer-matching'
 import { findMergeTarget, mergeItemLines, mergePaidAmount } from './order-merge'
 import { derivePaymentStatus } from './order-totals'
+import { lineTotal, partitionLockedItems } from './partner-bundle-lock'
 
 async function requireUser() {
   const user = await getSessionUser()
@@ -123,9 +124,12 @@ export const createOrder = createServerFn({ method: 'POST' })
     if (mergeTarget) {
       // Barang lama dibawa apa adanya (termasuk checklist "sudah didapat"),
       // baru digabung dengan barang yang baru diinput.
-      const existingItems = await db.query.items.findMany({
+      const allExistingItems = await db.query.items.findMany({
         where: eq(items.orderId, mergeTarget.id),
       })
+      // Baris bundle partner terkunci: tidak ikut digabung dan tidak dihapus.
+      const { locked: lockedItems, editable: existingItems } =
+        partitionLockedItems(allExistingItems)
       const mergedItems = mergeItemLines(
         existingItems.map((item) => ({
           name: item.name,
@@ -136,10 +140,11 @@ export const createOrder = createServerFn({ method: 'POST' })
         })),
         data.items,
       )
-      const mergedTotal = mergedItems.reduce(
-        (sum, item) => sum + (item.originalPrice + item.fee) * item.qty,
-        0,
-      )
+      const mergedTotal =
+        mergedItems.reduce(
+          (sum, item) => sum + (item.originalPrice + item.fee) * item.qty,
+          0,
+        ) + lockedItems.reduce((sum, row) => sum + lineTotal(row), 0)
       const mergedPaid = mergePaidAmount(
         mergeTarget.paidAmount,
         paidForNewItems,
@@ -157,7 +162,11 @@ export const createOrder = createServerFn({ method: 'POST' })
 
       // Sama seperti `updateOrder`: baris barang diganti seluruhnya supaya
       // qty hasil penggabungan ikut tersimpan di baris yang sudah ada.
-      await db.delete(items).where(eq(items.orderId, mergeTarget.id))
+      await db
+        .delete(items)
+        .where(
+          and(eq(items.orderId, mergeTarget.id), isNull(items.partnerRuleId)),
+        )
       await db.insert(items).values(
         mergedItems.map((item) => ({
           orderId: mergeTarget.id,
@@ -283,12 +292,19 @@ export const updateOrder = createServerFn({ method: 'POST' })
       throw new Error('Pesanan tidak ditemukan')
     }
 
+    // Baris bundle partner terkunci: tidak diubah lewat form ini, tapi tetap
+    // masuk ke total tagihan.
+    const lockedItems = await db.query.items.findMany({
+      where: and(eq(items.orderId, data.orderId), isNotNull(items.partnerRuleId)),
+    })
+
     // Total tagihan baru ikut barang yang baru, jadi nominal terbayar dirapikan:
     // kalau lunas -> penuh, kalau DP -> tidak boleh lebih dari total baru.
-    const total = data.items.reduce(
-      (sum, item) => sum + (item.originalPrice + item.fee) * item.qty,
-      0,
-    )
+    const total =
+      data.items.reduce(
+        (sum, item) => sum + (item.originalPrice + item.fee) * item.qty,
+        0,
+      ) + lockedItems.reduce((sum, row) => sum + lineTotal(row), 0)
     const requestedPaid =
       data.paymentStatus === 'unpaid'
         ? 0
@@ -312,7 +328,9 @@ export const updateOrder = createServerFn({ method: 'POST' })
       .where(eq(orders.id, data.orderId))
 
     // Items aren't individually tracked by the form, so replace the full set.
-    await db.delete(items).where(eq(items.orderId, data.orderId))
+    await db
+      .delete(items)
+      .where(and(eq(items.orderId, data.orderId), isNull(items.partnerRuleId)))
     await db.insert(items).values(
       data.items.map((item) => ({
         orderId: data.orderId,
