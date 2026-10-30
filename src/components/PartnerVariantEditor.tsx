@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
+import RupiahInput from './ui/RupiahInput'
 import {
   getPartnerProductVariants,
   savePartnerProductVariants,
@@ -151,12 +152,11 @@ export default function PartnerVariantEditor({ productId }: { productId: string 
       {!hasVariants && (
         <label className="flex flex-col gap-1.5">
           <span className="text-xs font-semibold">Harga produk</span>
-          <input
-            type="number"
-            min={0}
+          <RupiahInput
             value={price}
-            onChange={(e) => setPrice(e.target.value)}
+            onChange={setPrice}
             className="app-input pm-num"
+            placeholder="0"
           />
         </label>
       )}
@@ -219,12 +219,10 @@ export default function PartnerVariantEditor({ productId }: { productId: string 
                               />
                               Dijual
                             </label>
-                            <input
-                              type="number"
-                              min={0}
+                            <RupiahInput
                               disabled={!cell.on}
                               value={cell.price}
-                              onChange={(e) => setCell(col, row, { price: e.target.value })}
+                              onChange={(v) => setCell(col, row, { price: v })}
                               placeholder="Harga"
                               className="app-input pm-num w-[120px] !py-2 disabled:opacity-50"
                             />

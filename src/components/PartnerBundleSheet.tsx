@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import RupiahInput from './ui/RupiahInput'
 
 export type CatalogRule = {
   id: string
@@ -228,11 +229,9 @@ export default function PartnerBundleSheet({
             </label>
             <label className="flex flex-col gap-1.5">
               <span className="text-xs font-semibold">Harga jual per paket</span>
-              <input
-                type="number"
-                min={0}
-                value={sellPrice === '' ? rule.bundlePrice : sellPrice}
-                onChange={(e) => setSellPrice(e.target.value)}
+              <RupiahInput
+                value={sellPrice === '' ? String(rule.bundlePrice) : sellPrice}
+                onChange={setSellPrice}
                 className="app-input pm-num"
               />
               <span className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
@@ -241,7 +240,7 @@ export default function PartnerBundleSheet({
             </label>
             <label className="flex flex-col gap-1.5">
               <span className="text-xs font-semibold">Fee per paket</span>
-              <input type="number" min={0} value={fee} onChange={(e) => setFee(e.target.value)} className="app-input pm-num" />
+              <RupiahInput value={fee} onChange={setFee} className="app-input pm-num" placeholder="0" />
             </label>
           </div>
 

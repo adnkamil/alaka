@@ -35,7 +35,7 @@ function PartnerEventRekapPage() {
             <ArrowLeft size={22} />
           </Link>
           <div>
-            <h1 className="pm-display text-[22px] leading-tight lg:text-[26px]">Rekap Barang</h1>
+            <h1 className="pm-display text-[22px] leading-tight lg:text-[26px]">Rekap  Orderan</h1>
             <p className="mt-1 text-[13px]" style={{ color: 'var(--app-text-soft)' }}>
               {totalPcs} pcs untuk disiapkan
             </p>

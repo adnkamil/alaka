@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import ConfirmModal from '../../components/ui/ConfirmModal'
 import DpAmountModal from '../../components/ui/DpAmountModal'
+import RupiahInput from '../../components/ui/RupiahInput'
 import Switch from '../../components/ui/Switch'
 import Toast from '../../components/ui/Toast'
 import {
@@ -1652,24 +1653,20 @@ function EventDetailPage() {
             </p>
             <label className="flex flex-col gap-1 text-sm">
               Harga jual (total paket)
-              <input
-                type="number"
-                min={0}
+              <RupiahInput
                 value={bundlePriceEdit.sellPrice}
-                onChange={(e) =>
-                  setBundlePriceEdit({ ...bundlePriceEdit, sellPrice: e.target.value })
+                onChange={(v) =>
+                  setBundlePriceEdit({ ...bundlePriceEdit, sellPrice: v })
                 }
                 className="rounded-xl border px-3 py-2"
               />
             </label>
             <label className="flex flex-col gap-1 text-sm">
               Fee (total paket)
-              <input
-                type="number"
-                min={0}
+              <RupiahInput
                 value={bundlePriceEdit.fee}
-                onChange={(e) =>
-                  setBundlePriceEdit({ ...bundlePriceEdit, fee: e.target.value })
+                onChange={(v) =>
+                  setBundlePriceEdit({ ...bundlePriceEdit, fee: v })
                 }
                 className="rounded-xl border px-3 py-2"
               />

@@ -342,7 +342,7 @@ function PartnerEventDetailPage() {
       </main>
 
       <main className="pm-wide hidden flex-col gap-5 lg:flex">
-        <Link to="/partner/event/rekap/$id" params={{ id }} className="app-btn-outline self-end no-underline" style={{ minHeight: 40, fontSize: 13 }}>Rekap barang</Link>
+        <Link to="/partner/event/rekap/$id" params={{ id }} className="app-btn-outline self-end no-underline" style={{ minHeight: 40, fontSize: 13 }}>Rekap  Orderan</Link>
         <header className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <h1 className="pm-display truncate text-[26px] leading-tight">

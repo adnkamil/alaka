@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import RupiahInput from './ui/RupiahInput'
 
 export type RuleFormValue = {
   name: string
@@ -95,12 +96,11 @@ export default function PartnerRuleForm({
           </label>
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-semibold">Harga paket (HPP jastiper)</span>
-            <input
-              type="number"
-              min={0}
+            <RupiahInput
               value={value.bundlePrice}
-              onChange={(e) => setValue({ ...value, bundlePrice: e.target.value })}
+              onChange={(v) => setValue({ ...value, bundlePrice: v })}
               className="app-input pm-num"
+              placeholder="100.000"
               required
             />
           </label>

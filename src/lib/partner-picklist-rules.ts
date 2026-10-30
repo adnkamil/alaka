@@ -1,4 +1,4 @@
-// Rekap barang untuk partner, murni tanpa `db`. Input: baris barang satuan dan
+// Rekap  Orderan untuk partner, murni tanpa `db`. Input: baris barang satuan dan
 // komponen bundle yang sudah dikumpulkan dari database.
 
 export type PicklistSourceRow = {

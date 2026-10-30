@@ -7,7 +7,7 @@ import { buildPicklist, type PicklistSourceRow } from './partner-picklist-rules'
 const idSchema = z.uuid()
 
 /**
- * Rekap barang untuk satu event partner: jumlah qty per produk, ukuran, dan
+ * Rekap  Orderan untuk satu event partner: jumlah qty per produk, ukuran, dan
  * variasi, dipisah per sumber (satuan atau aturan paket). Bundle dipecah jadi
  * barang per produk. Data pemesan, harga jual, dan fee tidak ikut.
  */
