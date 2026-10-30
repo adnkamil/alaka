@@ -1,7 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { and, eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
-import { db } from '../db'
 import {
   events,
   itemComponents,
@@ -62,6 +61,7 @@ const addPartnerBundleSchema = z.object({
 export const addPartnerBundle = createServerFn({ method: 'POST' })
   .validator(addPartnerBundleSchema)
   .handler(async ({ data }) => {
+    const { db } = await import('../db')
     const user = await requireUser()
     const brandId = brandIdOf(user)
 
@@ -256,6 +256,7 @@ const updateBundlePricingSchema = z.object({
 export const updatePartnerBundlePricing = createServerFn({ method: 'POST' })
   .validator(updateBundlePricingSchema)
   .handler(async ({ data }) => {
+    const { db } = await import('../db')
     const user = await requireUser()
     const brandId = brandIdOf(user)
 
@@ -284,7 +285,9 @@ export const updatePartnerBundlePricing = createServerFn({ method: 'POST' })
     })
   })
 
-type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0]
+type Tx = Parameters<
+  Parameters<typeof import('../db')['db']['transaction']>[0]
+>[0]
 
 /** Hitung ulang total pesanan dan status pembayarannya dari semua barang. */
 async function recalculateOrderStatus(tx: Tx, orderId: string) {
@@ -317,6 +320,7 @@ const eventCatalogSchema = z.object({ eventId: z.uuid() })
 export const getEventPartnerCatalog = createServerFn({ method: 'GET' })
   .validator(eventCatalogSchema)
   .handler(async ({ data }) => {
+    const { db } = await import('../db')
     const user = await requireUser()
     const brandId = brandIdOf(user)
 
