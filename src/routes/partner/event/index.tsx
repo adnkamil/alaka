@@ -172,12 +172,15 @@ function PartnerEventListPage() {
   )
 }
 
+const COLUMNS =
+  'grid-cols-[minmax(0,1.5fr)_170px_minmax(0,1fr)_90px_110px_110px]'
+
 type EventWithStatus = {
   event: PartnerEventRow
   status: PartnerEventStatus
 }
 
-/** Daftar event layout desktop (>= lg) sesuai Figma "D5 Event Partner". */
+/** Daftar event layout desktop (>= lg): tabel, gaya sama dengan katalog. */
 function EventsDesktop({
   events,
   visible,
@@ -236,83 +239,90 @@ function EventsDesktop({
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-5">
+        <div className="app-card overflow-hidden">
+          <div
+            className={`grid ${COLUMNS} items-center gap-4 px-5 py-3.5 text-[11px] font-bold uppercase tracking-wide`}
+            style={{ background: 'var(--pm-tint)', color: 'var(--pm-gold)' }}
+          >
+            <span>Event</span>
+            <span>Tanggal</span>
+            <span>Lokasi</span>
+            <span>Tipe</span>
+            <span>Jastiper</span>
+            <span>Status</span>
+          </div>
           {visible.map(({ event, status }) => (
-            <Link
+            <div
               key={event.id}
-              to="/partner/event/$id"
-              params={{ id: event.id }}
-              className="app-card flex flex-col overflow-hidden no-underline"
-              style={{ color: 'inherit' }}
+              className={`grid ${COLUMNS} items-center gap-4 border-t px-5 py-3`}
+              style={{ borderColor: 'var(--app-border)' }}
             >
-              <div
-                className="flex h-[138px] w-full items-center justify-center overflow-hidden"
-                style={{
-                  background: event.bannerSrc ? undefined : 'var(--pm-tint)',
-                  color: 'var(--pm-gold)',
-                }}
+              <Link
+                to="/partner/event/$id"
+                params={{ id: event.id }}
+                className="flex min-w-0 items-center gap-3.5 no-underline"
+                style={{ color: 'inherit' }}
               >
-                {event.bannerSrc ? (
-                  <img
-                    src={event.bannerSrc}
-                    alt=""
-                    loading="lazy"
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <ImageIcon size={30} />
-                )}
-              </div>
-              <div className="flex flex-1 flex-col gap-2 p-[18px]">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="pm-display text-[17px] leading-snug">
-                    {event.name}
-                  </p>
-                  <span
-                    className="app-badge shrink-0"
-                    style={
-                      event.isOnline
-                        ? {
-                            background: 'var(--pm-tint)',
-                            color: 'var(--pm-gold)',
-                          }
-                        : {
-                            background: 'var(--app-accent-soft)',
-                            color: 'var(--app-accent)',
-                          }
-                    }
-                  >
-                    {event.isOnline ? 'Online' : 'Offline'}
-                  </span>
-                </div>
-                <p
-                  className="flex items-center gap-2 text-[13px]"
-                  style={{ color: 'var(--app-text-soft)' }}
+                <div
+                  className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl"
+                  style={{
+                    background: 'var(--pm-tint)',
+                    color: 'var(--pm-gold)',
+                  }}
                 >
-                  <CalendarDays size={14} className="shrink-0" />
-                  {formatDateRange(event.eventDate, event.endDate)}
-                </p>
-                <p
-                  className="flex items-center gap-2 text-[13px]"
-                  style={{ color: 'var(--app-text-soft)' }}
-                >
-                  <MapPin size={14} className="shrink-0" />
-                  <span className="truncate">{event.location}</span>
-                </p>
-                <div className="mt-auto flex items-center justify-between pt-1">
-                  <span
-                    className="app-badge"
-                    style={{
-                      background: 'var(--app-success-soft)',
-                      color: 'var(--app-success)',
-                    }}
-                  >
-                    {event.participantCount} jastiper ikut
-                  </span>
-                  <PartnerEventStatusBadge status={status} />
+                  {event.bannerSrc ? (
+                    <img
+                      src={event.bannerSrc}
+                      alt=""
+                      loading="lazy"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <ImageIcon size={20} />
+                  )}
                 </div>
+                <p className="truncate text-sm font-bold">{event.name}</p>
+              </Link>
+              <span
+                className="text-[13px]"
+                style={{ color: 'var(--app-text-soft)' }}
+              >
+                {formatDateRange(event.eventDate, event.endDate)}
+              </span>
+              <span
+                className="truncate text-[13px]"
+                style={{ color: 'var(--app-text-soft)' }}
+              >
+                {event.location}
+              </span>
+              <div>
+                <span
+                  className="app-badge"
+                  style={
+                    event.isOnline
+                      ? {
+                          background: 'var(--pm-tint)',
+                          color: 'var(--pm-gold)',
+                        }
+                      : {
+                          background: 'var(--app-accent-soft)',
+                          color: 'var(--app-accent)',
+                        }
+                  }
+                >
+                  {event.isOnline ? 'Online' : 'Offline'}
+                </span>
               </div>
-            </Link>
+              <span
+                className="pm-num text-sm font-bold"
+                style={{ color: 'var(--app-success)' }}
+              >
+                {event.participantCount} jastiper
+              </span>
+              <div>
+                <PartnerEventStatusBadge status={status} />
+              </div>
+            </div>
           ))}
         </div>
       )}
