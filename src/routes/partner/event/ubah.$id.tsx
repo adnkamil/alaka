@@ -2,9 +2,9 @@ import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { ArrowLeft } from 'lucide-react'
 import PartnerEventForm from '../../../components/PartnerEventForm'
+import type { PartnerEventFormValue } from '../../../components/PartnerEventForm'
 import { updateOwnPartnerEvent } from '../../../lib/partner-event-functions'
 import { partnerEventQuery } from '../../../lib/queries'
-import type { CalendarEventFormValue } from '../../../components/CalendarEventForm'
 
 export const Route = createFileRoute('/partner/event/ubah/$id')({
   loader: ({ context, params }) =>
@@ -18,7 +18,7 @@ function EditPartnerEventPage() {
   const queryClient = useQueryClient()
   const navigate = Route.useNavigate()
 
-  async function handleSubmit(value: CalendarEventFormValue) {
+  async function handleSubmit(value: PartnerEventFormValue) {
     const { exhibitors: _exhibitors, ...fields } = value
     await updateOwnPartnerEvent({ data: { id, ...fields } })
     await Promise.all([
@@ -57,6 +57,7 @@ function EditPartnerEventPage() {
           endDate: event.endDate,
           isOnline: event.isOnline,
           description: event.description ?? '',
+          catalogUrl: event.catalogUrl ?? '',
         }}
         onSubmit={handleSubmit}
       />

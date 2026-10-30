@@ -14,7 +14,7 @@ import { partnerProductPhotoUrl } from './partner-product-rules'
 /**
  * Etalase partner untuk halaman event sisi JASTIPER (read-only): maksimal
  * `MAX_EVENT_PRODUCTS` produk unggulan yang dipilih partner untuk event itu,
- * plus tautan katalog PDF lengkap. Server-only. Hanya produk AKTIF yang keluar,
+ * plus tautan katalog lengkap milik event itu (`calendar_event.catalog_url`). Server-only. Hanya produk AKTIF yang keluar,
  * dan hanya kolom yang aman dilihat jastiper (tanpa kode/deskripsi internal).
  */
 
@@ -41,7 +41,7 @@ export async function getEventPartnerShowcase(
       partnerId: partners.id,
       partnerName: partners.name,
       logoUpdatedAt: partners.logoUpdatedAt,
-      catalogUrl: partners.catalogUrl,
+      catalogUrl: calendarEvents.catalogUrl,
     })
     .from(calendarEvents)
     .innerJoin(partners, eq(calendarEvents.partnerId, partners.id))

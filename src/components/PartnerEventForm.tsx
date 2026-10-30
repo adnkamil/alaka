@@ -4,6 +4,7 @@ import {
   Package,
   CalendarDays,
   ChevronRight,
+  FileText,
   MapPin,
   ShoppingBag,
   Upload,
@@ -17,6 +18,7 @@ import {
   END_DATE_ERROR,
   isEndDateValid,
 } from '../lib/calendar-event-input'
+import { parseCatalogUrl } from '../lib/partner-catalog-rules'
 import { MAX_EVENT_PRODUCTS } from '../lib/partner-event-product-rules'
 import { partnerProductPhotoUrl } from '../lib/partner-product-rules'
 import { PartnerProductPickerSheet } from './PartnerProductPicker'
@@ -25,7 +27,12 @@ import type { PartnerProductRow } from '../lib/partner-product-queries'
 
 const FORM_ID = 'partner-event-form'
 
-type Initial = Omit<CalendarEventFormValue, 'banner' | 'exhibitors'>
+/** Nilai form event partner: isian event + link katalog (kosong = tanpa katalog). */
+export type PartnerEventFormValue = CalendarEventFormValue & {
+  catalogUrl: string
+}
+
+type Initial = Omit<PartnerEventFormValue, 'banner' | 'exhibitors'>
 
 interface PartnerEventFormProps {
   initialValue: Initial
@@ -43,7 +50,7 @@ interface PartnerEventFormProps {
    */
   products?: ReadonlyArray<PartnerProductRow>
   onSubmit: (
-    value: CalendarEventFormValue,
+    value: PartnerEventFormValue,
     productIds: Array<string>,
   ) => Promise<void>
 }
@@ -96,6 +103,7 @@ export default function PartnerEventForm({
   const [endDate, setEndDate] = useState(initialValue.endDate)
   const [isOnline, setIsOnline] = useState(initialValue.isOnline)
   const [description, setDescription] = useState(initialValue.description)
+  const [catalogUrl, setCatalogUrl] = useState(initialValue.catalogUrl)
   const [bannerDataUrl, setBannerDataUrl] = useState<string | null>(null)
   // Banner tersimpan dihapus (dikirim sebagai `remove` saat simpan).
   const [removeBanner, setRemoveBanner] = useState(false)
@@ -128,6 +136,11 @@ export default function PartnerEventForm({
       setError(END_DATE_ERROR)
       return
     }
+    const catalog = parseCatalogUrl(catalogUrl)
+    if (!catalog.ok) {
+      setError(catalog.error)
+      return
+    }
     setBusy(true)
     try {
       await onSubmit(
@@ -138,6 +151,7 @@ export default function PartnerEventForm({
           endDate,
           isOnline,
           description: description.trim(),
+          catalogUrl: catalogUrl.trim(),
           exhibitors: [],
           banner: bannerDataUrl
             ? { type: 'upload', dataUrl: bannerDataUrl }
@@ -358,6 +372,34 @@ export default function PartnerEventForm({
                 placeholder="Tentang event ini"
               />
             </Field>
+          </div>
+
+          <div className="order-3">
+            <Field label="Link katalog (opsional)">
+              <div className="relative">
+                <FileText
+                  size={18}
+                  className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2"
+                  style={iconStyle}
+                />
+                <input
+                  type="url"
+                  inputMode="url"
+                  value={catalogUrl}
+                  onChange={(e) => setCatalogUrl(e.target.value)}
+                  className="app-input pl-10"
+                  placeholder="https://drive.google.com/file/d/..."
+                />
+              </div>
+            </Field>
+            <p
+              className="mt-1.5 text-[11px]"
+              style={{ color: 'var(--app-text-soft)' }}
+            >
+              Jastiper bisa mengunduh katalog ini di halaman event. Kalau pakai
+              Google Drive, atur akses ke &quot;Siapa saja yang memiliki
+              link&quot;.
+            </p>
           </div>
         </div>
 

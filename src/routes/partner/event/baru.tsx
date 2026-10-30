@@ -2,11 +2,11 @@ import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { ArrowLeft } from 'lucide-react'
 import PartnerEventForm from '../../../components/PartnerEventForm'
+import type { PartnerEventFormValue } from '../../../components/PartnerEventForm'
 import { createPartnerEvent } from '../../../lib/partner-event-functions'
 import { setPartnerEventProducts } from '../../../lib/partner-event-product-functions'
 import { partnerProductsQuery } from '../../../lib/queries'
 import { todayIsoDateInAppTimeZone } from '../../../lib/timezone'
-import type { CalendarEventFormValue } from '../../../components/CalendarEventForm'
 
 export const Route = createFileRoute('/partner/event/baru')({
   loader: ({ context }) =>
@@ -20,7 +20,7 @@ function NewPartnerEventPage() {
   const { data: products } = useSuspenseQuery(partnerProductsQuery)
 
   async function handleSubmit(
-    value: CalendarEventFormValue,
+    value: PartnerEventFormValue,
     productIds: Array<string>,
   ) {
     // `exhibitors` tidak dikirim: diisi server dengan nama partner.
@@ -73,6 +73,7 @@ function NewPartnerEventPage() {
           endDate: null,
           isOnline: false,
           description: '',
+          catalogUrl: '',
         }}
         onSubmit={handleSubmit}
       />

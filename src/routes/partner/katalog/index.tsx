@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { Inbox, Package, Plus, Search } from 'lucide-react'
-import PartnerCatalogCard from '../../../components/PartnerCatalogCard'
 import Toast from '../../../components/ui/Toast'
 import { getErrorMessage } from '../../../lib/error-message'
 import { setPartnerProductActive } from '../../../lib/partner-product-functions'
@@ -10,7 +9,7 @@ import {
   formatRupiah,
   partnerProductPhotoUrl,
 } from '../../../lib/partner-product-rules'
-import { partnerCatalogQuery, partnerProductsQuery } from '../../../lib/queries'
+import { partnerProductsQuery } from '../../../lib/queries'
 import type {
   PartnerProductListRow,
   PartnerProductRow,
@@ -18,10 +17,7 @@ import type {
 
 export const Route = createFileRoute('/partner/katalog/')({
   loader: ({ context }) =>
-    Promise.all([
-      context.queryClient.ensureQueryData(partnerProductsQuery),
-      context.queryClient.ensureQueryData(partnerCatalogQuery),
-    ]),
+    context.queryClient.ensureQueryData(partnerProductsQuery),
   component: PartnerCatalogPage,
 })
 
@@ -123,8 +119,6 @@ function PartnerCatalogPage() {
             ))}
           </div>
         )}
-
-        <PartnerCatalogCard />
 
         <div className="pm-footer">
           <Link
@@ -327,8 +321,6 @@ function CatalogDesktop({
           ))}
         </div>
       )}
-
-      <PartnerCatalogCard />
     </main>
   )
 }

@@ -21,6 +21,8 @@ export type PartnerEventRow = {
   isEnded: boolean
   description: string | null
   bannerSrc: string | null
+  /** Link unduh katalog event ini (tersimpan apa adanya); null = tidak ada. */
+  catalogUrl: string | null
   /** Jumlah jastiper (brand) yang menekan "Ikut Event". */
   participantCount: number
 }
@@ -41,6 +43,7 @@ const columns = {
   endedAt: calendarEvents.endedAt,
   description: calendarEvents.description,
   bannerUpdatedAt: calendarEvents.bannerUpdatedAt,
+  catalogUrl: calendarEvents.catalogUrl,
   participantCount,
 }
 
@@ -54,6 +57,7 @@ function toRow(row: {
   endedAt: Date | null
   description: string | null
   bannerUpdatedAt: Date | null
+  catalogUrl: string | null
   participantCount: number
 }): PartnerEventRow {
   return {
@@ -66,6 +70,7 @@ function toRow(row: {
     isEnded: row.endedAt !== null,
     description: row.description,
     bannerSrc: calendarBannerSrc(row.id, row.bannerUpdatedAt),
+    catalogUrl: row.catalogUrl,
     participantCount: row.participantCount,
   }
 }
@@ -124,6 +129,8 @@ export async function insertPartnerEvent(input: {
   /** Tanggal terakhir yang sudah dinormalkan (null = event sehari). */
   endDate: string | null
   bannerUpdatedAt: Date | null
+  /** Link katalog yang sudah divalidasi (null = tanpa katalog). */
+  catalogUrl: string | null
 }) {
   await db.insert(calendarEvents).values({
     id: input.id,
@@ -136,6 +143,7 @@ export async function insertPartnerEvent(input: {
     description: input.fields.description,
     exhibitors: [input.exhibitor],
     bannerUpdatedAt: input.bannerUpdatedAt,
+    catalogUrl: input.catalogUrl,
   })
 }
 
@@ -151,6 +159,8 @@ export async function updatePartnerEvent(input: {
   fields: EventFields
   endDate: string | null
   bannerUpdatedAt: Date | null | undefined
+  /** Link katalog yang sudah divalidasi; null = hapus katalog. */
+  catalogUrl: string | null
 }): Promise<boolean> {
   const rows = await db
     .update(calendarEvents)
@@ -162,6 +172,7 @@ export async function updatePartnerEvent(input: {
       isOnline: input.fields.isOnline,
       description: input.fields.description,
       bannerUpdatedAt: input.bannerUpdatedAt,
+      catalogUrl: input.catalogUrl,
       updatedAt: new Date(),
     })
     .where(

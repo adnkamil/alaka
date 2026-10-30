@@ -774,6 +774,13 @@ export const calendarEvents = pgTable(
      */
     bannerUpdatedAt: timestamp('banner_updated_at', { withTimezone: true }),
     /**
+     * Link unduh katalog lengkap untuk event partner (mis. PDF di Google
+     * Drive), diisi partner di form event. Null = tidak ada katalog. Katalog
+     * TIDAK diunggah ke ALAKA. Menggantikan `partners.catalog_url` (level
+     * partner), yang tidak dipakai lagi.
+     */
+    catalogUrl: varchar('catalog_url'),
+    /**
      * Brand yang dipamerkan di event ini, berupa nama bebas (mis. brand skincare
      * yang ikut bazar) — BUKAN relasi ke tabel `brands` (itu brand jastiper).
      */
@@ -893,6 +900,8 @@ export const partners = pgTable(
       withTimezone: true,
     }),
     /**
+     * [TIDAK DIPAKAI LAGI — diganti `calendar_event.catalog_url`, link per
+     * event; isinya sudah disalin ke event milik partner lewat migrasi 0031.]
      * Link unduh katalog yang ditempel partner (mis. dari Google Drive). Ini
      * PENGGANTI unggah PDF: kolom `catalog_pdf_*` di atas tidak dipakai lagi dan
      * dibiarkan dulu (bukan dihapus) sampai dipastikan tidak ada data yang perlu

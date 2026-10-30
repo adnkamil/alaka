@@ -218,6 +218,13 @@
       "when": 1793290843322,
       "tag": "0030_partner_subscriptions",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1793351379770,
+      "tag": "0031_add_calendar_event_catalog_url",
+      "breakpoints": true
     }
   ]
 }
