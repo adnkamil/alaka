@@ -75,6 +75,16 @@ interface AddOrderSheetProps {
   title?: string
   submitLabel?: string
   initialValue?: AddOrderSheetValue
+  /**
+   * Barang yang tidak ikut form (bundle partner terkunci). Total-nya tetap
+   * dihitung ke tagihan supaya angka di form sama dengan yang tersimpan.
+   */
+  lockedTotals?: {
+    subtotal: number
+    totalFee: number
+    total: number
+    count: number
+  }
   onClose: () => void
   onSubmit: (value: {
     customerName: string
@@ -143,6 +153,7 @@ export default function AddOrderSheet({
   initialValue,
   onClose,
   onSubmit,
+  lockedTotals,
 }: AddOrderSheetProps) {
   const [customerName, setCustomerName] = useState(
     initialValue?.customerName ?? '',
@@ -287,10 +298,13 @@ export default function AddOrderSheet({
   }
 
   const {
-    subtotal: totalPrice,
-    totalFee,
-    total: totalTagihan,
+    subtotal: itemsPrice,
+    totalFee: itemsFee,
+    total: itemsTotal,
   } = summarizeItems(items)
+  const totalPrice = itemsPrice + (lockedTotals?.subtotal ?? 0)
+  const totalFee = itemsFee + (lockedTotals?.totalFee ?? 0)
+  const totalTagihan = itemsTotal + (lockedTotals?.total ?? 0)
 
   const filteredCustomers = customerName.trim()
     ? customers
@@ -806,6 +820,12 @@ export default function AddOrderSheet({
                     {totalFee.toLocaleString('id-ID')}
                   </span>
                 </div>
+                {lockedTotals && lockedTotals.count > 0 && (
+                  <p className="text-xs" style={{ color: 'var(--app-text-mute)' }}>
+                    Termasuk {lockedTotals.count} baris paket partner yang
+                    tidak bisa diubah dari form ini.
+                  </p>
+                )}
                 <div className="flex justify-between gap-3 font-semibold">
                   <span>Total tagihan</span>
                   <span className="whitespace-nowrap">
