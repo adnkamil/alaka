@@ -3,6 +3,7 @@ import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { Eye, EyeOff, KeyRound, LogOut, Mail, Store } from 'lucide-react'
 import PartnerLogo from '../../components/PartnerLogo'
+import PartnerSubscriptionCard from '../../components/PartnerSubscriptionCard'
 import Toast from '../../components/ui/Toast'
 import { blobToDataUrl, fileToAvatarBlob } from '../../lib/avatar-image'
 import { getErrorMessage } from '../../lib/error-message'
@@ -35,6 +36,7 @@ function PartnerProfilePage() {
     <main className="flex flex-col gap-4 px-5 pt-4">
       <h1 className="pm-display text-[22px] leading-tight">Profil</h1>
       <LogoCard name={partner.name} logoUrl={partner.logoUrl} />
+      <PartnerSubscriptionCard />
       <ProfileForm
         initialName={partner.name}
         initialWaNumber={partner.waNumber ?? ''}

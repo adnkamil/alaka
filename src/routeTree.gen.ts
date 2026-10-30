@@ -19,6 +19,7 @@ import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppKeuanganRouteImport } from './routes/_app/keuangan'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminCustomersRouteImport } from './routes/admin/customers'
+import { Route as AdminLanggananPartnerRouteImport } from './routes/admin/langganan-partner'
 import { Route as AdminPartnerRouteImport } from './routes/admin/partner'
 import { Route as AdminPengaturanRouteImport } from './routes/admin/pengaturan'
 import { Route as PartnerIndexRouteImport } from './routes/partner/index'
@@ -45,6 +46,7 @@ import { Route as ApiAvatarBrandIdRouteImport } from './routes/api/avatar/$brand
 import { Route as ApiEventBannerEventIdRouteImport } from './routes/api/event-banner/$eventId'
 import { Route as ApiPartnerLogoPartnerIdRouteImport } from './routes/api/partner-logo/$partnerId'
 import { Route as ApiPartnerProductPhotoIdRouteImport } from './routes/api/partner-product-photo/$id'
+import { Route as ApiPartnerSubscriptionProofIdRouteImport } from './routes/api/partner-subscription-proof/$id'
 import { Route as ApiSubscriptionProofIdRouteImport } from './routes/api/subscription-proof/$id'
 import { Route as PartnerEventIndexRouteImport } from './routes/partner/event/index'
 import { Route as PartnerEventIdRouteImport } from './routes/partner/event/$id'
@@ -112,6 +114,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
 const AdminCustomersRoute = AdminCustomersRouteImport.update({
   id: '/customers',
   path: '/customers',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminLanggananPartnerRoute = AdminLanggananPartnerRouteImport.update({
+  id: '/langganan-partner',
+  path: '/langganan-partner',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminPartnerRoute = AdminPartnerRouteImport.update({
@@ -245,6 +252,12 @@ const ApiPartnerProductPhotoIdRoute =
     path: '/api/partner-product-photo/$id',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPartnerSubscriptionProofIdRoute =
+  ApiPartnerSubscriptionProofIdRouteImport.update({
+    id: '/api/partner-subscription-proof/$id',
+    path: '/api/partner-subscription-proof/$id',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiSubscriptionProofIdRoute = ApiSubscriptionProofIdRouteImport.update({
   id: '/api/subscription-proof/$id',
   path: '/api/subscription-proof/$id',
@@ -352,6 +365,7 @@ export interface FileRoutesByFullPath {
   '/register': typeof RegisterRoute
   '/keuangan': typeof AppKeuanganRoute
   '/admin/customers': typeof AdminCustomersRoute
+  '/admin/langganan-partner': typeof AdminLanggananPartnerRoute
   '/admin/partner': typeof AdminPartnerRoute
   '/admin/pengaturan': typeof AdminPengaturanRoute
   '/partner/profil': typeof PartnerProfilRoute
@@ -376,6 +390,7 @@ export interface FileRoutesByFullPath {
   '/api/event-banner/$eventId': typeof ApiEventBannerEventIdRoute
   '/api/partner-logo/$partnerId': typeof ApiPartnerLogoPartnerIdRoute
   '/api/partner-product-photo/$id': typeof ApiPartnerProductPhotoIdRoute
+  '/api/partner-subscription-proof/$id': typeof ApiPartnerSubscriptionProofIdRoute
   '/api/subscription-proof/$id': typeof ApiSubscriptionProofIdRoute
   '/partner/event/$id': typeof PartnerEventIdRoute
   '/partner/event/baru': typeof PartnerEventBaruRoute
@@ -405,6 +420,7 @@ export interface FileRoutesByTo {
   '/register': typeof RegisterRoute
   '/keuangan': typeof AppKeuanganRoute
   '/admin/customers': typeof AdminCustomersRoute
+  '/admin/langganan-partner': typeof AdminLanggananPartnerRoute
   '/admin/partner': typeof AdminPartnerRoute
   '/admin/pengaturan': typeof AdminPengaturanRoute
   '/partner/profil': typeof PartnerProfilRoute
@@ -430,6 +446,7 @@ export interface FileRoutesByTo {
   '/api/event-banner/$eventId': typeof ApiEventBannerEventIdRoute
   '/api/partner-logo/$partnerId': typeof ApiPartnerLogoPartnerIdRoute
   '/api/partner-product-photo/$id': typeof ApiPartnerProductPhotoIdRoute
+  '/api/partner-subscription-proof/$id': typeof ApiPartnerSubscriptionProofIdRoute
   '/api/subscription-proof/$id': typeof ApiSubscriptionProofIdRoute
   '/partner/event/$id': typeof PartnerEventIdRoute
   '/partner/event/baru': typeof PartnerEventBaruRoute
@@ -463,6 +480,7 @@ export interface FileRoutesById {
   '/register': typeof RegisterRoute
   '/_app/keuangan': typeof AppKeuanganRoute
   '/admin/customers': typeof AdminCustomersRoute
+  '/admin/langganan-partner': typeof AdminLanggananPartnerRoute
   '/admin/partner': typeof AdminPartnerRoute
   '/admin/pengaturan': typeof AdminPengaturanRoute
   '/partner/profil': typeof PartnerProfilRoute
@@ -488,6 +506,7 @@ export interface FileRoutesById {
   '/api/event-banner/$eventId': typeof ApiEventBannerEventIdRoute
   '/api/partner-logo/$partnerId': typeof ApiPartnerLogoPartnerIdRoute
   '/api/partner-product-photo/$id': typeof ApiPartnerProductPhotoIdRoute
+  '/api/partner-subscription-proof/$id': typeof ApiPartnerSubscriptionProofIdRoute
   '/api/subscription-proof/$id': typeof ApiSubscriptionProofIdRoute
   '/partner/event/$id': typeof PartnerEventIdRoute
   '/partner/event/baru': typeof PartnerEventBaruRoute
@@ -522,6 +541,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/keuangan'
     | '/admin/customers'
+    | '/admin/langganan-partner'
     | '/admin/partner'
     | '/admin/pengaturan'
     | '/partner/profil'
@@ -546,6 +566,7 @@ export interface FileRouteTypes {
     | '/api/event-banner/$eventId'
     | '/api/partner-logo/$partnerId'
     | '/api/partner-product-photo/$id'
+    | '/api/partner-subscription-proof/$id'
     | '/api/subscription-proof/$id'
     | '/partner/event/$id'
     | '/partner/event/baru'
@@ -575,6 +596,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/keuangan'
     | '/admin/customers'
+    | '/admin/langganan-partner'
     | '/admin/partner'
     | '/admin/pengaturan'
     | '/partner/profil'
@@ -600,6 +622,7 @@ export interface FileRouteTypes {
     | '/api/event-banner/$eventId'
     | '/api/partner-logo/$partnerId'
     | '/api/partner-product-photo/$id'
+    | '/api/partner-subscription-proof/$id'
     | '/api/subscription-proof/$id'
     | '/partner/event/$id'
     | '/partner/event/baru'
@@ -632,6 +655,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/_app/keuangan'
     | '/admin/customers'
+    | '/admin/langganan-partner'
     | '/admin/partner'
     | '/admin/pengaturan'
     | '/partner/profil'
@@ -657,6 +681,7 @@ export interface FileRouteTypes {
     | '/api/event-banner/$eventId'
     | '/api/partner-logo/$partnerId'
     | '/api/partner-product-photo/$id'
+    | '/api/partner-subscription-proof/$id'
     | '/api/subscription-proof/$id'
     | '/partner/event/$id'
     | '/partner/event/baru'
@@ -697,6 +722,7 @@ export interface RootRouteChildren {
   ApiEventBannerEventIdRoute: typeof ApiEventBannerEventIdRoute
   ApiPartnerLogoPartnerIdRoute: typeof ApiPartnerLogoPartnerIdRoute
   ApiPartnerProductPhotoIdRoute: typeof ApiPartnerProductPhotoIdRoute
+  ApiPartnerSubscriptionProofIdRoute: typeof ApiPartnerSubscriptionProofIdRoute
   ApiSubscriptionProofIdRoute: typeof ApiSubscriptionProofIdRoute
   TagihanEventIdOrderIdRoute: typeof TagihanEventIdOrderIdRoute
   ApiAuthGoogleCallbackRoute: typeof ApiAuthGoogleCallbackRoute
@@ -773,6 +799,13 @@ declare module '@tanstack/react-router' {
       path: '/customers'
       fullPath: '/admin/customers'
       preLoaderRoute: typeof AdminCustomersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/langganan-partner': {
+      id: '/admin/langganan-partner'
+      path: '/langganan-partner'
+      fullPath: '/admin/langganan-partner'
+      preLoaderRoute: typeof AdminLanggananPartnerRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/partner': {
@@ -957,6 +990,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPartnerProductPhotoIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/partner-subscription-proof/$id': {
+      id: '/api/partner-subscription-proof/$id'
+      path: '/api/partner-subscription-proof/$id'
+      fullPath: '/api/partner-subscription-proof/$id'
+      preLoaderRoute: typeof ApiPartnerSubscriptionProofIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/subscription-proof/$id': {
       id: '/api/subscription-proof/$id'
       path: '/api/subscription-proof/$id'
@@ -1137,6 +1177,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 interface AdminRouteChildren {
   AdminCustomersRoute: typeof AdminCustomersRoute
+  AdminLanggananPartnerRoute: typeof AdminLanggananPartnerRoute
   AdminPartnerRoute: typeof AdminPartnerRoute
   AdminPengaturanRoute: typeof AdminPengaturanRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -1147,6 +1188,7 @@ interface AdminRouteChildren {
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminCustomersRoute: AdminCustomersRoute,
+  AdminLanggananPartnerRoute: AdminLanggananPartnerRoute,
   AdminPartnerRoute: AdminPartnerRoute,
   AdminPengaturanRoute: AdminPengaturanRoute,
   AdminIndexRoute: AdminIndexRoute,
@@ -1206,6 +1248,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiEventBannerEventIdRoute: ApiEventBannerEventIdRoute,
   ApiPartnerLogoPartnerIdRoute: ApiPartnerLogoPartnerIdRoute,
   ApiPartnerProductPhotoIdRoute: ApiPartnerProductPhotoIdRoute,
+  ApiPartnerSubscriptionProofIdRoute: ApiPartnerSubscriptionProofIdRoute,
   ApiSubscriptionProofIdRoute: ApiSubscriptionProofIdRoute,
   TagihanEventIdOrderIdRoute: TagihanEventIdOrderIdRoute,
   ApiAuthGoogleCallbackRoute: ApiAuthGoogleCallbackRoute,
