@@ -1,8 +1,8 @@
-import { CalendarDays, Home, Package, User } from 'lucide-react'
+import { CalendarDays, Home, Layers, Package, User } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 export interface PartnerTabDef {
-  to: '/partner' | '/partner/katalog' | '/partner/event' | '/partner/profil'
+  to: '/partner' | '/partner/katalog' | '/partner/paket' | '/partner/event' | '/partner/profil'
   label: string
   icon: LucideIcon
 }
@@ -11,6 +11,7 @@ export interface PartnerTabDef {
 export const PARTNER_TABS: Array<PartnerTabDef> = [
   { to: '/partner', label: 'Beranda', icon: Home },
   { to: '/partner/katalog', label: 'Katalog', icon: Package },
+  { to: '/partner/paket', label: 'Paket', icon: Layers },
   { to: '/partner/event', label: 'Event', icon: CalendarDays },
   { to: '/partner/profil', label: 'Profil', icon: User },
 ]

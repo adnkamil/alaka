@@ -2,6 +2,7 @@ import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { ArrowLeft } from 'lucide-react'
 import PartnerProductForm from '../../../components/PartnerProductForm'
+import PartnerVariantEditor from '../../../components/PartnerVariantEditor'
 import { updateOwnPartnerProduct } from '../../../lib/partner-product-functions'
 import { partnerProductPhotoUrl } from '../../../lib/partner-product-rules'
 import { partnerProductQuery } from '../../../lib/queries'
@@ -63,6 +64,7 @@ function EditPartnerProductPage() {
         submitLabel="Simpan perubahan"
         onSubmit={handleSubmit}
       />
+      <PartnerVariantEditor productId={id} />
     </main>
   )
 }
