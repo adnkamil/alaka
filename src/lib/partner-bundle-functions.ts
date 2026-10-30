@@ -20,14 +20,9 @@ import { getSessionUser } from './auth'
 import { brandIdOf } from './brand'
 import { findMergeTarget } from './order-merge'
 import { derivePaymentStatus } from './order-totals'
-import {
-  PricingError,
-  buildBundleLine,
-  type BundleComponent,
-  type PricingRule,
-} from './partner-pricing'
 import { hasPartnerPro } from './partner-entitlement'
 import { lineTotal } from './partner-bundle-lock'
+import { buildPartnerBundle } from './partner-bundle-build'
 
 async function requireUser() {
   const user = await getSessionUser()
@@ -66,126 +61,7 @@ export const addPartnerBundle = createServerFn({ method: 'POST' })
     const brandId = brandIdOf(user)
 
     return db.transaction(async (tx) => {
-      const event = await tx.query.events.findFirst({
-        where: and(eq(events.id, data.eventId), eq(events.brandId, brandId)),
-      })
-      if (!event) throw new Error('Event tidak ditemukan')
-      if (!event.isActive) {
-        throw new Error('Event ini nonaktif, jadi tidak bisa menambah pesanan.')
-      }
-      if (!event.calendarEventId) {
-        throw new Error(
-          'Event ini tidak terhubung ke event partner, jadi paket tidak bisa dipakai.',
-        )
-      }
-
-      const rule = await tx.query.partnerPricingRules.findFirst({
-        where: eq(partnerPricingRules.id, data.ruleId),
-      })
-      if (!rule || !rule.isActive) {
-        throw new Error('Aturan paket tidak ditemukan atau nonaktif.')
-      }
-
-      // Partner harus PRO untuk membuat bundle baru. Bundle yang sudah ada
-      // tetap bisa dilihat dan diubah harganya walaupun langganan sudah habis.
-      const subs = await tx
-        .select({
-          status: partnerSubscriptions.status,
-          startedAt: partnerSubscriptions.startedAt,
-          endsAt: partnerSubscriptions.endsAt,
-        })
-        .from(partnerSubscriptions)
-        .where(eq(partnerSubscriptions.partnerId, rule.partnerId))
-      if (!hasPartnerPro(subs)) {
-        throw new Error('Fitur paket belum aktif untuk partner ini.')
-      }
-
-      const ruleProductRows = await tx
-        .select({ productId: partnerRuleProducts.partnerProductId })
-        .from(partnerRuleProducts)
-        .where(eq(partnerRuleProducts.ruleId, rule.id))
-      const ruleProductIds = new Set(ruleProductRows.map((r) => r.productId))
-
-      // Produk yang dibeli harus memang dijual di event partner ini.
-      const eventProductRows = await tx
-        .select({ productId: partnerEventProducts.productId })
-        .from(partnerEventProducts)
-        .where(eq(partnerEventProducts.calendarEventId, event.calendarEventId))
-      const eventProductIds = new Set(eventProductRows.map((r) => r.productId))
-
-      const variantIds = data.components.map((c) => c.partnerVariantId)
-      const variantRows = await tx
-        .select({
-          id: partnerVariants.id,
-          productId: partnerVariants.partnerProductId,
-          isActive: partnerVariants.isActive,
-          productName: partnerProducts.name,
-        })
-        .from(partnerVariants)
-        .innerJoin(
-          partnerProducts,
-          eq(partnerProducts.id, partnerVariants.partnerProductId),
-        )
-        .where(inArray(partnerVariants.id, variantIds))
-      const variantById = new Map(variantRows.map((v) => [v.id, v]))
-
-      const valueRows = await tx
-        .select({
-          variantId: partnerVariantValues.variantId,
-          type: partnerOptionGroups.type,
-          name: partnerOptionValues.name,
-        })
-        .from(partnerVariantValues)
-        .innerJoin(
-          partnerOptionValues,
-          eq(partnerOptionValues.id, partnerVariantValues.optionValueId),
-        )
-        .innerJoin(
-          partnerOptionGroups,
-          eq(partnerOptionGroups.id, partnerOptionValues.optionGroupId),
-        )
-        .where(inArray(partnerVariantValues.variantId, variantIds))
-
-      const components: Array<BundleComponent> = []
-      for (const input of data.components) {
-        const variant = variantById.get(input.partnerVariantId)
-        if (!variant || !variant.isActive) {
-          throw new Error('Varian tidak ditemukan atau nonaktif.')
-        }
-        if (!eventProductIds.has(variant.productId)) {
-          throw new Error(`${variant.productName} tidak dijual di event ini.`)
-        }
-        const values = valueRows.filter((v) => v.variantId === variant.id)
-        components.push({
-          partnerProductId: variant.productId,
-          partnerVariantId: variant.id,
-          productName: variant.productName,
-          size: values.find((v) => v.type === 'ukuran')?.name ?? null,
-          variation: values.find((v) => v.type === 'variasi')?.name ?? null,
-          qty: input.qty,
-        })
-      }
-
-      const pricingRule: PricingRule = {
-        id: rule.id,
-        name: rule.name,
-        minQty: rule.minQty,
-        bundlePrice: Number(rule.bundlePrice),
-        productIds: [...ruleProductIds],
-      }
-
-      let line
-      try {
-        line = buildBundleLine(pricingRule, components, {
-          sellPrice: data.sellPrice,
-          fee: data.fee,
-          bundleCount: data.bundleCount,
-        })
-      } catch (error) {
-        if (error instanceof PricingError) throw new Error(error.message)
-        throw error
-      }
-
+      const { event, rule, line } = await buildPartnerBundle(tx, brandId, data)
       // Cari pesanan pelanggan yang masih bisa digabung, atau buat baru.
       const eventOrders = await tx.query.orders.findMany({
         where: eq(orders.eventId, event.id),
