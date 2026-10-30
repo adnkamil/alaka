@@ -33,6 +33,13 @@ import {
 } from 'lucide-react'
 import { z } from 'zod'
 import AddOrderSheet from '../../components/AddOrderSheet'
+import PartnerBundleSheet, {
+  type PartnerBundleSubmit,
+} from '../../components/PartnerBundleSheet'
+import {
+  addPartnerBundle,
+  getEventPartnerCatalog,
+} from '../../lib/partner-bundle-functions'
 import EditEventModal from '../../components/EditEventModal'
 import type { EditEventValue } from '../../components/EditEventModal'
 import ImportOrdersModal from '../../components/ImportOrdersModal'
@@ -396,6 +403,26 @@ function EventDetailPage() {
   const { data: orderSuggestions } = useQuery(orderSuggestionsQuery)
   const itemNameSuggestions = orderSuggestions?.itemNames ?? []
   const itemPriceSuggestions = orderSuggestions?.itemPrices ?? {}
+
+  // Katalog paket partner untuk event ini. Tombol "Pakai paket" hanya muncul
+  // kalau event terhubung ke partner dan partnernya punya aturan paket.
+  const partnerCatalogQuery = queryOptions({
+    queryKey: ['partner-catalog', eventId],
+    queryFn: () => getEventPartnerCatalog({ data: { eventId } }),
+  })
+  const { data: partnerCatalog } = useQuery(partnerCatalogQuery)
+  const [bundleFlow, setBundleFlow] = useState<{ name: string } | null>(null)
+  const [bundleNameDraft, setBundleNameDraft] = useState('')
+
+  async function handleAddPartnerBundle(value: PartnerBundleSubmit) {
+    if (!bundleFlow) return
+    await addPartnerBundle({
+      data: { eventId, customerName: bundleFlow.name, ...value },
+    })
+    await queryClient.invalidateQueries({ queryKey: ['event', eventId] })
+    await queryClient.invalidateQueries({ queryKey: ['events'] })
+    await queryClient.invalidateQueries({ queryKey: ['finance-summary'] })
+  }
 
   const unpaidCount = event.orders.filter(
     (o) => o.paymentStatus === 'unpaid',
@@ -1443,6 +1470,14 @@ function EventDetailPage() {
                       className="flex items-start justify-between gap-3 text-sm"
                     >
                       <span className="min-w-0 flex-1 break-words">
+                        {item.partnerRuleId && (
+                          <span
+                            className="mr-1 rounded px-1 text-[10px] font-semibold"
+                            style={{ background: 'var(--app-accent-soft)', color: 'var(--app-accent)' }}
+                          >
+                            Paket
+                          </span>
+                        )}
                         {item.name}
                       </span>
                       <span className="flex-shrink-0 whitespace-nowrap">
@@ -1561,6 +1596,61 @@ function EventDetailPage() {
           })}
       </div>
 
+      {event.isActive && partnerCatalog?.enabled && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-24 z-40 mx-auto flex max-w-lg justify-end px-6">
+          <button
+            onClick={() => {
+              setBundleNameDraft('')
+              setBundleFlow({ name: '' })
+            }}
+            className="pointer-events-auto rounded-full px-4 py-2 text-sm font-semibold shadow-lg"
+            style={{ background: 'var(--app-surface)', color: 'var(--app-accent)' }}
+          >
+            Pakai paket
+          </button>
+        </div>
+      )}
+
+      {bundleFlow && partnerCatalog?.enabled && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40">
+          <div
+            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-2xl"
+            style={{ background: 'var(--app-surface)' }}
+          >
+            {bundleFlow.name === '' ? (
+              <div className="flex flex-col gap-3 p-4">
+                <p className="font-semibold">Nama pemesan</p>
+                <input
+                  value={bundleNameDraft}
+                  onChange={(e) => setBundleNameDraft(e.target.value)}
+                  placeholder="Nama pelanggan"
+                  className="rounded-xl border px-3 py-2"
+                />
+                <div className="flex justify-end gap-2">
+                  <button type="button" onClick={() => setBundleFlow(null)}>
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    disabled={bundleNameDraft.trim() === ''}
+                    onClick={() => setBundleFlow({ name: bundleNameDraft.trim() })}
+                  >
+                    Lanjut
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <PartnerBundleSheet
+                customerName={bundleFlow.name}
+                catalog={partnerCatalog}
+                onClose={() => setBundleFlow(null)}
+                onSubmit={handleAddPartnerBundle}
+              />
+            )}
+          </div>
+        </div>
+      )}
+
       {event.isActive && (
         <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 mx-auto flex max-w-lg justify-end px-6">
           <button
@@ -1618,7 +1708,10 @@ function EventDetailPage() {
             customerName: editingOrder.customerName,
             paymentStatus: editingOrder.paymentStatus,
             paidAmount: Number(editingOrder.paidAmount),
-            items: editingOrder.items.map((item) => ({
+            // Bundle partner terkunci: tidak ikut form, tidak dikirim balik.
+            items: editingOrder.items
+              .filter((item) => item.partnerRuleId === null)
+              .map((item) => ({
               name: item.name,
               originalPrice: Number(item.originalPrice),
               fee: Number(item.fee),
