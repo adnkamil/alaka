@@ -33,11 +33,7 @@ import {
 } from 'lucide-react'
 import { z } from 'zod'
 import AddOrderSheet from '../../components/AddOrderSheet'
-import PartnerBundleSheet, {
-  type PartnerBundleSubmit,
-} from '../../components/PartnerBundleSheet'
 import {
-  addPartnerBundle,
   getEventPartnerCatalog,
   updatePartnerBundlePricing,
 } from '../../lib/partner-bundle-functions'
@@ -412,8 +408,6 @@ function EventDetailPage() {
     queryFn: () => getEventPartnerCatalog({ data: { eventId } }),
   })
   const { data: partnerCatalog } = useQuery(partnerCatalogQuery)
-  const [bundleFlow, setBundleFlow] = useState<{ name: string } | null>(null)
-  const [bundleNameDraft, setBundleNameDraft] = useState('')
   const [bundlePriceEdit, setBundlePriceEdit] = useState<{
     itemId: string
     name: string
@@ -448,15 +442,6 @@ function EventDetailPage() {
     }
   }
 
-  async function handleAddPartnerBundle(value: PartnerBundleSubmit) {
-    if (!bundleFlow) return
-    await addPartnerBundle({
-      data: { eventId, customerName: bundleFlow.name, ...value },
-    })
-    await queryClient.invalidateQueries({ queryKey: ['event', eventId] })
-    await queryClient.invalidateQueries({ queryKey: ['events'] })
-    await queryClient.invalidateQueries({ queryKey: ['finance-summary'] })
-  }
 
   const unpaidCount = event.orders.filter(
     (o) => o.paymentStatus === 'unpaid',
@@ -1654,21 +1639,6 @@ function EventDetailPage() {
           })}
       </div>
 
-      {event.isActive && partnerCatalog?.enabled && !bundleFlow && (
-        <div className="pointer-events-none fixed inset-x-0 bottom-24 z-40 mx-auto flex max-w-lg justify-end px-6">
-          <button
-            onClick={() => {
-              setBundleNameDraft('')
-              setBundleFlow({ name: '' })
-            }}
-            className="pointer-events-auto rounded-full px-4 py-2 text-sm font-semibold shadow-lg"
-            style={{ background: 'var(--app-card)', color: 'var(--app-accent)' }}
-          >
-            Pakai paket
-          </button>
-        </div>
-      )}
-
       {bundlePriceEdit && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40">
           <div
@@ -1719,47 +1689,7 @@ function EventDetailPage() {
         </div>
       )}
 
-      {bundleFlow && partnerCatalog?.enabled && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40">
-          <div
-            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-2xl"
-            style={{ background: 'var(--app-card)' }}
-          >
-            {bundleFlow.name === '' ? (
-              <div className="flex flex-col gap-3 p-4">
-                <p className="font-semibold">Nama pemesan</p>
-                <input
-                  value={bundleNameDraft}
-                  onChange={(e) => setBundleNameDraft(e.target.value)}
-                  placeholder="Nama pelanggan"
-                  className="rounded-xl border px-3 py-2"
-                />
-                <div className="flex justify-end gap-2">
-                  <button type="button" onClick={() => setBundleFlow(null)}>
-                    Batal
-                  </button>
-                  <button
-                    type="button"
-                    disabled={bundleNameDraft.trim() === ''}
-                    onClick={() => setBundleFlow({ name: bundleNameDraft.trim() })}
-                  >
-                    Lanjut
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <PartnerBundleSheet
-                customerName={bundleFlow.name}
-                catalog={partnerCatalog}
-                onClose={() => setBundleFlow(null)}
-                onSubmit={handleAddPartnerBundle}
-              />
-            )}
-          </div>
-        </div>
-      )}
-
-      {event.isActive && !bundleFlow && (
+      {event.isActive && (
         <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 mx-auto flex max-w-lg justify-end px-6">
           <button
             onClick={() => openSheet({ type: 'create' })}
@@ -1779,6 +1709,7 @@ function EventDetailPage() {
           customers={customers}
           itemNameSuggestions={itemNameSuggestions}
           itemPriceSuggestions={itemPriceSuggestions}
+          partnerCatalog={partnerCatalog}
           onClose={() => closeSheet()}
           onSubmit={handleCreateOrder}
         />
@@ -1791,6 +1722,7 @@ function EventDetailPage() {
           customers={customers}
           itemNameSuggestions={itemNameSuggestions}
           itemPriceSuggestions={itemPriceSuggestions}
+          partnerCatalog={partnerCatalog}
           title="Tambah Pesanan"
           submitLabel="Simpan pesanan"
           initialValue={{
@@ -1810,6 +1742,7 @@ function EventDetailPage() {
           customers={customers}
           itemNameSuggestions={itemNameSuggestions}
           itemPriceSuggestions={itemPriceSuggestions}
+          partnerCatalog={partnerCatalog}
           title="Edit Pesanan"
           submitLabel="Simpan perubahan"
           initialValue={{
@@ -1828,6 +1761,24 @@ function EventDetailPage() {
               // insert ulang item nggak me-reset status "sudah didapat".
               obtained: item.obtained,
             })),
+          }}
+          lockedBundles={editingLockedItems
+            .filter((item) => item.isBundle)
+            .map((item) => ({
+              id: item.id,
+              name: item.name,
+              qty: item.qty,
+              total: lineTotal(item),
+            }))}
+          onEditLockedBundle={(itemId) => {
+            const row = editingLockedItems.find((item) => item.id === itemId)
+            if (!row) return
+            setBundlePriceEdit({
+              itemId,
+              name: row.name,
+              sellPrice: String(Number(row.originalPrice)),
+              fee: String(Number(row.fee)),
+            })
           }}
           lockedTotals={{
             ...editingLockedSummary,

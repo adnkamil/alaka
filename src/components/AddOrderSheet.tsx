@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react'
 import { ChevronDown, Plus, Trash2, User, X } from 'lucide-react'
 import NumberInput from './ui/NumberInput'
 import Switch from './ui/Switch'
+import PartnerBundleSheet, {
+  type PartnerBundleCatalog,
+  type PartnerBundleSubmit,
+} from './PartnerBundleSheet'
 import { customerLabel } from '../lib/customer-matching'
 import { findFeeForPrice } from '../lib/fee-tier-validation'
 import { formatPhoneNumber } from '../lib/format'
@@ -85,6 +89,11 @@ interface AddOrderSheetProps {
     total: number
     count: number
   }
+  /** Katalog paket partner untuk event ini. Kosong = tombol "+ Tambah paket" disembunyikan. */
+  partnerCatalog?: (PartnerBundleCatalog & { enabled: boolean }) | null
+  /** Paket yang sudah tersimpan (terkunci). Ditampilkan read-only. */
+  lockedBundles?: Array<{ id: string; name: string; qty: number; total: number }>
+  onEditLockedBundle?: (itemId: string) => void
   onClose: () => void
   onSubmit: (value: {
     customerName: string
@@ -97,6 +106,7 @@ interface AddOrderSheetProps {
       qty: number
       obtained: boolean
     }>
+    bundles: Array<PartnerBundleSubmit>
   }) => Promise<void>
 }
 
@@ -154,6 +164,9 @@ export default function AddOrderSheet({
   onClose,
   onSubmit,
   lockedTotals,
+  partnerCatalog,
+  lockedBundles,
+  onEditLockedBundle,
 }: AddOrderSheetProps) {
   const [customerName, setCustomerName] = useState(
     initialValue?.customerName ?? '',
@@ -185,6 +198,9 @@ export default function AddOrderSheet({
   )
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Paket baru yang akan dikirim bersama barang satuan (belum tersimpan).
+  const [bundles, setBundles] = useState<Array<PartnerBundleSubmit & { label: string }>>([])
+  const [showBundleForm, setShowBundleForm] = useState(false)
 
   // Kartu yang baru dibuka bisa jatuh di luar layar (barang baru ada di paling
   // bawah, atau isinya memanjang ke bawah) — gulirkan seperlunya saja.
@@ -300,11 +316,13 @@ export default function AddOrderSheet({
   const {
     subtotal: itemsPrice,
     totalFee: itemsFee,
-    total: itemsTotal,
   } = summarizeItems(items)
-  const totalPrice = itemsPrice + (lockedTotals?.subtotal ?? 0)
-  const totalFee = itemsFee + (lockedTotals?.totalFee ?? 0)
-  const totalTagihan = itemsTotal + (lockedTotals?.total ?? 0)
+  // Paket baru: harga jual dan fee dikali jumlah paket (fee berlaku per paket).
+  const bundlesSubtotal = bundles.reduce((sum, b) => sum + b.sellPrice * b.bundleCount, 0)
+  const bundlesFee = bundles.reduce((sum, b) => sum + b.fee * b.bundleCount, 0)
+  const totalPrice = itemsPrice + (lockedTotals?.subtotal ?? 0) + bundlesSubtotal
+  const totalFee = itemsFee + (lockedTotals?.totalFee ?? 0) + bundlesFee
+  const totalTagihan = totalPrice + totalFee
 
   const filteredCustomers = customerName.trim()
     ? customers
@@ -341,7 +359,20 @@ export default function AddOrderSheet({
     setError(null)
     // Isi kartu yang tertutup tidak dirender, jadi `required` bawaan browser
     // tidak menjangkaunya — cek manual lalu buka kartu yang belum lengkap.
-    const incompleteIndex = firstIncompleteItemIndex(items)
+    const hasBundles = bundles.length > 0
+    // Kartu barang kosong (belum diisi sama sekali) diabaikan kalau sudah ada paket.
+    const isBlankItem = (item: ItemDraft) =>
+      !itemNameForSubmit(item).trim() && !item.originalPrice
+    const submitItems = items.filter((item) => !(hasBundles && isBlankItem(item)))
+    if (submitItems.length === 0 && bundles.length === 0) {
+      setError('Tambah barang atau paket dulu.')
+      return
+    }
+    const incompleteIndex = items.findIndex(
+      (item) =>
+        !(hasBundles && isBlankItem(item)) &&
+        firstIncompleteItemIndex([item]) !== -1,
+    )
     if (incompleteIndex !== -1) {
       setOpenIndex(incompleteIndex)
       setError(
@@ -355,13 +386,14 @@ export default function AddOrderSheet({
         customerName,
         paymentStatus,
         paidAmount: paymentStatus === 'dp' ? dpAmount : undefined,
-        items: items.map((item) => ({
+        items: submitItems.map((item) => ({
           name: itemNameForSubmit(item),
           originalPrice: item.originalPrice,
           fee: item.fee,
           qty: item.qty,
           obtained: item.obtained,
         })),
+        bundles: bundles.map(({ label: _label, ...bundle }) => bundle),
       })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Gagal menyimpan pesanan')
@@ -524,7 +556,7 @@ export default function AddOrderSheet({
                                 : 'var(--app-text-soft)',
                             }}
                           >
-                            Bundling
+                            Bundling manual
                             <Switch
                               checked={item.bundle}
                               onChange={(checked) =>
@@ -796,14 +828,101 @@ export default function AddOrderSheet({
                 ))}
               </div>
 
-              <button
-                type="button"
-                onClick={addItem}
-                className="app-btn-outline"
-                style={{ color: 'var(--app-accent)' }}
-              >
-                + Tambah barang
-              </button>
+              {lockedBundles && lockedBundles.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <span className="text-xs font-semibold">Paket tersimpan</span>
+                  {lockedBundles.map((bundle) => (
+                    <div
+                      key={bundle.id}
+                      className="app-card flex items-center justify-between gap-3 p-3 text-sm"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate font-bold">{bundle.name}</p>
+                        <p className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
+                          {bundle.qty} paket · Rp{bundle.total.toLocaleString('id-ID')}
+                        </p>
+                      </div>
+                      {onEditLockedBundle && (
+                        <button
+                          type="button"
+                          className="app-btn-outline shrink-0"
+                          style={{ minHeight: 36, fontSize: 12 }}
+                          onClick={() => onEditLockedBundle(bundle.id)}
+                        >
+                          Ubah harga
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {bundles.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <span className="text-xs font-semibold">Paket baru</span>
+                  {bundles.map((bundle, index) => (
+                    <div
+                      key={index}
+                      className="app-card flex items-center justify-between gap-3 p-3 text-sm"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate font-bold">{bundle.label}</p>
+                        <p className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
+                          {bundle.bundleCount} paket · Rp
+                          {((bundle.sellPrice + bundle.fee) * bundle.bundleCount).toLocaleString('id-ID')}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        aria-label="Hapus paket"
+                        onClick={() => setBundles(bundles.filter((_, i) => i !== index))}
+                        className="shrink-0"
+                        style={{ color: '#b42318' }}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="grid gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={addItem}
+                  className="app-btn-outline"
+                  style={{ color: 'var(--app-accent)' }}
+                >
+                  + Tambah barang
+                </button>
+                {partnerCatalog?.enabled && (
+                  <button
+                    type="button"
+                    onClick={() => setShowBundleForm(true)}
+                    className="app-btn-outline"
+                    style={{ color: 'var(--app-accent)' }}
+                  >
+                    + Tambah paket
+                  </button>
+                )}
+              </div>
+
+              {showBundleForm && partnerCatalog?.enabled && (
+                <div className="app-card overflow-hidden p-0">
+                  <PartnerBundleSheet
+                    customerName={customerName.trim() || 'Pelanggan'}
+                    catalog={partnerCatalog}
+                    onClose={() => setShowBundleForm(false)}
+                    onSubmit={async (value) => {
+                      const rule = partnerCatalog.rules.find((r) => r.id === value.ruleId)
+                      setBundles((prev) => [
+                        ...prev,
+                        { ...value, label: rule?.name ?? 'Paket' },
+                      ])
+                    }}
+                  />
+                </div>
+              )}
 
               {/* Label rata kiri, nominal rata kanan (`justify-between`);
                   `whitespace-nowrap` biar nominal nggak turun ke baris kedua. */}

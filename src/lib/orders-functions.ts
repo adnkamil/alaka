@@ -2,7 +2,14 @@ import { createServerFn } from '@tanstack/react-start'
 import { and, asc, eq, inArray, isNotNull, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '../db'
-import { customers, events, items, orders, paymentMethods } from '../db/schema'
+import {
+  customers,
+  events,
+  items,
+  itemComponents,
+  orders,
+  paymentMethods,
+} from '../db/schema'
 import { getSessionUser } from './auth'
 import { applyBrandIdentity, brandIdOf } from './brand'
 import { findBrand, findBrandOwner } from './brand-queries'
@@ -17,7 +24,9 @@ import { EmailNotVerifiedError, isEmailVerified } from './email-verified'
 import { findCustomerForOrder } from './customer-matching'
 import { findMergeTarget, mergeItemLines, mergePaidAmount } from './order-merge'
 import { derivePaymentStatus } from './order-totals'
+import { buildPartnerBundle } from './partner-bundle-build'
 import { lineTotal, partitionLockedItems } from './partner-bundle-lock'
+import type { BundleLine } from './partner-pricing'
 
 async function requireUser() {
   const user = await getSessionUser()
@@ -73,13 +82,55 @@ const itemInputSchema = z.object({
   obtained: z.boolean().default(false),
 })
 
+/** Paket dari aturan partner. Divalidasi ulang di server lewat buildPartnerBundle. */
+const bundleInputSchema = z.object({
+  ruleId: z.uuid(),
+  components: z
+    .array(z.object({ partnerVariantId: z.uuid(), qty: z.number().int().min(1) }))
+    .min(1, 'Paket harus berisi barang'),
+  sellPrice: z.number().nonnegative(),
+  fee: z.number().nonnegative(),
+  bundleCount: z.number().int().min(1).default(1),
+})
+
+/** Menyimpan baris paket beserta isinya. Dipanggil setelah pesanan/barang disimpan. */
+async function insertBundleLines(orderId: string, lines: Array<BundleLine>) {
+  for (const line of lines) {
+    const [row] = await db
+      .insert(items)
+      .values({
+        orderId,
+        name: line.name,
+        originalPrice: line.originalPrice.toString(),
+        fee: line.fee.toString(),
+        qty: line.qty,
+        obtained: false,
+        isBundle: true,
+        partnerRuleId: line.partnerRuleId,
+        hpp: line.hpp.toString(),
+      })
+      .returning({ id: items.id })
+    await db.insert(itemComponents).values(
+      line.components.map((c) => ({
+        itemId: row.id,
+        partnerVariantId: c.partnerVariantId,
+        productName: c.productName,
+        size: c.size,
+        variation: c.variation,
+        qty: c.qty,
+      })),
+    )
+  }
+}
+
 const createOrderSchema = z.object({
   eventId: z.uuid(),
   customerName: z.string().min(1, 'Nama pelanggan wajib diisi'),
   paymentStatus: z.enum(['unpaid', 'dp', 'paid', 'shipped']).default('unpaid'),
   /** Nominal DP (opsional). Kalau kosong, dihitung dari status pembayaran. */
   paidAmount: z.number().nonnegative().optional(),
-  items: z.array(itemInputSchema).min(1, 'Minimal satu barang'),
+  items: z.array(itemInputSchema).default([]),
+  bundles: z.array(bundleInputSchema).default([]),
 })
 
 export const createOrder = createServerFn({ method: 'POST' })
@@ -96,10 +147,31 @@ export const createOrder = createServerFn({ method: 'POST' })
       )
     }
 
-    const total = data.items.reduce(
-      (sum, item) => sum + (item.originalPrice + item.fee) * item.qty,
+    if (data.items.length + data.bundles.length === 0) {
+      throw new Error('Minimal satu barang atau paket')
+    }
+
+    // Paket dicek ulang di server (aturan, PRO, produk di event, pcs) dan HPP-nya
+    // diambil dari database, bukan dari klien.
+    const brandId = brandIdOf(user)
+    const bundleLines: Array<BundleLine> = []
+    for (const bundle of data.bundles) {
+      const { line } = await buildPartnerBundle(db, brandId, {
+        ...bundle,
+        eventId: data.eventId,
+      })
+      bundleLines.push(line)
+    }
+    const bundlesTotal = bundleLines.reduce(
+      (sum, line) => sum + lineTotal(line),
       0,
     )
+
+    const total =
+      data.items.reduce(
+        (sum, item) => sum + (item.originalPrice + item.fee) * item.qty,
+        0,
+      ) + bundlesTotal
     const requestedPaid =
       data.paidAmount ?? (data.paymentStatus === 'unpaid' ? 0 : total)
     // Nominal yang dibayar untuk barang BARU ini saja (uang pesanan lama
@@ -144,7 +216,9 @@ export const createOrder = createServerFn({ method: 'POST' })
         mergedItems.reduce(
           (sum, item) => sum + (item.originalPrice + item.fee) * item.qty,
           0,
-        ) + lockedItems.reduce((sum, row) => sum + lineTotal(row), 0)
+        ) +
+        lockedItems.reduce((sum, row) => sum + lineTotal(row), 0) +
+        bundlesTotal
       const mergedPaid = mergePaidAmount(
         mergeTarget.paidAmount,
         paidForNewItems,
@@ -167,16 +241,20 @@ export const createOrder = createServerFn({ method: 'POST' })
         .where(
           and(eq(items.orderId, mergeTarget.id), isNull(items.partnerRuleId)),
         )
-      await db.insert(items).values(
-        mergedItems.map((item) => ({
-          orderId: mergeTarget.id,
-          name: item.name,
-          originalPrice: item.originalPrice.toString(),
-          fee: item.fee.toString(),
-          qty: item.qty,
-          obtained: Boolean(item.obtained),
-        })),
-      )
+      if (mergedItems.length > 0) {
+        await db.insert(items).values(
+          mergedItems.map((item) => ({
+            orderId: mergeTarget.id,
+            name: item.name,
+            originalPrice: item.originalPrice.toString(),
+            fee: item.fee.toString(),
+            qty: item.qty,
+            obtained: Boolean(item.obtained),
+          })),
+        )
+      }
+      // Paket tidak pernah digabung ke barang lama: selalu baris baru.
+      await insertBundleLines(mergeTarget.id, bundleLines)
 
       return {
         orderId: mergeTarget.id,
@@ -202,16 +280,19 @@ export const createOrder = createServerFn({ method: 'POST' })
       })
       .returning()
 
-    await db.insert(items).values(
-      data.items.map((item) => ({
-        orderId: order.id,
-        name: item.name,
-        originalPrice: item.originalPrice.toString(),
-        fee: item.fee.toString(),
-        qty: item.qty,
-        obtained: item.obtained,
-      })),
-    )
+    if (data.items.length > 0) {
+      await db.insert(items).values(
+        data.items.map((item) => ({
+          orderId: order.id,
+          name: item.name,
+          originalPrice: item.originalPrice.toString(),
+          fee: item.fee.toString(),
+          qty: item.qty,
+          obtained: item.obtained,
+        })),
+      )
+    }
+    await insertBundleLines(order.id, bundleLines)
 
     return {
       orderId: order.id,
@@ -276,7 +357,9 @@ const updateOrderSchema = z.object({
   customerName: z.string().min(1, 'Nama pelanggan wajib diisi'),
   paymentStatus: z.enum(['unpaid', 'dp', 'paid', 'shipped']),
   paidAmount: z.number().nonnegative().optional(),
-  items: z.array(itemInputSchema).min(1, 'Minimal satu barang'),
+  items: z.array(itemInputSchema).default([]),
+  /** Paket BARU yang ditambahkan. Paket lama yang sudah terkunci tidak dikirim ulang. */
+  bundles: z.array(bundleInputSchema).default([]),
 })
 
 export const updateOrder = createServerFn({ method: 'POST' })
@@ -300,11 +383,27 @@ export const updateOrder = createServerFn({ method: 'POST' })
 
     // Total tagihan baru ikut barang yang baru, jadi nominal terbayar dirapikan:
     // kalau lunas -> penuh, kalau DP -> tidak boleh lebih dari total baru.
+    const brandId = brandIdOf(user)
+    const bundleLines: Array<BundleLine> = []
+    for (const bundle of data.bundles) {
+      const { line } = await buildPartnerBundle(db, brandId, {
+        ...bundle,
+        eventId: order.eventId,
+      })
+      bundleLines.push(line)
+    }
+    const bundlesTotal = bundleLines.reduce(
+      (sum, line) => sum + lineTotal(line),
+      0,
+    )
+
     const total =
       data.items.reduce(
         (sum, item) => sum + (item.originalPrice + item.fee) * item.qty,
         0,
-      ) + lockedItems.reduce((sum, row) => sum + lineTotal(row), 0)
+      ) +
+      lockedItems.reduce((sum, row) => sum + lineTotal(row), 0) +
+      bundlesTotal
     const requestedPaid =
       data.paymentStatus === 'unpaid'
         ? 0
@@ -331,16 +430,19 @@ export const updateOrder = createServerFn({ method: 'POST' })
     await db
       .delete(items)
       .where(and(eq(items.orderId, data.orderId), isNull(items.partnerRuleId)))
-    await db.insert(items).values(
-      data.items.map((item) => ({
-        orderId: data.orderId,
-        name: item.name,
-        originalPrice: item.originalPrice.toString(),
-        fee: item.fee.toString(),
-        qty: item.qty,
-        obtained: item.obtained,
-      })),
-    )
+    if (data.items.length > 0) {
+      await db.insert(items).values(
+        data.items.map((item) => ({
+          orderId: data.orderId,
+          name: item.name,
+          originalPrice: item.originalPrice.toString(),
+          fee: item.fee.toString(),
+          qty: item.qty,
+          obtained: item.obtained,
+        })),
+      )
+    }
+    await insertBundleLines(data.orderId, bundleLines)
   })
 
 /**
