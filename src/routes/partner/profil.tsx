@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, useRouter } from '@tanstack/react-router'
-import { Eye, EyeOff, KeyRound, LogOut, Mail, Store } from 'lucide-react'
+import { ChevronRight, KeyRound, LogOut, Mail, Store } from 'lucide-react'
+import ChangePasswordModal from '../../components/ChangePasswordModal'
 import PartnerLogo from '../../components/PartnerLogo'
 import PartnerSubscriptionCard from '../../components/PartnerSubscriptionCard'
 import Toast from '../../components/ui/Toast'
@@ -18,7 +19,6 @@ import {
   PARTNER_NAME_MAX,
   normalizePartnerProfile,
 } from '../../lib/partner-profile-rules'
-import { PARTNER_PASSWORD_MIN_LENGTH } from '../../lib/partner-rules'
 import { currentPartnerQuery } from '../../lib/queries'
 
 export const Route = createFileRoute('/partner/profil')({
@@ -33,17 +33,39 @@ function PartnerProfilePage() {
   if (!partner) return null
 
   return (
-    <main className="flex flex-col gap-4 px-5 pt-4">
-      <h1 className="pm-display text-[22px] leading-tight">Profil</h1>
-      <LogoCard name={partner.name} logoUrl={partner.logoUrl} />
-      <PartnerSubscriptionCard />
-      <ProfileForm
-        initialName={partner.name}
-        initialWaNumber={partner.waNumber ?? ''}
-      />
-      <EmailCard email={partner.email} />
-      <PasswordForm />
-      <LogoutButton />
+    <main className="pm-wide flex flex-col gap-4 px-5 pt-4 lg:gap-5">
+      <header>
+        <h1 className="pm-display text-[22px] leading-tight lg:text-[26px]">
+          Profil
+        </h1>
+        <p
+          className="mt-1 hidden text-[13px] lg:block"
+          style={{ color: 'var(--app-text-soft)' }}
+        >
+          Kelola logo, data partner, dan keamanan akun kamu.
+        </p>
+      </header>
+      <div className="flex flex-col gap-4 lg:grid lg:max-w-[1040px] lg:grid-cols-[340px_minmax(0,1fr)] lg:items-start lg:gap-5">
+        <div className="lg:col-start-1 lg:row-start-1">
+          <LogoCard name={partner.name} logoUrl={partner.logoUrl} />
+        </div>
+        <div className="lg:col-start-1 lg:row-start-2">
+          <PartnerSubscriptionCard />
+        </div>
+        <div className="lg:col-start-2 lg:row-span-3 lg:row-start-1">
+          <ProfileForm
+            initialName={partner.name}
+            initialWaNumber={partner.waNumber ?? ''}
+          />
+        </div>
+        <div className="lg:col-start-1 lg:row-start-3">
+          <AccountCard email={partner.email} />
+        </div>
+      </div>
+      {/* Di desktop tombol Keluar sudah ada di sidebar. */}
+      <div className="lg:hidden">
+        <LogoutButton />
+      </div>
     </main>
   )
 }
@@ -115,179 +137,146 @@ function ProfileForm({
   }
 
   return (
-    <form className="app-card flex flex-col gap-4 p-4" onSubmit={handleSubmit}>
+    <form
+      className="app-card flex flex-col gap-4 p-4 lg:gap-5 lg:p-6"
+      onSubmit={handleSubmit}
+    >
       <div className="flex items-center gap-2">
         <span className="app-icon-tile h-9 w-9 shrink-0">
           <Store size={16} />
         </span>
-        <p className="text-sm font-semibold">Data partner</p>
+        <div>
+          <p className="text-sm font-semibold">Data partner</p>
+          <p
+            className="hidden text-xs lg:block"
+            style={{ color: 'var(--app-text-soft)' }}
+          >
+            Informasi ini tampil di etalase jastiper pada halaman event.
+          </p>
+        </div>
       </div>
 
-      <label className="flex flex-col gap-1.5 text-xs font-semibold">
-        Nama partner
-        <input
-          required
-          maxLength={PARTNER_NAME_MAX}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="app-input"
-        />
-        <span
-          className="text-xs font-normal"
-          style={{ color: 'var(--app-text-soft)' }}
-        >
-          Tampil di halaman event sebagai brand yang dipamerkan.
-        </span>
-      </label>
-
-      <label className="flex flex-col gap-1.5 text-xs font-semibold">
-        No. WhatsApp (opsional)
-        <input
-          type="tel"
-          inputMode="tel"
-          value={waNumber}
-          onChange={(e) => setWaNumber(e.target.value)}
-          className="app-input"
-          placeholder="08xxxxxxxxxx"
-        />
-        {initialWaNumber && (
+      <div className="flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-5">
+        <label className="flex flex-col gap-1.5 text-xs font-semibold">
+          Nama partner
+          <input
+            required
+            maxLength={PARTNER_NAME_MAX}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="app-input"
+          />
           <span
             className="text-xs font-normal"
             style={{ color: 'var(--app-text-soft)' }}
           >
-            Tersimpan: {formatPhoneNumber(initialWaNumber)}
+            Tampil di halaman event sebagai brand yang dipamerkan.
           </span>
-        )}
-      </label>
+        </label>
+
+        <label className="flex flex-col gap-1.5 text-xs font-semibold">
+          No. WhatsApp (opsional)
+          <input
+            type="tel"
+            inputMode="tel"
+            value={waNumber}
+            onChange={(e) => setWaNumber(e.target.value)}
+            className="app-input"
+            placeholder="08xxxxxxxxxx"
+          />
+          {initialWaNumber && (
+            <span
+              className="text-xs font-normal"
+              style={{ color: 'var(--app-text-soft)' }}
+            >
+              Tersimpan: {formatPhoneNumber(initialWaNumber)}
+            </span>
+          )}
+        </label>
+      </div>
 
       {error && (
         <p className="text-sm" style={{ color: 'var(--app-danger)' }}>
           {error}
         </p>
       )}
-      <button type="submit" disabled={saving} className="app-btn-primary">
-        {saving ? 'Menyimpan...' : 'Simpan'}
+      <button
+        type="submit"
+        disabled={saving}
+        className="app-btn-primary lg:self-end lg:px-8"
+      >
+        {saving ? 'Menyimpan...' : 'Simpan perubahan'}
       </button>
       {notice && <Toast message={notice} onClose={() => setNotice(null)} />}
     </form>
   )
 }
 
-function EmailCard({ email }: { email: string }) {
-  return (
-    <section className="app-card flex flex-col gap-2 p-4">
-      <div className="flex items-center gap-2">
-        <span className="app-icon-tile h-9 w-9 shrink-0">
-          <Mail size={16} />
-        </span>
-        <p className="text-sm font-semibold">Email login</p>
-      </div>
-      <p className="truncate text-sm font-medium">{email}</p>
-      <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
-        Email tidak bisa diubah sendiri. Hubungi admin ALAKA kalau perlu
-        menggantinya.
-      </p>
-    </section>
-  )
-}
-
-function PasswordForm() {
-  const [currentPassword, setCurrentPassword] = useState('')
-  const [newPassword, setNewPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
+function AccountCard({ email }: { email: string }) {
+  const [changing, setChanging] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setError(null)
-    if (newPassword !== confirmPassword) {
-      setError('Konfirmasi kata sandi tidak sama')
-      return
-    }
-
-    setSaving(true)
+  async function handleChangePassword(value: {
+    currentPassword: string
+    newPassword: string
+  }) {
     try {
-      await changeOwnPartnerPassword({
-        data: { currentPassword, newPassword },
-      })
-      setCurrentPassword('')
-      setNewPassword('')
-      setConfirmPassword('')
-      setNotice('Kata sandi diganti. Perangkat lain sudah keluar.')
+      await changeOwnPartnerPassword({ data: value })
     } catch (err) {
-      setError(getErrorMessage(err, 'Gagal mengganti kata sandi'))
-    } finally {
-      setSaving(false)
+      throw new Error(getErrorMessage(err, 'Gagal mengganti kata sandi'))
     }
+    setChanging(false)
+    setNotice('Kata sandi diganti. Perangkat lain sudah keluar.')
   }
 
-  const type = showPassword ? 'text' : 'password'
   return (
-    <form className="app-card flex flex-col gap-4 p-4" onSubmit={handleSubmit}>
-      <div className="flex items-center gap-2">
+    <section className="app-card flex flex-col gap-4 p-4 lg:p-5">
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <span className="app-icon-tile h-9 w-9 shrink-0">
+            <Mail size={16} />
+          </span>
+          <p className="text-sm font-semibold">Email login</p>
+        </div>
+        <p className="truncate text-sm font-medium">{email}</p>
+        <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
+          Email tidak bisa diubah sendiri. Hubungi admin ALAKA kalau perlu
+          menggantinya.
+        </p>
+      </div>
+
+      <div className="border-t" style={{ borderColor: 'var(--app-border)' }} />
+
+      <button
+        type="button"
+        onClick={() => setChanging(true)}
+        className="flex w-full items-center gap-3 text-left"
+      >
         <span className="app-icon-tile h-9 w-9 shrink-0">
           <KeyRound size={16} />
         </span>
-        <p className="min-w-0 flex-1 text-sm font-semibold">Ganti kata sandi</p>
-        <button
-          type="button"
-          onClick={() => setShowPassword((v) => !v)}
-          aria-label="Tampilkan kata sandi"
-          style={{ color: 'var(--app-text-mute)' }}
-        >
-          {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-        </button>
-      </div>
-
-      <label className="flex flex-col gap-1.5 text-xs font-semibold">
-        Kata sandi lama
-        <input
-          type={type}
-          required
-          autoComplete="current-password"
-          value={currentPassword}
-          onChange={(e) => setCurrentPassword(e.target.value)}
-          className="app-input"
-        />
-      </label>
-      <label className="flex flex-col gap-1.5 text-xs font-semibold">
-        Kata sandi baru
-        <input
-          type={type}
-          required
-          minLength={PARTNER_PASSWORD_MIN_LENGTH}
-          autoComplete="new-password"
-          placeholder={`Minimal ${PARTNER_PASSWORD_MIN_LENGTH} karakter`}
-          value={newPassword}
-          onChange={(e) => setNewPassword(e.target.value)}
-          className="app-input"
-        />
-      </label>
-      <label className="flex flex-col gap-1.5 text-xs font-semibold">
-        Konfirmasi kata sandi baru
-        <input
-          type={type}
-          required
-          autoComplete="new-password"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          className="app-input"
-        />
-      </label>
-
-      {error && (
-        <p className="text-sm" style={{ color: 'var(--app-danger)' }}>
-          {error}
-        </p>
-      )}
-      <button type="submit" disabled={saving} className="app-btn-primary">
-        {saving ? 'Menyimpan...' : 'Ganti kata sandi'}
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold">Kata sandi</span>
+          <span
+            className="block text-xs"
+            style={{ color: 'var(--app-text-soft)' }}
+          >
+            Ganti kata sandi akun
+          </span>
+        </span>
+        <ChevronRight size={18} style={{ color: 'var(--app-text-mute)' }} />
       </button>
+
+      {changing && (
+        <ChangePasswordModal
+          title="Ganti kata sandi"
+          submitLabel="Ganti kata sandi"
+          onClose={() => setChanging(false)}
+          onSubmit={handleChangePassword}
+        />
+      )}
       {notice && <Toast message={notice} onClose={() => setNotice(null)} />}
-    </form>
+    </section>
   )
 }
 
@@ -342,11 +331,11 @@ function LogoCard({ name, logoUrl }: { name: string; logoUrl: string | null }) {
   }
 
   return (
-    <section className="app-card flex items-center gap-4 p-4">
+    <section className="app-card flex items-center gap-4 p-4 lg:flex-col lg:gap-5 lg:p-6 lg:text-center">
       <PartnerLogo name={name} logoUrl={logoUrl} size={72} />
-      <div className="flex min-w-0 flex-1 flex-col items-start gap-2">
+      <div className="flex min-w-0 flex-1 flex-col items-start gap-2 lg:items-center">
         <p className="text-sm font-semibold">Logo partner</p>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 lg:justify-center">
           <button
             type="button"
             disabled={busy}
