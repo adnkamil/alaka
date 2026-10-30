@@ -6,11 +6,17 @@ import {
   AVATAR_MAX_DATA_URL_LENGTH,
   parseAvatarDataUrl,
 } from './avatar-validation'
+import { pageParamsSchema } from './pagination'
 import { requirePartner } from './partner-auth'
+import {
+  PARTNER_PRODUCT_TABS,
+  PARTNER_SEARCH_MAX,
+} from './partner-list-filters'
 import {
   getPartnerProduct,
   insertPartnerProduct,
   listPartnerProducts,
+  listPartnerProductsPage,
   updatePartnerProduct,
 } from './partner-product-queries'
 import {
@@ -64,6 +70,22 @@ export const fetchPartnerProducts = createServerFn({ method: 'GET' }).handler(
     return listPartnerProducts(partner.id)
   },
 )
+
+/** Satu halaman katalog (tab + cari + paginasi) untuk tabel Katalog. */
+export const fetchPartnerProductsPage = createServerFn({ method: 'GET' })
+  .validator(
+    pageParamsSchema.extend({
+      tab: z.enum(PARTNER_PRODUCT_TABS as [string, ...Array<string>]),
+      search: z.string().max(PARTNER_SEARCH_MAX),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const partner = await requirePartner()
+    return listPartnerProductsPage(partner.id, {
+      ...data,
+      tab: data.tab as 'all' | 'aktif' | 'nonaktif',
+    })
+  })
 
 export const fetchPartnerProduct = createServerFn({ method: 'GET' })
   .validator(z.object({ id: idSchema }))

@@ -1,7 +1,11 @@
-import { and, asc, eq, sql } from 'drizzle-orm'
+import { and, asc, eq, isNotNull, isNull, or, sql } from 'drizzle-orm'
 import { db } from '../db'
 import { calendarEvents } from '../db/schema'
 import { calendarBannerSrc } from './calendar'
+import { clampPage, pageOffset } from './pagination'
+import { todayIsoDateInAppTimeZone } from './timezone'
+import type { Paged } from './pagination'
+import type { PartnerEventStatus } from './partner-event-rules'
 import type { CalendarEventFields } from './calendar-event-input'
 
 /**
@@ -85,6 +89,95 @@ export async function listPartnerEvents(
     .where(eq(calendarEvents.partnerId, partnerId))
     .orderBy(sql`${calendarEvents.eventDate} desc`, asc(calendarEvents.name))
   return rows.map(toRow)
+}
+
+export type PartnerEventTab = 'all' | PartnerEventStatus
+
+export type PartnerEventPage = Paged<PartnerEventRow> & {
+  /** Jumlah per tab status. */
+  counts: Record<PartnerEventTab, number>
+}
+
+/**
+ * Kondisi SQL untuk status event — SAMA dengan `partnerEventStatus` (murni di
+ * `partner-event-rules.ts`): selesai = sudah diakhiri atau hari terakhirnya
+ * sudah lewat; mendatang = belum mulai; berjalan = sisanya.
+ */
+function statusCondition(status: PartnerEventStatus, today: string) {
+  const lastDay = sql`coalesce(${calendarEvents.endDate}, ${calendarEvents.eventDate})`
+  const startDate = sql`${calendarEvents.eventDate}`
+  switch (status) {
+    case 'selesai':
+      return or(
+        isNotNull(calendarEvents.endedAt),
+        sql`${lastDay} < ${today}::date`,
+      )
+    case 'mendatang':
+      return and(
+        isNull(calendarEvents.endedAt),
+        sql`${startDate} > ${today}::date`,
+      )
+    case 'berjalan':
+      return and(
+        isNull(calendarEvents.endedAt),
+        sql`${startDate} <= ${today}::date`,
+        sql`${lastDay} >= ${today}::date`,
+      )
+  }
+}
+
+/**
+ * Satu halaman event partner untuk tabel Event: filter tab status dan
+ * paginasi dikerjakan di database. Halaman di luar jangkauan dikembalikan
+ * sebagai halaman terakhir.
+ */
+export async function listPartnerEventsPage(
+  partnerId: string,
+  input: { tab: PartnerEventTab; page: number; pageSize: number },
+): Promise<PartnerEventPage> {
+  const today = todayIsoDateInAppTimeZone()
+  const owned = eq(calendarEvents.partnerId, partnerId)
+
+  const [c] = await db
+    .select({
+      all: sql<number>`count(*)::int`,
+      berjalan: sql<number>`(count(*) filter (where ${statusCondition('berjalan', today)}))::int`,
+      mendatang: sql<number>`(count(*) filter (where ${statusCondition('mendatang', today)}))::int`,
+      selesai: sql<number>`(count(*) filter (where ${statusCondition('selesai', today)}))::int`,
+    })
+    .from(calendarEvents)
+    .where(owned)
+  const counts: Record<PartnerEventTab, number> = {
+    all: c.all,
+    berjalan: c.berjalan,
+    mendatang: c.mendatang,
+    selesai: c.selesai,
+  }
+
+  const total = counts[input.tab]
+  const page = clampPage(input.page, total, input.pageSize)
+  const where =
+    input.tab === 'all' ? owned : and(owned, statusCondition(input.tab, today))
+
+  const rows = await db
+    .select(columns)
+    .from(calendarEvents)
+    .where(where)
+    .orderBy(
+      sql`${calendarEvents.eventDate} desc`,
+      asc(calendarEvents.name),
+      asc(calendarEvents.id),
+    )
+    .limit(input.pageSize)
+    .offset(pageOffset(page, input.pageSize))
+
+  return {
+    rows: rows.map(toRow),
+    total,
+    page,
+    pageSize: input.pageSize,
+    counts,
+  }
 }
 
 export async function getPartnerEvent(

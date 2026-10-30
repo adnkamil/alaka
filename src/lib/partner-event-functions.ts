@@ -11,6 +11,7 @@ import {
   normalizeEndDate,
 } from './calendar-event-input'
 import { listCalendarEventParticipants } from './calendar-join-queries'
+import { pageParamsSchema } from './pagination'
 import { requirePartner } from './partner-auth'
 import {
   CATALOG_URL_MAX_LENGTH,
@@ -20,6 +21,7 @@ import {
   getPartnerEvent,
   insertPartnerEvent,
   listPartnerEvents,
+  listPartnerEventsPage,
   partnerOwnsEvent,
   setPartnerEventEnded,
   updatePartnerEvent,
@@ -85,6 +87,18 @@ export const fetchPartnerEvents = createServerFn({ method: 'GET' }).handler(
     return listPartnerEvents(partner.id)
   },
 )
+
+/** Satu halaman event (tab status + paginasi) untuk tabel Event. */
+export const fetchPartnerEventsPage = createServerFn({ method: 'GET' })
+  .validator(
+    pageParamsSchema.extend({
+      tab: z.enum(['all', 'berjalan', 'mendatang', 'selesai']),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const partner = await requirePartner()
+    return listPartnerEventsPage(partner.id, data)
+  })
 
 export const fetchPartnerEvent = createServerFn({ method: 'GET' })
   .validator(z.object({ id: idSchema }))

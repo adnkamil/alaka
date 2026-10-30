@@ -1,6 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, eq, inArray } from 'drizzle-orm'
+import { and, asc, count, eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
+import { clampPage, pageOffset, pageParamsSchema } from './pagination'
 import { requirePartner } from './partner-auth'
 import { hasPartnerPro } from './partner-entitlement'
 import { assertRuleProductsUnique } from './partner-pricing'
@@ -38,9 +39,8 @@ export const listPartnerRules = createServerFn({ method: 'GET' }).handler(
   async () => {
     const partner = await requirePartner()
     const { db } = await import('../db')
-    const { partnerPricingRules, partnerRuleProducts } = await import(
-      '../db/schema'
-    )
+    const { partnerPricingRules, partnerRuleProducts } =
+      await import('../db/schema')
     const rules = await db
       .select()
       .from(partnerPricingRules)
@@ -58,7 +58,9 @@ export const listPartnerRules = createServerFn({ method: 'GET' }).handler(
           )
       : []
     // Pemulihan untuk produk yang sudah masuk aturan sebelum varian default ada.
-    for (const partnerProductId of new Set(links.map((l) => l.partnerProductId))) {
+    for (const partnerProductId of new Set(
+      links.map((l) => l.partnerProductId),
+    )) {
       await syncDefaultVariant(db, partnerProductId)
     }
     return rules.map((rule) => ({
@@ -73,6 +75,64 @@ export const listPartnerRules = createServerFn({ method: 'GET' }).handler(
     }))
   },
 )
+
+/**
+ * Satu halaman aturan paket untuk tabel Aturan Paket (paginasi di database).
+ * `listPartnerRules` tetap dipakai form/kartu yang memang butuh semua aturan.
+ */
+export const listPartnerRulesPage = createServerFn({ method: 'GET' })
+  .validator(pageParamsSchema)
+  .handler(async ({ data }) => {
+    const partner = await requirePartner()
+    const { db } = await import('../db')
+    const { partnerPricingRules, partnerRuleProducts } =
+      await import('../db/schema')
+    const owned = eq(partnerPricingRules.partnerId, partner.id)
+    const [{ total }] = await db
+      .select({ total: count() })
+      .from(partnerPricingRules)
+      .where(owned)
+    const page = clampPage(data.page, total, data.pageSize)
+    const rules = await db
+      .select()
+      .from(partnerPricingRules)
+      .where(owned)
+      .orderBy(asc(partnerPricingRules.position), asc(partnerPricingRules.id))
+      .limit(data.pageSize)
+      .offset(pageOffset(page, data.pageSize))
+    const links = rules.length
+      ? await db
+          .select()
+          .from(partnerRuleProducts)
+          .where(
+            inArray(
+              partnerRuleProducts.ruleId,
+              rules.map((r) => r.id),
+            ),
+          )
+      : []
+    // Pemulihan varian default hanya untuk aturan di halaman ini.
+    for (const partnerProductId of new Set(
+      links.map((l) => l.partnerProductId),
+    )) {
+      await syncDefaultVariant(db, partnerProductId)
+    }
+    return {
+      rows: rules.map((rule) => ({
+        id: rule.id,
+        name: rule.name,
+        minQty: rule.minQty,
+        bundlePrice: Number(rule.bundlePrice),
+        isActive: rule.isActive,
+        productIds: links
+          .filter((l) => l.ruleId === rule.id)
+          .map((l) => l.partnerProductId),
+      })),
+      total,
+      page,
+      pageSize: data.pageSize,
+    }
+  })
 
 /**
  * Buat atau ubah aturan paket. Produk harus milik partner ini, dan satu produk
@@ -204,7 +264,10 @@ export const setPartnerProductRule = createServerFn({ method: 'POST' })
       .select({ id: partnerProducts.id })
       .from(partnerProducts)
       .where(
-        and(eq(partnerProducts.id, data.productId), eq(partnerProducts.partnerId, partner.id)),
+        and(
+          eq(partnerProducts.id, data.productId),
+          eq(partnerProducts.partnerId, partner.id),
+        ),
       )
     if (!product) throw new Error('Produk tidak ditemukan')
 
@@ -214,7 +277,10 @@ export const setPartnerProductRule = createServerFn({ method: 'POST' })
         .select({ id: partnerPricingRules.id })
         .from(partnerPricingRules)
         .where(
-          and(eq(partnerPricingRules.id, data.ruleId), eq(partnerPricingRules.partnerId, partner.id)),
+          and(
+            eq(partnerPricingRules.id, data.ruleId),
+            eq(partnerPricingRules.partnerId, partner.id),
+          ),
         )
       if (!rule) throw new Error('Aturan tidak ditemukan')
 
@@ -224,7 +290,9 @@ export const setPartnerProductRule = createServerFn({ method: 'POST' })
         .from(partnerRuleProducts)
         .where(eq(partnerRuleProducts.partnerProductId, data.productId))
       if (otherLink.some((l) => l.ruleId !== data.ruleId)) {
-        throw new Error('Produk ini sudah masuk aturan paket lain. Keluarkan dulu dari aturan itu.')
+        throw new Error(
+          'Produk ini sudah masuk aturan paket lain. Keluarkan dulu dari aturan itu.',
+        )
       }
     }
 

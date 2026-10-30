@@ -1,11 +1,15 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  keepPreviousData,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { Layers, Plus } from 'lucide-react'
-import { useState } from 'react'
-import {
-  deletePartnerRule,
-  listPartnerRules,
-} from '../../../lib/partner-rule-functions'
+import { useEffect, useState } from 'react'
+import Pagination from '../../../components/ui/Pagination'
+import { DEFAULT_PAGE_SIZE } from '../../../lib/pagination'
+import { deletePartnerRule } from '../../../lib/partner-rule-functions'
+import { partnerRulesPageQuery } from '../../../lib/queries'
 
 export const Route = createFileRoute('/partner/paket/')({
   component: PartnerPaketPage,
@@ -35,14 +39,32 @@ function StatusBadge({ active }: { active: boolean }) {
 
 function PartnerPaketPage() {
   const queryClient = useQueryClient()
-  const {
-    data: rules = [],
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: RULES_KEY,
-    queryFn: () => listPartnerRules(),
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
+  const { data, isLoading, error } = useQuery({
+    ...partnerRulesPageQuery({ page, pageSize }),
+    // Tabel tetap tampil (data lama) selama halaman berikutnya ditarik.
+    placeholderData: keepPreviousData,
   })
+  const rules = data?.rows ?? []
+  const total = data?.total ?? 0
+
+  // Server membatasi halaman di luar jangkauan (mis. aturan terakhir dihapus).
+  const serverPage = data?.page
+  useEffect(() => {
+    if (serverPage !== undefined && serverPage !== page) setPage(serverPage)
+  }, [serverPage, page])
+
+  const pager = {
+    page: data?.page ?? page,
+    pageSize,
+    total,
+    onPageChange: setPage,
+    onPageSizeChange: (size: number) => {
+      setPageSize(size)
+      setPage(1)
+    },
+  }
   const [actionError, setActionError] = useState<string | null>(null)
 
   async function handleDelete(id: string, name: string) {
@@ -74,7 +96,7 @@ function PartnerPaketPage() {
             className="mt-1 text-[13px]"
             style={{ color: 'var(--app-text-soft)' }}
           >
-            {rules.length} aturan · membutuhkan langganan PRO
+            {total} aturan · membutuhkan langganan PRO
           </p>
         </div>
         <Link
@@ -121,6 +143,10 @@ function PartnerPaketPage() {
 
       {rules.length > 0 && (
         <>
+          <div className="hidden lg:block">
+            <Pagination {...pager} />
+          </div>
+
           {/* Mobile: kartu bertumpuk. */}
           <div className="flex flex-col gap-3.5 lg:hidden">
             {rules.map((rule) => (
@@ -233,6 +259,8 @@ function PartnerPaketPage() {
               </div>
             ))}
           </div>
+
+          <Pagination {...pager} className="justify-center lg:justify-end" />
         </>
       )}
     </main>

@@ -5,16 +5,19 @@ import {
 } from './calendar-events-admin-functions'
 import { fetchCurrentUser } from './auth-functions'
 import { fetchPartnerDashboard } from './partner-dashboard-functions'
+import { listPartnerRulesPage } from './partner-rule-functions'
 import { fetchPartnerEventProducts } from './partner-event-product-functions'
 import { fetchAdminPartners, fetchCurrentPartner } from './partner-functions'
 import {
   fetchOwnPartnerEventParticipants,
   fetchPartnerEvent,
   fetchPartnerEvents,
+  fetchPartnerEventsPage,
 } from './partner-event-functions'
 import {
   fetchPartnerProduct,
   fetchPartnerProducts,
+  fetchPartnerProductsPage,
 } from './partner-product-functions'
 
 /**
@@ -58,6 +61,22 @@ export const partnerProductsQuery = queryOptions({
   queryFn: () => fetchPartnerProducts(),
 })
 
+/** Satu halaman katalog (tab + cari + paginasi) untuk tabel Katalog. */
+export type PartnerProductsPageParams = {
+  tab: 'all' | 'aktif' | 'nonaktif'
+  search: string
+  page: number
+  pageSize: number
+}
+
+// Kunci diawali `['partner-products']` supaya `invalidateQueries` setelah
+// tambah/ubah produk ikut menyegarkan halaman yang sedang dibuka.
+export const partnerProductsPageQuery = (params: PartnerProductsPageParams) =>
+  queryOptions({
+    queryKey: ['partner-products', 'page', params],
+    queryFn: () => fetchPartnerProductsPage({ data: params }),
+  })
+
 export const partnerProductQuery = (id: string) =>
   queryOptions({
     queryKey: ['partner-product', id],
@@ -69,6 +88,19 @@ export const partnerEventsQuery = queryOptions({
   queryKey: ['partner-events'],
   queryFn: () => fetchPartnerEvents(),
 })
+
+/** Satu halaman event (tab status + paginasi) untuk tabel Event. */
+export type PartnerEventsPageParams = {
+  tab: 'all' | 'berjalan' | 'mendatang' | 'selesai'
+  page: number
+  pageSize: number
+}
+
+export const partnerEventsPageQuery = (params: PartnerEventsPageParams) =>
+  queryOptions({
+    queryKey: ['partner-events', 'page', params],
+    queryFn: () => fetchPartnerEventsPage({ data: params }),
+  })
 
 export const partnerEventQuery = (id: string) =>
   queryOptions({
@@ -94,3 +126,13 @@ export const partnerDashboardQuery = queryOptions({
   queryKey: ['partner-dashboard'],
   queryFn: () => fetchPartnerDashboard(),
 })
+
+/** Satu halaman aturan paket untuk tabel Aturan Paket. */
+export const partnerRulesPageQuery = (params: {
+  page: number
+  pageSize: number
+}) =>
+  queryOptions({
+    queryKey: ['partner-rules', 'page', params],
+    queryFn: () => listPartnerRulesPage({ data: params }),
+  })

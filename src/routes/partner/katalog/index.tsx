@@ -1,23 +1,38 @@
-import { useState } from 'react'
-import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
+import {
+  keepPreviousData,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { Inbox, Package, Plus, Search } from 'lucide-react'
+import Pagination from '../../../components/ui/Pagination'
 import Toast from '../../../components/ui/Toast'
 import { getErrorMessage } from '../../../lib/error-message'
+import { DEFAULT_PAGE_SIZE } from '../../../lib/pagination'
+import { useDebouncedValue } from '../../../lib/use-debounced-value'
 import { setPartnerProductActive } from '../../../lib/partner-product-functions'
 import {
   formatRupiah,
   partnerProductPhotoUrl,
 } from '../../../lib/partner-product-rules'
-import { partnerProductsQuery } from '../../../lib/queries'
+import { partnerProductsPageQuery } from '../../../lib/queries'
 import type {
   PartnerProductListRow,
   PartnerProductRow,
 } from '../../../lib/partner-product-queries'
 
 export const Route = createFileRoute('/partner/katalog/')({
+  // Halaman pertama dimuat dulu; halaman/filter berikutnya ditarik per halaman.
   loader: ({ context }) =>
-    context.queryClient.ensureQueryData(partnerProductsQuery),
+    context.queryClient.ensureQueryData(
+      partnerProductsPageQuery({
+        tab: 'all',
+        search: '',
+        page: 1,
+        pageSize: DEFAULT_PAGE_SIZE,
+      }),
+    ),
   component: PartnerCatalogPage,
 })
 
@@ -30,28 +45,53 @@ const TABS: Array<{ key: Tab; label: string }> = [
 ]
 
 function PartnerCatalogPage() {
-  const { data: products } = useSuspenseQuery(partnerProductsQuery)
   const queryClient = useQueryClient()
   const [tab, setTab] = useState<Tab>('all')
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
   const [notice, setNotice] = useState<string | null>(null)
+  // Kata kunci dikirim ke server setelah berhenti mengetik sebentar.
+  const debouncedSearch = useDebouncedValue(search.trim())
 
-  const counts: Record<Tab, number> = {
-    all: products.length,
-    aktif: products.filter((p) => p.isActive).length,
-    nonaktif: products.filter((p) => !p.isActive).length,
-  }
-
-  const keyword = search.trim().toLowerCase()
-  const visible = products.filter((p) => {
-    if (tab === 'aktif' && !p.isActive) return false
-    if (tab === 'nonaktif' && p.isActive) return false
-    if (!keyword) return true
-    return (
-      p.name.toLowerCase().includes(keyword) ||
-      (p.code ?? '').toLowerCase().includes(keyword)
-    )
+  const { data } = useQuery({
+    ...partnerProductsPageQuery({
+      tab,
+      search: debouncedSearch,
+      page,
+      pageSize,
+    }),
+    // Tabel tetap tampil (data lama) selama halaman berikutnya ditarik.
+    placeholderData: keepPreviousData,
   })
+
+  // Server membatasi halaman di luar jangkauan (mis. baris terakhir dihapus).
+  const serverPage = data?.page
+  useEffect(() => {
+    if (serverPage !== undefined && serverPage !== page) setPage(serverPage)
+  }, [serverPage, page])
+
+  if (!data) return null
+  const { rows: visible, counts } = data
+
+  function changeTab(next: Tab) {
+    setTab(next)
+    setPage(1)
+  }
+  function changeSearch(next: string) {
+    setSearch(next)
+    setPage(1)
+  }
+  const pager = {
+    page: data.page,
+    pageSize: data.pageSize,
+    total: data.total,
+    onPageChange: setPage,
+    onPageSizeChange: (size: number) => {
+      setPageSize(size)
+      setPage(1)
+    },
+  }
 
   async function handleToggle(product: PartnerProductRow) {
     try {
@@ -79,7 +119,7 @@ function PartnerCatalogPage() {
           <Search size={18} style={{ color: 'var(--app-text-mute)' }} />
           <input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => changeSearch(e.target.value)}
             placeholder="Cari produk"
             className="min-w-0 flex-1 border-0 bg-transparent text-sm font-medium outline-none"
             style={{ color: 'var(--app-text)' }}
@@ -91,7 +131,7 @@ function PartnerCatalogPage() {
             <button
               key={t.key}
               type="button"
-              onClick={() => setTab(t.key)}
+              onClick={() => changeTab(t.key)}
               className={`pm-chip ${tab === t.key ? 'pm-chip--active' : ''}`}
             >
               {t.label} {counts[t.key]}
@@ -103,7 +143,7 @@ function PartnerCatalogPage() {
           <div className="app-card flex flex-col items-center gap-2 p-8 text-center">
             <Inbox size={28} style={{ color: 'var(--app-text-mute)' }} />
             <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
-              {products.length === 0
+              {counts.all === 0
                 ? 'Belum ada produk. Tambahkan yang pertama.'
                 : 'Belum ada produk yang cocok.'}
             </p>
@@ -120,6 +160,8 @@ function PartnerCatalogPage() {
           </div>
         )}
 
+        <Pagination {...pager} className="justify-center" />
+
         <div className="pm-footer">
           <Link
             to="/partner/katalog/baru"
@@ -131,14 +173,14 @@ function PartnerCatalogPage() {
         </div>
       </main>
       <CatalogDesktop
-        products={products}
         visible={visible}
         counts={counts}
         tab={tab}
-        onTab={setTab}
+        onTab={changeTab}
         search={search}
-        onSearch={setSearch}
+        onSearch={changeSearch}
         onToggle={handleToggle}
+        pager={pager}
       />
       {notice && <Toast message={notice} onClose={() => setNotice(null)} />}
     </>
@@ -218,7 +260,6 @@ const COLUMNS = 'grid-cols-[minmax(0,1fr)_130px_150px_110px_70px]'
 
 /** Katalog layout desktop (>= lg) sesuai Figma "D3 Katalog Produk". */
 function CatalogDesktop({
-  products,
   visible,
   counts,
   tab,
@@ -226,8 +267,8 @@ function CatalogDesktop({
   search,
   onSearch,
   onToggle,
+  pager,
 }: {
-  products: Array<PartnerProductListRow>
   visible: Array<PartnerProductListRow>
   counts: Record<Tab, number>
   tab: Tab
@@ -235,6 +276,7 @@ function CatalogDesktop({
   search: string
   onSearch: (value: string) => void
   onToggle: (product: PartnerProductRow) => void
+  pager: React.ComponentProps<typeof Pagination>
 }) {
   return (
     <main className="pm-wide hidden flex-col gap-5 lg:flex">
@@ -295,31 +337,35 @@ function CatalogDesktop({
         <div className="app-card flex flex-col items-center gap-2 p-10 text-center">
           <Inbox size={28} style={{ color: 'var(--app-text-mute)' }} />
           <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
-            {products.length === 0
+            {counts.all === 0
               ? 'Belum ada produk. Tambahkan yang pertama.'
               : 'Belum ada produk yang cocok.'}
           </p>
         </div>
       ) : (
-        <div className="app-card overflow-hidden">
-          <div
-            className={`grid ${COLUMNS} items-center gap-4 px-5 py-3.5 text-[11px] font-bold uppercase tracking-wide`}
-            style={{ background: 'var(--pm-tint)', color: 'var(--pm-gold)' }}
-          >
-            <span>Produk</span>
-            <span>Harga</span>
-            <span>Dipakai di event</span>
-            <span>Status</span>
-            <span>Aksi</span>
+        <>
+          <Pagination {...pager} />
+          <div className="app-card overflow-hidden">
+            <div
+              className={`grid ${COLUMNS} items-center gap-4 px-5 py-3.5 text-[11px] font-bold uppercase tracking-wide`}
+              style={{ background: 'var(--pm-tint)', color: 'var(--pm-gold)' }}
+            >
+              <span>Produk</span>
+              <span>Harga</span>
+              <span>Dipakai di event</span>
+              <span>Status</span>
+              <span>Aksi</span>
+            </div>
+            {visible.map((product) => (
+              <DesktopProductRow
+                key={product.id}
+                product={product}
+                onToggle={() => onToggle(product)}
+              />
+            ))}
           </div>
-          {visible.map((product) => (
-            <DesktopProductRow
-              key={product.id}
-              product={product}
-              onToggle={() => onToggle(product)}
-            />
-          ))}
-        </div>
+          <Pagination {...pager} />
+        </>
       )}
     </main>
   )

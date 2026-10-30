@@ -1,6 +1,10 @@
-import { and, desc, eq, sql } from 'drizzle-orm'
+import { and, desc, eq, ilike, or, sql } from 'drizzle-orm'
 import { db } from '../db'
 import { partnerProducts } from '../db/schema'
+import { clampPage, pageOffset } from './pagination'
+import { escapeLike } from './partner-list-filters'
+import type { Paged } from './pagination'
+import type { PartnerProductTab } from './partner-list-filters'
 
 /**
  * Katalog produk partner — query database. Server-only. SEMUA query dibatasi
@@ -54,6 +58,84 @@ export async function listPartnerProducts(
     .where(eq(partnerProducts.partnerId, partnerId))
     .orderBy(desc(partnerProducts.createdAt))
   return rows.map((r) => ({ ...toRow(r.product), eventCount: r.eventCount }))
+}
+
+export type PartnerProductPage = Paged<PartnerProductListRow> & {
+  /** Jumlah per tab, TIDAK terpengaruh kata kunci pencarian. */
+  counts: Record<PartnerProductTab, number>
+}
+
+/**
+ * Satu halaman katalog untuk tabel Katalog: filter tab + kata kunci (nama atau
+ * kode) dikerjakan di database, jadi yang ditarik hanya baris halaman itu.
+ * Halaman di luar jangkauan (mis. baris terakhir baru dihapus) dikembalikan
+ * sebagai halaman terakhir.
+ */
+export async function listPartnerProductsPage(
+  partnerId: string,
+  input: {
+    tab: PartnerProductTab
+    search: string
+    page: number
+    pageSize: number
+  },
+): Promise<PartnerProductPage> {
+  const owned = eq(partnerProducts.partnerId, partnerId)
+
+  const [tabCounts] = await db
+    .select({
+      all: sql<number>`count(*)::int`,
+      aktif: sql<number>`(count(*) filter (where ${partnerProducts.isActive}))::int`,
+    })
+    .from(partnerProducts)
+    .where(owned)
+  const counts: Record<PartnerProductTab, number> = {
+    all: tabCounts.all,
+    aktif: tabCounts.aktif,
+    nonaktif: tabCounts.all - tabCounts.aktif,
+  }
+
+  const conditions = [owned]
+  if (input.tab === 'aktif') conditions.push(eq(partnerProducts.isActive, true))
+  if (input.tab === 'nonaktif') {
+    conditions.push(eq(partnerProducts.isActive, false))
+  }
+  const keyword = input.search.trim()
+  if (keyword) {
+    const pattern = `%${escapeLike(keyword)}%`
+    const match = or(
+      ilike(partnerProducts.name, pattern),
+      ilike(partnerProducts.code, pattern),
+    )
+    if (match) conditions.push(match)
+  }
+  const where = and(...conditions)
+
+  const [{ total }] = await db
+    .select({ total: sql<number>`count(*)::int` })
+    .from(partnerProducts)
+    .where(where)
+  const page = clampPage(input.page, total, input.pageSize)
+
+  // Nama tabel ditulis lengkap di subquery (lihat `listPartnerProducts`).
+  const rows = await db
+    .select({
+      product: partnerProducts,
+      eventCount: sql<number>`(select count(*)::int from partner_event_products pep where pep.product_id = "partner_products"."id")`,
+    })
+    .from(partnerProducts)
+    .where(where)
+    .orderBy(desc(partnerProducts.createdAt), desc(partnerProducts.id))
+    .limit(input.pageSize)
+    .offset(pageOffset(page, input.pageSize))
+
+  return {
+    rows: rows.map((r) => ({ ...toRow(r.product), eventCount: r.eventCount })),
+    total,
+    page,
+    pageSize: input.pageSize,
+    counts,
+  }
 }
 
 export async function getPartnerProduct(
