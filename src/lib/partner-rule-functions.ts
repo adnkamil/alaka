@@ -175,3 +175,56 @@ export const deletePartnerRule = createServerFn({ method: 'POST' })
     if (deleted.length === 0) throw new Error('Aturan tidak ditemukan')
     return { ok: true as const }
   })
+
+/**
+ * Mengatur paket satu produk dari halaman produknya. `ruleId = null` berarti
+ * produk dikeluarkan dari aturan mana pun. Memasukkan ke aturan butuh PRO.
+ */
+export const setPartnerProductRule = createServerFn({ method: 'POST' })
+  .validator(z.object({ productId: idSchema, ruleId: idSchema.nullable() }))
+  .handler(async ({ data }) => {
+    const partner = await requirePartner()
+    const { db } = await import('../db')
+    const { partnerProducts, partnerPricingRules, partnerRuleProducts } =
+      await import('../db/schema')
+
+    const [product] = await db
+      .select({ id: partnerProducts.id })
+      .from(partnerProducts)
+      .where(
+        and(eq(partnerProducts.id, data.productId), eq(partnerProducts.partnerId, partner.id)),
+      )
+    if (!product) throw new Error('Produk tidak ditemukan')
+
+    if (data.ruleId) {
+      await assertPro(partner.id)
+      const [rule] = await db
+        .select({ id: partnerPricingRules.id })
+        .from(partnerPricingRules)
+        .where(
+          and(eq(partnerPricingRules.id, data.ruleId), eq(partnerPricingRules.partnerId, partner.id)),
+        )
+      if (!rule) throw new Error('Aturan tidak ditemukan')
+
+      // Satu produk hanya boleh di satu aturan: cek aturan lain milik partner ini.
+      const otherLink = await db
+        .select({ ruleId: partnerRuleProducts.ruleId })
+        .from(partnerRuleProducts)
+        .where(eq(partnerRuleProducts.partnerProductId, data.productId))
+      if (otherLink.some((l) => l.ruleId !== data.ruleId)) {
+        throw new Error('Produk ini sudah masuk aturan paket lain. Keluarkan dulu dari aturan itu.')
+      }
+    }
+
+    return db.transaction(async (tx) => {
+      await tx
+        .delete(partnerRuleProducts)
+        .where(eq(partnerRuleProducts.partnerProductId, data.productId))
+      if (data.ruleId) {
+        await tx
+          .insert(partnerRuleProducts)
+          .values({ ruleId: data.ruleId, partnerProductId: data.productId })
+      }
+      return { ok: true as const }
+    })
+  })

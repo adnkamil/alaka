@@ -3,6 +3,7 @@ import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { ArrowLeft } from 'lucide-react'
 import PartnerProductForm from '../../../components/PartnerProductForm'
 import PartnerVariantEditor from '../../../components/PartnerVariantEditor'
+import PartnerProductRuleCard from '../../../components/PartnerProductRuleCard'
 import { updateOwnPartnerProduct } from '../../../lib/partner-product-functions'
 import { partnerProductPhotoUrl } from '../../../lib/partner-product-rules'
 import { partnerProductQuery } from '../../../lib/queries'
@@ -65,6 +66,7 @@ function EditPartnerProductPage() {
         onSubmit={handleSubmit}
       />
       <PartnerVariantEditor productId={id} />
+      <PartnerProductRuleCard productId={id} />
     </main>
   )
 }
