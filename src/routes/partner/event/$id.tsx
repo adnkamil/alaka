@@ -115,6 +115,15 @@ function PartnerEventDetailPage() {
           <PartnerEventStatusBadge status={status} />
         </header>
 
+        <Link
+          to="/partner/event/rekap/$id"
+          params={{ id }}
+          className="app-btn-outline self-start no-underline"
+          style={{ minHeight: 40, fontSize: 13 }}
+        >
+          Rekap Orderan
+        </Link>
+
         <div
           className="flex h-[112px] w-full items-center justify-center overflow-hidden rounded-2xl"
           style={{
