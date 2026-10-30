@@ -362,7 +362,23 @@ export const getEventPartnerCatalog = createServerFn({ method: 'GET' })
       .from(partnerRuleProducts)
       .where(inArray(partnerRuleProducts.ruleId, ruleIds))
 
-    const rules = ruleRows.map((rule) => ({
+    // Aturan hanya ditampilkan kalau partner-nya PRO. Tanpa ini, tombol
+    // "Pakai paket" muncul lalu gagal saat disimpan.
+    const proPartnerIds = new Set<string>()
+    for (const partnerId of new Set(ruleRows.map((r) => r.partnerId))) {
+      const subs = await db
+        .select({
+          status: partnerSubscriptions.status,
+          startedAt: partnerSubscriptions.startedAt,
+          endsAt: partnerSubscriptions.endsAt,
+        })
+        .from(partnerSubscriptions)
+        .where(eq(partnerSubscriptions.partnerId, partnerId))
+      if (hasPartnerPro(subs)) proPartnerIds.add(partnerId)
+    }
+    const visibleRuleRows = ruleRows.filter((r) => proPartnerIds.has(r.partnerId))
+
+    const rules = visibleRuleRows.map((rule) => ({
       id: rule.id,
       name: rule.name,
       minQty: rule.minQty,
