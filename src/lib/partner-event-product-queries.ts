@@ -5,7 +5,6 @@ import {
   partnerEventProducts,
   partnerProducts,
 } from '../db/schema'
-import { MAX_EVENT_PRODUCTS } from './partner-event-product-rules'
 import { toRow } from './partner-product-queries'
 import type { PartnerProductRow } from './partner-product-queries'
 
@@ -60,11 +59,6 @@ export async function replacePartnerEventProducts(
   productIds: ReadonlyArray<string>,
 ): Promise<void> {
   const ids = Array.from(new Set(productIds))
-  if (ids.length > MAX_EVENT_PRODUCTS) {
-    throw new EventProductSelectionError(
-      `Maksimal ${MAX_EVENT_PRODUCTS} produk unggulan per event`,
-    )
-  }
   await db.transaction(async (tx) => {
     const found = await tx
       .select({ id: calendarEvents.id })

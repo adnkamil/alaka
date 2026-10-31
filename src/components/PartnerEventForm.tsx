@@ -19,7 +19,6 @@ import {
   isEndDateValid,
 } from '../lib/calendar-event-input'
 import { parseCatalogUrl } from '../lib/partner-catalog-rules'
-import { MAX_EVENT_PRODUCTS } from '../lib/partner-event-product-rules'
 import { partnerProductPhotoUrl } from '../lib/partner-product-rules'
 import { PartnerProductPickerSheet } from './PartnerProductPicker'
 import type { CalendarEventFormValue } from './CalendarEventForm'
@@ -45,7 +44,7 @@ interface PartnerEventFormProps {
   /** Tujuan tombol Batal desktop: detail event (kalau ada id) atau daftar. */
   cancelEventId?: string
   /**
-   * Katalog partner untuk memilih produk unggulan. Kalau tidak diisi (mis.
+   * Katalog partner untuk memilih produk event. Kalau tidak diisi (mis.
    * Ubah event), bagian pilihan produk tidak tampil.
    */
   products?: ReadonlyArray<PartnerProductRow>
@@ -484,7 +483,7 @@ export default function PartnerEventForm({
                   >
                     {productIds.length === 0
                       ? 'Opsional, bisa diubah nanti'
-                      : `${productIds.length} dari ${MAX_EVENT_PRODUCTS} produk dipilih`}
+                      : `${productIds.length} produk dipilih`}
                   </span>
                 </span>
                 <ChevronRight
@@ -504,7 +503,7 @@ export default function PartnerEventForm({
                       color: 'var(--app-success)',
                     }}
                   >
-                    {productIds.length} / {MAX_EVENT_PRODUCTS}
+                    {productIds.length} produk
                   </span>
                 </div>
                 {selectedProducts.length === 0 ? (
@@ -515,7 +514,7 @@ export default function PartnerEventForm({
                     Opsional, bisa diubah nanti.
                   </p>
                 ) : (
-                  <ul className="flex flex-col gap-2.5">
+                  <ul className="flex max-h-[320px] flex-col gap-2.5 overflow-y-auto">
                     {selectedProducts.map((p) => {
                       const photoUrl = partnerProductPhotoUrl(
                         p.id,

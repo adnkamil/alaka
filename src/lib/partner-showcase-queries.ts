@@ -8,14 +8,14 @@ import {
 } from '../db/schema'
 import { catalogDownloadUrl, catalogHost } from './partner-catalog-rules'
 import { partnerLogoUrl } from './partner-logo-rules'
-import { MAX_EVENT_PRODUCTS } from './partner-event-product-rules'
 import { partnerProductPhotoUrl } from './partner-product-rules'
 
 /**
- * Etalase partner untuk halaman event sisi JASTIPER (read-only): maksimal
- * `MAX_EVENT_PRODUCTS` produk unggulan yang dipilih partner untuk event itu,
- * plus tautan katalog lengkap milik event itu (`calendar_event.catalog_url`). Server-only. Hanya produk AKTIF yang keluar,
- * dan hanya kolom yang aman dilihat jastiper (tanpa kode/deskripsi internal).
+ * Etalase partner untuk halaman event sisi JASTIPER (read-only): seluruh produk
+ * yang dipilih partner untuk event itu, plus tautan katalog lengkap milik event
+ * itu (`calendar_event.catalog_url`). Server-only. Hanya produk AKTIF yang
+ * keluar, dan hanya kolom yang aman dilihat jastiper (tanpa kode/deskripsi
+ * internal).
  */
 
 export type PartnerShowcase = {
@@ -66,7 +66,6 @@ export async function getEventPartnerShowcase(
       ),
     )
     .orderBy(asc(partnerProducts.name))
-    .limit(MAX_EVENT_PRODUCTS)
 
   return {
     partnerId: partner.partnerId,

@@ -6,7 +6,6 @@ import {
   listPartnerEventProducts,
   replacePartnerEventProducts,
 } from './partner-event-product-queries'
-import { MAX_EVENT_PRODUCTS } from './partner-event-product-rules'
 
 /**
  * Pilihan produk per event. SETIAP handler wajib `requirePartner()` di baris
@@ -29,12 +28,9 @@ export const setPartnerEventProducts = createServerFn({ method: 'POST' })
   .validator(
     z.object({
       id: z.string().uuid(),
-      productIds: z
-        .array(z.string().uuid())
-        .max(
-          MAX_EVENT_PRODUCTS,
-          `Maksimal ${MAX_EVENT_PRODUCTS} produk unggulan per event`,
-        ),
+      // Tanpa batas jumlah; `replacePartnerEventProducts` memastikan semua id
+      // adalah produk milik partner ini, jadi ukurannya terbatas oleh katalognya.
+      productIds: z.array(z.string().uuid()),
     }),
   )
   .handler(async ({ data }) => {

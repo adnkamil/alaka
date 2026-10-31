@@ -32,7 +32,7 @@ function NewPartnerEventPage() {
         banner: banner?.type === 'upload' ? banner : undefined,
       },
     })
-    // Produk unggulan dipilih di form, jadi disimpan setelah event terbuat.
+    // Produk event dipilih di form, jadi disimpan setelah event terbuat.
     if (productIds.length > 0) {
       await setPartnerEventProducts({ data: { id, productIds } })
     }

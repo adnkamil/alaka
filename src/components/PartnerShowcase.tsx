@@ -1,12 +1,15 @@
-import { Download, Package } from 'lucide-react'
+import { useState } from 'react'
+import { ChevronDown, ChevronUp, Download, Package } from 'lucide-react'
 import PartnerLogo from './PartnerLogo'
+import { SHOWCASE_PREVIEW_COUNT } from '../lib/partner-event-product-rules'
 import { formatRupiah } from '../lib/partner-product-rules'
 import type { PartnerShowcase as PartnerShowcaseData } from '../lib/partner-showcase-queries'
 
 /**
- * Etalase partner di halaman event jastiper (read-only): beberapa produk
- * unggulan + tombol unduh katalog lengkap (link yang ditempel partner). Tidak tampil kalau partner
- * belum memilih produk dan belum mengunggah katalog.
+ * Etalase partner di halaman event jastiper (read-only): produk yang dipilih
+ * partner (enam pertama dulu, sisanya lewat "Lihat semua") + tombol unduh
+ * katalog lengkap (link yang ditempel partner). Tidak tampil kalau partner
+ * belum memilih produk dan belum menempel tautan katalog.
  */
 export default function PartnerShowcase({
   showcase,
@@ -14,7 +17,11 @@ export default function PartnerShowcase({
   showcase: PartnerShowcaseData
 }) {
   const { products, catalog } = showcase
+  const [expanded, setExpanded] = useState(false)
   if (products.length === 0 && !catalog) return null
+
+  const hidden = Math.max(0, products.length - SHOWCASE_PREVIEW_COUNT)
+  const shown = expanded ? products : products.slice(0, SHOWCASE_PREVIEW_COUNT)
 
   return (
     <section className="mt-6">
@@ -29,7 +36,7 @@ export default function PartnerShowcase({
 
       {products.length > 0 && (
         <div className="grid grid-cols-2 gap-3">
-          {products.map((product) => (
+          {shown.map((product) => (
             <div key={product.id} className="app-card overflow-hidden">
               <div
                 className="flex w-full items-center justify-center"
@@ -64,6 +71,27 @@ export default function PartnerShowcase({
             </div>
           ))}
         </div>
+      )}
+
+      {hidden > 0 && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
+          className="app-btn-outline mt-3 flex items-center justify-center gap-2"
+        >
+          {expanded ? (
+            <>
+              <ChevronUp size={16} />
+              Tampilkan lebih sedikit
+            </>
+          ) : (
+            <>
+              <ChevronDown size={16} />
+              Lihat semua {products.length} produk
+            </>
+          )}
+        </button>
       )}
 
       {catalog && (

@@ -1,8 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, Package, Search } from 'lucide-react'
 import {
-  MAX_EVENT_PRODUCTS,
+  deselectMany,
+  selectMany,
   selectableProducts,
+  selectionState,
+  toggleSelection,
 } from '../lib/partner-event-product-rules'
 import {
   formatRupiah,
@@ -40,7 +43,7 @@ export function ProductSearchInput({
         type="search"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Cari nama atau kode produks"
+        placeholder="Cari nama atau kode produk"
         className="min-w-0 flex-1 border-0 bg-transparent text-sm font-medium outline-none"
         style={{ color: 'var(--app-text)' }}
       />
@@ -52,12 +55,10 @@ export function ProductSearchInput({
 export function ProductCheckRow({
   product,
   checked,
-  disabled,
   onToggle,
 }: {
   product: PartnerProductRow
   checked: boolean
-  disabled: boolean
   onToggle: () => void
 }) {
   const photoUrl = partnerProductPhotoUrl(product.id, product.photoUpdatedAt)
@@ -66,13 +67,12 @@ export function ProductCheckRow({
       className="app-card flex shrink-0 cursor-pointer items-center gap-3 p-3"
       style={{
         borderColor: checked ? 'var(--app-accent)' : undefined,
-        opacity: disabled ? 0.5 : 1,
+        background: checked ? 'var(--app-accent-soft)' : undefined,
       }}
     >
       <input
         type="checkbox"
         checked={checked}
-        disabled={disabled}
         onChange={onToggle}
         className="size-5 shrink-0"
         style={{ accentColor: '#b6584b' }}
@@ -121,6 +121,160 @@ export function ProductCheckRow({
   )
 }
 
+type Scope = 'semua' | 'dipilih'
+
+/**
+ * Checklist produk untuk event, dipakai di layar penuh (form event) maupun
+ * halaman Produk di Event. Tanpa batas jumlah: ada "Pilih semua" (untuk hasil
+ * yang sedang tampil, jadi bisa dipakai bersama pencarian), filter "Dipilih",
+ * dan toolbar yang tetap menempel di atas saat daftar panjang di-scroll.
+ */
+export function ProductChecklist({
+  options,
+  selected,
+  onChange,
+  stickyTop = 'top-0',
+  variant = 'mobile',
+}: {
+  /** Produk yang bisa dicentang (sudah lewat `selectableProducts`). */
+  options: ReadonlyArray<PartnerProductRow>
+  selected: ReadonlySet<string>
+  onChange: (next: Set<string>) => void
+  /**
+   * Kelas `top-*` toolbar yang menempel. Di halaman penuh desktop toolbar harus
+   * turun di bawah topbar partner (72px); di layar penuh (sheet) cukup `top-0`.
+   */
+  stickyTop?: string
+  /**
+   * `mobile`: satu kolom, toolbar menempel (juga dipakai di layar penuh).
+   * `desktop`: di dalam kartu, daftar produk berupa grid dua/tiga kolom.
+   */
+  variant?: 'mobile' | 'desktop'
+}) {
+  const desktop = variant === 'desktop'
+  const [query, setQuery] = useState('')
+  const [scope, setScope] = useState<Scope>('semua')
+  const allRef = useRef<HTMLInputElement>(null)
+
+  const selectedCount = options.reduce(
+    (n, p) => (selected.has(p.id) ? n + 1 : n),
+    0,
+  )
+  const visible = options.filter(
+    (p) =>
+      matchesProductQuery(p, query) &&
+      (scope === 'semua' || selected.has(p.id)),
+  )
+  const visibleIds = visible.map((p) => p.id)
+  const state = selectionState(selected, visibleIds)
+  const filtering = query.trim() !== '' || scope === 'dipilih'
+
+  useEffect(() => {
+    if (allRef.current) allRef.current.indeterminate = state === 'some'
+  }, [state])
+
+  const scopes: Array<{ key: Scope; label: string }> = [
+    { key: 'semua', label: `Semua ${options.length}` },
+    { key: 'dipilih', label: `Dipilih ${selectedCount}` },
+  ]
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div
+        className={
+          desktop
+            ? 'flex flex-col gap-3'
+            : `sticky ${stickyTop} z-10 -mx-5 flex flex-col gap-3 px-5 pb-2 pt-1`
+        }
+        style={desktop ? undefined : { background: 'var(--app-bg)' }}
+      >
+        <ProductSearchInput value={query} onChange={setQuery} />
+        <div className="flex flex-wrap items-center gap-2">
+          {scopes.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => setScope(item.key)}
+              className={`pm-chip ${scope === item.key ? 'pm-chip--active' : ''}`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+        {visible.length > 0 && (
+          <label
+            className="flex cursor-pointer items-center gap-3 rounded-xl border px-3.5 py-2.5"
+            style={{
+              borderColor: 'var(--app-border)',
+              background: 'var(--pm-input)',
+            }}
+          >
+            <input
+              ref={allRef}
+              type="checkbox"
+              checked={state === 'all'}
+              onChange={() =>
+                onChange(
+                  state === 'all'
+                    ? deselectMany(selected, visibleIds)
+                    : selectMany(selected, visibleIds),
+                )
+              }
+              className="size-5 shrink-0"
+              style={{ accentColor: '#b6584b' }}
+            />
+            <span className="flex-1 text-sm font-bold">
+              {state === 'all' ? 'Lepas semua' : 'Pilih semua'}
+              {filtering ? ' hasil' : ''}
+              <span
+                className="ml-1.5 font-medium"
+                style={{ color: 'var(--app-text-soft)' }}
+              >
+                ({visible.length})
+              </span>
+            </span>
+          </label>
+        )}
+      </div>
+
+      {options.length === 0 ? (
+        <div className="app-card flex flex-col items-center gap-3 p-8 text-center">
+          <Package size={28} style={{ color: 'var(--app-text-mute)' }} />
+          <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
+            Belum ada produk aktif di katalog.
+          </p>
+        </div>
+      ) : visible.length === 0 ? (
+        <p
+          className="py-6 text-center text-sm"
+          style={{ color: 'var(--app-text-soft)' }}
+        >
+          {query.trim()
+            ? `Tidak ada produk yang cocok dengan “${query.trim()}”.`
+            : 'Belum ada produk yang dipilih.'}
+        </p>
+      ) : (
+        <div
+          className={
+            desktop
+              ? 'grid grid-cols-2 gap-3 2xl:grid-cols-3'
+              : 'flex flex-col gap-2.5'
+          }
+        >
+          {visible.map((product) => (
+            <ProductCheckRow
+              key={product.id}
+              product={product}
+              checked={selected.has(product.id)}
+              onToggle={() => onChange(toggleSelection(selected, product.id))}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 /**
  * Layar penuh pilih produk untuk event (tampilan sama dengan Kelola produk).
  * Dipakai di form Buat event: pilihan dikumpulkan dulu, baru disimpan bersama
@@ -139,20 +293,11 @@ export function PartnerProductPickerSheet({
   onClose: () => void
   onSave: (ids: Array<string>) => void
 }) {
-  const [selected, setSelected] = useState<Array<string>>(initialIds)
-  const [query, setQuery] = useState('')
-
+  const [selected, setSelected] = useState<Set<string>>(
+    () => new Set(initialIds),
+  )
   const options = selectableProducts(products, new Set(initialIds))
-  const visible = options.filter((p) => matchesProductQuery(p, query))
-  const full = selected.length >= MAX_EVENT_PRODUCTS
-
-  function toggle(id: string) {
-    setSelected((current) => {
-      if (current.includes(id)) return current.filter((x) => x !== id)
-      if (current.length >= MAX_EVENT_PRODUCTS) return current
-      return [...current, id]
-    })
-  }
+  const count = options.reduce((n, p) => (selected.has(p.id) ? n + 1 : n), 0)
 
   return (
     <div
@@ -175,42 +320,12 @@ export function PartnerProductPickerSheet({
         <h1 className="pm-display text-[22px] leading-tight">{title}</h1>
       </header>
 
-      <div className="flex flex-1 flex-col gap-3.5 overflow-y-auto px-5 pb-[120px] pt-2">
-        <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
-          {selected.length} dari {MAX_EVENT_PRODUCTS} produk unggulan dipilih
-        </p>
-        <ProductSearchInput value={query} onChange={setQuery} />
-
-        {options.length === 0 ? (
-          <div className="app-card flex flex-col items-center gap-3 p-8 text-center">
-            <Package size={28} style={{ color: 'var(--app-text-mute)' }} />
-            <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
-              Belum ada produk aktif di katalog.
-            </p>
-          </div>
-        ) : visible.length === 0 ? (
-          <p
-            className="py-6 text-center text-sm"
-            style={{ color: 'var(--app-text-soft)' }}
-          >
-            Tidak ada produk yang cocok dengan &ldquo;{query.trim()}&rdquo;.
-          </p>
-        ) : (
-          <div className="flex flex-col gap-2.5">
-            {visible.map((product) => {
-              const checked = selected.includes(product.id)
-              return (
-                <ProductCheckRow
-                  key={product.id}
-                  product={product}
-                  checked={checked}
-                  disabled={!checked && full}
-                  onToggle={() => toggle(product.id)}
-                />
-              )
-            })}
-          </div>
-        )}
+      <div className="flex-1 overflow-y-auto px-5 pb-[120px] pt-1">
+        <ProductChecklist
+          options={options}
+          selected={selected}
+          onChange={setSelected}
+        />
       </div>
 
       <div
@@ -222,10 +337,12 @@ export function PartnerProductPickerSheet({
       >
         <button
           type="button"
-          onClick={() => onSave(selected)}
+          onClick={() =>
+            onSave(options.filter((p) => selected.has(p.id)).map((p) => p.id))
+          }
           className="app-btn-primary w-full"
         >
-          Simpan ({selected.length} produk)
+          Simpan ({count} produk)
         </button>
       </div>
     </div>
