@@ -23,6 +23,7 @@ import { canUseFeature } from './subscription'
 import { EmailNotVerifiedError, isEmailVerified } from './email-verified'
 import { findCustomerForOrder } from './customer-matching'
 import { findMergeTarget, mergeItemLines, mergePaidAmount } from './order-merge'
+import { resolveEventItems } from './partner-event-items'
 import { derivePaymentStatus } from './order-totals'
 import { buildPartnerBundle } from './partner-bundle-build'
 import { lineTotal, partitionLockedItems } from './partner-bundle-lock'
@@ -72,6 +73,8 @@ async function listActivePaymentMethods(brandId: string) {
 
 const itemInputSchema = z.object({
   name: z.string().min(1, 'Nama barang wajib diisi'),
+  // Wajib di event partner (lihat resolveEventItems). Diabaikan di event lain.
+  partnerVariantId: z.uuid().nullish(),
   originalPrice: z.number().nonnegative(),
   // Fee berlaku per unit, jadi total baris = (originalPrice + fee) * qty.
   fee: z.number().nonnegative(),
@@ -151,6 +154,10 @@ export const createOrder = createServerFn({ method: 'POST' })
       throw new Error('Minimal satu barang atau paket')
     }
 
+    // Di event partner, barang hanya boleh dari katalog partner. Nama dan HPP
+    // diambil dari database, bukan dari klien.
+    const eventItems = await resolveEventItems(event.calendarEventId, data.items)
+
     // Paket dicek ulang di server (aturan, PRO, produk di event, pcs) dan HPP-nya
     // diambil dari database, bukan dari klien.
     const brandId = brandIdOf(user)
@@ -168,7 +175,7 @@ export const createOrder = createServerFn({ method: 'POST' })
     )
 
     const total =
-      data.items.reduce(
+      eventItems.reduce(
         (sum, item) => sum + (item.originalPrice + item.fee) * item.qty,
         0,
       ) + bundlesTotal
@@ -209,8 +216,10 @@ export const createOrder = createServerFn({ method: 'POST' })
           fee: Number(item.fee),
           qty: item.qty,
           obtained: item.obtained,
+          partnerVariantId: item.partnerVariantId,
+          hpp: item.hpp === null ? null : Number(item.hpp),
         })),
-        data.items,
+        eventItems,
       )
       const mergedTotal =
         mergedItems.reduce(
@@ -250,6 +259,8 @@ export const createOrder = createServerFn({ method: 'POST' })
             fee: item.fee.toString(),
             qty: item.qty,
             obtained: Boolean(item.obtained),
+            partnerVariantId: item.partnerVariantId ?? null,
+            hpp: item.hpp === null || item.hpp === undefined ? null : item.hpp.toString(),
           })),
         )
       }
@@ -280,15 +291,17 @@ export const createOrder = createServerFn({ method: 'POST' })
       })
       .returning()
 
-    if (data.items.length > 0) {
+    if (eventItems.length > 0) {
       await db.insert(items).values(
-        data.items.map((item) => ({
+        eventItems.map((item) => ({
           orderId: order.id,
           name: item.name,
           originalPrice: item.originalPrice.toString(),
           fee: item.fee.toString(),
           qty: item.qty,
           obtained: item.obtained,
+          partnerVariantId: item.partnerVariantId,
+          hpp: item.hpp === null ? null : item.hpp.toString(),
         })),
       )
     }
@@ -397,8 +410,12 @@ export const updateOrder = createServerFn({ method: 'POST' })
       0,
     )
 
+    const eventItems = await resolveEventItems(
+      order.event.calendarEventId,
+      data.items,
+    )
     const total =
-      data.items.reduce(
+      eventItems.reduce(
         (sum, item) => sum + (item.originalPrice + item.fee) * item.qty,
         0,
       ) +
@@ -430,15 +447,17 @@ export const updateOrder = createServerFn({ method: 'POST' })
     await db
       .delete(items)
       .where(and(eq(items.orderId, data.orderId), isNull(items.partnerRuleId)))
-    if (data.items.length > 0) {
+    if (eventItems.length > 0) {
       await db.insert(items).values(
-        data.items.map((item) => ({
+        eventItems.map((item) => ({
           orderId: data.orderId,
           name: item.name,
           originalPrice: item.originalPrice.toString(),
           fee: item.fee.toString(),
           qty: item.qty,
           obtained: item.obtained,
+          partnerVariantId: item.partnerVariantId,
+          hpp: item.hpp === null ? null : item.hpp.toString(),
         })),
       )
     }

@@ -2,10 +2,8 @@ import { useEffect, useState } from 'react'
 import { ChevronDown, Plus, Trash2, User, X } from 'lucide-react'
 import NumberInput from './ui/NumberInput'
 import Switch from './ui/Switch'
-import PartnerBundleSheet, {
-  type PartnerBundleCatalog,
-  type PartnerBundleSubmit,
-} from './PartnerBundleSheet'
+import PartnerBundleSheet from './PartnerBundleSheet'
+import type {PartnerBundleCatalog, PartnerBundleSubmit} from './PartnerBundleSheet';
 import { customerLabel } from '../lib/customer-matching'
 import { findFeeForPrice } from '../lib/fee-tier-validation'
 import { formatPhoneNumber } from '../lib/format'
@@ -20,6 +18,12 @@ import {
   openIndexAfterRemove,
 } from '../lib/order-sheet-items'
 import { lineTotal, summarizeItems } from '../lib/order-totals'
+import {
+  partnerItemName
+
+
+} from '../lib/partner-item-label'
+import type {PartnerEventItemCatalog, PartnerItemVariant} from '../lib/partner-item-label';
 
 interface FeeTier {
   minPrice: string
@@ -42,6 +46,10 @@ interface ItemDraft {
   // Checklist belanja; nggak ada inputnya di form, cuma dibawa terus dari pesanan
   // yang lagi di-edit supaya statusnya nggak ke-reset.
   obtained: boolean
+  /** Event partner: varian yang dipilih dari katalog (null = belum dipilih). */
+  partnerVariantId: string | null
+  /** Event partner: produk yang dipilih di dropdown pertama. */
+  partnerProductId: string | null
 }
 
 /**
@@ -55,6 +63,7 @@ export interface AddOrderSheetItemValue {
   fee: number
   qty: number
   obtained: boolean
+  partnerVariantId?: string | null
 }
 
 interface CustomerOption {
@@ -91,6 +100,8 @@ interface AddOrderSheetProps {
   }
   /** Katalog paket partner untuk event ini. Kosong = tombol "+ Tambah paket" disembunyikan. */
   partnerCatalog?: (PartnerBundleCatalog & { enabled: boolean }) | null
+  /** Produk & varian partner untuk form barang. `isPartnerEvent` = nama wajib dari katalog. */
+  partnerItems?: PartnerEventItemCatalog | null
   /** Paket yang sudah tersimpan (terkunci). Ditampilkan read-only. */
   lockedBundles?: Array<{ id: string; name: string; qty: number; total: number }>
   onEditLockedBundle?: (itemId: string) => void
@@ -105,12 +116,15 @@ interface AddOrderSheetProps {
       fee: number
       qty: number
       obtained: boolean
+      partnerVariantId?: string | null
     }>
     bundles: Array<PartnerBundleSubmit>
   }) => Promise<void>
 }
 
 const emptyItem: ItemDraft = {
+  partnerVariantId: null,
+  partnerProductId: null,
   name: '',
   bundle: false,
   bundleNames: [],
@@ -165,9 +179,11 @@ export default function AddOrderSheet({
   onSubmit,
   lockedTotals,
   partnerCatalog,
+  partnerItems,
   lockedBundles,
   onEditLockedBundle,
 }: AddOrderSheetProps) {
+  const partnerMode = Boolean(partnerItems?.isPartnerEvent)
   const [customerName, setCustomerName] = useState(
     initialValue?.customerName ?? '',
   )
@@ -354,6 +370,84 @@ export default function AddOrderSheet({
     return key ? itemPriceSuggestions[key] : []
   }
 
+  /** Event partner: pilih varian (atau null untuk mengosongkan) dan isi nama + harga dari katalog. */
+  function applyPartnerVariant(
+    index: number,
+    productId: string,
+    variant: PartnerItemVariant | null,
+  ) {
+    if (!variant) {
+      updateItem(index, { partnerProductId: productId, partnerVariantId: null, name: '' })
+      return
+    }
+    const product = partnerItems?.products.find((p) => p.id === productId)
+    updateItem(index, {
+      partnerProductId: productId,
+      partnerVariantId: variant.id,
+      name: partnerItemName(product?.name ?? '', variant.label),
+      originalPrice: variant.price,
+    })
+  }
+
+  function productIdForItem(item: ItemDraft): string | null {
+    if (item.partnerProductId) return item.partnerProductId
+    const product = partnerItems?.products.find((p) =>
+      p.variants.some((v) => v.id === item.partnerVariantId),
+    )
+    return product?.id ?? null
+  }
+
+  function renderPartnerPicker(item: ItemDraft, index: number) {
+    const products = partnerItems?.products ?? []
+    const productId = productIdForItem(item)
+    const product = products.find((p) => p.id === productId)
+    return (
+      <div className="flex flex-col gap-2 text-xs">
+        <select
+          required
+          value={productId ?? ''}
+          onChange={(e) => {
+            const next = products.find((p) => p.id === e.target.value)
+            if (!next) {
+              updateItem(index, { partnerProductId: null, partnerVariantId: null, name: '' })
+              return
+            }
+            // Produk tanpa pilihan ukuran/variasi langsung terpilih varian satu-satunya.
+            applyPartnerVariant(index, next.id, next.variants.length === 1 ? next.variants[0] : null)
+          }}
+          className="app-input"
+          aria-label="Produk partner"
+        >
+          <option value="">Pilih produk dari katalog</option>
+          {products.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+        {product && product.variants.length > 1 && (
+          <select
+            required
+            value={item.partnerVariantId ?? ''}
+            onChange={(e) => {
+              const variant = product.variants.find((v) => v.id === e.target.value) ?? null
+              applyPartnerVariant(index, product.id, variant)
+            }}
+            className="app-input"
+            aria-label="Ukuran dan variasi"
+          >
+            <option value="">Pilih ukuran / variasi</option>
+            {product.variants.map((v) => (
+              <option key={v.id} value={v.id}>
+                {(v.label || 'Standar') + ' - Rp ' + v.price.toLocaleString('id-ID')}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+    )
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
@@ -367,6 +461,16 @@ export default function AddOrderSheet({
     if (submitItems.length === 0 && bundles.length === 0) {
       setError('Tambah barang atau paket dulu.')
       return
+    }
+    if (partnerMode) {
+      const missing = items.findIndex(
+        (item) => !(hasBundles && isBlankItem(item)) && !item.partnerVariantId,
+      )
+      if (missing !== -1) {
+        setOpenIndex(missing)
+        setError(`Pilih produk dari katalog partner untuk barang ke-${missing + 1} dulu.`)
+        return
+      }
     }
     const incompleteIndex = items.findIndex(
       (item) =>
@@ -392,6 +496,7 @@ export default function AddOrderSheet({
           fee: item.fee,
           qty: item.qty,
           obtained: item.obtained,
+          partnerVariantId: item.partnerVariantId,
         })),
         bundles: bundles.map(({ label: _label, ...bundle }) => bundle),
       })
@@ -547,27 +652,33 @@ export default function AddOrderSheet({
                         style={{ borderColor: 'var(--app-border)' }}
                       >
                         <div className="mb-2 flex items-center justify-between gap-2">
-                          <span className="text-xs">Nama barang</span>
-                          <span
-                            className="flex items-center gap-1.5 text-xs font-semibold"
-                            style={{
-                              color: item.bundle
-                                ? 'var(--app-accent)'
-                                : 'var(--app-text-soft)',
-                            }}
-                          >
-                            Bundling manual
-                            <Switch
-                              checked={item.bundle}
-                              onChange={(checked) =>
-                                toggleBundle(index, checked)
-                              }
-                              label="Bundling: satu harga untuk beberapa barang"
-                            />
+                          <span className="text-xs">
+                            {partnerMode ? 'Produk partner' : 'Nama barang'}
                           </span>
+                          {!partnerMode && (
+                            <span
+                              className="flex items-center gap-1.5 text-xs font-semibold"
+                              style={{
+                                color: item.bundle
+                                  ? 'var(--app-accent)'
+                                  : 'var(--app-text-soft)',
+                              }}
+                            >
+                              Bundling manual
+                              <Switch
+                                checked={item.bundle}
+                                onChange={(checked) =>
+                                  toggleBundle(index, checked)
+                                }
+                                label="Bundling: satu harga untuk beberapa barang"
+                              />
+                            </span>
+                          )}
                         </div>
 
-                        {item.bundle ? (
+                        {partnerMode ? (
+                          renderPartnerPicker(item, index)
+                        ) : item.bundle ? (
                           // `text-xs` disamakan dengan label input tunggal di atas
                           // (mode tanpa bundling). `.app-input` tidak set font-size
                           // sendiri, jadi tinggi input ikut warisan: tanpa ini

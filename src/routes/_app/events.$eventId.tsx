@@ -34,6 +34,7 @@ import {
 } from 'lucide-react'
 import { z } from 'zod'
 import AddOrderSheet from '../../components/AddOrderSheet'
+import { getEventPartnerItems } from '../../lib/partner-event-item-functions'
 import {
   getEventPartnerCatalog,
   updatePartnerBundlePricing,
@@ -409,6 +410,13 @@ function EventDetailPage() {
     queryFn: () => getEventPartnerCatalog({ data: { eventId } }),
   })
   const { data: partnerCatalog } = useQuery(partnerCatalogQuery)
+
+  // Produk partner untuk form tambah barang. Di event partner, barang wajib dipilih dari sini.
+  const partnerItemsQuery = queryOptions({
+    queryKey: ['partner-items', eventId],
+    queryFn: () => getEventPartnerItems({ data: { eventId } }),
+  })
+  const { data: partnerItems } = useQuery(partnerItemsQuery)
   const [bundlePriceEdit, setBundlePriceEdit] = useState<{
     itemId: string
     name: string
@@ -1707,6 +1715,7 @@ function EventDetailPage() {
           itemNameSuggestions={itemNameSuggestions}
           itemPriceSuggestions={itemPriceSuggestions}
           partnerCatalog={partnerCatalog}
+          partnerItems={partnerItems}
           onClose={() => closeSheet()}
           onSubmit={handleCreateOrder}
         />
@@ -1720,6 +1729,7 @@ function EventDetailPage() {
           itemNameSuggestions={itemNameSuggestions}
           itemPriceSuggestions={itemPriceSuggestions}
           partnerCatalog={partnerCatalog}
+          partnerItems={partnerItems}
           title="Tambah Pesanan"
           submitLabel="Simpan pesanan"
           initialValue={{
@@ -1740,6 +1750,7 @@ function EventDetailPage() {
           itemNameSuggestions={itemNameSuggestions}
           itemPriceSuggestions={itemPriceSuggestions}
           partnerCatalog={partnerCatalog}
+          partnerItems={partnerItems}
           title="Edit Pesanan"
           submitLabel="Simpan perubahan"
           initialValue={{
@@ -1754,6 +1765,7 @@ function EventDetailPage() {
               originalPrice: Number(item.originalPrice),
               fee: Number(item.fee),
               qty: item.qty,
+              partnerVariantId: item.partnerVariantId,
               // Checklist belanja dibawa terus, biar updateOrder yang hapus +
               // insert ulang item nggak me-reset status "sudah didapat".
               obtained: item.obtained,
