@@ -112,6 +112,8 @@ export async function loadEventPartnerItemCatalog(
             label: variantLabel(
               optionsByVariant.get(v.id) ?? { size: null, variation: null },
             ),
+            size: optionsByVariant.get(v.id)?.size ?? null,
+            variation: optionsByVariant.get(v.id)?.variation ?? null,
             price: Number(v.price),
           })),
       }))

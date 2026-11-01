@@ -190,13 +190,34 @@ export const savePartnerRule = createServerFn({ method: 'POST' })
         bundlePrice: String(data.bundlePrice),
         isActive: data.isActive,
       }
+      let changed = false
       if (ruleId) {
+        // Cek apakah isi aturan benar-benar berubah sebelum memberi tahu jastiper.
+        const before = await tx.query.partnerPricingRules.findFirst({
+          where: eq(partnerPricingRules.id, ruleId),
+        })
+        const beforeProducts = await tx
+          .select({ id: partnerRuleProducts.partnerProductId })
+          .from(partnerRuleProducts)
+          .where(eq(partnerRuleProducts.ruleId, ruleId))
+        if (before) {
+          const sameProducts =
+            beforeProducts.length === data.productIds.length &&
+            beforeProducts.every((p) => data.productIds.includes(p.id))
+          changed =
+            before.name !== values.name ||
+            before.minQty !== values.minQty ||
+            Number(before.bundlePrice) !== Number(values.bundlePrice) ||
+            before.isActive !== values.isActive ||
+            !sameProducts
+        }
         const updated = await tx
           .update(partnerPricingRules)
           .set(values)
           .where(eq(partnerPricingRules.id, ruleId))
           .returning({ id: partnerPricingRules.id })
         if (updated.length === 0) throw new Error('Aturan tidak ditemukan')
+        if (changed) await notifyRuleChange(tx, ruleId, values.name, 'updated')
         await tx
           .delete(partnerRuleProducts)
           .where(eq(partnerRuleProducts.ruleId, ruleId))
@@ -235,15 +256,26 @@ export const deletePartnerRule = createServerFn({ method: 'POST' })
     const { db } = await import('../db')
     const { partnerPricingRules } = await import('../db/schema')
     // Kepemilikan dicek di kondisi hapus itu sendiri, bukan sesudahnya.
-    const deleted = await db
-      .delete(partnerPricingRules)
-      .where(
-        and(
+    // Jastiper dikabari dulu (sebelum tautan barang dilepas oleh penghapusan).
+    const deleted = await db.transaction(async (tx) => {
+      const owned = await tx.query.partnerPricingRules.findFirst({
+        where: and(
           eq(partnerPricingRules.id, data.id),
           eq(partnerPricingRules.partnerId, partner.id),
         ),
-      )
-      .returning({ id: partnerPricingRules.id })
+      })
+      if (!owned) return []
+      await notifyRuleChange(tx, owned.id, owned.name, 'deleted')
+      return tx
+        .delete(partnerPricingRules)
+        .where(
+          and(
+            eq(partnerPricingRules.id, data.id),
+            eq(partnerPricingRules.partnerId, partner.id),
+          ),
+        )
+        .returning({ id: partnerPricingRules.id })
+    })
     if (deleted.length === 0) throw new Error('Aturan tidak ditemukan')
     return { ok: true as const }
   })
@@ -312,3 +344,39 @@ export const setPartnerProductRule = createServerFn({ method: 'POST' })
       return { ok: true as const }
     })
   })
+
+type RuleTx = Parameters<
+  Parameters<typeof import('../db')['db']['transaction']>[0]
+>[0]
+
+/**
+ * Catat notifikasi untuk tiap event jastiper yang punya barang dari aturan ini.
+ * Dipanggil sebelum/sesudah perubahan di transaksi yang sama.
+ */
+async function notifyRuleChange(
+  tx: RuleTx,
+  ruleId: string,
+  ruleName: string,
+  changeType: 'updated' | 'deleted',
+) {
+  const { items, orders, partnerRuleNotices } = await import('../db/schema')
+  const { sql } = await import('drizzle-orm')
+  const rows = await tx
+    .select({
+      eventId: orders.eventId,
+      affected: sql<number>`count(${items.id})::int`,
+    })
+    .from(items)
+    .innerJoin(orders, eq(orders.id, items.orderId))
+    .where(eq(items.partnerRuleId, ruleId))
+    .groupBy(orders.eventId)
+  if (rows.length === 0) return
+  await tx.insert(partnerRuleNotices).values(
+    rows.map((r) => ({
+      eventId: r.eventId,
+      ruleName,
+      changeType,
+      affectedItems: r.affected,
+    })),
+  )
+}

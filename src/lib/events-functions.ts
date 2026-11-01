@@ -149,7 +149,7 @@ export const getEventDetail = createServerFn({ method: 'GET' })
       where: and(eq(events.id, data.id), eq(events.brandId, brandIdOf(user))),
       with: {
         feeRule: { with: { tiers: true } },
-        orders: { with: { items: true } },
+        orders: { with: { items: { with: { components: true } } } },
       },
     })
 

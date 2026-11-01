@@ -5,6 +5,8 @@ export interface PartnerItemVariant {
   id: string
   /** Gabungan ukuran dan variasi, misalnya "S / Marine Cove". Kosong kalau produk tanpa opsi. */
   label: string
+  size: string | null
+  variation: string | null
   price: number
 }
 

@@ -717,8 +717,13 @@ export const ordersRelations = relations(orders, ({ one, many }) => ({
   items: many(items),
 }))
 
-export const itemsRelations = relations(items, ({ one }) => ({
+export const itemsRelations = relations(items, ({ one, many }) => ({
   order: one(orders, { fields: [items.orderId], references: [orders.id] }),
+  components: many(itemComponents),
+}))
+
+export const itemComponentsRelations = relations(itemComponents, ({ one }) => ({
+  item: one(items, { fields: [itemComponents.itemId], references: [items.id] }),
 }))
 
 export const activityLogsRelations = relations(activityLogs, ({ one }) => ({
@@ -1145,6 +1150,27 @@ export const partnerPricingRules = pgTable(
     check('partner_pricing_rules_min_qty_pos', sql`${table.minQty} > 0`),
     check('partner_pricing_rules_price_nonneg', sql`${table.bundlePrice} >= 0`),
   ],
+)
+
+// Notifikasi perubahan/penghapusan aturan paket untuk jastiper yang punya
+// barang dari aturan itu di event tersebut. Pesanan yang sudah tercatat tidak
+// ikut berubah; ini hanya pemberitahuan (banner di halaman event jastiper).
+export const partnerRuleNotices = pgTable(
+  'partner_rule_notices',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    eventId: uuid('event_id')
+      .notNull()
+      .references(() => events.id, { onDelete: 'cascade' }),
+    ruleName: varchar('rule_name').notNull(),
+    changeType: varchar('change_type').notNull(), // 'updated' | 'deleted'
+    affectedItems: integer('affected_items').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    dismissedAt: timestamp('dismissed_at', { withTimezone: true }),
+  },
+  (table) => [index('partner_rule_notices_event_idx').on(table.eventId)],
 )
 
 // Produk yang masuk sebuah aturan. Satu produk hanya boleh di satu aturan,

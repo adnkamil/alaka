@@ -39,6 +39,10 @@ import {
   getEventPartnerCatalog,
   updatePartnerBundlePricing,
 } from '../../lib/partner-bundle-functions'
+import {
+  dismissRuleNotice,
+  getEventRuleNotices,
+} from '../../lib/rule-notice-functions'
 import EditEventModal from '../../components/EditEventModal'
 import type { EditEventValue } from '../../components/EditEventModal'
 import ImportOrdersModal from '../../components/ImportOrdersModal'
@@ -410,6 +414,16 @@ function EventDetailPage() {
     queryFn: () => getEventPartnerCatalog({ data: { eventId } }),
   })
   const { data: partnerCatalog } = useQuery(partnerCatalogQuery)
+  // Notifikasi perubahan/penghapusan aturan paket dari partner (banner).
+  const ruleNoticesQuery = queryOptions({
+    queryKey: ['rule-notices', eventId],
+    queryFn: () => getEventRuleNotices({ data: { eventId } }),
+  })
+  const { data: ruleNotices = [] } = useQuery(ruleNoticesQuery)
+  async function handleDismissRuleNotice(noticeId: string) {
+    await dismissRuleNotice({ data: { noticeId } })
+    await queryClient.invalidateQueries({ queryKey: ['rule-notices', eventId] })
+  }
 
   // Produk partner untuk form tambah barang. Di event partner, barang wajib dipilih dari sini.
   const partnerItemsQuery = queryOptions({
@@ -768,6 +782,36 @@ function EventDetailPage() {
 
   return (
     <main className="app-shell relative mx-auto max-w-lg px-4 pb-24 pt-6">
+      {ruleNotices.length > 0 && (
+        <div className="mb-4 space-y-2">
+          {ruleNotices.map((notice) => (
+            <div
+              key={notice.id}
+              className="rounded-xl p-3 text-xs"
+              style={{ background: '#fff4e5', color: '#8a4b00' }}
+            >
+              <p className="font-semibold">
+                {notice.changeType === 'deleted'
+                  ? `Aturan paket "${notice.ruleName}" dihapus.`
+                  : `Aturan paket "${notice.ruleName}" berubah.`}
+              </p>
+              <p className="mt-1">
+                {notice.changeType === 'deleted'
+                  ? `${notice.affectedItems} barang di event ini memakai aturan itu. Pesanan yang sudah tercatat tetap utuh.`
+                  : `${notice.affectedItems} barang di event ini memakai aturan itu. Pesanan yang sudah tercatat tidak ikut berubah.`}
+              </p>
+              <button
+                type="button"
+                onClick={() => handleDismissRuleNotice(notice.id)}
+                className="mt-2 font-semibold"
+                style={{ color: 'var(--app-accent)' }}
+              >
+                Mengerti
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
       <header className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link to="/" style={{ color: 'var(--app-text)' }}>
@@ -1778,6 +1822,15 @@ function EventDetailPage() {
               name: item.name,
               qty: item.qty,
               total: lineTotal(item),
+              sellPrice: Number(item.originalPrice),
+              hpp: Number(item.hpp ?? item.originalPrice),
+              fee: Number(item.fee),
+              components: item.components.map((c) => ({
+                productName: c.productName,
+                size: c.size,
+                variation: c.variation,
+                qty: c.qty,
+              })),
             }))}
           onEditLockedBundle={(itemId) => {
             const row = editingLockedItems.find((item) => item.id === itemId)
