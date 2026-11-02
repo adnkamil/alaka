@@ -26,12 +26,21 @@ interface PartnerCatalogPickerProps {
   onPick: (pick: CatalogPick) => void
   onDelete?: () => void
   onClose: () => void
+  /** Pesan singkat setelah barang ditambahkan (mode add). */
+  toast?: string | null
 }
 
 const PINK = '#b42318'
 
 function rupiah(n: number) {
   return `Rp${n.toLocaleString('id-ID')}`
+}
+
+/** Warna pastel tetap per nama produk (placeholder foto). */
+function tintFor(name: string): string {
+  let hash = 0
+  for (const ch of name) hash = (hash * 31 + ch.charCodeAt(0)) % 360
+  return `hsl(${hash} 35% 85%)`
 }
 
 function unique(values: Array<string | null>): Array<string> {
@@ -60,7 +69,9 @@ export default function PartnerCatalogPicker({
   onPick,
   onDelete,
   onClose,
+  toast = null,
 }: PartnerCatalogPickerProps) {
+  const pickedTotal = Object.values(pickedQty).reduce((sum, qty) => sum + qty, 0)
   const [query, setQuery] = useState('')
   const [onlyPicked, setOnlyPicked] = useState(false)
   const initialProduct =
@@ -85,9 +96,12 @@ export default function PartnerCatalogPicker({
 
   // Halaman katalog (frame 2)
   return (
-    <div className="flex min-h-full flex-col" style={{ background: 'var(--app-bg, #fbf8f3)' }}>
-      <div className="flex items-start gap-3 border-b p-4" style={{ borderColor: 'var(--app-border)' }}>
-        <button type="button" onClick={onClose} aria-label="Kembali">
+    <div className="app-shell flex min-h-full max-w-lg flex-col">
+      <div
+        className="sticky top-0 z-10 flex items-center gap-3 border-b p-4"
+        style={{ borderColor: 'var(--app-border)', background: 'var(--app-card)', paddingTop: 'max(1rem, env(safe-area-inset-top))' }}
+      >
+        <button type="button" onClick={onClose} aria-label="Kembali" className="-ml-2 flex h-11 w-11 items-center justify-center">
           <ChevronLeft size={20} />
         </button>
         <div className="min-w-0 flex-1">
@@ -106,6 +120,7 @@ export default function PartnerCatalogPicker({
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Cari nama atau kode produk"
             className="app-input w-full pl-9"
+            style={{ fontSize: 16, minHeight: 44 }}
             aria-label="Cari produk katalog"
             onKeyDown={(e) => {
               // Picker ada di dalam <form>; Enter di kolom cari tidak boleh submit pesanan.
@@ -118,7 +133,7 @@ export default function PartnerCatalogPicker({
             type="button"
             onClick={() => setOnlyPicked(false)}
             aria-pressed={!onlyPicked}
-            className="rounded-full border px-3 py-1.5"
+            className="min-h-[36px] rounded-full border px-4 py-1.5"
             style={{ borderColor: !onlyPicked ? 'var(--app-accent)' : 'var(--app-border)' }}
           >
             Semua
@@ -127,7 +142,7 @@ export default function PartnerCatalogPicker({
             type="button"
             onClick={() => setOnlyPicked(true)}
             aria-pressed={onlyPicked}
-            className="rounded-full border px-3 py-1.5"
+            className="min-h-[36px] rounded-full border px-4 py-1.5"
             style={{ borderColor: onlyPicked ? 'var(--app-accent)' : 'var(--app-border)' }}
           >
             Sudah dipilih
@@ -135,7 +150,7 @@ export default function PartnerCatalogPicker({
         </div>
       </div>
 
-      <div className="flex flex-col gap-2 px-4 pb-24">
+      <div className="flex flex-col gap-2 px-4 pb-28">
         {query.trim() && filtered.length > 0 && (
           <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
             {filtered.length} hasil untuk &quot;{query.trim()}&quot;
@@ -182,10 +197,11 @@ export default function PartnerCatalogPicker({
               key={p.id}
               type="button"
               onClick={() => setProduct(p)}
-              className="flex items-center justify-between gap-3 rounded-xl border p-3 text-left"
+              className="flex min-h-[64px] w-full items-center gap-3 rounded-xl border p-3 text-left"
               style={{ borderColor: 'var(--app-border)' }}
             >
-              <div className="min-w-0">
+              <span className="h-12 w-12 flex-shrink-0 rounded-lg" style={{ background: tintFor(p.name) }} aria-hidden="true" />
+              <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold">{p.name}</p>
                 <p className="text-sm font-semibold" style={{ color: 'var(--app-accent)' }}>{priceLabel(p)}</p>
                 <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>{meta}</p>
@@ -199,6 +215,20 @@ export default function PartnerCatalogPicker({
             </button>
           )
         })}
+      </div>
+
+      {toast && (
+        <div className="fixed bottom-24 left-1/2 z-[65] w-[calc(100%-2rem)] max-w-[28rem] -translate-x-1/2 rounded-xl px-4 py-3 text-sm text-white" style={{ background: '#2a2a2a' }} role="status">
+          {toast}
+        </div>
+      )}
+      <div
+        className="fixed bottom-0 left-1/2 z-[65] w-full max-w-lg -translate-x-1/2 border-t p-4"
+        style={{ background: 'var(--app-card, #fff)', borderColor: 'var(--app-border)', paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+      >
+        <button type="button" onClick={onClose} className="app-btn-primary w-full" style={{ minHeight: 44, fontSize: 14 }}>
+          Selesai · {pickedTotal} barang di pesanan
+        </button>
       </div>
 
       {product && (
@@ -276,7 +306,7 @@ function VariantSheet({
 
   return (
     <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/40 sm:items-center" role="dialog" aria-modal="true" aria-label="Pilih varian">
-      <div className="flex max-h-[90vh] w-full max-w-lg flex-col gap-4 overflow-y-auto rounded-t-2xl p-5 sm:rounded-2xl" style={{ background: 'var(--app-card)' }}>
+      <div className="flex max-h-[85dvh] w-full max-w-lg flex-col gap-4 overflow-y-auto rounded-t-2xl p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:rounded-2xl" style={{ background: 'var(--app-card)' }}>
         <div className="flex items-start gap-3">
           <div className="min-w-0 flex-1">
             <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>{mode === 'replace' ? 'Ubah varian' : 'Pilih varian'}</p>

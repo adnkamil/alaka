@@ -229,6 +229,7 @@ export default function AddOrderSheet({
   const [showBundleForm, setShowBundleForm] = useState(false)
   // Halaman katalog: 'add' untuk barang baru, 'replace' untuk ubah varian.
   const [catalogTarget, setCatalogTarget] = useState<null | { mode: 'add' } | { mode: 'replace'; index: number }>(null)
+  const [catalogToast, setCatalogToast] = useState<string | null>(null)
 
   // Kartu yang baru dibuka bisa jatuh di luar layar (barang baru ada di paling
   // bawah, atau isinya memanjang ke bawah) — gulirkan seperlunya saja.
@@ -292,7 +293,14 @@ export default function AddOrderSheet({
         )
       })
     }
-    setCatalogTarget(null)
+    if (catalogTarget?.mode === 'replace') {
+      setCatalogTarget(null)
+      return
+    }
+    // Mode tambah: halaman katalog tetap terbuka supaya bisa lanjut memilih.
+    const label = pick.label ? ` (${pick.label})` : ''
+    setCatalogToast(`${pick.productName}${label} ×${pick.qty} ditambahkan`)
+    window.setTimeout(() => setCatalogToast(null), 2000)
   }
 
   function addItem() {
@@ -445,24 +453,19 @@ export default function AddOrderSheet({
     // Kartu barang kosong (belum diisi sama sekali) diabaikan kalau sudah ada paket.
     const isBlankItem = (item: ItemDraft) =>
       !itemNameForSubmit(item).trim() && !item.originalPrice
-    const submitItems = items.filter((item) => !(hasBundles && isBlankItem(item)))
+    // Mode katalog: baris kosong (belum dipilih dari katalog) tidak ikut disimpan.
+    const submitItems = items.filter(
+      (item) =>
+        !(hasBundles && isBlankItem(item)) &&
+        !(partnerMode && !item.bundle && !item.partnerVariantId),
+    )
     if (submitItems.length === 0 && bundles.length === 0) {
       setError('Tambah barang atau paket dulu.')
       return
     }
-    if (partnerMode) {
-      const missing = items.findIndex(
-        (item) => !(hasBundles && isBlankItem(item)) && !item.partnerVariantId,
-      )
-      if (missing !== -1) {
-        setOpenIndex(missing)
-        setError(`Pilih produk dari katalog partner untuk barang ke-${missing + 1} dulu.`)
-        return
-      }
-    }
     const incompleteIndex = items.findIndex(
       (item) =>
-        !(hasBundles && isBlankItem(item)) &&
+        submitItems.includes(item) &&
         firstIncompleteItemIndex([item]) !== -1,
     )
     if (incompleteIndex !== -1) {
@@ -514,7 +517,7 @@ export default function AddOrderSheet({
             </div>
           )}
           {catalogTarget && partnerItems && (
-            <div className="fixed inset-0 z-[60] overflow-y-auto" style={{ background: 'var(--app-bg, #fbf8f3)' }}>
+            <div className="fixed inset-0 z-[60] overflow-y-auto" style={{ background: 'var(--app-bg)' }}>
               <PartnerCatalogPicker
                 customerName={customerName.trim()}
                 catalog={partnerItems}
@@ -529,6 +532,7 @@ export default function AddOrderSheet({
                   catalogTarget.mode === 'replace' ? (items[catalogTarget.index]?.qty ?? 1) : 1
                 }
                 onPick={handleCatalogPick}
+                toast={catalogToast}
                 onDelete={
                   catalogTarget.mode === 'replace'
                     ? () => {
@@ -1122,9 +1126,10 @@ export default function AddOrderSheet({
               </div>
 
               {showBundleForm && partnerCatalog?.enabled && (
-                <div className="fixed inset-0 z-[60] overflow-y-auto" style={{ background: 'var(--app-bg, #fbf8f3)' }}>
-                  <div className="flex items-start gap-3 border-b p-4" style={{ borderColor: 'var(--app-border)' }}>
-                    <button type="button" onClick={() => setShowBundleForm(false)} aria-label="Kembali">
+                <div className="fixed inset-0 z-[60] overflow-y-auto" style={{ background: 'var(--app-bg)' }}>
+                  <div className="app-shell max-w-lg">
+                  <div className="sticky top-0 z-10 flex items-center gap-3 border-b p-4" style={{ borderColor: 'var(--app-border)', background: 'var(--app-card)', paddingTop: 'max(1rem, env(safe-area-inset-top))' }}>
+                    <button type="button" onClick={() => setShowBundleForm(false)} aria-label="Kembali" className="-ml-2 flex h-11 w-11 items-center justify-center">
                       <ChevronLeft size={20} />
                     </button>
                     <p className="font-semibold">Pilih paket</p>
@@ -1142,6 +1147,7 @@ export default function AddOrderSheet({
                       ])
                     }}
                   />
+                </div>
                 </div>
                 </div>
               )}
