@@ -1,8 +1,8 @@
 /**
- * Aturan link katalog partner — murni, tanpa `db`, dipakai UI dan server.
+ * Aturan link katalog event partner — murni, tanpa `db`, dipakai UI dan server.
  *
  * Katalog lengkap TIDAK diunggah ke ALAKA: partner menempel link unduh (mis.
- * dari Google Drive) dan jastiper membukanya di halaman event.
+ * dari Google Drive) di form event dan jastiper membukanya di halaman event itu.
  */
 
 export const CATALOG_URL_MAX_LENGTH = 2000

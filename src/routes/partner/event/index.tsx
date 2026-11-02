@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import {
   CalendarDays,
@@ -10,16 +10,25 @@ import {
   Plus,
 } from 'lucide-react'
 import PartnerEventStatusBadge from '../../../components/PartnerEventStatusBadge'
+import Pagination from '../../../components/ui/Pagination'
 import { formatDateRange } from '../../../lib/calendar'
+import { DEFAULT_PAGE_SIZE } from '../../../lib/pagination'
 import { partnerEventStatus } from '../../../lib/partner-event-rules'
-import { partnerEventsQuery } from '../../../lib/queries'
+import { partnerEventsPageQuery } from '../../../lib/queries'
 import { todayIsoDateInAppTimeZone } from '../../../lib/timezone'
 import type { PartnerEventRow } from '../../../lib/partner-event-queries'
 import type { PartnerEventStatus } from '../../../lib/partner-event-rules'
 
 export const Route = createFileRoute('/partner/event/')({
+  // Halaman pertama dimuat dulu; halaman/tab berikutnya ditarik per halaman.
   loader: ({ context }) =>
-    context.queryClient.ensureQueryData(partnerEventsQuery),
+    context.queryClient.ensureQueryData(
+      partnerEventsPageQuery({
+        tab: 'all',
+        page: 1,
+        pageSize: DEFAULT_PAGE_SIZE,
+      }),
+    ),
   component: PartnerEventListPage,
 })
 
@@ -33,22 +42,43 @@ const TABS: Array<{ key: Tab; label: string }> = [
 ]
 
 function PartnerEventListPage() {
-  const { data: events } = useSuspenseQuery(partnerEventsQuery)
   const [tab, setTab] = useState<Tab>('all')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
   const today = todayIsoDateInAppTimeZone()
 
-  const withStatus = events.map((event) => ({
+  const { data } = useQuery({
+    ...partnerEventsPageQuery({ tab, page, pageSize }),
+    // Tabel tetap tampil (data lama) selama halaman berikutnya ditarik.
+    placeholderData: keepPreviousData,
+  })
+
+  // Server membatasi halaman di luar jangkauan (mis. event terakhir dihapus).
+  const serverPage = data?.page
+  useEffect(() => {
+    if (serverPage !== undefined && serverPage !== page) setPage(serverPage)
+  }, [serverPage, page])
+
+  if (!data) return null
+  const { counts } = data
+  const visible = data.rows.map((event) => ({
     event,
     status: partnerEventStatus(event, today),
   }))
-  const visible =
-    tab === 'all' ? withStatus : withStatus.filter((e) => e.status === tab)
 
-  const counts: Record<Tab, number> = {
-    all: withStatus.length,
-    berjalan: withStatus.filter((e) => e.status === 'berjalan').length,
-    mendatang: withStatus.filter((e) => e.status === 'mendatang').length,
-    selesai: withStatus.filter((e) => e.status === 'selesai').length,
+  function changeTab(next: Tab) {
+    setTab(next)
+    setPage(1)
+  }
+  const pager = {
+    page: data.page,
+    pageSize: data.pageSize,
+    total: data.total,
+    onPageChange: setPage,
+    onPageSizeChange: (size: number) => {
+      setPageSize(size)
+      setPage(1)
+    },
   }
 
   return (
@@ -61,7 +91,7 @@ function PartnerEventListPage() {
             <button
               key={t.key}
               type="button"
-              onClick={() => setTab(t.key)}
+              onClick={() => changeTab(t.key)}
               className={`pm-chip ${tab === t.key ? 'pm-chip--active' : ''}`}
             >
               {t.label}
@@ -73,7 +103,7 @@ function PartnerEventListPage() {
           <div className="app-card flex flex-col items-center gap-2 p-8 text-center">
             <Inbox size={28} style={{ color: 'var(--app-text-mute)' }} />
             <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
-              {events.length === 0
+              {counts.all === 0
                 ? 'Belum ada event. Buat event pertama kamu.'
                 : 'Belum ada event di kategori ini.'}
             </p>
@@ -151,6 +181,8 @@ function PartnerEventListPage() {
           </div>
         )}
 
+        <Pagination {...pager} className="justify-center" />
+
         <div className="pm-footer">
           <Link
             to="/partner/event/baru"
@@ -162,34 +194,37 @@ function PartnerEventListPage() {
         </div>
       </main>
       <EventsDesktop
-        events={events}
         visible={visible}
         counts={counts}
         tab={tab}
-        onTab={setTab}
+        onTab={changeTab}
+        pager={pager}
       />
     </>
   )
 }
+
+const COLUMNS =
+  'grid-cols-[minmax(0,1.5fr)_170px_minmax(0,1fr)_90px_110px_110px]'
 
 type EventWithStatus = {
   event: PartnerEventRow
   status: PartnerEventStatus
 }
 
-/** Daftar event layout desktop (>= lg) sesuai Figma "D5 Event Partner". */
+/** Daftar event layout desktop (>= lg): tabel, gaya sama dengan katalog. */
 function EventsDesktop({
-  events,
   visible,
   counts,
   tab,
   onTab,
+  pager,
 }: {
-  events: Array<PartnerEventRow>
   visible: Array<EventWithStatus>
   counts: Record<Tab, number>
   tab: Tab
   onTab: (tab: Tab) => void
+  pager: React.ComponentProps<typeof Pagination>
 }) {
   return (
     <main className="pm-wide hidden flex-col gap-5 lg:flex">
@@ -230,46 +265,73 @@ function EventsDesktop({
         <div className="app-card flex flex-col items-center gap-2 p-10 text-center">
           <Inbox size={28} style={{ color: 'var(--app-text-mute)' }} />
           <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
-            {events.length === 0
+            {counts.all === 0
               ? 'Belum ada event. Buat event pertama kamu.'
               : 'Belum ada event di kategori ini.'}
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-5">
-          {visible.map(({ event, status }) => (
-            <Link
-              key={event.id}
-              to="/partner/event/$id"
-              params={{ id: event.id }}
-              className="app-card flex flex-col overflow-hidden no-underline"
-              style={{ color: 'inherit' }}
+        <>
+          <Pagination {...pager} />
+          <div className="app-card overflow-hidden">
+            <div
+              className={`grid ${COLUMNS} items-center gap-4 px-5 py-3.5 text-[11px] font-bold uppercase tracking-wide`}
+              style={{ background: 'var(--pm-tint)', color: 'var(--pm-gold)' }}
             >
+              <span>Event</span>
+              <span>Tanggal</span>
+              <span>Lokasi</span>
+              <span>Tipe</span>
+              <span>Jastiper</span>
+              <span>Status</span>
+            </div>
+            {visible.map(({ event, status }) => (
               <div
-                className="flex h-[138px] w-full items-center justify-center overflow-hidden"
-                style={{
-                  background: event.bannerSrc ? undefined : 'var(--pm-tint)',
-                  color: 'var(--pm-gold)',
-                }}
+                key={event.id}
+                className={`grid ${COLUMNS} items-center gap-4 border-t px-5 py-3`}
+                style={{ borderColor: 'var(--app-border)' }}
               >
-                {event.bannerSrc ? (
-                  <img
-                    src={event.bannerSrc}
-                    alt=""
-                    loading="lazy"
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <ImageIcon size={30} />
-                )}
-              </div>
-              <div className="flex flex-1 flex-col gap-2 p-[18px]">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="pm-display text-[17px] leading-snug">
-                    {event.name}
-                  </p>
+                <Link
+                  to="/partner/event/$id"
+                  params={{ id: event.id }}
+                  className="flex min-w-0 items-center gap-3.5 no-underline"
+                  style={{ color: 'inherit' }}
+                >
+                  <div
+                    className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl"
+                    style={{
+                      background: 'var(--pm-tint)',
+                      color: 'var(--pm-gold)',
+                    }}
+                  >
+                    {event.bannerSrc ? (
+                      <img
+                        src={event.bannerSrc}
+                        alt=""
+                        loading="lazy"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <ImageIcon size={20} />
+                    )}
+                  </div>
+                  <p className="truncate text-sm font-bold">{event.name}</p>
+                </Link>
+                <span
+                  className="text-[13px]"
+                  style={{ color: 'var(--app-text-soft)' }}
+                >
+                  {formatDateRange(event.eventDate, event.endDate)}
+                </span>
+                <span
+                  className="truncate text-[13px]"
+                  style={{ color: 'var(--app-text-soft)' }}
+                >
+                  {event.location}
+                </span>
+                <div>
                   <span
-                    className="app-badge shrink-0"
+                    className="app-badge"
                     style={
                       event.isOnline
                         ? {
@@ -285,36 +347,20 @@ function EventsDesktop({
                     {event.isOnline ? 'Online' : 'Offline'}
                   </span>
                 </div>
-                <p
-                  className="flex items-center gap-2 text-[13px]"
-                  style={{ color: 'var(--app-text-soft)' }}
+                <span
+                  className="pm-num text-sm font-bold"
+                  style={{ color: 'var(--app-success)' }}
                 >
-                  <CalendarDays size={14} className="shrink-0" />
-                  {formatDateRange(event.eventDate, event.endDate)}
-                </p>
-                <p
-                  className="flex items-center gap-2 text-[13px]"
-                  style={{ color: 'var(--app-text-soft)' }}
-                >
-                  <MapPin size={14} className="shrink-0" />
-                  <span className="truncate">{event.location}</span>
-                </p>
-                <div className="mt-auto flex items-center justify-between pt-1">
-                  <span
-                    className="app-badge"
-                    style={{
-                      background: 'var(--app-success-soft)',
-                      color: 'var(--app-success)',
-                    }}
-                  >
-                    {event.participantCount} jastiper ikut
-                  </span>
+                  {event.participantCount} jastiper
+                </span>
+                <div>
                   <PartnerEventStatusBadge status={status} />
                 </div>
               </div>
-            </Link>
-          ))}
-        </div>
+            ))}
+          </div>
+          <Pagination {...pager} />
+        </>
       )}
     </main>
   )

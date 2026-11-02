@@ -7,6 +7,7 @@ interface NumberInputProps {
   id?: string
   onFocus?: React.FocusEventHandler<HTMLInputElement>
   onBlur?: React.FocusEventHandler<HTMLInputElement>
+  readOnly?: boolean
 }
 
 // Displays digits with thousands separators and strips any leading zeros as the user types.
@@ -19,6 +20,7 @@ export default function NumberInput({
   id,
   onFocus,
   onBlur,
+  readOnly,
 }: NumberInputProps) {
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const digitsOnly = e.target.value
@@ -32,6 +34,7 @@ export default function NumberInput({
       id={id}
       type="text"
       inputMode="numeric"
+      readOnly={readOnly}
       placeholder={placeholder}
       required={required}
       value={value === 0 ? '' : value.toLocaleString('id-ID')}

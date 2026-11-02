@@ -20,6 +20,9 @@ export interface MergeableItem {
   fee: number
   qty: number
   obtained?: boolean
+  /** Varian partner. Barang dari varian berbeda tidak digabung walau namanya sama. */
+  partnerVariantId?: string | null
+  hpp?: number | null
 }
 
 /**
@@ -97,7 +100,8 @@ export function mergeItemLines(
       (candidate) =>
         candidate.name === item.name &&
         Number(candidate.originalPrice) === Number(item.originalPrice) &&
-        Number(candidate.fee) === Number(item.fee),
+        Number(candidate.fee) === Number(item.fee) &&
+        (candidate.partnerVariantId ?? null) === (item.partnerVariantId ?? null),
     )
 
     if (sameLine) {

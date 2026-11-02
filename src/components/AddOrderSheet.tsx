@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
-import { ChevronDown, Plus, Trash2, User, X } from 'lucide-react'
+import { ChevronDown, ChevronLeft, Plus, Trash2, User, X } from 'lucide-react'
 import NumberInput from './ui/NumberInput'
 import Switch from './ui/Switch'
+import PartnerBundleSheet from './PartnerBundleSheet'
+import type {PartnerBundleCatalog, PartnerBundleSubmit} from './PartnerBundleSheet';
 import { customerLabel } from '../lib/customer-matching'
 import { findFeeForPrice } from '../lib/fee-tier-validation'
 import { formatPhoneNumber } from '../lib/format'
@@ -16,6 +18,13 @@ import {
   openIndexAfterRemove,
 } from '../lib/order-sheet-items'
 import { lineTotal, summarizeItems } from '../lib/order-totals'
+import {
+  partnerItemName
+
+
+} from '../lib/partner-item-label'
+import type {PartnerEventItemCatalog} from '../lib/partner-item-label';
+import PartnerCatalogPicker, {type CatalogPick} from './PartnerCatalogPicker';
 
 interface FeeTier {
   minPrice: string
@@ -38,6 +47,10 @@ interface ItemDraft {
   // Checklist belanja; nggak ada inputnya di form, cuma dibawa terus dari pesanan
   // yang lagi di-edit supaya statusnya nggak ke-reset.
   obtained: boolean
+  /** Event partner: varian yang dipilih dari katalog (null = belum dipilih). */
+  partnerVariantId: string | null
+  /** Event partner: produk yang dipilih di dropdown pertama. */
+  partnerProductId: string | null
 }
 
 /**
@@ -51,6 +64,7 @@ export interface AddOrderSheetItemValue {
   fee: number
   qty: number
   obtained: boolean
+  partnerVariantId?: string | null
 }
 
 interface CustomerOption {
@@ -75,6 +89,32 @@ interface AddOrderSheetProps {
   title?: string
   submitLabel?: string
   initialValue?: AddOrderSheetValue
+  /**
+   * Barang yang tidak ikut form (bundle partner terkunci). Total-nya tetap
+   * dihitung ke tagihan supaya angka di form sama dengan yang tersimpan.
+   */
+  lockedTotals?: {
+    subtotal: number
+    totalFee: number
+    total: number
+    count: number
+  }
+  /** Katalog paket partner untuk event ini. Kosong = tombol "+ Tambah paket" disembunyikan. */
+  partnerCatalog?: (PartnerBundleCatalog & { enabled: boolean }) | null
+  /** Produk & varian partner untuk form barang. `isPartnerEvent` = nama wajib dari katalog. */
+  partnerItems?: PartnerEventItemCatalog | null
+  /** Paket yang sudah tersimpan (terkunci). Ditampilkan read-only. */
+  lockedBundles?: Array<{
+    id: string
+    name: string
+    qty: number
+    total: number
+    sellPrice: number
+    hpp: number
+    fee: number
+    components: Array<{ productName: string; size: string | null; variation: string | null; qty: number }>
+  }>
+  onEditLockedBundle?: (itemId: string) => void
   onClose: () => void
   onSubmit: (value: {
     customerName: string
@@ -86,11 +126,15 @@ interface AddOrderSheetProps {
       fee: number
       qty: number
       obtained: boolean
+      partnerVariantId?: string | null
     }>
+    bundles: Array<PartnerBundleSubmit>
   }) => Promise<void>
 }
 
 const emptyItem: ItemDraft = {
+  partnerVariantId: null,
+  partnerProductId: null,
   name: '',
   bundle: false,
   bundleNames: [],
@@ -143,7 +187,13 @@ export default function AddOrderSheet({
   initialValue,
   onClose,
   onSubmit,
+  lockedTotals,
+  partnerCatalog,
+  partnerItems,
+  lockedBundles,
+  onEditLockedBundle,
 }: AddOrderSheetProps) {
+  const partnerMode = Boolean(partnerItems?.isPartnerEvent)
   const [customerName, setCustomerName] = useState(
     initialValue?.customerName ?? '',
   )
@@ -174,6 +224,12 @@ export default function AddOrderSheet({
   )
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Paket baru yang akan dikirim bersama barang satuan (belum tersimpan).
+  const [bundles, setBundles] = useState<Array<PartnerBundleSubmit & { label: string }>>([])
+  const [showBundleForm, setShowBundleForm] = useState(false)
+  // Halaman katalog: 'add' untuk barang baru, 'replace' untuk ubah varian.
+  const [catalogTarget, setCatalogTarget] = useState<null | { mode: 'add' } | { mode: 'replace'; index: number }>(null)
+  const [catalogToast, setCatalogToast] = useState<string | null>(null)
 
   // Kartu yang baru dibuka bisa jatuh di luar layar (barang baru ada di paling
   // bawah, atau isinya memanjang ke bawah) — gulirkan seperlunya saja.
@@ -202,6 +258,49 @@ export default function AddOrderSheet({
         return next
       }),
     )
+  }
+
+  // Jumlah per varian katalog yang sudah ada di pesanan (dipakai picker).
+  const pickedQtyByVariant: Record<string, number> = {}
+  for (const item of items) {
+    if (item.partnerVariantId && !item.bundle) {
+      pickedQtyByVariant[item.partnerVariantId] =
+        (pickedQtyByVariant[item.partnerVariantId] ?? 0) + item.qty
+    }
+  }
+
+  function handleCatalogPick(pick: CatalogPick) {
+    const draft = {
+      name: partnerItemName(pick.productName, pick.label),
+      originalPrice: pick.price,
+      fee: findFeeForPrice(parsedTiers, pick.price) ?? 0,
+      qty: pick.qty,
+      partnerVariantId: pick.partnerVariantId,
+    }
+    if (catalogTarget?.mode === 'replace') {
+      const index = catalogTarget.index
+      // Ganti varian barang yang sudah ada; status "sudah didapat" ikut dibawa.
+      setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...draft } : item)))
+    } else {
+      // Varian yang sudah ada di pesanan: jumlahnya ditambah, tidak jadi baris baru.
+      setItems((prev) => {
+        const existing = prev.findIndex(
+          (item) => !item.bundle && item.partnerVariantId === pick.partnerVariantId,
+        )
+        if (existing === -1) return [...prev, { ...emptyItem, ...draft }]
+        return prev.map((item, i) =>
+          i === existing ? { ...item, qty: item.qty + pick.qty } : item,
+        )
+      })
+    }
+    if (catalogTarget?.mode === 'replace') {
+      setCatalogTarget(null)
+      return
+    }
+    // Mode tambah: halaman katalog tetap terbuka supaya bisa lanjut memilih.
+    const label = pick.label ? ` (${pick.label})` : ''
+    setCatalogToast(`${pick.productName}${label} ×${pick.qty} ditambahkan`)
+    window.setTimeout(() => setCatalogToast(null), 2000)
   }
 
   function addItem() {
@@ -287,10 +386,30 @@ export default function AddOrderSheet({
   }
 
   const {
-    subtotal: totalPrice,
-    totalFee,
-    total: totalTagihan,
+    subtotal: itemsPrice,
+    totalFee: itemsFee,
   } = summarizeItems(items)
+  // Paket baru: harga jual dan fee dikali jumlah paket (fee berlaku per paket).
+  const bundlesSubtotal = bundles.reduce((sum, b) => sum + b.sellPrice * b.bundleCount, 0)
+  const bundlesFee = bundles.reduce((sum, b) => sum + b.fee * b.bundleCount, 0)
+  const totalPrice = itemsPrice + (lockedTotals?.subtotal ?? 0) + bundlesSubtotal
+  const totalFee = itemsFee + (lockedTotals?.totalFee ?? 0) + bundlesFee
+  const totalTagihan = totalPrice + totalFee
+  // "Total harga jual" memakai harga partner (HPP), bukan harga jual yang bisa diubah.
+  const partnerVariantPrice = (variantId: string | null | undefined) =>
+    variantId
+      ? (partnerItems?.products.flatMap((pr) => pr.variants).find((v) => v.id === variantId)?.price ?? null)
+      : null
+  const itemsHpp = items
+    .filter((item) => !item.bundle)
+    .reduce((sum, item) => sum + (partnerVariantPrice(item.partnerVariantId) ?? item.originalPrice) * item.qty, 0)
+  const lockedHpp = (lockedBundles ?? []).reduce((sum, b) => sum + b.hpp * b.qty, 0)
+  const bundlesHpp = bundles.reduce((sum, b) => {
+    const partnerPrice =
+      partnerCatalog?.rules.find((r) => r.id === b.ruleId)?.bundlePrice ?? b.sellPrice
+    return sum + partnerPrice * b.bundleCount
+  }, 0)
+  const totalHpp = itemsHpp + lockedHpp + bundlesHpp
 
   const filteredCustomers = customerName.trim()
     ? customers
@@ -322,12 +441,33 @@ export default function AddOrderSheet({
     return key ? itemPriceSuggestions[key] : []
   }
 
+  /** Event partner: pilih varian (atau null untuk mengosongkan) dan isi nama + harga dari katalog. */
+
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
     // Isi kartu yang tertutup tidak dirender, jadi `required` bawaan browser
     // tidak menjangkaunya — cek manual lalu buka kartu yang belum lengkap.
-    const incompleteIndex = firstIncompleteItemIndex(items)
+    const hasBundles = bundles.length > 0
+    // Kartu barang kosong (belum diisi sama sekali) diabaikan kalau sudah ada paket.
+    const isBlankItem = (item: ItemDraft) =>
+      !itemNameForSubmit(item).trim() && !item.originalPrice
+    // Mode katalog: baris kosong (belum dipilih dari katalog) tidak ikut disimpan.
+    const submitItems = items.filter(
+      (item) =>
+        !(hasBundles && isBlankItem(item)) &&
+        !(partnerMode && !item.bundle && !item.partnerVariantId),
+    )
+    if (submitItems.length === 0 && bundles.length === 0) {
+      setError('Tambah barang atau paket dulu.')
+      return
+    }
+    const incompleteIndex = items.findIndex(
+      (item) =>
+        submitItems.includes(item) &&
+        firstIncompleteItemIndex([item]) !== -1,
+    )
     if (incompleteIndex !== -1) {
       setOpenIndex(incompleteIndex)
       setError(
@@ -341,13 +481,15 @@ export default function AddOrderSheet({
         customerName,
         paymentStatus,
         paidAmount: paymentStatus === 'dp' ? dpAmount : undefined,
-        items: items.map((item) => ({
+        items: submitItems.map((item) => ({
           name: itemNameForSubmit(item),
           originalPrice: item.originalPrice,
           fee: item.fee,
           qty: item.qty,
           obtained: item.obtained,
+          partnerVariantId: item.partnerVariantId,
         })),
+        bundles: bundles.map(({ label: _label, ...bundle }) => bundle),
       })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Gagal menyimpan pesanan')
@@ -363,6 +505,46 @@ export default function AddOrderSheet({
         style={{ borderTop: '1px solid var(--app-border)' }}
       >
         <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit}>
+          {partnerMode && (
+            <div
+              className="mx-4 mt-3 rounded-xl p-3 text-xs"
+              style={{ background: 'var(--app-accent-soft, #f3e3de)', color: 'var(--app-accent)' }}
+            >
+              <span className="font-semibold">Event ini memakai katalog partner.</span>{' '}
+              <span style={{ color: 'var(--app-text-soft)' }}>
+                Barang dipilih dari katalog partner. Nama, varian, dan harga mengikuti partner dan tidak bisa diketik manual.
+              </span>
+            </div>
+          )}
+          {catalogTarget && partnerItems && (
+            <div className="fixed inset-0 z-[60] overflow-y-auto" style={{ background: 'var(--app-bg)' }}>
+              <PartnerCatalogPicker
+                customerName={customerName.trim()}
+                catalog={partnerItems}
+                pickedQty={pickedQtyByVariant}
+                mode={catalogTarget.mode}
+                initialVariantId={
+                  catalogTarget.mode === 'replace'
+                    ? (items[catalogTarget.index]?.partnerVariantId ?? null)
+                    : null
+                }
+                initialQty={
+                  catalogTarget.mode === 'replace' ? (items[catalogTarget.index]?.qty ?? 1) : 1
+                }
+                onPick={handleCatalogPick}
+                toast={catalogToast}
+                onDelete={
+                  catalogTarget.mode === 'replace'
+                    ? () => {
+                        removeItem(catalogTarget.index)
+                        setCatalogTarget(null)
+                      }
+                    : undefined
+                }
+                onClose={() => setCatalogTarget(null)}
+              />
+            </div>
+          )}
           <div className="min-h-0 flex-1 overflow-y-auto p-5">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-bold">{title}</h2>
@@ -448,7 +630,7 @@ export default function AddOrderSheet({
                 >
                   Item
                 </span>
-                {items.map((item, index) => (
+                {items.map((item, index) => partnerMode && !item.partnerVariantId ? null : (
                   <div
                     key={index}
                     id={`order-item-${index}`}
@@ -501,27 +683,43 @@ export default function AddOrderSheet({
                         style={{ borderColor: 'var(--app-border)' }}
                       >
                         <div className="mb-2 flex items-center justify-between gap-2">
-                          <span className="text-xs">Nama barang</span>
-                          <span
-                            className="flex items-center gap-1.5 text-xs font-semibold"
-                            style={{
-                              color: item.bundle
-                                ? 'var(--app-accent)'
-                                : 'var(--app-text-soft)',
-                            }}
-                          >
-                            Bundling
-                            <Switch
-                              checked={item.bundle}
-                              onChange={(checked) =>
-                                toggleBundle(index, checked)
-                              }
-                              label="Bundling: satu harga untuk beberapa barang"
-                            />
+                          <span className="text-xs">
+                            {partnerMode ? 'Produk partner' : 'Nama barang'}
                           </span>
+                          {!partnerMode && (
+                            <span
+                              className="flex items-center gap-1.5 text-xs font-semibold"
+                              style={{
+                                color: item.bundle
+                                  ? 'var(--app-accent)'
+                                  : 'var(--app-text-soft)',
+                              }}
+                            >
+                              Bundling manual
+                              <Switch
+                                checked={item.bundle}
+                                onChange={(checked) =>
+                                  toggleBundle(index, checked)
+                                }
+                                label="Bundling: satu harga untuk beberapa barang"
+                              />
+                            </span>
+                          )}
                         </div>
 
-                        {item.bundle ? (
+                        {partnerMode ? (
+                          <div className="flex flex-col gap-2 text-xs">
+                            <p className="font-semibold">{item.name}</p>
+                            <button
+                              type="button"
+                              onClick={() => setCatalogTarget({ mode: 'replace', index })}
+                              className="self-start font-semibold"
+                              style={{ color: 'var(--app-accent)' }}
+                            >
+                              Ubah varian
+                            </button>
+                          </div>
+                        ) : item.bundle ? (
                           // `text-xs` disamakan dengan label input tunggal di atas
                           // (mode tanpa bundling). `.app-input` tidak set font-size
                           // sendiri, jadi tinggi input ikut warisan: tanpa ini
@@ -648,6 +846,7 @@ export default function AddOrderSheet({
                             <NumberInput
                               required
                               value={item.originalPrice}
+                              readOnly={partnerMode}
                               onChange={(originalPrice) =>
                                 updateItem(index, { originalPrice })
                               }
@@ -782,14 +981,176 @@ export default function AddOrderSheet({
                 ))}
               </div>
 
-              <button
-                type="button"
-                onClick={addItem}
-                className="app-btn-outline"
-                style={{ color: 'var(--app-accent)' }}
-              >
-                + Tambah barang
-              </button>
+              {lockedBundles && lockedBundles.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold">Paket</span>
+                    <span className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
+                      {lockedBundles.length} paket
+                    </span>
+                  </div>
+                  {lockedBundles.map((bundle) => {
+                    const pcs = bundle.components.reduce((sum, c) => sum + c.qty, 0)
+                    return (
+                      <div key={bundle.id} className="app-card flex flex-col gap-2 p-3 text-sm">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="truncate font-bold">
+                              {bundle.name} · {pcs} pcs
+                            </p>
+                            <span
+                              className="mt-1 inline-block rounded-md px-2 py-0.5 text-[11px]"
+                              style={{ background: 'var(--app-card-soft, #f7f1e7)' }}
+                            >
+                              Isi terkunci
+                            </span>
+                          </div>
+                          <span className="pm-num shrink-0 font-bold">
+                            Rp{bundle.total.toLocaleString('id-ID')}
+                          </span>
+                        </div>
+                        <div
+                          className="flex flex-col gap-0.5 rounded-lg p-2 text-xs"
+                          style={{ background: 'var(--app-card-soft, #f7f1e7)' }}
+                        >
+                          {bundle.components.map((c, index) => {
+                            const label = [c.size, c.variation].filter(Boolean).join(' · ')
+                            return (
+                              <p key={index}>
+                                {c.qty}× {c.productName}
+                                {label ? ` · ${label}` : ''}
+                              </p>
+                            )
+                          })}
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
+                            Rp{bundle.sellPrice.toLocaleString('id-ID')} + fee Rp
+                            {bundle.fee.toLocaleString('id-ID')} × {bundle.qty} paket
+                          </p>
+                          {onEditLockedBundle && (
+                            <button
+                              type="button"
+                              className="app-btn-outline shrink-0"
+                              style={{ minHeight: 36, fontSize: 12 }}
+                              onClick={() => onEditLockedBundle(bundle.id)}
+                            >
+                              Ubah harga
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {bundles.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <span className="text-xs font-semibold">Paket baru</span>
+                  {bundles.map((bundle, index) => (
+                    <div
+                      key={index}
+                      className="app-card flex items-center justify-between gap-3 p-3 text-sm"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate font-bold">{bundle.label}</p>
+                        <p className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
+                          {bundle.bundleCount} paket · Rp
+                          {((bundle.sellPrice + bundle.fee) * bundle.bundleCount).toLocaleString('id-ID')}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        aria-label="Hapus paket"
+                        onClick={() => setBundles(bundles.filter((_, i) => i !== index))}
+                        className="shrink-0"
+                        style={{ color: '#b42318' }}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {partnerMode && items.every((item) => !item.partnerVariantId) && (
+                <div
+                  className="rounded-2xl border border-dashed p-4 text-center"
+                  style={{ borderColor: 'var(--app-border)' }}
+                >
+                  <p className="font-semibold">Belum ada barang</p>
+                  <p className="mt-1 text-xs" style={{ color: 'var(--app-text-soft)' }}>
+                    Cari barang di katalog partner, lalu pilih ukuran dan variasinya.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setCatalogTarget({ mode: 'add' })}
+                    className="app-btn-primary mt-3 w-full"
+                    style={{ minHeight: 44, fontSize: 14 }}
+                  >
+                    Cari di katalog partner
+                  </button>
+                </div>
+              )}
+              <div className="grid gap-2 sm:grid-cols-2">
+                {partnerMode ? (
+                  <button
+                    type="button"
+                    onClick={() => setCatalogTarget({ mode: 'add' })}
+                    className="app-btn-outline"
+                    style={{ color: 'var(--app-accent)' }}
+                  >
+                    + Tambah barang dari katalog
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={addItem}
+                    className="app-btn-outline"
+                    style={{ color: 'var(--app-accent)' }}
+                  >
+                    + Tambah barang
+                  </button>
+                )}
+                {partnerCatalog?.enabled && (
+                  <button
+                    type="button"
+                    onClick={() => setShowBundleForm(true)}
+                    className="app-btn-outline"
+                    style={{ color: 'var(--app-accent)' }}
+                  >
+                    + Tambah paket
+                  </button>
+                )}
+              </div>
+
+              {showBundleForm && partnerCatalog?.enabled && (
+                <div className="fixed inset-0 z-[60] overflow-y-auto" style={{ background: 'var(--app-bg)' }}>
+                  <div className="app-shell max-w-lg">
+                  <div className="sticky top-0 z-10 flex items-center gap-3 border-b p-4" style={{ borderColor: 'var(--app-border)', background: 'var(--app-card)', paddingTop: 'max(1rem, env(safe-area-inset-top))' }}>
+                    <button type="button" onClick={() => setShowBundleForm(false)} aria-label="Kembali" className="-ml-2 flex h-11 w-11 items-center justify-center">
+                      <ChevronLeft size={20} />
+                    </button>
+                    <p className="font-semibold">Pilih paket</p>
+                  </div>
+                <div className="app-card overflow-hidden p-0">
+                  <PartnerBundleSheet
+                    customerName={customerName.trim() || 'Pelanggan'}
+                    catalog={partnerCatalog}
+                    onClose={() => setShowBundleForm(false)}
+                    onSubmit={async (value) => {
+                      const rule = partnerCatalog.rules.find((r) => r.id === value.ruleId)
+                      setBundles((prev) => [
+                        ...prev,
+                        { ...value, label: rule?.name ?? 'Paket' },
+                      ])
+                    }}
+                  />
+                </div>
+                </div>
+                </div>
+              )}
 
               {/* Label rata kiri, nominal rata kanan (`justify-between`);
                   `whitespace-nowrap` biar nominal nggak turun ke baris kedua. */}
@@ -797,7 +1158,7 @@ export default function AddOrderSheet({
                 <div className="flex justify-between gap-3">
                   <span>Total harga jual</span>
                   <span className="whitespace-nowrap">
-                    {totalPrice.toLocaleString('id-ID')}
+                    {totalHpp.toLocaleString('id-ID')}
                   </span>
                 </div>
                 <div className="flex justify-between gap-3">
@@ -806,6 +1167,12 @@ export default function AddOrderSheet({
                     {totalFee.toLocaleString('id-ID')}
                   </span>
                 </div>
+                {lockedTotals && lockedTotals.count > 0 && (
+                  <p className="text-xs" style={{ color: 'var(--app-text-mute)' }}>
+                    Termasuk {lockedTotals.count} baris paket partner yang
+                    tidak bisa diubah dari form ini.
+                  </p>
+                )}
                 <div className="flex justify-between gap-3 font-semibold">
                   <span>Total tagihan</span>
                   <span className="whitespace-nowrap">

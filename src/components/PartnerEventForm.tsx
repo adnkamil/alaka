@@ -4,6 +4,7 @@ import {
   Package,
   CalendarDays,
   ChevronRight,
+  FileText,
   MapPin,
   ShoppingBag,
   Upload,
@@ -17,7 +18,7 @@ import {
   END_DATE_ERROR,
   isEndDateValid,
 } from '../lib/calendar-event-input'
-import { MAX_EVENT_PRODUCTS } from '../lib/partner-event-product-rules'
+import { parseCatalogUrl } from '../lib/partner-catalog-rules'
 import { partnerProductPhotoUrl } from '../lib/partner-product-rules'
 import { PartnerProductPickerSheet } from './PartnerProductPicker'
 import type { CalendarEventFormValue } from './CalendarEventForm'
@@ -25,7 +26,12 @@ import type { PartnerProductRow } from '../lib/partner-product-queries'
 
 const FORM_ID = 'partner-event-form'
 
-type Initial = Omit<CalendarEventFormValue, 'banner' | 'exhibitors'>
+/** Nilai form event partner: isian event + link katalog (kosong = tanpa katalog). */
+export type PartnerEventFormValue = CalendarEventFormValue & {
+  catalogUrl: string
+}
+
+type Initial = Omit<PartnerEventFormValue, 'banner' | 'exhibitors'>
 
 interface PartnerEventFormProps {
   initialValue: Initial
@@ -38,12 +44,12 @@ interface PartnerEventFormProps {
   /** Tujuan tombol Batal desktop: detail event (kalau ada id) atau daftar. */
   cancelEventId?: string
   /**
-   * Katalog partner untuk memilih produk unggulan. Kalau tidak diisi (mis.
+   * Katalog partner untuk memilih produk event. Kalau tidak diisi (mis.
    * Ubah event), bagian pilihan produk tidak tampil.
    */
   products?: ReadonlyArray<PartnerProductRow>
   onSubmit: (
-    value: CalendarEventFormValue,
+    value: PartnerEventFormValue,
     productIds: Array<string>,
   ) => Promise<void>
 }
@@ -96,6 +102,7 @@ export default function PartnerEventForm({
   const [endDate, setEndDate] = useState(initialValue.endDate)
   const [isOnline, setIsOnline] = useState(initialValue.isOnline)
   const [description, setDescription] = useState(initialValue.description)
+  const [catalogUrl, setCatalogUrl] = useState(initialValue.catalogUrl)
   const [bannerDataUrl, setBannerDataUrl] = useState<string | null>(null)
   // Banner tersimpan dihapus (dikirim sebagai `remove` saat simpan).
   const [removeBanner, setRemoveBanner] = useState(false)
@@ -128,6 +135,11 @@ export default function PartnerEventForm({
       setError(END_DATE_ERROR)
       return
     }
+    const catalog = parseCatalogUrl(catalogUrl)
+    if (!catalog.ok) {
+      setError(catalog.error)
+      return
+    }
     setBusy(true)
     try {
       await onSubmit(
@@ -138,6 +150,7 @@ export default function PartnerEventForm({
           endDate,
           isOnline,
           description: description.trim(),
+          catalogUrl: catalogUrl.trim(),
           exhibitors: [],
           banner: bannerDataUrl
             ? { type: 'upload', dataUrl: bannerDataUrl }
@@ -359,6 +372,34 @@ export default function PartnerEventForm({
               />
             </Field>
           </div>
+
+          <div className="order-3">
+            <Field label="Link katalog (opsional)">
+              <div className="relative">
+                <FileText
+                  size={18}
+                  className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2"
+                  style={iconStyle}
+                />
+                <input
+                  type="url"
+                  inputMode="url"
+                  value={catalogUrl}
+                  onChange={(e) => setCatalogUrl(e.target.value)}
+                  className="app-input pl-10"
+                  placeholder="https://drive.google.com/file/d/..."
+                />
+              </div>
+            </Field>
+            <p
+              className="mt-1.5 text-[11px]"
+              style={{ color: 'var(--app-text-soft)' }}
+            >
+              Jastiper bisa mengunduh katalog ini di halaman event. Kalau pakai
+              Google Drive, atur akses ke &quot;Siapa saja yang memiliki
+              link&quot;.
+            </p>
+          </div>
         </div>
 
         <div className="contents lg:col-start-2 lg:row-start-2 lg:flex lg:flex-col lg:gap-5">
@@ -442,7 +483,7 @@ export default function PartnerEventForm({
                   >
                     {productIds.length === 0
                       ? 'Opsional, bisa diubah nanti'
-                      : `${productIds.length} dari ${MAX_EVENT_PRODUCTS} produk dipilih`}
+                      : `${productIds.length} produk dipilih`}
                   </span>
                 </span>
                 <ChevronRight
@@ -462,7 +503,7 @@ export default function PartnerEventForm({
                       color: 'var(--app-success)',
                     }}
                   >
-                    {productIds.length} / {MAX_EVENT_PRODUCTS}
+                    {productIds.length} produk
                   </span>
                 </div>
                 {selectedProducts.length === 0 ? (
@@ -473,7 +514,7 @@ export default function PartnerEventForm({
                     Opsional, bisa diubah nanti.
                   </p>
                 ) : (
-                  <ul className="flex flex-col gap-2.5">
+                  <ul className="flex max-h-[320px] flex-col gap-2.5 overflow-y-auto">
                     {selectedProducts.map((p) => {
                       const photoUrl = partnerProductPhotoUrl(
                         p.id,

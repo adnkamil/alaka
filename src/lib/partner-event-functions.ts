@@ -11,11 +11,17 @@ import {
   normalizeEndDate,
 } from './calendar-event-input'
 import { listCalendarEventParticipants } from './calendar-join-queries'
+import { pageParamsSchema } from './pagination'
 import { requirePartner } from './partner-auth'
+import {
+  CATALOG_URL_MAX_LENGTH,
+  parseCatalogUrl,
+} from './partner-catalog-rules'
 import {
   getPartnerEvent,
   insertPartnerEvent,
   listPartnerEvents,
+  listPartnerEventsPage,
   partnerOwnsEvent,
   setPartnerEventEnded,
   updatePartnerEvent,
@@ -39,9 +45,21 @@ const bannerUploadSchema = z.object({
 })
 
 // "Brand yang dipamerkan" diisi server (= nama partner), bukan input.
-const partnerEventFieldsSchema = calendarEventFieldsSchema.omit({
-  exhibitors: true,
-})
+const partnerEventFieldsSchema = calendarEventFieldsSchema
+  .omit({
+    exhibitors: true,
+  })
+  .extend({
+    // Link katalog event; kosong = tanpa katalog. Divalidasi ulang di handler.
+    catalogUrl: z.string().max(CATALOG_URL_MAX_LENGTH + 500),
+  })
+
+/** Link katalog dari form → nilai tersimpan (null = kosong); galat jadi pesan. */
+function checkedCatalogUrl(input: string): string | null {
+  const result = parseCatalogUrl(input)
+  if (!result.ok) throw new Error(result.error)
+  return result.url
+}
 
 const createSchema = partnerEventFieldsSchema
   .extend({ banner: bannerUploadSchema.optional() })
@@ -70,6 +88,18 @@ export const fetchPartnerEvents = createServerFn({ method: 'GET' }).handler(
   },
 )
 
+/** Satu halaman event (tab status + paginasi) untuk tabel Event. */
+export const fetchPartnerEventsPage = createServerFn({ method: 'GET' })
+  .validator(
+    pageParamsSchema.extend({
+      tab: z.enum(['all', 'berjalan', 'mendatang', 'selesai']),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const partner = await requirePartner()
+    return listPartnerEventsPage(partner.id, data)
+  })
+
 export const fetchPartnerEvent = createServerFn({ method: 'GET' })
   .validator(z.object({ id: idSchema }))
   .handler(async ({ data }) => {
@@ -83,7 +113,9 @@ export const createPartnerEvent = createServerFn({ method: 'POST' })
   .validator(createSchema)
   .handler(async ({ data }) => {
     const partner = await requirePartner()
-    const { banner, ...fields } = data
+    const { banner, catalogUrl, ...fields } = data
+    // Cek link DULU, sebelum banner disimpan, supaya tidak ada file yatim.
+    const catalog = checkedCatalogUrl(catalogUrl)
 
     // Id dibuat di sini supaya banner bisa disimpan DULU (key = id event), baru
     // barisnya ditulis — sama dengan `createCalendarEvent` milik admin.
@@ -103,6 +135,7 @@ export const createPartnerEvent = createServerFn({ method: 'POST' })
         fields: { ...fields, description: fields.description || null },
         endDate: normalizeEndDate(fields.eventDate, fields.endDate),
         bannerUpdatedAt,
+        catalogUrl: catalog,
       })
     } catch (error) {
       // Insert gagal: jangan tinggalkan file yatim di Blobs.
@@ -116,7 +149,8 @@ export const updateOwnPartnerEvent = createServerFn({ method: 'POST' })
   .validator(updateSchema)
   .handler(async ({ data }) => {
     const partner = await requirePartner()
-    const { id, banner, ...fields } = data
+    const { id, banner, catalogUrl, ...fields } = data
+    const catalog = checkedCatalogUrl(catalogUrl)
 
     // Cek kepemilikan DULU, sebelum menyentuh storage: file banner berkunci id
     // event, jadi tanpa cek ini partner lain bisa menimpa banner event orang.
@@ -140,6 +174,7 @@ export const updateOwnPartnerEvent = createServerFn({ method: 'POST' })
       fields: { ...fields, description: fields.description || null },
       endDate: normalizeEndDate(fields.eventDate, fields.endDate),
       bannerUpdatedAt,
+      catalogUrl: catalog,
     })
     if (!ok) throw new Error('Event tidak ditemukan')
     return { id }

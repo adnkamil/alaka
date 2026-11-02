@@ -1,12 +1,12 @@
 import { useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Trash2, Upload } from 'lucide-react'
+import RupiahInput from './ui/RupiahInput'
 import { getErrorMessage } from '../lib/error-message'
 import {
   PRODUCT_CODE_MAX,
   PRODUCT_DESCRIPTION_MAX,
   PRODUCT_NAME_MAX,
-  formatRupiah,
   parseRupiah,
 } from '../lib/partner-product-rules'
 import {
@@ -236,22 +236,13 @@ export default function PartnerProductForm({
             </Field>
 
             <Field label="Harga">
-              <input
+              <RupiahInput
                 required
-                inputMode="numeric"
                 value={priceText}
-                onChange={(e) => setPriceText(e.target.value)}
+                onChange={setPriceText}
                 className="app-input"
-                placeholder="189000"
+                placeholder="189.000"
               />
-              {price !== null && priceText.trim() !== '' && (
-                <span
-                  className="text-xs"
-                  style={{ color: 'var(--app-text-soft)' }}
-                >
-                  {formatRupiah(price)}
-                </span>
-              )}
             </Field>
           </div>
 

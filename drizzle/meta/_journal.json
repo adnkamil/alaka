@@ -204,6 +204,34 @@
       "when": 1793162148243,
       "tag": "0028_add_partner_catalog_url_logo",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1793268427194,
+      "tag": "0029_partner_variants_and_bundles",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1793290843322,
+      "tag": "0030_partner_subscriptions",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1793351379770,
+      "tag": "0031_add_calendar_event_catalog_url",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1793500000000,
+      "tag": "0032_partner_rule_notices",
+      "breakpoints": true
     }
   ]
 }

@@ -124,7 +124,7 @@ export const getCalendarEvent = createServerFn({ method: 'GET' })
     const { bannerUpdatedAt, endedAt, ...rest } = event
     const [myEventId, showcase] = await Promise.all([
       findJoinedEventId(brandIdOf(user), event.id),
-      // Null untuk event buatan admin; untuk event partner: produk unggulan + katalog PDF.
+      // Null untuk event buatan admin; untuk event partner: produk yang dipilih partner + tautan katalog.
       getEventPartnerShowcase(event.id),
     ])
     return {

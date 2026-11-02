@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '../db'
 import { events, items, orders } from '../db/schema'
@@ -8,6 +8,7 @@ import { getSessionUser } from './auth'
 import { findMergeTarget, mergeItemLines, mergePaidAmount } from './order-merge'
 import { MAX_IMPORT_ORDERS } from './order-import'
 import { derivePaymentStatus } from './order-totals'
+import { lineTotal, partitionLockedItems } from './partner-bundle-lock'
 
 /**
  * Import banyak pesanan sekaligus dari file Excel/CSV (halaman Detail Event).
@@ -119,9 +120,12 @@ export const importOrders = createServerFn({ method: 'POST' })
 
         // Barang lama dibawa apa adanya (termasuk checklist "sudah didapat"),
         // lalu digabung dengan barang dari file.
-        const existingItems = await tx.query.items.findMany({
+        // Baris bundle partner terkunci: tidak ikut digabung dan tidak dihapus.
+        const allExistingItems = await tx.query.items.findMany({
           where: eq(items.orderId, mergeTarget.id),
         })
+        const { locked: lockedItems, editable: existingItems } =
+          partitionLockedItems(allExistingItems)
         const mergedItems = mergeItemLines(
           existingItems.map((item) => ({
             name: item.name,
@@ -132,10 +136,11 @@ export const importOrders = createServerFn({ method: 'POST' })
           })),
           group.items,
         )
-        const mergedTotal = mergedItems.reduce(
-          (sum, item) => sum + (item.originalPrice + item.fee) * item.qty,
-          0,
-        )
+        const mergedTotal =
+          mergedItems.reduce(
+            (sum, item) => sum + (item.originalPrice + item.fee) * item.qty,
+            0,
+          ) + lockedItems.reduce((sum, row) => sum + lineTotal(row), 0)
         // Barang dari file ini belum dibayar (nominal masuk 0), tapi uang yang
         // sudah masuk sebelumnya tetap dihitung dan tidak boleh lewat total.
         const mergedPaid = mergePaidAmount(
@@ -155,7 +160,11 @@ export const importOrders = createServerFn({ method: 'POST' })
 
         // Sama seperti `updateOrder`: baris barang diganti seluruhnya supaya
         // qty hasil penggabungan ikut tersimpan di baris yang sudah ada.
-        await tx.delete(items).where(eq(items.orderId, mergeTarget.id))
+        await tx
+          .delete(items)
+          .where(
+            and(eq(items.orderId, mergeTarget.id), isNull(items.partnerRuleId)),
+          )
         await tx.insert(items).values(
           mergedItems.map((item) => ({
             orderId: mergeTarget.id,

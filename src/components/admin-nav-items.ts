@@ -2,6 +2,7 @@ import {
   CalendarDays,
   LayoutDashboard,
   Settings,
+  CreditCard,
   Store,
   Users,
 } from 'lucide-react'
@@ -13,6 +14,7 @@ export interface AdminTabDef {
     | '/admin/customers'
     | '/admin/event'
     | '/admin/partner'
+    | '/admin/langganan-partner'
     | '/admin/pengaturan'
   label: string
   icon: LucideIcon
@@ -24,6 +26,7 @@ export const ADMIN_TABS: Array<AdminTabDef> = [
   { to: '/admin/customers', label: 'Customer', icon: Users },
   { to: '/admin/event', label: 'Event', icon: CalendarDays },
   { to: '/admin/partner', label: 'Partner', icon: Store },
+  { to: '/admin/langganan-partner', label: 'PRO Partner', icon: CreditCard },
   { to: '/admin/pengaturan', label: 'Pengaturan', icon: Settings },
 ]
 

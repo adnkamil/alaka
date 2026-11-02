@@ -165,3 +165,22 @@ describe('mergePaidAmount', () => {
     assert.equal(mergePaidAmount('-5000', 0, 100_000), 0)
   })
 })
+
+describe('mergeItemLines dengan varian partner', () => {
+  it('barang dari varian yang sama digabung (qty bertambah)', () => {
+    const merged = mergeItemLines(
+      [{ name: 'Kaos (S)', originalPrice: 50_000, fee: 5_000, qty: 1, partnerVariantId: 'v-s' }],
+      [{ name: 'Kaos (S)', originalPrice: 50_000, fee: 5_000, qty: 2, partnerVariantId: 'v-s' }],
+    )
+    assert.equal(merged.length, 1)
+    assert.equal(merged[0].qty, 3)
+  })
+
+  it('barang dengan varian berbeda tidak digabung walau namanya sama', () => {
+    const merged = mergeItemLines(
+      [{ name: 'Kaos', originalPrice: 50_000, fee: 5_000, qty: 1, partnerVariantId: 'v-s' }],
+      [{ name: 'Kaos', originalPrice: 50_000, fee: 5_000, qty: 1, partnerVariantId: 'v-m' }],
+    )
+    assert.equal(merged.length, 2)
+  })
+})

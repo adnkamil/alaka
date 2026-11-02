@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import ConfirmModal from '../../components/ui/ConfirmModal'
 import DpAmountModal from '../../components/ui/DpAmountModal'
+import RupiahInput from '../../components/ui/RupiahInput'
 import Switch from '../../components/ui/Switch'
 import Toast from '../../components/ui/Toast'
 import {
@@ -33,6 +34,15 @@ import {
 } from 'lucide-react'
 import { z } from 'zod'
 import AddOrderSheet from '../../components/AddOrderSheet'
+import { getEventPartnerItems } from '../../lib/partner-event-item-functions'
+import {
+  getEventPartnerCatalog,
+  updatePartnerBundlePricing,
+} from '../../lib/partner-bundle-functions'
+import {
+  dismissRuleNotice,
+  getEventRuleNotices,
+} from '../../lib/rule-notice-functions'
 import EditEventModal from '../../components/EditEventModal'
 import type { EditEventValue } from '../../components/EditEventModal'
 import ImportOrdersModal from '../../components/ImportOrdersModal'
@@ -397,6 +407,65 @@ function EventDetailPage() {
   const itemNameSuggestions = orderSuggestions?.itemNames ?? []
   const itemPriceSuggestions = orderSuggestions?.itemPrices ?? {}
 
+  // Katalog paket partner untuk event ini. Tombol "Pakai paket" hanya muncul
+  // kalau event terhubung ke partner dan partnernya punya aturan paket.
+  const partnerCatalogQuery = queryOptions({
+    queryKey: ['partner-catalog', eventId],
+    queryFn: () => getEventPartnerCatalog({ data: { eventId } }),
+  })
+  const { data: partnerCatalog } = useQuery(partnerCatalogQuery)
+  // Notifikasi perubahan/penghapusan aturan paket dari partner (banner).
+  const ruleNoticesQuery = queryOptions({
+    queryKey: ['rule-notices', eventId],
+    queryFn: () => getEventRuleNotices({ data: { eventId } }),
+  })
+  const { data: ruleNotices = [] } = useQuery(ruleNoticesQuery)
+  async function handleDismissRuleNotice(noticeId: string) {
+    await dismissRuleNotice({ data: { noticeId } })
+    await queryClient.invalidateQueries({ queryKey: ['rule-notices', eventId] })
+  }
+
+  // Produk partner untuk form tambah barang. Di event partner, barang wajib dipilih dari sini.
+  const partnerItemsQuery = queryOptions({
+    queryKey: ['partner-items', eventId],
+    queryFn: () => getEventPartnerItems({ data: { eventId } }),
+  })
+  const { data: partnerItems } = useQuery(partnerItemsQuery)
+  const [bundlePriceEdit, setBundlePriceEdit] = useState<{
+    itemId: string
+    name: string
+    sellPrice: string
+    fee: string
+  } | null>(null)
+  const [bundlePriceError, setBundlePriceError] = useState<string | null>(null)
+  const [isSavingBundlePrice, setIsSavingBundlePrice] = useState(false)
+
+  async function handleSaveBundlePrice() {
+    if (!bundlePriceEdit) return
+    setIsSavingBundlePrice(true)
+    setBundlePriceError(null)
+    try {
+      await updatePartnerBundlePricing({
+        data: {
+          itemId: bundlePriceEdit.itemId,
+          sellPrice: Number(bundlePriceEdit.sellPrice) || 0,
+          fee: Number(bundlePriceEdit.fee) || 0,
+        },
+      })
+      await queryClient.invalidateQueries({ queryKey: ['event', eventId] })
+      await queryClient.invalidateQueries({ queryKey: ['events'] })
+      await queryClient.invalidateQueries({ queryKey: ['finance-summary'] })
+      setBundlePriceEdit(null)
+    } catch (err) {
+      setBundlePriceError(
+        err instanceof Error ? err.message : 'Gagal menyimpan harga paket',
+      )
+    } finally {
+      setIsSavingBundlePrice(false)
+    }
+  }
+
+
   const unpaidCount = event.orders.filter(
     (o) => o.paymentStatus === 'unpaid',
   ).length
@@ -453,6 +522,13 @@ function EventDetailPage() {
     sheetMode?.type === 'duplicate'
       ? event.orders.find((o) => o.id === sheetMode.orderId)
       : undefined
+
+  // Bundle partner terkunci di pesanan yang sedang diedit: tidak ikut form,
+  // tapi totalnya ditampilkan di form supaya sama dengan yang tersimpan.
+  const editingLockedItems = editingOrder
+    ? editingOrder.items.filter((item) => item.partnerRuleId !== null)
+    : []
+  const editingLockedSummary = summarizeItems(editingLockedItems)
 
   const dpPromptOrder = dpPromptOrderId
     ? event.orders.find((o) => o.id === dpPromptOrderId)
@@ -706,6 +782,36 @@ function EventDetailPage() {
 
   return (
     <main className="app-shell relative mx-auto max-w-lg px-4 pb-24 pt-6">
+      {ruleNotices.length > 0 && (
+        <div className="mb-4 space-y-2">
+          {ruleNotices.map((notice) => (
+            <div
+              key={notice.id}
+              className="rounded-xl p-3 text-xs"
+              style={{ background: '#fff4e5', color: '#8a4b00' }}
+            >
+              <p className="font-semibold">
+                {notice.changeType === 'deleted'
+                  ? `Aturan paket "${notice.ruleName}" dihapus.`
+                  : `Aturan paket "${notice.ruleName}" berubah.`}
+              </p>
+              <p className="mt-1">
+                {notice.changeType === 'deleted'
+                  ? `${notice.affectedItems} barang di event ini memakai aturan itu. Pesanan yang sudah tercatat tetap utuh.`
+                  : `${notice.affectedItems} barang di event ini memakai aturan itu. Pesanan yang sudah tercatat tidak ikut berubah.`}
+              </p>
+              <button
+                type="button"
+                onClick={() => handleDismissRuleNotice(notice.id)}
+                className="mt-2 font-semibold"
+                style={{ color: 'var(--app-accent)' }}
+              >
+                Mengerti
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
       <header className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link to="/" style={{ color: 'var(--app-text)' }}>
@@ -1443,7 +1549,32 @@ function EventDetailPage() {
                       className="flex items-start justify-between gap-3 text-sm"
                     >
                       <span className="min-w-0 flex-1 break-words">
+                        {item.partnerRuleId && (
+                          <span
+                            className="mr-1 rounded px-1 text-[10px] font-semibold"
+                            style={{ background: 'var(--app-accent-soft)', color: 'var(--app-accent)' }}
+                          >
+                            Paket
+                          </span>
+                        )}
                         {item.name}
+                        {item.partnerRuleId && (
+                          <button
+                            type="button"
+                            className="ml-2 text-xs underline"
+                            style={{ color: 'var(--app-accent)' }}
+                            onClick={() =>
+                              setBundlePriceEdit({
+                                itemId: item.id,
+                                name: item.name,
+                                sellPrice: String(Number(item.originalPrice)),
+                                fee: String(Number(item.fee)),
+                              })
+                            }
+                          >
+                            Ubah harga
+                          </button>
+                        )}
                       </span>
                       <span className="flex-shrink-0 whitespace-nowrap">
                         {formatIDR(lineTotal(item))}
@@ -1561,6 +1692,52 @@ function EventDetailPage() {
           })}
       </div>
 
+      {bundlePriceEdit && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40">
+          <div
+            className="flex w-full max-w-lg flex-col gap-3 rounded-t-2xl p-4"
+            style={{ background: 'var(--app-card)' }}
+          >
+            <p className="font-semibold">Ubah harga paket</p>
+            <p className="text-sm">{bundlePriceEdit.name}</p>
+            <p className="text-xs" style={{ color: 'var(--app-text-mute)' }}>
+              Isi dan jumlah paket tidak bisa diubah. Hanya harga jual dan fee.
+            </p>
+            <label className="flex flex-col gap-1 text-sm">
+              Harga jual (total paket)
+              <RupiahInput
+                value={bundlePriceEdit.sellPrice}
+                onChange={(v) =>
+                  setBundlePriceEdit({ ...bundlePriceEdit, sellPrice: v })
+                }
+                className="rounded-xl border px-3 py-2"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              Fee (total paket)
+              <RupiahInput
+                value={bundlePriceEdit.fee}
+                onChange={(v) =>
+                  setBundlePriceEdit({ ...bundlePriceEdit, fee: v })
+                }
+                className="rounded-xl border px-3 py-2"
+              />
+            </label>
+            {bundlePriceError && (
+              <p role="alert" className="text-sm text-red-600">{bundlePriceError}</p>
+            )}
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setBundlePriceEdit(null)} disabled={isSavingBundlePrice}>
+                Batal
+              </button>
+              <button type="button" onClick={handleSaveBundlePrice} disabled={isSavingBundlePrice}>
+                {isSavingBundlePrice ? 'Menyimpan…' : 'Simpan'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {event.isActive && (
         <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 mx-auto flex max-w-lg justify-end px-6">
           <button
@@ -1581,6 +1758,8 @@ function EventDetailPage() {
           customers={customers}
           itemNameSuggestions={itemNameSuggestions}
           itemPriceSuggestions={itemPriceSuggestions}
+          partnerCatalog={partnerCatalog}
+          partnerItems={partnerItems}
           onClose={() => closeSheet()}
           onSubmit={handleCreateOrder}
         />
@@ -1593,6 +1772,8 @@ function EventDetailPage() {
           customers={customers}
           itemNameSuggestions={itemNameSuggestions}
           itemPriceSuggestions={itemPriceSuggestions}
+          partnerCatalog={partnerCatalog}
+          partnerItems={partnerItems}
           title="Tambah Pesanan"
           submitLabel="Simpan pesanan"
           initialValue={{
@@ -1612,21 +1793,58 @@ function EventDetailPage() {
           customers={customers}
           itemNameSuggestions={itemNameSuggestions}
           itemPriceSuggestions={itemPriceSuggestions}
+          partnerCatalog={partnerCatalog}
+          partnerItems={partnerItems}
           title="Edit Pesanan"
           submitLabel="Simpan perubahan"
           initialValue={{
             customerName: editingOrder.customerName,
             paymentStatus: editingOrder.paymentStatus,
             paidAmount: Number(editingOrder.paidAmount),
-            items: editingOrder.items.map((item) => ({
+            // Bundle partner terkunci: tidak ikut form, tidak dikirim balik.
+            items: editingOrder.items
+              .filter((item) => item.partnerRuleId === null)
+              .map((item) => ({
               name: item.name,
               originalPrice: Number(item.originalPrice),
               fee: Number(item.fee),
               qty: item.qty,
+              partnerVariantId: item.partnerVariantId,
               // Checklist belanja dibawa terus, biar updateOrder yang hapus +
               // insert ulang item nggak me-reset status "sudah didapat".
               obtained: item.obtained,
             })),
+          }}
+          lockedBundles={editingLockedItems
+            .filter((item) => item.isBundle)
+            .map((item) => ({
+              id: item.id,
+              name: item.name,
+              qty: item.qty,
+              total: lineTotal(item),
+              sellPrice: Number(item.originalPrice),
+              hpp: Number(item.hpp ?? item.originalPrice),
+              fee: Number(item.fee),
+              components: item.components.map((c) => ({
+                productName: c.productName,
+                size: c.size,
+                variation: c.variation,
+                qty: c.qty,
+              })),
+            }))}
+          onEditLockedBundle={(itemId) => {
+            const row = editingLockedItems.find((item) => item.id === itemId)
+            if (!row) return
+            setBundlePriceEdit({
+              itemId,
+              name: row.name,
+              sellPrice: String(Number(row.originalPrice)),
+              fee: String(Number(row.fee)),
+            })
+          }}
+          lockedTotals={{
+            ...editingLockedSummary,
+            count: editingLockedItems.length,
           }}
           onClose={() => closeSheet()}
           onSubmit={(value) => handleUpdateOrder(editingOrder.id, value)}
