@@ -1,14 +1,13 @@
-// Baris bundle dari aturan paket partner dikunci: isi dan jumlah paketnya tidak
-// boleh diubah lewat form edit biasa. Harga jual dan fee tetap bisa diubah lewat
-// aksi khusus. Helper ini dipakai updateOrder dan merge supaya baris terkunci
-// tidak ikut terhapus atau diisi ulang.
+// Baris paket (bundle) partner tidak boleh digabung atau dihapus lewat jalur
+// umum (form pesanan, impor, merge). Perubahan isi paket dilakukan lewat aksi
+// khusus per komponen. Barang satuan tidak terkunci meskipun produknya punya aturan.
 
 export type LockableItem = {
-  partnerRuleId: string | null
+  isBundle: boolean
 }
 
 export function isLockedBundle(item: LockableItem): boolean {
-  return item.partnerRuleId !== null
+  return item.isBundle
 }
 
 export function partitionLockedItems<T extends LockableItem>(

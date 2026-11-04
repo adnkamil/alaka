@@ -3,15 +3,21 @@ import { describe, it } from 'node:test'
 import { lineTotal, partitionLockedItems } from './partner-bundle-lock'
 
 describe('partitionLockedItems', () => {
-  it('memisahkan baris bundle partner (terkunci) dari barang satuan dan bundle manual', () => {
+  it('memisahkan baris paket (terkunci) dari barang satuan', () => {
     const rows = [
-      { id: 'a', partnerRuleId: 'rule-1' },
-      { id: 'b', partnerRuleId: null },
-      { id: 'c', partnerRuleId: null },
+      { id: 'a', isBundle: true },
+      { id: 'b', isBundle: false },
+      { id: 'c', isBundle: false },
     ]
     const { locked, editable } = partitionLockedItems(rows)
     assert.deepEqual(locked.map((r) => r.id), ['a'])
     assert.deepEqual(editable.map((r) => r.id), ['b', 'c'])
+  })
+
+  it('barang satuan dengan aturan tidak ikut terkunci', () => {
+    // Satuan tidak lagi menyimpan partnerRuleId, jadi hanya isBundle yang menentukan.
+    const rows = [{ id: 'satuan-beraturan', isBundle: false }]
+    assert.deepEqual(partitionLockedItems(rows).editable.map((r) => r.id), ['satuan-beraturan'])
   })
 })
 

@@ -555,6 +555,9 @@ export const items = pgTable('items', {
   // HPP per unit baris ini (harga paket untuk bundle, harga varian untuk satuan).
   // Disimpan sebagai snapshot supaya tidak berubah saat aturan diubah/dihapus.
   hpp: decimal({ precision: 12, scale: 2 }),
+  // Snapshot aturan paket, supaya paket tetap bisa ditampilkan setelah aturan dihapus.
+  ruleName: varchar('rule_name'),
+  ruleMinQty: integer('rule_min_qty'),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -577,6 +580,10 @@ export const itemComponents = pgTable(
     size: varchar(),
     variation: varchar(),
     qty: integer().notNull().default(1),
+    // Waktu asli item satuan masuk. Dipakai FIFO saat komponen kembali ke satuan.
+    addedAt: timestamp('added_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
   },
   (table) => [
     index('item_components_item_idx').on(table.itemId),

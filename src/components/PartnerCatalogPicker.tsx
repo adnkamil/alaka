@@ -74,6 +74,8 @@ export default function PartnerCatalogPicker({
   const pickedTotal = Object.values(pickedQty).reduce((sum, qty) => sum + qty, 0)
   const [query, setQuery] = useState('')
   const [onlyPicked, setOnlyPicked] = useState(false)
+  /** null = semua; selain itu id aturan paket. */
+  const [ruleFilter, setRuleFilter] = useState<string | null>(null)
   const initialProduct =
     initialVariantId === null
       ? null
@@ -88,11 +90,12 @@ export default function PartnerCatalogPicker({
     const q = query.trim().toLowerCase()
     return catalog.products.filter((p) => {
       if (onlyPicked && pickedOf(p) === 0) return false
+      if (ruleFilter !== null && p.ruleId !== ruleFilter) return false
       return !q || p.name.toLowerCase().includes(q)
     })
     // pickedOf membaca pickedQty yang sudah masuk dependency.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [catalog.products, query, onlyPicked, pickedQty])
+  }, [catalog.products, query, onlyPicked, ruleFilter, pickedQty])
 
   // Halaman katalog (frame 2)
   return (
@@ -128,7 +131,7 @@ export default function PartnerCatalogPicker({
             }}
           />
         </label>
-        <div className="flex gap-2 text-xs">
+        <div className="flex flex-wrap gap-2 text-xs">
           <button
             type="button"
             onClick={() => setOnlyPicked(false)}
@@ -147,6 +150,20 @@ export default function PartnerCatalogPicker({
           >
             Sudah dipilih
           </button>
+          {(catalog.rules ?? []).map((rule) => (
+            <button
+              key={rule.id}
+              type="button"
+              onClick={() => setRuleFilter(ruleFilter === rule.id ? null : rule.id)}
+              aria-pressed={ruleFilter === rule.id}
+              className="min-h-[36px] rounded-full border px-4 py-1.5"
+              style={{
+                borderColor: ruleFilter === rule.id ? 'var(--app-accent)' : 'var(--app-border)',
+              }}
+            >
+              {rule.name}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -202,6 +219,11 @@ export default function PartnerCatalogPicker({
             >
               <span className="h-12 w-12 flex-shrink-0 rounded-lg" style={{ background: tintFor(p.name) }} aria-hidden="true" />
               <div className="min-w-0 flex-1">
+                {p.ruleName && (
+                  <p className="truncate text-[11px]" style={{ color: 'var(--app-text-mute)' }}>
+                    {p.ruleName}
+                  </p>
+                )}
                 <p className="truncate text-sm font-semibold">{p.name}</p>
                 <p className="text-sm font-semibold" style={{ color: 'var(--app-accent)' }}>{priceLabel(p)}</p>
                 <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>{meta}</p>

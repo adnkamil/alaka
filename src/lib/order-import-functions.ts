@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, eq, isNull } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '../db'
 import { events, items, orders } from '../db/schema'
@@ -163,7 +163,7 @@ export const importOrders = createServerFn({ method: 'POST' })
         await tx
           .delete(items)
           .where(
-            and(eq(items.orderId, mergeTarget.id), isNull(items.partnerRuleId)),
+            and(eq(items.orderId, mergeTarget.id), eq(items.isBundle, false)),
           )
         await tx.insert(items).values(
           mergedItems.map((item) => ({
