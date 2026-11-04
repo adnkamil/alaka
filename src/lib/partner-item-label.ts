@@ -13,12 +13,17 @@ export interface PartnerItemVariant {
 export interface PartnerItemProduct {
   id: string
   name: string
+  /** Aturan paket yang berlaku untuk produk ini (null kalau tidak ada / bukan PRO). */
+  ruleId?: string | null
+  ruleName?: string | null
   variants: Array<PartnerItemVariant>
 }
 
 export interface PartnerEventItemCatalog {
   /** True kalau event terhubung ke partner. Di event ini nama barang tidak boleh diketik bebas. */
   isPartnerEvent: boolean
+  /** Aturan paket aktif di event ini, untuk filter katalog. */
+  rules?: Array<{ id: string; name: string; minQty: number }>
   products: Array<PartnerItemProduct>
 }
 

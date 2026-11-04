@@ -2,7 +2,18 @@ import { createServerFn } from '@tanstack/react-start'
 import { and, desc, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '../db'
-import { events, items, orders } from '../db/schema'
+import {
+  events,
+  items,
+  orders,
+  partnerPricingRules,
+  partnerRuleProducts,
+  partnerSubscriptions,
+  partnerVariants,
+} from '../db/schema'
+import { inArray } from 'drizzle-orm'
+import { hasPartnerPro } from './partner-entitlement'
+import { computePendingRules, type PendingSingle } from './partner-paket-pending'
 import { brandIdOf } from './brand'
 import { getSessionUser } from './auth'
 
@@ -154,5 +165,97 @@ export const getEventDetail = createServerFn({ method: 'GET' })
     })
 
     if (!event) throw new Error('Event tidak ditemukan')
-    return event
+
+    // Catatan "N pcs lagi untuk paket" per pesanan. Hanya untuk aturan dari partner PRO,
+    // karena paket di luar itu tidak pernah terbentuk.
+    const singleVariantIds = event.orders.flatMap((o) =>
+      o.items
+        .filter((i) => !i.isBundle && i.partnerVariantId)
+        .map((i) => i.partnerVariantId as string),
+    )
+    if (singleVariantIds.length === 0) {
+      return {
+        ...event,
+        orders: event.orders.map((o) => ({
+          ...o,
+          pendingRules: [],
+          items: o.items.map((i) => ({ ...i, groupLabel: null as string | null })),
+        })),
+      }
+    }
+
+    const variantRows = await db
+      .select({ id: partnerVariants.id, productId: partnerVariants.partnerProductId })
+      .from(partnerVariants)
+      .where(inArray(partnerVariants.id, [...new Set(singleVariantIds)]))
+    const productByVariant = new Map(variantRows.map((v) => [v.id, v.productId]))
+
+    const ruleProductRows = await db
+      .select({ ruleId: partnerRuleProducts.ruleId, productId: partnerRuleProducts.partnerProductId })
+      .from(partnerRuleProducts)
+      .where(inArray(partnerRuleProducts.partnerProductId, [...new Set(productByVariant.values())]))
+    const ruleByProduct = new Map(ruleProductRows.map((r) => [r.productId, r.ruleId]))
+
+    const ruleRows = await db
+      .select({
+        id: partnerPricingRules.id,
+        name: partnerPricingRules.name,
+        minQty: partnerPricingRules.minQty,
+        partnerId: partnerPricingRules.partnerId,
+        isActive: partnerPricingRules.isActive,
+      })
+      .from(partnerPricingRules)
+      .where(inArray(partnerPricingRules.id, [...new Set(ruleByProduct.values())]))
+    const ruleById = new Map(ruleRows.map((r) => [r.id, r]))
+
+    const partnerIds = [...new Set(ruleRows.map((r) => r.partnerId))]
+    const subRows = partnerIds.length
+      ? await db
+          .select({
+            partnerId: partnerSubscriptions.partnerId,
+            status: partnerSubscriptions.status,
+            startedAt: partnerSubscriptions.startedAt,
+            endsAt: partnerSubscriptions.endsAt,
+          })
+          .from(partnerSubscriptions)
+          .where(inArray(partnerSubscriptions.partnerId, partnerIds))
+      : []
+    const proPartners = new Set(
+      partnerIds.filter((pid) =>
+        hasPartnerPro(subRows.filter((s) => s.partnerId === pid)),
+      ),
+    )
+
+    return {
+      ...event,
+      orders: event.orders.map((order) => {
+        const singles: Array<PendingSingle> = []
+        // Nama aturan per barang satuan, untuk label kecil "masuk paket apa".
+        const groupLabelByItem = new Map<string, string>()
+        for (const item of order.items) {
+          if (item.isBundle || !item.partnerVariantId) continue
+          const productId = productByVariant.get(item.partnerVariantId)
+          const ruleId = productId ? ruleByProduct.get(productId) : undefined
+          const rule = ruleId ? ruleById.get(ruleId) : undefined
+          if (!rule || !rule.isActive || !proPartners.has(rule.partnerId)) continue
+          groupLabelByItem.set(item.id, rule.name)
+          singles.push({
+            itemId: item.id,
+            qty: item.qty,
+            addedAt: item.createdAt,
+            ruleId: rule.id,
+            ruleName: rule.name,
+            minQty: rule.minQty,
+          })
+        }
+        return {
+          ...order,
+          pendingRules: computePendingRules(singles),
+          items: order.items.map((i) => ({
+            ...i,
+            groupLabel: groupLabelByItem.get(i.id) ?? null,
+          })),
+        }
+      }),
+    }
   })

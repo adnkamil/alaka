@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import ConfirmModal from '../../components/ui/ConfirmModal'
 import DpAmountModal from '../../components/ui/DpAmountModal'
 import RupiahInput from '../../components/ui/RupiahInput'
@@ -59,6 +59,12 @@ import {
 import { listFeeRules } from '../../lib/fee-rules-functions'
 import { getOrderSuggestions } from '../../lib/order-suggestions-functions'
 import { APP_TIME_ZONE, todayIsoDateInAppTimeZone } from '../../lib/timezone'
+import OrderItemList from '../../components/OrderItemList'
+import { partnerItemName, variantLabel } from '../../lib/partner-item-label'
+import {
+  removeBundleComponent,
+  updateBundleComponent,
+} from '../../lib/partner-paket-functions'
 import { lineTotal, summarizeItems } from '../../lib/order-totals'
 import {
   orderSheetModeFromSearch,
@@ -81,6 +87,7 @@ import {
   orderExportFileName,
 } from '../../lib/order-export'
 import { getCustomerSuggestions } from '#/lib/customer-suggestions-functions'
+import { componentDisplayName } from '../../lib/order-item-groups'
 
 const searchSchema = z.object({
   addOrder: z.boolean().optional(),
@@ -193,11 +200,25 @@ function summarizeItemQty(
     const customerName = order.customerName.trim()
     const customerKey = customerName.toLowerCase()
 
-    for (const item of order.items) {
-      if (query && !item.name.toLowerCase().includes(query)) continue
-      const key = item.name.trim().toLowerCase()
+    // Paket dibongkar jadi per barang: setiap komponen dihitung sebagai barang
+    // sendiri dengan qty = qty komponen x jumlah paket. Barang satuan tetap satu baris.
+    const lines = order.items.flatMap((item) => {
+      if (item.isBundle && item.components.length > 0) {
+        return item.components.map((c) => ({
+          id: item.id,
+          name: componentDisplayName(c),
+          qty: c.qty * item.qty,
+          obtained: item.obtained,
+        }))
+      }
+      return [{ id: item.id, name: item.name, qty: item.qty, obtained: item.obtained }]
+    })
+
+    for (const line of lines) {
+      if (query && !line.name.toLowerCase().includes(query)) continue
+      const key = line.name.trim().toLowerCase()
       const entry = grouped.get(key) ?? {
-        name: item.name.trim(),
+        name: line.name.trim(),
         qty: 0,
         obtainedQty: 0,
         itemIds: [],
@@ -205,10 +226,10 @@ function summarizeItemQty(
         orderIds: new Set<string>(),
         customers: new Map<string, ItemGroupCustomer>(),
       }
-      entry.qty += item.qty
-      entry.itemIds.push(item.id)
-      if (item.obtained) {
-        entry.obtainedQty += item.qty
+      entry.qty += line.qty
+      if (!entry.itemIds.includes(line.id)) entry.itemIds.push(line.id)
+      if (line.obtained) {
+        entry.obtainedQty += line.qty
       } else {
         entry.pendingCount += 1
       }
@@ -221,9 +242,9 @@ function summarizeItemQty(
         itemIds: [],
         orderIds: new Set<string>(),
       }
-      customer.qty += item.qty
-      customer.itemIds.push(item.id)
-      if (item.obtained) customer.obtainedQty += item.qty
+      customer.qty += line.qty
+      if (!customer.itemIds.includes(line.id)) customer.itemIds.push(line.id)
+      if (line.obtained) customer.obtainedQty += line.qty
       customer.orderIds.add(order.id)
       entry.customers.set(customerKey, customer)
 
@@ -414,6 +435,48 @@ function EventDetailPage() {
     queryFn: () => getEventPartnerCatalog({ data: { eventId } }),
   })
   const { data: partnerCatalog } = useQuery(partnerCatalogQuery)
+  // Varian yang boleh dipilih untuk mengganti komponen paket, per aturan.
+  const variantOptionsByRule = useMemo(() => {
+    const out: Record<string, Array<{ id: string; label: string }>> = {}
+    if (!partnerCatalog) return out
+    for (const rule of partnerCatalog.rules) {
+      const productIds = new Set(rule.productIds)
+      out[rule.id] = partnerCatalog.variants
+        .filter((v) => productIds.has(v.productId))
+        .map((v) => {
+          const product = partnerCatalog.products.find((p) => p.id === v.productId)
+          return {
+            id: v.id,
+            label: partnerItemName(
+              product?.name ?? '',
+              variantLabel({ size: v.size, variation: v.variation }),
+            ),
+          }
+        })
+    }
+    return out
+  }, [partnerCatalog])
+
+  async function refreshEventData() {
+    await queryClient.invalidateQueries({ queryKey: ['event', eventId] })
+    await queryClient.invalidateQueries({ queryKey: ['events'] })
+    await queryClient.invalidateQueries({ queryKey: ['finance-summary'] })
+  }
+
+  async function handleRemoveComponent(componentId: string) {
+    await removeBundleComponent({ data: { componentId } })
+    await refreshEventData()
+  }
+
+  async function handleSaveBundlePriceInline(itemId: string, sellPrice: number, fee: number) {
+    await updatePartnerBundlePricing({ data: { itemId, sellPrice, fee } })
+    await refreshEventData()
+  }
+
+  async function handleChangeComponent(componentId: string, partnerVariantId: string) {
+    await updateBundleComponent({ data: { componentId, partnerVariantId } })
+    await refreshEventData()
+  }
   // Notifikasi perubahan/penghapusan aturan paket dari partner (banner).
   const ruleNoticesQuery = queryOptions({
     queryKey: ['rule-notices', eventId],
@@ -1543,44 +1606,18 @@ function EventDetailPage() {
                   className="mt-3 flex flex-col gap-2 border-t pt-3"
                   style={{ borderColor: 'var(--app-border)' }}
                 >
-                  {order.items.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-start justify-between gap-3 text-sm"
-                    >
-                      <span className="min-w-0 flex-1 break-words">
-                        {item.partnerRuleId && (
-                          <span
-                            className="mr-1 rounded px-1 text-[10px] font-semibold"
-                            style={{ background: 'var(--app-accent-soft)', color: 'var(--app-accent)' }}
-                          >
-                            Paket
-                          </span>
-                        )}
-                        {item.name}
-                        {item.partnerRuleId && (
-                          <button
-                            type="button"
-                            className="ml-2 text-xs underline"
-                            style={{ color: 'var(--app-accent)' }}
-                            onClick={() =>
-                              setBundlePriceEdit({
-                                itemId: item.id,
-                                name: item.name,
-                                sellPrice: String(Number(item.originalPrice)),
-                                fee: String(Number(item.fee)),
-                              })
-                            }
-                          >
-                            Ubah harga
-                          </button>
-                        )}
-                      </span>
-                      <span className="flex-shrink-0 whitespace-nowrap">
-                        {formatIDR(lineTotal(item))}
-                      </span>
-                    </div>
-                  ))}
+                  <OrderItemList
+                    items={order.items}
+                    bundleSummaryOnly
+                    pendingRules={order.pendingRules}
+                    variantOptionsByRule={variantOptionsByRule}
+                    formatIDR={(value) => formatIDR(value)}
+                    onSaveBundlePrice={(item, sellPrice, fee) =>
+                      handleSaveBundlePriceInline(item.id, sellPrice, fee)
+                    }
+                    onRemoveComponent={handleRemoveComponent}
+                    onChangeComponent={handleChangeComponent}
+                  />
                   <div
                     className="mt-1 flex justify-between border-t pt-2 text-sm font-semibold"
                     style={{ borderColor: 'var(--app-border)' }}
@@ -1825,13 +1862,27 @@ function EventDetailPage() {
               sellPrice: Number(item.originalPrice),
               hpp: Number(item.hpp ?? item.originalPrice),
               fee: Number(item.fee),
+              partnerRuleId: item.partnerRuleId,
+              ruleName: item.ruleName,
               components: item.components.map((c) => ({
+                id: c.id,
+                partnerVariantId: c.partnerVariantId,
                 productName: c.productName,
                 size: c.size,
                 variation: c.variation,
                 qty: c.qty,
               })),
             }))}
+          onSaveLockedBundlePrice={handleSaveBundlePriceInline}
+          onRemoveLockedComponent={async (componentId) => {
+            await handleRemoveComponent(componentId)
+            // Barang satuan hasil bongkar paket belum ada di form. Tutup form supaya
+            // simpan berikutnya tidak menimpa barang itu dengan isi form lama.
+            closeSheet()
+          }}
+          onChangeLockedComponent={async (componentId, partnerVariantId) => {
+            await handleChangeComponent(componentId, partnerVariantId)
+          }}
           onEditLockedBundle={(itemId) => {
             const row = editingLockedItems.find((item) => item.id === itemId)
             if (!row) return
