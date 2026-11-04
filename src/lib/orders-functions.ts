@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, asc, eq, inArray, isNotNull, isNull } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '../db'
 import {
@@ -27,6 +27,8 @@ import { resolveEventItems } from './partner-event-items'
 import { derivePaymentStatus } from './order-totals'
 import { buildPartnerBundle } from './partner-bundle-build'
 import { lineTotal, partitionLockedItems } from './partner-bundle-lock'
+import { carryCreatedAt } from './item-created-at'
+import { regroupAllRulesInOrder } from './partner-paket-queries'
 import type { BundleLine } from './partner-pricing'
 
 async function requireUser() {
@@ -248,11 +250,19 @@ export const createOrder = createServerFn({ method: 'POST' })
       await db
         .delete(items)
         .where(
-          and(eq(items.orderId, mergeTarget.id), isNull(items.partnerRuleId)),
+          and(eq(items.orderId, mergeTarget.id), eq(items.isBundle, false)),
         )
       if (mergedItems.length > 0) {
         await db.insert(items).values(
-          mergedItems.map((item) => ({
+          carryCreatedAt(
+            existingItems.map((p) => ({
+              name: p.name,
+              partnerVariantId: p.partnerVariantId,
+              createdAt: p.createdAt,
+            })),
+            mergedItems,
+          ).map((item) => ({
+            createdAt: item.createdAt,
             orderId: mergeTarget.id,
             name: item.name,
             originalPrice: item.originalPrice.toString(),
@@ -266,6 +276,7 @@ export const createOrder = createServerFn({ method: 'POST' })
       }
       // Paket tidak pernah digabung ke barang lama: selalu baris baru.
       await insertBundleLines(mergeTarget.id, bundleLines)
+      await db.transaction((tx) => regroupAllRulesInOrder(tx, mergeTarget.id))
 
       return {
         orderId: mergeTarget.id,
@@ -306,6 +317,7 @@ export const createOrder = createServerFn({ method: 'POST' })
       )
     }
     await insertBundleLines(order.id, bundleLines)
+    await db.transaction((tx) => regroupAllRulesInOrder(tx, order.id))
 
     return {
       orderId: order.id,
@@ -391,7 +403,7 @@ export const updateOrder = createServerFn({ method: 'POST' })
     // Baris bundle partner terkunci: tidak diubah lewat form ini, tapi tetap
     // masuk ke total tagihan.
     const lockedItems = await db.query.items.findMany({
-      where: and(eq(items.orderId, data.orderId), isNotNull(items.partnerRuleId)),
+      where: and(eq(items.orderId, data.orderId), eq(items.isBundle, true)),
     })
 
     // Total tagihan baru ikut barang yang baru, jadi nominal terbayar dirapikan:
@@ -443,13 +455,18 @@ export const updateOrder = createServerFn({ method: 'POST' })
       })
       .where(eq(orders.id, data.orderId))
 
+    // Barang satuan lama dicatat dulu supaya waktu masuknya (FIFO) tetap sama.
+    const previousEditable = await db.query.items.findMany({
+      where: and(eq(items.orderId, data.orderId), eq(items.isBundle, false)),
+    })
     // Items aren't individually tracked by the form, so replace the full set.
     await db
       .delete(items)
-      .where(and(eq(items.orderId, data.orderId), isNull(items.partnerRuleId)))
+      .where(and(eq(items.orderId, data.orderId), eq(items.isBundle, false)))
     if (eventItems.length > 0) {
       await db.insert(items).values(
-        eventItems.map((item) => ({
+        carryCreatedAt(previousEditable, eventItems).map((item) => ({
+          createdAt: item.createdAt,
           orderId: data.orderId,
           name: item.name,
           originalPrice: item.originalPrice.toString(),
@@ -462,6 +479,7 @@ export const updateOrder = createServerFn({ method: 'POST' })
       )
     }
     await insertBundleLines(data.orderId, bundleLines)
+    await db.transaction((tx) => regroupAllRulesInOrder(tx, data.orderId))
   })
 
 /**
@@ -547,7 +565,7 @@ export const getPublicOrderInvoice = createServerFn({ method: 'GET' })
   .handler(async ({ data }) => {
     const order = await db.query.orders.findFirst({
       where: eq(orders.id, data.orderId),
-      with: { items: true, event: true },
+      with: { items: { with: { components: true } }, event: true },
     })
     if (!order || order.eventId !== data.eventId) {
       throw new Error('Invoice tidak ditemukan')
@@ -623,6 +641,15 @@ export const getPublicOrderInvoice = createServerFn({ method: 'GET' })
         originalPrice: item.originalPrice,
         fee: item.fee,
         qty: item.qty,
+        isBundle: item.isBundle,
+        // Hanya nama dan varian komponen. Harga per komponen tidak dikirim.
+        components: item.components.map((c) => ({
+          id: c.id,
+          productName: c.productName,
+          size: c.size,
+          variation: c.variation,
+          qty: c.qty,
+        })),
       })),
       user: {
         // `brandId` + `avatarUpdatedAt` dipakai buat URL foto brand
@@ -645,7 +672,7 @@ export const getOrderInvoice = createServerFn({ method: 'GET' })
 
     const order = await db.query.orders.findFirst({
       where: eq(orders.id, data.orderId),
-      with: { items: true, event: true },
+      with: { items: { with: { components: true } }, event: true },
     })
     if (!order || order.eventId !== data.eventId) {
       throw new Error('Pesanan tidak ditemukan')
@@ -695,6 +722,15 @@ export const getOrderInvoice = createServerFn({ method: 'GET' })
         originalPrice: item.originalPrice,
         fee: item.fee,
         qty: item.qty,
+        isBundle: item.isBundle,
+        // Hanya nama dan varian komponen. Harga per komponen tidak dikirim.
+        components: item.components.map((c) => ({
+          id: c.id,
+          productName: c.productName,
+          size: c.size,
+          variation: c.variation,
+          qty: c.qty,
+        })),
       })),
       user: {
         brandId: brandIdOf(user),

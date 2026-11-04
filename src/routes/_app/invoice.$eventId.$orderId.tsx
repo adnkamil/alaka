@@ -29,12 +29,13 @@ import {
   buildItemList,
   renderMessageTemplate,
 } from '../../lib/message-template'
-import { lineTotal, summarizeItems, unitNetPrice } from '../../lib/order-totals'
+import { summarizeItems } from '../../lib/order-totals'
 import { APP_TIME_ZONE } from '../../lib/timezone'
 import CustomerFormModal from '../../components/CustomerFormModal'
 import type { CustomerFormValue } from '../../components/CustomerFormModal'
 import InvoiceBrandMark from '../../components/InvoiceBrandMark'
 import PaymentInfoCard from '../../components/PaymentInfoCard'
+import InvoiceItemRows from '../../components/InvoiceItemRows'
 
 export const Route = createFileRoute('/_app/invoice/$eventId/$orderId')({
   loader: ({ context, params }) => {
@@ -304,32 +305,7 @@ function InvoicePage() {
             <span>Barang</span>
             <span>Harga Jual</span>
           </div>
-          {data.items.map((item) => (
-            <div
-              key={item.id}
-              className="flex justify-between gap-3 py-1 text-sm"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="break-words">{item.name}</p>
-                <p
-                  className="text-xs"
-                  style={{ color: 'var(--app-text-mute)' }}
-                >
-                  {hideFee ? (
-                    <>
-                      {item.qty} × {formatIDR(unitNetPrice(item))}
-                    </>
-                  ) : (
-                    <>
-                      {item.qty} × ({formatIDR(item.originalPrice)} + Fee{' '}
-                      {formatIDR(item.fee)})
-                    </>
-                  )}
-                </p>
-              </div>
-              <p className="font-medium">{formatIDR(lineTotal(item))}</p>
-            </div>
-          ))}
+          <InvoiceItemRows items={data.items} hideFee={hideFee} formatIDR={formatIDR} />
         </div>
 
         {/* Total */}

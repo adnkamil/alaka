@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react'
-import { ChevronDown, ChevronLeft, Plus, Trash2, User, X } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { ChevronDown, Plus, Trash2, User, X } from 'lucide-react'
 import NumberInput from './ui/NumberInput'
 import Switch from './ui/Switch'
-import PartnerBundleSheet from './PartnerBundleSheet'
 import type {PartnerBundleCatalog, PartnerBundleSubmit} from './PartnerBundleSheet';
 import { customerLabel } from '../lib/customer-matching'
 import { findFeeForPrice } from '../lib/fee-tier-validation'
@@ -25,6 +24,9 @@ import {
 } from '../lib/partner-item-label'
 import type {PartnerEventItemCatalog} from '../lib/partner-item-label';
 import PartnerCatalogPicker, {type CatalogPick} from './PartnerCatalogPicker';
+import OrderItemList, { type OrderItemView } from './OrderItemList'
+import { previewPartnerBundles } from '../lib/partner-paket-preview'
+import { pendingNoteText } from '../lib/order-item-groups'
 
 interface FeeTier {
   minPrice: string
@@ -112,9 +114,23 @@ interface AddOrderSheetProps {
     sellPrice: number
     hpp: number
     fee: number
-    components: Array<{ productName: string; size: string | null; variation: string | null; qty: number }>
+    partnerRuleId: string | null
+    ruleName: string | null
+    components: Array<{
+      id: string
+      partnerVariantId: string | null
+      productName: string
+      size: string | null
+      variation: string | null
+      qty: number
+    }>
   }>
   onEditLockedBundle?: (itemId: string) => void
+  /** Simpan harga jual dan fee paket tersimpan langsung dari form. */
+  onSaveLockedBundlePrice?: (itemId: string, sellPrice: number, fee: number) => Promise<void>
+  /** Ganti/hapus komponen paket langsung di server (bukan lewat simpan form). */
+  onChangeLockedComponent?: (componentId: string, partnerVariantId: string) => Promise<void>
+  onRemoveLockedComponent?: (componentId: string) => Promise<void>
   onClose: () => void
   onSubmit: (value: {
     customerName: string
@@ -159,6 +175,29 @@ function normalizeQty(qty: number | undefined) {
  * otomatis dibuka sebagai paket — jastiper bisa mengedit nama-nama barangnya
  * satu per satu, dan waktu disimpan digabung lagi jadi nama yang sama.
  */
+/** Barang satuan dari katalog yang sama (varian, harga, fee) digabung jadi satu baris. */
+function mergeSingleDrafts(drafts: Array<ItemDraft>): Array<ItemDraft> {
+  const out: Array<ItemDraft> = []
+  for (const d of drafts) {
+    const same =
+      !d.bundle &&
+      d.partnerVariantId !== null &&
+      out.find(
+        (o) =>
+          !o.bundle &&
+          o.partnerVariantId === d.partnerVariantId &&
+          o.originalPrice === d.originalPrice &&
+          o.fee === d.fee,
+      )
+    if (same) {
+      same.qty = same.qty + d.qty
+    } else {
+      out.push({ ...d })
+    }
+  }
+  return out
+}
+
 function toDraft(item: AddOrderSheetItemValue): ItemDraft {
   const bundle = isBundleName(item.name)
   return {
@@ -191,9 +230,12 @@ export default function AddOrderSheet({
   partnerCatalog,
   partnerItems,
   lockedBundles,
-  onEditLockedBundle,
+  onSaveLockedBundlePrice,
+  onChangeLockedComponent,
+  onRemoveLockedComponent,
 }: AddOrderSheetProps) {
   const partnerMode = Boolean(partnerItems?.isPartnerEvent)
+
   const [customerName, setCustomerName] = useState(
     initialValue?.customerName ?? '',
   )
@@ -213,9 +255,84 @@ export default function AddOrderSheet({
   )
   const [items, setItems] = useState<Array<ItemDraft>>(
     initialValue?.items.length
-      ? initialValue.items.map((item) => toDraft(item))
+      ? mergeSingleDrafts(initialValue.items.map((item) => toDraft(item)))
       : [{ ...emptyItem }],
   )
+
+  // Pratinjau paket: dihitung dari barang di form, sama dengan aturan server.
+  // Hanya untuk partner PRO (katalog enabled).
+  const bundlePreview = useMemo(() => {
+    if (!partnerCatalog?.enabled) return { bundles: [], pending: [] }
+    return previewPartnerBundles(
+      items.map((item, index) => ({
+        key: String(index),
+        name: item.name,
+        partnerVariantId: item.bundle ? null : item.partnerVariantId,
+        qty: item.qty,
+      })),
+      {
+        rules: partnerCatalog.rules,
+        variants: partnerCatalog.variants.map((v) => ({ id: v.id, productId: v.productId })),
+      },
+    )
+  }, [items, partnerCatalog])
+
+  // Berapa pcs tiap baris draft yang sudah masuk paket hasil pratinjau.
+  const consumedQty = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const bundle of bundlePreview.bundles) {
+      for (const part of bundle.parts) {
+        map.set(part.key, (map.get(part.key) ?? 0) + part.qty)
+      }
+    }
+    return map
+  }, [bundlePreview])
+
+  // Nama produk dan label varian per varian, supaya di baris barang varian tampil di bawah nama.
+  const variantDisplayById = useMemo(() => {
+    const map = new Map<string, { productName: string; variantLabel: string }>()
+    if (!partnerCatalog?.enabled) return map
+    for (const v of partnerCatalog.variants) {
+      const product = partnerCatalog.products.find((p) => p.id === v.productId)
+      map.set(v.id, {
+        productName: product?.name ?? '',
+        variantLabel: [v.size, v.variation].filter(Boolean).join(' / '),
+      })
+    }
+    return map
+  }, [partnerCatalog])
+
+  // Nama aturan paket per varian, untuk label kecil di tiap barang satuan.
+  const ruleNameByVariant = useMemo(() => {
+    const map = new Map<string, string>()
+    if (!partnerCatalog?.enabled) return map
+    for (const rule of partnerCatalog.rules) {
+      const productIds = new Set(rule.productIds)
+      for (const v of partnerCatalog.variants) {
+        if (productIds.has(v.productId) && !map.has(v.id)) map.set(v.id, rule.name)
+      }
+    }
+    return map
+  }, [partnerCatalog])
+
+  const variantOptionsByRule = useMemo(() => {
+    const out: Record<string, Array<{ id: string; label: string }>> = {}
+    if (!partnerCatalog) return out
+    for (const rule of partnerCatalog.rules) {
+      const productIds = new Set(rule.productIds)
+      out[rule.id] = partnerCatalog.variants
+        .filter((v) => productIds.has(v.productId))
+        .map((v) => {
+          const product = partnerCatalog.products.find((p) => p.id === v.productId)
+          const label = [v.size, v.variation].filter(Boolean).join(' / ')
+          return {
+            id: v.id,
+            label: label ? `${product?.name ?? ''} (${label})` : (product?.name ?? ''),
+          }
+        })
+    }
+    return out
+  }, [partnerCatalog])
   // Kartu barang yang sedang terbuka (akordion: satu saja). Form tambah mulai
   // dengan barang pertama terbuka biar langsung bisa diisi; form edit mulai
   // tertutup semua supaya daftar barangnya ringkas.
@@ -226,7 +343,6 @@ export default function AddOrderSheet({
   const [error, setError] = useState<string | null>(null)
   // Paket baru yang akan dikirim bersama barang satuan (belum tersimpan).
   const [bundles, setBundles] = useState<Array<PartnerBundleSubmit & { label: string }>>([])
-  const [showBundleForm, setShowBundleForm] = useState(false)
   // Halaman katalog: 'add' untuk barang baru, 'replace' untuk ubah varian.
   const [catalogTarget, setCatalogTarget] = useState<null | { mode: 'add' } | { mode: 'replace'; index: number }>(null)
   const [catalogToast, setCatalogToast] = useState<string | null>(null)
@@ -630,7 +746,12 @@ export default function AddOrderSheet({
                 >
                   Item
                 </span>
-                {items.map((item, index) => partnerMode && !item.partnerVariantId ? null : (
+                {items.map((item, index) => {
+                  const consumed = consumedQty.get(String(index)) ?? 0
+                  const remainingQty = item.qty - consumed
+                  if (partnerMode && !item.partnerVariantId) return null
+                  if (remainingQty <= 0) return null
+                  return (
                   <div
                     key={index}
                     id={`order-item-${index}`}
@@ -643,17 +764,43 @@ export default function AddOrderSheet({
                       aria-controls={`order-item-body-${index}`}
                       className="flex w-full items-center gap-2.5 px-3.5 py-3 text-left"
                     >
-                      <span
-                        className="min-w-0 flex-1 truncate text-sm font-medium"
-                        style={
-                          itemTitle(item)
-                            ? undefined
-                            : { color: 'var(--app-text-mute)' }
-                        }
-                      >
-                        {itemTitle(item) || 'Barang belum diisi'}
+                      <span className="min-w-0 flex-1">
+                        {item.partnerVariantId && variantDisplayById.get(item.partnerVariantId) ? (
+                          <>
+                            {ruleNameByVariant.get(item.partnerVariantId) && (
+                              <span
+                                className="block truncate text-[11px]"
+                                style={{ color: 'var(--app-text-mute)' }}
+                              >
+                                {ruleNameByVariant.get(item.partnerVariantId)}
+                              </span>
+                            )}
+                            <span className="block truncate text-sm font-medium">
+                              {variantDisplayById.get(item.partnerVariantId)?.productName}
+                            </span>
+                            {variantDisplayById.get(item.partnerVariantId)?.variantLabel && (
+                              <span
+                                className="block truncate text-[11px]"
+                                style={{ color: 'var(--app-text-mute)' }}
+                              >
+                                {variantDisplayById.get(item.partnerVariantId)?.variantLabel}
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          <span
+                            className="block truncate text-sm font-medium"
+                            style={
+                              itemTitle(item)
+                                ? undefined
+                                : { color: 'var(--app-text-mute)' }
+                            }
+                          >
+                            {itemTitle(item) || 'Barang belum diisi'}
+                          </span>
+                        )}
                       </span>
-                      {item.qty > 1 && (
+                      {remainingQty > 1 && (
                         <span
                           className="app-badge flex-shrink-0"
                           style={{
@@ -661,11 +808,11 @@ export default function AddOrderSheet({
                             color: 'var(--app-accent)',
                           }}
                         >
-                          ×{item.qty}
+                          ×{remainingQty}
                         </span>
                       )}
                       <span className="flex-shrink-0 whitespace-nowrap text-sm font-semibold">
-                        {lineTotal(item).toLocaleString('id-ID')}
+                        {lineTotal({ ...item, qty: remainingQty }).toLocaleString('id-ID')}
                       </span>
                       <ChevronDown
                         size={18}
@@ -676,7 +823,17 @@ export default function AddOrderSheet({
                         aria-hidden="true"
                       />
                     </button>
-                    {openIndex === index && (
+                    <div
+                      className="grid"
+                      style={{
+                        gridTemplateRows: openIndex === index ? '1fr' : '0fr',
+                        transition: 'grid-template-rows 300ms ease',
+                      }}
+                      aria-hidden={openIndex !== index}
+                    >
+                      <div className="min-h-0 overflow-hidden">
+                      {/* Saat tertutup, kontrol di dalamnya dinonaktifkan supaya tidak ikut validasi form. */}
+                      <fieldset disabled={openIndex !== index} className="m-0 min-w-0 border-0 p-0">
                       <div
                         id={`order-item-body-${index}`}
                         className="border-t p-3"
@@ -961,9 +1118,14 @@ export default function AddOrderSheet({
                             className="shrink-0 whitespace-nowrap text-xs font-semibold"
                             style={{ color: 'var(--app-text-soft)' }}
                           >
-                            = {lineTotal(item).toLocaleString('id-ID')}
+                            = {lineTotal({ ...item, qty: remainingQty }).toLocaleString('id-ID')}
                           </span>
                         </div>
+                        {consumed > 0 && (
+                          <p className="text-[11px]" style={{ color: 'var(--app-text-mute)' }}>
+                            {consumed} pcs sudah masuk paket, sisanya {remainingQty} pcs di barang satuan.
+                          </p>
+                        )}
                         {items.length > 1 && (
                           <button
                             type="button"
@@ -976,72 +1138,89 @@ export default function AddOrderSheet({
                           </button>
                         )}
                       </div>
-                    )}
+                      </fieldset>
+                      </div>
+                    </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
 
-              {lockedBundles && lockedBundles.length > 0 && (
+              {((lockedBundles && lockedBundles.length > 0) || bundlePreview.bundles.length > 0) && (
                 <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold">Paket</span>
-                    <span className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
-                      {lockedBundles.length} paket
-                    </span>
-                  </div>
-                  {lockedBundles.map((bundle) => {
-                    const pcs = bundle.components.reduce((sum, c) => sum + c.qty, 0)
-                    return (
-                      <div key={bundle.id} className="app-card flex flex-col gap-2 p-3 text-sm">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="truncate font-bold">
-                              {bundle.name} · {pcs} pcs
-                            </p>
-                            <span
-                              className="mt-1 inline-block rounded-md px-2 py-0.5 text-[11px]"
-                              style={{ background: 'var(--app-card-soft, #f7f1e7)' }}
-                            >
-                              Isi terkunci
-                            </span>
+                  <OrderItemList
+                    items={(lockedBundles ?? []).map((bundle) => ({
+                      id: bundle.id,
+                      name: bundle.name,
+                      isBundle: true,
+                      partnerRuleId: bundle.partnerRuleId,
+                      ruleName: bundle.ruleName,
+                      partnerVariantId: null,
+                      qty: bundle.qty,
+                      originalPrice: String(bundle.sellPrice),
+                      fee: String(bundle.fee),
+                      components: bundle.components,
+                    }))}
+                    pendingRules={[]}
+                    variantOptionsByRule={variantOptionsByRule}
+                    formatIDR={(value) => `Rp${value.toLocaleString('id-ID')}`}
+                    onSaveBundlePrice={async (item: OrderItemView, sellPrice, fee) => {
+                      if (onSaveLockedBundlePrice) await onSaveLockedBundlePrice(item.id, sellPrice, fee)
+                    }}
+                    onRemoveComponent={async (componentId) => {
+                      if (onRemoveLockedComponent) await onRemoveLockedComponent(componentId)
+                    }}
+                    onChangeComponent={async (componentId, partnerVariantId) => {
+                      if (onChangeLockedComponent) await onChangeLockedComponent(componentId, partnerVariantId)
+                    }}
+                  />
+                </div>
+              )}
+
+              {bundlePreview.bundles.length > 0 && (
+                <div className="flex flex-col gap-3">
+                  {(() => {
+                    const byRule = new Map<
+                      string,
+                      { ruleName: string; bundlePrice: number; count: number; lines: Map<string, { label: string; qty: number }> }
+                    >()
+                    for (const bundle of bundlePreview.bundles) {
+                      const group =
+                        byRule.get(bundle.ruleId) ??
+                        { ruleName: bundle.ruleName, bundlePrice: bundle.bundlePrice, count: 0, lines: new Map() }
+                      group.count += 1
+                      for (const part of bundle.parts) {
+                        const line = group.lines.get(part.label) ?? { label: part.label, qty: 0 }
+                        line.qty += part.qty
+                        group.lines.set(part.label, line)
+                      }
+                      byRule.set(bundle.ruleId, group)
+                    }
+                    return [...byRule.entries()].map(([ruleId, group]) => (
+                      <div key={`planned-${ruleId}`} className="flex flex-col gap-2">
+                        <p className="text-xs" style={{ color: 'var(--app-text-mute)' }}>
+                          {group.ruleName} (Rp{group.bundlePrice.toLocaleString('id-ID')} + fee Rp0) · {group.count} paket · belum disimpan
+                        </p>
+                        {[...group.lines.values()].map((line) => (
+                          <div
+                            key={line.label}
+                            className="flex items-center gap-2 rounded-xl border px-3 py-2"
+                            style={{ borderColor: 'var(--app-border)' }}
+                          >
+                            <p className="min-w-0 flex-1 truncate text-sm">{line.label}</p>
+                            {line.qty > 1 && (
+                              <span
+                                className="app-badge flex-shrink-0"
+                                style={{ background: 'var(--app-accent-soft)', color: 'var(--app-accent)' }}
+                              >
+                                ×{line.qty}
+                              </span>
+                            )}
                           </div>
-                          <span className="pm-num shrink-0 font-bold">
-                            Rp{bundle.total.toLocaleString('id-ID')}
-                          </span>
-                        </div>
-                        <div
-                          className="flex flex-col gap-0.5 rounded-lg p-2 text-xs"
-                          style={{ background: 'var(--app-card-soft, #f7f1e7)' }}
-                        >
-                          {bundle.components.map((c, index) => {
-                            const label = [c.size, c.variation].filter(Boolean).join(' · ')
-                            return (
-                              <p key={index}>
-                                {c.qty}× {c.productName}
-                                {label ? ` · ${label}` : ''}
-                              </p>
-                            )
-                          })}
-                        </div>
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
-                            Rp{bundle.sellPrice.toLocaleString('id-ID')} + fee Rp
-                            {bundle.fee.toLocaleString('id-ID')} × {bundle.qty} paket
-                          </p>
-                          {onEditLockedBundle && (
-                            <button
-                              type="button"
-                              className="app-btn-outline shrink-0"
-                              style={{ minHeight: 36, fontSize: 12 }}
-                              onClick={() => onEditLockedBundle(bundle.id)}
-                            >
-                              Ubah harga
-                            </button>
-                          )}
-                        </div>
+                        ))}
                       </div>
-                    )
-                  })}
+                    ))
+                  })()}
                 </div>
               )}
 
@@ -1093,12 +1272,17 @@ export default function AddOrderSheet({
                   </button>
                 </div>
               )}
+              {bundlePreview.pending.map((p) => (
+                <p key={p.ruleId} className="text-xs" style={{ color: 'var(--app-accent)' }}>
+                  {pendingNoteText({ pcsShort: p.pcsShort, ruleName: p.ruleName })}
+                </p>
+              ))}
               <div className="grid gap-2 sm:grid-cols-2">
                 {partnerMode ? (
                   <button
                     type="button"
                     onClick={() => setCatalogTarget({ mode: 'add' })}
-                    className="app-btn-outline"
+                    className="app-btn-outline col-span-full w-full"
                     style={{ color: 'var(--app-accent)' }}
                   >
                     + Tambah barang dari katalog
@@ -1113,44 +1297,7 @@ export default function AddOrderSheet({
                     + Tambah barang
                   </button>
                 )}
-                {partnerCatalog?.enabled && (
-                  <button
-                    type="button"
-                    onClick={() => setShowBundleForm(true)}
-                    className="app-btn-outline"
-                    style={{ color: 'var(--app-accent)' }}
-                  >
-                    + Tambah paket
-                  </button>
-                )}
               </div>
-
-              {showBundleForm && partnerCatalog?.enabled && (
-                <div className="fixed inset-0 z-[60] overflow-y-auto" style={{ background: 'var(--app-bg)' }}>
-                  <div className="app-shell max-w-lg">
-                  <div className="sticky top-0 z-10 flex items-center gap-3 border-b p-4" style={{ borderColor: 'var(--app-border)', background: 'var(--app-card)', paddingTop: 'max(1rem, env(safe-area-inset-top))' }}>
-                    <button type="button" onClick={() => setShowBundleForm(false)} aria-label="Kembali" className="-ml-2 flex h-11 w-11 items-center justify-center">
-                      <ChevronLeft size={20} />
-                    </button>
-                    <p className="font-semibold">Pilih paket</p>
-                  </div>
-                <div className="app-card overflow-hidden p-0">
-                  <PartnerBundleSheet
-                    customerName={customerName.trim() || 'Pelanggan'}
-                    catalog={partnerCatalog}
-                    onClose={() => setShowBundleForm(false)}
-                    onSubmit={async (value) => {
-                      const rule = partnerCatalog.rules.find((r) => r.id === value.ruleId)
-                      setBundles((prev) => [
-                        ...prev,
-                        { ...value, label: rule?.name ?? 'Paket' },
-                      ])
-                    }}
-                  />
-                </div>
-                </div>
-                </div>
-              )}
 
               {/* Label rata kiri, nominal rata kanan (`justify-between`);
                   `whitespace-nowrap` biar nominal nggak turun ke baris kedua. */}
@@ -1196,7 +1343,8 @@ export default function AddOrderSheet({
                       e.target.value as 'unpaid' | 'dp' | 'paid' | 'shipped',
                     )
                   }
-                  className="app-input"
+                  className="app-input text-base"
+                  style={{ height: '46px' }}
                 >
                   <option value="unpaid">Belum Lunas</option>
                   <option value="dp">DP (Bayar Sebagian)</option>

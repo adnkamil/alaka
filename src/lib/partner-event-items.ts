@@ -15,6 +15,8 @@ import {
 
 } from './partner-item-label'
 import type {PartnerEventItemCatalog} from './partner-item-label';
+import { partnerPricingRules, partnerRuleProducts, partnerSubscriptions } from '../db/schema';
+import { hasPartnerPro } from './partner-entitlement';
 
 /**
  * Katalog produk partner yang dibawa ke satu event (produk aktif + varian aktif).
@@ -61,6 +63,48 @@ export async function loadEventPartnerItemCatalog(
       ),
     )
 
+  // Aturan paket aktif untuk produk di event ini. Hanya untuk partner PRO,
+  // karena paket di luar itu tidak pernah terbentuk.
+  const productIds = productRows.map((p) => p.id)
+  const ruleProductRows = await db
+    .select({ ruleId: partnerRuleProducts.ruleId, productId: partnerRuleProducts.partnerProductId })
+    .from(partnerRuleProducts)
+    .where(inArray(partnerRuleProducts.partnerProductId, productIds))
+  const ruleRows = ruleProductRows.length
+    ? await db
+        .select({
+          id: partnerPricingRules.id,
+          name: partnerPricingRules.name,
+          minQty: partnerPricingRules.minQty,
+          isActive: partnerPricingRules.isActive,
+        })
+        .from(partnerPricingRules)
+        .where(
+          and(
+            inArray(partnerPricingRules.id, [...new Set(ruleProductRows.map((r) => r.ruleId))]),
+            eq(partnerPricingRules.partnerId, calendarEvent.partnerId),
+          ),
+        )
+    : []
+  const subRows = await db
+    .select({
+      status: partnerSubscriptions.status,
+      startedAt: partnerSubscriptions.startedAt,
+      endsAt: partnerSubscriptions.endsAt,
+    })
+    .from(partnerSubscriptions)
+    .where(eq(partnerSubscriptions.partnerId, calendarEvent.partnerId))
+  const isPro = hasPartnerPro(subRows)
+  const activeRules = isPro ? ruleRows.filter((r) => r.isActive) : []
+  const activeRuleIds = new Set(activeRules.map((r) => r.id))
+  const ruleByProduct = new Map<string, { id: string; name: string }>()
+  for (const row of ruleProductRows) {
+    const rule = activeRules.find((r) => r.id === row.ruleId)
+    if (rule && activeRuleIds.has(row.ruleId) && !ruleByProduct.has(row.productId)) {
+      ruleByProduct.set(row.productId, { id: rule.id, name: rule.name })
+    }
+  }
+
   const valueRows = variantRows.length
     ? await db
         .select({
@@ -101,10 +145,13 @@ export async function loadEventPartnerItemCatalog(
 
   return {
     isPartnerEvent: true,
+    rules: activeRules.map((r) => ({ id: r.id, name: r.name, minQty: r.minQty })),
     products: productRows
       .map((product) => ({
         id: product.id,
         name: product.name,
+        ruleId: ruleByProduct.get(product.id)?.id ?? null,
+        ruleName: ruleByProduct.get(product.id)?.name ?? null,
         variants: variantRows
           .filter((v) => v.productId === product.id)
           .map((v) => ({
