@@ -747,7 +747,7 @@ export default function AddOrderSheet({
                   className="block truncate text-sm"
                   // style={{ color: 'var(--app-text-soft)' }}
                 >
-                  Item
+                  Satuan
                 </span>
                 {items.map((item, index) => {
                   const consumed = consumedQty.get(String(index)) ?? 0
@@ -1202,8 +1202,16 @@ export default function AddOrderSheet({
                     return [...byRule.entries()].map(([ruleId, group]) => (
                       <div key={`planned-${ruleId}`} className="flex flex-col gap-2">
                         <p className="text-xs" style={{ color: 'var(--app-text-mute)' }}>
-                          {group.ruleName} (Rp{group.bundlePrice.toLocaleString('id-ID')} + fee Rp0) · {group.count} paket · belum disimpan
+                          {group.ruleName}
                         </p>
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-semibold">
+                            Rp{group.bundlePrice.toLocaleString('id-ID')} + fee Rp0
+                          </p>
+                          <p className="text-xs" style={{ color: 'var(--app-text-mute)' }}>
+                            {group.count} paket · belum disimpan
+                          </p>
+                        </div>
                         {[...group.lines.values()].map((line) => (
                           <div
                             key={line.label}
