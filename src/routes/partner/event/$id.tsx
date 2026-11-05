@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import {
   ArrowLeft,
@@ -22,6 +22,7 @@ import {
 } from '../../../lib/format'
 import { getErrorMessage } from '../../../lib/error-message'
 import { setOwnPartnerEventEnded } from '../../../lib/partner-event-functions'
+import { getPartnerEventRevenue } from '../../../lib/partner-jastiper-detail'
 import { partnerEventStatus } from '../../../lib/partner-event-rules'
 import {
   formatRupiah,
@@ -66,6 +67,10 @@ function PartnerEventDetailPage() {
   )
   const { data: products } = useSuspenseQuery(partnerEventProductsQuery(id))
   const queryClient = useQueryClient()
+  const { data: revenue } = useQuery({
+    queryKey: ['partner-event-revenue', id, participants.length],
+    queryFn: () => getPartnerEventRevenue({ data: { calendarEventId: id } }),
+  })
   const [tab, setTab] = useState<Tab>('jastiper')
   const [confirmEnd, setConfirmEnd] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -164,6 +169,7 @@ function PartnerEventDetailPage() {
             </span>
           </div>
         </div>
+
 
         <div className="flex gap-2" role="tablist" aria-label="Isi event">
           {(
@@ -351,7 +357,6 @@ function PartnerEventDetailPage() {
       </main>
 
       <main className="pm-wide hidden flex-col gap-5 lg:flex">
-        <Link to="/partner/event/rekap/$id" params={{ id }} className="app-btn-outline self-end no-underline" style={{ minHeight: 40, fontSize: 13 }}>Rekap  Orderan</Link>
         <header className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <h1 className="pm-display truncate text-[26px] leading-tight">
@@ -384,45 +389,68 @@ function PartnerEventDetailPage() {
           </div>
         </header>
 
-        <div className="app-card grid grid-cols-5 gap-6 px-6 py-5">
-          {[
-            { label: 'Tipe', value: event.isOnline ? 'Online' : 'Offline' },
-            {
-              label: 'Tanggal',
-              value: formatDateRange(event.eventDate, event.endDate),
-            },
-            { label: 'Lokasi', value: event.location },
-            { label: 'Jastiper', value: `${participants.length} bergabung` },
-            { label: 'Pesanan', value: `${totalOrders} masuk` },
-          ].map((item) => (
-            <div key={item.label} className="min-w-0">
-              <p
-                className="text-[11px] font-bold uppercase tracking-wide"
-                style={{ color: 'var(--pm-gold)' }}
-              >
-                {item.label}
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
+        <aside className="flex flex-col gap-5 lg:order-last lg:sticky lg:top-6">
+          <section className="app-card flex flex-col gap-4 p-5">
+            <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: 'var(--pm-gold)' }}>Info event</p>
+            <dl className="flex flex-col text-[13px]">
+              {[
+                { label: 'Tipe', value: event.isOnline ? 'Online' : 'Offline' },
+                { label: 'Tanggal', value: formatDateRange(event.eventDate, event.endDate) },
+                { label: 'Lokasi', value: event.location },
+                { label: 'Jastiper', value: `${participants.length} bergabung` },
+                { label: 'Pesanan', value: `${totalOrders} masuk` },
+              ].map((item) => (
+                <div key={item.label} className="flex items-start justify-between gap-3 border-t py-2.5" style={{ borderColor: 'var(--app-border)' }}>
+                  <dt style={{ color: 'var(--app-text-soft)' }}>{item.label}</dt>
+                  <dd className="pm-num text-right font-bold">{item.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+
+          <section className="app-card flex flex-col gap-4 p-5">
+            <div className="flex flex-col gap-1.5 rounded-2xl p-4" style={{ background: 'var(--app-accent-soft)' }}>
+              <p className="text-[12px] font-semibold" style={{ color: '#9c463b' }}>Total pendapatan event</p>
+              <p className="pm-num text-[28px] font-bold leading-tight" style={{ color: '#9c463b' }}>
+                {formatRupiah(revenue?.totalAmount ?? 0)}
               </p>
-              <p className="mt-1.5 truncate text-[15px] font-bold">
-                {item.value}
+              <p className="text-[11px]" style={{ color: '#9c463b', opacity: 0.8 }}>
+                Harga produk partner × pcs dari semua jastiper
               </p>
             </div>
-          ))}
-        </div>
-
-        <div className="flex gap-2" role="tablist" aria-label="Isi event">
-          {tabs.map((item) => (
-            <button
-              key={item.key}
-              type="button"
-              role="tab"
-              aria-selected={tab === item.key}
-              onClick={() => setTab(item.key)}
-              className={`pm-chip ${tab === item.key ? 'pm-chip--active' : ''}`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
+            {revenue && revenue.perBrand.length > 0 && (
+              <div className="flex flex-col">
+                {revenue.perBrand.map((b) => (
+                  <div key={b.brandId} className="flex items-center justify-between gap-3 border-t py-2.5 text-[13px]" style={{ borderColor: 'var(--app-border)' }}>
+                    <span className="truncate font-bold">{b.brandName}</span>
+                    <span className="pm-num shrink-0 font-bold">{formatRupiah(b.totalAmount)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </aside>
+        <div className="flex min-w-0 flex-col gap-5">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap gap-2" role="tablist" aria-label="Isi event">
+              {tabs.map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === item.key}
+                  onClick={() => setTab(item.key)}
+                  className={`pm-chip ${tab === item.key ? 'pm-chip--active' : ''}`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+            <Link to="/partner/event/rekap/$id" params={{ id }} className="app-btn-outline ml-auto no-underline" style={{ minHeight: 40, fontSize: 13 }}>
+              Rekap  Orderan
+            </Link>
+          </div>
 
         {tab === 'info' && (
           <section className="app-card flex flex-col gap-4 p-6">
@@ -564,7 +592,12 @@ function PartnerEventDetailPage() {
                     className={`grid ${PARTICIPANT_COLUMNS} items-center gap-4 border-t px-5 py-3`}
                     style={{ borderColor: 'var(--app-border)' }}
                   >
-                    <div className="flex min-w-0 items-center gap-3.5">
+                    <Link
+                      to="/partner/event/jastiper/$id/$brandId"
+                      params={{ id, brandId: row.brandId }}
+                      className="flex min-w-0 items-center gap-3.5 no-underline"
+                      style={{ color: 'inherit' }}
+                    >
                       <span
                         className="pm-display flex size-11 shrink-0 items-center justify-center rounded-full text-sm"
                         style={{
@@ -575,7 +608,7 @@ function PartnerEventDetailPage() {
                         {initialsOf(row.brandName ?? '')}
                       </span>
                       <p className="truncate text-sm font-bold">{name}</p>
-                    </div>
+                    </Link>
                     <span
                       className="text-[13px]"
                       style={{ color: 'var(--app-text-soft)' }}
@@ -605,6 +638,8 @@ function PartnerEventDetailPage() {
               })}
             </div>
           ))}
+        </div>
+        </div>
       </main>
 
       <ConfirmModal
