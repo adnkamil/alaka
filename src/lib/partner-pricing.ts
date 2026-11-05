@@ -10,6 +10,11 @@ export type PricingRule = {
   bundlePrice: number
   /** Produk induk yang masuk aturan ini. */
   productIds: Array<string>
+  /**
+   * Nama ukuran yang tercakup (mis. ["S", "M", "L"]). Kosong atau tidak ada =
+   * semua ukuran.
+   */
+  sizes?: Array<string>
 }
 
 export type BundleComponent = {
@@ -51,23 +56,37 @@ export type SingleLine = {
 
 export class PricingError extends Error {}
 
+export type RuleScope = {
+  id: string
+  name?: string
+  productIds: Array<string>
+  sizes?: Array<string>
+}
+
+function sizesOverlap(a: Array<string> | undefined, b: Array<string> | undefined): boolean {
+  const left = a ?? []
+  const right = b ?? []
+  // Kosong = semua ukuran, jadi pasti tumpang tindih dengan aturan mana pun.
+  if (left.length === 0 || right.length === 0) return true
+  const set = new Set(left)
+  return right.some((size) => set.has(size))
+}
+
 /**
- * Satu produk induk hanya boleh masuk satu aturan. Melempar error kalau ada
- * produk yang muncul di lebih dari satu aturan.
+ * Satu produk boleh masuk beberapa aturan asal rentang ukurannya tidak tumpang
+ * tindih. Melempar error kalau ada produk yang punya ukuran sama di dua aturan.
  */
-export function assertRuleProductsUnique(
-  rules: Array<Pick<PricingRule, 'id' | 'productIds'>>,
-): void {
-  const owner = new Map<string, string>()
-  for (const rule of rules) {
-    for (const productId of rule.productIds) {
-      const prev = owner.get(productId)
-      if (prev && prev !== rule.id) {
+export function assertRuleScopesNoOverlap(rules: Array<RuleScope>): void {
+  for (let i = 0; i < rules.length; i++) {
+    for (let k = i + 1; k < rules.length; k++) {
+      const a = rules[i]
+      const b = rules[k]
+      const shared = a.productIds.find((id) => b.productIds.includes(id))
+      if (shared && sizesOverlap(a.sizes, b.sizes)) {
         throw new PricingError(
-          `Produk ${productId} sudah ada di aturan ${prev}.`,
+          `Produk ${shared} sudah punya aturan dengan ukuran yang sama.`,
         )
       }
-      owner.set(productId, rule.id)
     }
   }
 }
@@ -100,6 +119,12 @@ export function buildBundleLine(
     }
     if (!Number.isInteger(component.qty) || component.qty < 1) {
       throw new PricingError(`Qty ${component.productName} tidak valid.`)
+    }
+    const sizes = rule.sizes ?? []
+    if (sizes.length > 0 && (component.size === null || !sizes.includes(component.size))) {
+      throw new PricingError(
+        `${component.productName}${component.size ? ` ukuran ${component.size}` : ''} tidak termasuk dalam aturan "${rule.name}".`,
+      )
     }
   }
 

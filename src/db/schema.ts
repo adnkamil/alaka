@@ -1192,10 +1192,22 @@ export const partnerRuleProducts = pgTable(
       .notNull()
       .references(() => partnerProducts.id, { onDelete: 'cascade' }),
   },
-  (table) => [
-    primaryKey({ columns: [table.ruleId, table.partnerProductId] }),
-    uniqueIndex('partner_rule_products_product_uq').on(table.partnerProductId),
-  ],
+  (table) => [primaryKey({ columns: [table.ruleId, table.partnerProductId] })],
+)
+
+// Rentang ukuran tiap aturan paket, dicocokkan dengan nama nilai ukuran pada
+// varian (mis. "S", "XL"). Tanpa baris = aturan berlaku untuk semua ukuran.
+// Satu produk boleh masuk beberapa aturan selama rentang ukurannya tidak
+// tumpang tindih (dicek di server).
+export const partnerRuleSizes = pgTable(
+  'partner_rule_sizes',
+  {
+    ruleId: uuid('rule_id')
+      .notNull()
+      .references(() => partnerPricingRules.id, { onDelete: 'cascade' }),
+    sizeName: varchar('size_name').notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.ruleId, table.sizeName] })],
 )
 
 // Token atur ulang kata sandi PARTNER. Pola sama dengan `password_reset_tokens`

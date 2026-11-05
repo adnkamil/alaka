@@ -11,6 +11,7 @@ import {
   partnerPricingRules,
   partnerProducts,
   partnerRuleProducts,
+  partnerRuleSizes,
   partnerSubscriptions,
   partnerVariantValues,
   partnerVariants,
@@ -90,15 +91,33 @@ export function variantItemName(info: {
   )
 }
 
-/** Aturan paket untuk produk induk (satu produk hanya boleh punya satu aturan). */
-export async function findRuleForProduct(
+/**
+ * Aturan paket untuk satu barang: aturan yang memuat produknya dan rentang
+ * ukurannya mencakup ukuran barang itu. Satu produk bisa punya beberapa aturan
+ * dengan rentang ukuran yang berbeda.
+ */
+export async function findRuleForVariant(
   tx: OrderTx,
   productId: string,
+  size: string | null,
 ): Promise<{ id: string } | null> {
-  const row = await tx.query.partnerRuleProducts.findFirst({
-    where: eq(partnerRuleProducts.partnerProductId, productId),
-  })
-  return row ? { id: row.ruleId } : null
+  const links = await tx
+    .select({ ruleId: partnerRuleProducts.ruleId })
+    .from(partnerRuleProducts)
+    .where(eq(partnerRuleProducts.partnerProductId, productId))
+  for (const link of links) {
+    const sizeRows = await tx
+      .select({ name: partnerRuleSizes.sizeName })
+      .from(partnerRuleSizes)
+      .where(eq(partnerRuleSizes.ruleId, link.ruleId))
+    if (
+      sizeRows.length === 0 ||
+      (size !== null && sizeRows.some((z) => z.name === size))
+    ) {
+      return { id: link.ruleId }
+    }
+  }
+  return null
 }
 
 /**
@@ -142,6 +161,11 @@ export async function regroupRuleInOrder(
     .where(eq(partnerRuleProducts.ruleId, ruleId))
   const ruleProductIds = new Set(ruleProductRows.map((r) => r.productId))
   if (ruleProductIds.size === 0) return
+  const ruleSizeRows = await tx
+    .select({ name: partnerRuleSizes.sizeName })
+    .from(partnerRuleSizes)
+    .where(eq(partnerRuleSizes.ruleId, ruleId))
+  const ruleSizes = new Set(ruleSizeRows.map((z) => z.name))
 
   const singleRows = await tx
     .select({
@@ -162,7 +186,9 @@ export async function regroupRuleInOrder(
   const pool = singleRows.filter((s) => {
     if (!s.partnerVariantId) return false
     const info = infoMap.get(s.partnerVariantId)
-    return info !== undefined && ruleProductIds.has(info.productId)
+    if (info === undefined || !ruleProductIds.has(info.productId)) return false
+    // Dengan rentang ukuran, hanya ukuran di dalam rentang yang masuk paket.
+    return ruleSizes.size === 0 || (info.size !== null && ruleSizes.has(info.size))
   })
   if (pool.length === 0) return
 

@@ -63,3 +63,40 @@ describe('previewPartnerBundles', () => {
     assert.deepEqual(r.pending, [{ ruleId: 'r3', ruleName: 'Paket Hemat 3 pcs', pcsShort: 2 }])
   })
 })
+
+describe('previewPartnerBundles dengan rentang ukuran', () => {
+  const catalog = {
+    rules: [
+      { id: 'sl', name: 'Get 2 S–L', minQty: 2, bundlePrice: 100000, productIds: ['p1'], sizes: ['S', 'M', 'L'] },
+      { id: 'xl', name: 'Get 2 XL–XXXL', minQty: 2, bundlePrice: 110000, productIds: ['p1'], sizes: ['XL', 'XXL', 'XXXL'] },
+    ],
+    variants: [
+      { id: 'v-l', productId: 'p1', size: 'L' },
+      { id: 'v-xl', productId: 'p1', size: 'XL' },
+      { id: 'v-m', productId: 'p1', size: 'M' },
+    ],
+  }
+
+  it('L dan XL tidak dipaketkan bersama karena beda rentang', () => {
+    const { bundles } = previewPartnerBundles(
+      [
+        { key: 'a', name: 'L', partnerVariantId: 'v-l', qty: 1 },
+        { key: 'b', name: 'XL', partnerVariantId: 'v-xl', qty: 1 },
+      ],
+      catalog,
+    )
+    assert.equal(bundles.length, 0)
+  })
+
+  it('L + M dipaketkan karena masih satu rentang', () => {
+    const { bundles } = previewPartnerBundles(
+      [
+        { key: 'a', name: 'L', partnerVariantId: 'v-l', qty: 1 },
+        { key: 'b', name: 'M', partnerVariantId: 'v-m', qty: 1 },
+      ],
+      catalog,
+    )
+    assert.equal(bundles.length, 1)
+    assert.equal(bundles[0].ruleId, 'sl')
+  })
+})

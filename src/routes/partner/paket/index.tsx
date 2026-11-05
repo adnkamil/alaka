@@ -23,6 +23,11 @@ function formatPrice(value: number) {
   return `Rp${value.toLocaleString('id-ID')}`
 }
 
+/** Label rentang ukuran aturan untuk daftar: kosong = semua ukuran. */
+function sizeScopeLabel(sizes: Array<string>): string {
+  return sizes.length === 0 ? 'Semua ukuran' : sizes.join(', ')
+}
+
 function StatusBadge({ active }: { active: boolean }) {
   return (
     <span
@@ -158,7 +163,7 @@ function PartnerPaketPage() {
                       className="mt-0.5 text-[13px]"
                       style={{ color: 'var(--app-text-soft)' }}
                     >
-                      {rule.productIds.length} produk · min. {rule.minQty} pcs
+                      {rule.productIds.length} produk · {sizeScopeLabel(rule.sizes)} · min. {rule.minQty} pcs
                     </p>
                   </div>
                   <StatusBadge active={rule.isActive} />
@@ -233,7 +238,7 @@ function PartnerPaketPage() {
                   className="text-[13px]"
                   style={{ color: 'var(--app-text-soft)' }}
                 >
-                  {rule.productIds.length} produk
+                  {rule.productIds.length} produk · {sizeScopeLabel(rule.sizes)}
                 </span>
                 <div>
                   <StatusBadge active={rule.isActive} />

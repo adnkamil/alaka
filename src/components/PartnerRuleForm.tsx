@@ -7,7 +7,12 @@ export type RuleFormValue = {
   bundlePrice: string
   isActive: boolean
   productIds: Array<string>
+  /** Rentang ukuran aturan. Kosong = semua ukuran. */
+  sizes: Array<string>
 }
+
+/** Pilihan ukuran yang ditampilkan. Kosong berarti semua ukuran. */
+export const RULE_SIZE_OPTIONS = ['Newborn', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL']
 
 export type RuleFormProduct = { id: string; name: string; isActive: boolean }
 
@@ -49,6 +54,15 @@ export default function PartnerRuleForm({
       productIds: v.productIds.includes(id)
         ? v.productIds.filter((p) => p !== id)
         : [...v.productIds, id],
+    }))
+  }
+
+  function toggleSize(size: string) {
+    setValue((v) => ({
+      ...v,
+      sizes: v.sizes.includes(size)
+        ? v.sizes.filter((s) => s !== size)
+        : [...v.sizes, size],
     }))
   }
 
@@ -106,6 +120,38 @@ export default function PartnerRuleForm({
           </label>
         </div>
 
+        <div className="flex flex-col gap-2 rounded-2xl border p-3.5" style={{ borderColor: 'var(--app-border)' }}>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-sm font-bold">Rentang ukuran</span>
+            <span className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
+              {value.sizes.length === 0
+                ? 'Kosong berarti semua ukuran. Paket hanya boleh berisi ukuran dari rentang ini.'
+                : `${value.sizes.join(', ')} · paket hanya boleh berisi ukuran ini.`}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {RULE_SIZE_OPTIONS.map((size) => {
+              const on = value.sizes.includes(size)
+              return (
+                <button
+                  key={size}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => toggleSize(size)}
+                  className="rounded-full border px-3 py-1 text-xs font-semibold"
+                  style={{
+                    background: on ? '#7a4a2a' : 'transparent',
+                    color: on ? '#fff' : 'var(--app-text)',
+                    borderColor: 'var(--app-border)',
+                  }}
+                >
+                  {size}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
         <div
           className="flex items-center justify-between gap-3 rounded-2xl border p-3.5"
           style={{ borderColor: 'var(--app-border)' }}
@@ -138,7 +184,7 @@ export default function PartnerRuleForm({
           <div>
             <h2 className="pm-display text-base">Produk dalam aturan</h2>
             <p className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
-              {value.productIds.length} dipilih · hanya produk yang belum punya aturan yang muncul.
+              {value.productIds.length} dipilih · produk yang sudah punya aturan lain tetap bisa dipilih selama ukurannya berbeda.
             </p>
           </div>
           <input

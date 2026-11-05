@@ -10,6 +10,7 @@ import {
   partnerPricingRules,
   partnerProducts,
   partnerRuleProducts,
+  partnerRuleSizes,
   partnerSubscriptions,
   partnerVariantValues,
   partnerVariants,
@@ -120,6 +121,10 @@ export const getEventPartnerCatalog = createServerFn({ method: 'GET' })
       .select()
       .from(partnerRuleProducts)
       .where(inArray(partnerRuleProducts.ruleId, ruleIds))
+    const allRuleSizes = await db
+      .select()
+      .from(partnerRuleSizes)
+      .where(inArray(partnerRuleSizes.ruleId, ruleIds))
 
     // Aturan hanya ditampilkan kalau partner-nya PRO. Tanpa ini, tombol
     // "Pakai paket" muncul lalu gagal saat disimpan.
@@ -145,6 +150,9 @@ export const getEventPartnerCatalog = createServerFn({ method: 'GET' })
       productIds: allRuleProducts
         .filter((rp) => rp.ruleId === rule.id)
         .map((rp) => rp.partnerProductId),
+      sizes: allRuleSizes
+        .filter((rs) => rs.ruleId === rule.id)
+        .map((rs) => rs.sizeName),
     }))
 
     // Hanya produk yang ada di event dan di salah satu aturan aktif.
