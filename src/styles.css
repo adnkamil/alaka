@@ -113,6 +113,26 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Latar yang sama dengan body, untuk overlay layar penuh (mis. katalog partner)
+   supaya tampilannya konsisten dengan halaman lain. */
+.app-canvas {
+  background-color: var(--bg-base);
+  background:
+    radial-gradient(1100px 620px at -8% -10%, var(--hero-a), transparent 58%),
+    radial-gradient(1050px 620px at 112% -12%, var(--hero-b), transparent 62%),
+    radial-gradient(
+      720px 380px at 50% 115%,
+      color-mix(in oklab, var(--brand-accent) 10%, transparent),
+      transparent 68%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--sand) 68%, white) 0%,
+      var(--foam) 44%,
+      var(--bg-base) 100%
+    );
+}
+
 body::before {
   content: '';
   position: fixed;

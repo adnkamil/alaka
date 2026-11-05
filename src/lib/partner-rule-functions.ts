@@ -482,3 +482,104 @@ async function notifyRuleChange(
     })),
   )
 }
+
+/**
+ * Mengatur seluruh aturan paket satu produk sekaligus. Satu produk boleh
+ * punya beberapa aturan asal rentang ukurannya tidak tumpang tindih.
+ */
+export const setPartnerProductRules = createServerFn({ method: 'POST' })
+  .validator(
+    z.object({
+      productId: idSchema,
+      ruleIds: z.array(idSchema).max(50),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const partner = await requirePartner()
+    const { db } = await import('../db')
+    const {
+      partnerProducts,
+      partnerPricingRules,
+      partnerRuleProducts,
+      partnerRuleSizes,
+    } = await import('../db/schema')
+
+    const [product] = await db
+      .select({ id: partnerProducts.id })
+      .from(partnerProducts)
+      .where(
+        and(
+          eq(partnerProducts.id, data.productId),
+          eq(partnerProducts.partnerId, partner.id),
+        ),
+      )
+    if (!product) throw new Error('Produk tidak ditemukan')
+
+    const ruleIds = [...new Set(data.ruleIds)]
+    if (ruleIds.length > 0) {
+      await assertPro(partner.id)
+      const owned = await db
+        .select({ id: partnerPricingRules.id })
+        .from(partnerPricingRules)
+        .where(
+          and(
+            inArray(partnerPricingRules.id, ruleIds),
+            eq(partnerPricingRules.partnerId, partner.id),
+          ),
+        )
+      if (owned.length !== ruleIds.length) {
+        throw new Error('Aturan tidak ditemukan')
+      }
+
+      const sizeRows = await db
+        .select()
+        .from(partnerRuleSizes)
+        .where(inArray(partnerRuleSizes.ruleId, ruleIds))
+      try {
+        assertRuleScopesNoOverlap(
+          ruleIds.map((id) => ({
+            id,
+            productIds: [data.productId],
+            sizes: sizeRows.filter((z) => z.ruleId === id).map((z) => z.sizeName),
+          })),
+        )
+      } catch (error) {
+        throw new Error(
+          error instanceof Error
+            ? error.message
+            : 'Produk ini sudah punya aturan dengan ukuran yang sama.',
+        )
+      }
+    }
+
+    return db.transaction(async (tx) => {
+      // Lepas dari aturan milik partner ini yang tidak lagi dipilih.
+      const current = await tx
+        .select({ ruleId: partnerRuleProducts.ruleId })
+        .from(partnerRuleProducts)
+        .where(eq(partnerRuleProducts.partnerProductId, data.productId))
+      const currentIds = current.map((c) => c.ruleId)
+      const toRemove = currentIds.filter((id) => !ruleIds.includes(id))
+      if (toRemove.length > 0) {
+        await tx
+          .delete(partnerRuleProducts)
+          .where(
+            and(
+              eq(partnerRuleProducts.partnerProductId, data.productId),
+              inArray(partnerRuleProducts.ruleId, toRemove),
+            ),
+          )
+      }
+      const toAdd = ruleIds.filter((id) => !currentIds.includes(id))
+      if (toAdd.length > 0) {
+        await tx.insert(partnerRuleProducts).values(
+          toAdd.map((ruleId) => ({ ruleId, partnerProductId: data.productId })),
+        )
+      }
+      await syncDefaultVariant(
+        tx as unknown as typeof import('../db').db,
+        data.productId,
+      )
+      return { ok: true as const }
+    })
+  })

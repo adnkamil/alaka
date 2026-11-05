@@ -14,8 +14,8 @@ import {
   variantLabel
 
 } from './partner-item-label'
-import type {PartnerEventItemCatalog} from './partner-item-label';
-import { partnerPricingRules, partnerRuleProducts, partnerSubscriptions } from '../db/schema';
+import type { PartnerEventItemCatalog, PartnerItemRule } from './partner-item-label';
+import { partnerPricingRules, partnerRuleProducts, partnerRuleSizes, partnerSubscriptions } from '../db/schema';
 import { hasPartnerPro } from './partner-entitlement';
 
 /**
@@ -76,6 +76,7 @@ export async function loadEventPartnerItemCatalog(
           id: partnerPricingRules.id,
           name: partnerPricingRules.name,
           minQty: partnerPricingRules.minQty,
+          bundlePrice: partnerPricingRules.bundlePrice,
           isActive: partnerPricingRules.isActive,
         })
         .from(partnerPricingRules)
@@ -97,12 +98,28 @@ export async function loadEventPartnerItemCatalog(
   const isPro = hasPartnerPro(subRows)
   const activeRules = isPro ? ruleRows.filter((r) => r.isActive) : []
   const activeRuleIds = new Set(activeRules.map((r) => r.id))
-  const ruleByProduct = new Map<string, { id: string; name: string }>()
+  // Satu produk bisa masuk beberapa aturan; semua ikut ditampilkan.
+  const sizeRows = activeRuleIds.size
+    ? await db
+        .select({ ruleId: partnerRuleSizes.ruleId, sizeName: partnerRuleSizes.sizeName })
+        .from(partnerRuleSizes)
+        .where(inArray(partnerRuleSizes.ruleId, [...activeRuleIds]))
+    : []
+  const rulesByProduct = new Map<string, Array<PartnerItemRule>>()
   for (const row of ruleProductRows) {
     const rule = activeRules.find((r) => r.id === row.ruleId)
-    if (rule && activeRuleIds.has(row.ruleId) && !ruleByProduct.has(row.productId)) {
-      ruleByProduct.set(row.productId, { id: rule.id, name: rule.name })
+    if (!rule || !activeRuleIds.has(row.ruleId)) continue
+    const list = rulesByProduct.get(row.productId) ?? []
+    if (!list.some((r) => r.id === rule.id)) {
+      list.push({
+        id: rule.id,
+        name: rule.name,
+        minQty: rule.minQty,
+        bundlePrice: Number(rule.bundlePrice),
+        sizes: sizeRows.filter((z) => z.ruleId === rule.id).map((z) => z.sizeName),
+      })
     }
+    rulesByProduct.set(row.productId, list)
   }
 
   const valueRows = variantRows.length
@@ -145,13 +162,18 @@ export async function loadEventPartnerItemCatalog(
 
   return {
     isPartnerEvent: true,
-    rules: activeRules.map((r) => ({ id: r.id, name: r.name, minQty: r.minQty })),
+    rules: activeRules.map((r) => ({
+      id: r.id,
+      name: r.name,
+      minQty: r.minQty,
+      bundlePrice: Number(r.bundlePrice),
+      sizes: sizeRows.filter((z) => z.ruleId === r.id).map((z) => z.sizeName),
+    })),
     products: productRows
       .map((product) => ({
         id: product.id,
         name: product.name,
-        ruleId: ruleByProduct.get(product.id)?.id ?? null,
-        ruleName: ruleByProduct.get(product.id)?.name ?? null,
+        rules: rulesByProduct.get(product.id) ?? [],
         variants: variantRows
           .filter((v) => v.productId === product.id)
           .map((v) => ({

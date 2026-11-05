@@ -1,12 +1,16 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
-import { listPartnerRules, setPartnerProductRule } from '../lib/partner-rule-functions'
+import { listPartnerRules, setPartnerProductRules } from '../lib/partner-rule-functions'
 
 const RULES_KEY = ['partner-rules']
 
+function rulesOf(rules: Array<{ id: string; productIds: Array<string> }>, productId: string) {
+  return rules.filter((r) => r.productIds.includes(productId)).map((r) => r.id)
+}
+
 /**
- * Kartu "Paket" di halaman produk. Menampilkan paket yang sedang dipakai
- * produk ini dan bisa diganti langsung dari sini.
+ * Kartu "Paket" di halaman produk. Satu produk bisa masuk beberapa aturan
+ * (mis. S–L dan XL–XXL dengan harga paket berbeda). Centang aturan yang dipakai.
  */
 export default function PartnerProductRuleCard({ productId }: { productId: string }) {
   const queryClient = useQueryClient()
@@ -14,24 +18,29 @@ export default function PartnerProductRuleCard({ productId }: { productId: strin
     queryKey: RULES_KEY,
     queryFn: () => listPartnerRules(),
   })
-  const currentRule = rules.find((r) => r.productIds.includes(productId)) ?? null
-  const [selected, setSelected] = useState<string>('')
+  const currentIds = rulesOf(rules, productId)
+  const currentKey = currentIds.slice().sort().join(',')
+  const [selected, setSelected] = useState<Array<string>>([])
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    setSelected(currentRule?.id ?? '')
-  }, [currentRule?.id])
+    setSelected(currentIds)
+    // currentKey dipakai sebagai dependency supaya tidak reset terus.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentKey])
 
-  const dirty = selected !== (currentRule?.id ?? '')
+  const dirty = selected.slice().sort().join(',') !== currentKey
+
+  function toggle(id: string) {
+    setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]))
+  }
 
   async function save() {
     setSaving(true)
     setStatus(null)
     try {
-      await setPartnerProductRule({
-        data: { productId, ruleId: selected === '' ? null : selected },
-      })
+      await setPartnerProductRules({ data: { productId, ruleIds: selected } })
       await queryClient.invalidateQueries({ queryKey: RULES_KEY })
       setStatus({ ok: true, text: 'Paket produk tersimpan.' })
     } catch (err) {
@@ -48,25 +57,42 @@ export default function PartnerProductRuleCard({ productId }: { productId: strin
       <div>
         <h2 className="pm-display text-base">Paket</h2>
         <p className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
-          Produk ini ikut aturan paket mana. Bisa diubah dari halaman ini atau dari halaman Paket.
+          Produk ini bisa masuk lebih dari satu aturan paket, selama rentang ukurannya tidak sama.
+          Bisa diubah dari halaman ini atau dari halaman Paket.
         </p>
       </div>
-      <label className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-2">
         <span className="text-xs font-semibold">Aturan paket</span>
-        <select
-          value={selected}
-          onChange={(e) => setSelected(e.target.value)}
-          className="app-input"
-        >
-          <option value="">Tidak masuk paket</option>
-          {rules.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.name} · {r.minQty} pcs · Rp{r.bundlePrice.toLocaleString('id-ID')}
-              {r.id !== currentRule?.id && r.productIds.length > 0 ? ' (sudah ada produknya)' : ''}
-            </option>
-          ))}
-        </select>
-      </label>
+        {rules.length === 0 && (
+          <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
+            Belum ada aturan paket.
+          </p>
+        )}
+        {rules.map((r) => {
+          const on = selected.includes(r.id)
+          return (
+            <label
+              key={r.id}
+              className="flex cursor-pointer items-center gap-3 rounded-xl border p-3 text-sm"
+              style={{ borderColor: 'var(--app-border)' }}
+            >
+              <input
+                type="checkbox"
+                checked={on}
+                onChange={() => toggle(r.id)}
+                className="h-4 w-4 accent-[#7a4a2a]"
+              />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-semibold">{r.name}</span>
+                <span className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
+                  {r.minQty} pcs · Rp{r.bundlePrice.toLocaleString('id-ID')} ·{' '}
+                  {r.sizes.length === 0 ? 'semua ukuran' : r.sizes.join(', ')}
+                </span>
+              </span>
+            </label>
+          )
+        })}
+      </div>
       {status && (
         <p className="text-sm" style={{ color: status.ok ? '#3f7d58' : '#b42318' }} role="status">
           {status.text}
