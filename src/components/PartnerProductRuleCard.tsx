@@ -85,8 +85,7 @@ export default function PartnerProductRuleCard({ productId }: { productId: strin
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-semibold">{r.name}</span>
                 <span className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
-                  {r.minQty} pcs · Rp{r.bundlePrice.toLocaleString('id-ID')} ·{' '}
-                  {r.sizes.length === 0 ? 'semua ukuran' : r.sizes.join(', ')}
+                  {r.name}
                 </span>
               </span>
             </label>

@@ -349,7 +349,7 @@ function VariantSheet({
                 return (
                   <Chip
                     key={rule.id}
-                    label={`${rule.minQty} pcs · ${rupiah(rule.bundlePrice)}${rule.sizes.length ? ` · ${rule.sizes.join(', ')}` : ''}`}
+                    label={rule.name}
                     selected={inRule === true}
                     disabled={inRule === false}
                     filled

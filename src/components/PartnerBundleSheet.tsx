@@ -189,7 +189,7 @@ export default function PartnerBundleSheet({
               >
                 <span className="block text-sm font-semibold">{r.name}</span>
                 <span className="block text-xs" style={{ color: 'var(--app-text-soft)' }}>
-                  {r.minQty} pcs · {rupiah(r.bundlePrice)}
+                  {r.name}
                 </span>
               </button>
             )

@@ -31,7 +31,7 @@ export interface PartnerEventItemCatalog {
   /** True kalau event terhubung ke partner. Di event ini nama barang tidak boleh diketik bebas. */
   isPartnerEvent: boolean
   /** Aturan paket aktif di event ini, untuk filter katalog. */
-  rules?: Array<{ id: string; name: string; minQty: number }>
+  rules?: Array<PartnerItemRule>
   products: Array<PartnerItemProduct>
 }
 

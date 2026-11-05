@@ -143,7 +143,6 @@ export async function regroupRuleInOrder(
     .where(eq(partnerPricingRules.id, ruleId))
     .for('update')
   if (!rule || !rule.isActive) return
-
   // Fitur paket hanya untuk partner PRO. Di luar itu, barang tetap satuan.
   const subs = await tx
     .select({
