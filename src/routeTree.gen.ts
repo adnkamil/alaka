@@ -68,6 +68,7 @@ import { Route as ApiAuthGoogleCallbackRouteImport } from './routes/api/auth/goo
 import { Route as PartnerEventProdukIdRouteImport } from './routes/partner/event/produk.$id'
 import { Route as PartnerEventRekapIdRouteImport } from './routes/partner/event/rekap.$id'
 import { Route as PartnerEventUbahIdRouteImport } from './routes/partner/event/ubah.$id'
+import { Route as PartnerEventJastiperIdBrandIdRouteImport } from './routes/partner/event/jastiper.$id.$brandId'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -367,6 +368,12 @@ const PartnerEventUbahIdRoute = PartnerEventUbahIdRouteImport.update({
   path: '/event/ubah/$id',
   getParentRoute: () => PartnerRoute,
 } as any)
+const PartnerEventJastiperIdBrandIdRoute =
+  PartnerEventJastiperIdBrandIdRouteImport.update({
+    id: '/event/jastiper/$id/$brandId',
+    path: '/event/jastiper/$id/$brandId',
+    getParentRoute: () => PartnerRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -427,6 +434,7 @@ export interface FileRoutesByFullPath {
   '/profil/customers/': typeof AppProfilCustomersIndexRoute
   '/profil/fee-rules/': typeof AppProfilFeeRulesIndexRoute
   '/api/auth/google/': typeof ApiAuthGoogleIndexRoute
+  '/partner/event/jastiper/$id/$brandId': typeof PartnerEventJastiperIdBrandIdRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -485,6 +493,7 @@ export interface FileRoutesByTo {
   '/profil/customers': typeof AppProfilCustomersIndexRoute
   '/profil/fee-rules': typeof AppProfilFeeRulesIndexRoute
   '/api/auth/google': typeof ApiAuthGoogleIndexRoute
+  '/partner/event/jastiper/$id/$brandId': typeof PartnerEventJastiperIdBrandIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -547,6 +556,7 @@ export interface FileRoutesById {
   '/_app/profil/customers/': typeof AppProfilCustomersIndexRoute
   '/_app/profil/fee-rules/': typeof AppProfilFeeRulesIndexRoute
   '/api/auth/google/': typeof ApiAuthGoogleIndexRoute
+  '/partner/event/jastiper/$id/$brandId': typeof PartnerEventJastiperIdBrandIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -609,6 +619,7 @@ export interface FileRouteTypes {
     | '/profil/customers/'
     | '/profil/fee-rules/'
     | '/api/auth/google/'
+    | '/partner/event/jastiper/$id/$brandId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -667,6 +678,7 @@ export interface FileRouteTypes {
     | '/profil/customers'
     | '/profil/fee-rules'
     | '/api/auth/google'
+    | '/partner/event/jastiper/$id/$brandId'
   id:
     | '__root__'
     | '/_app'
@@ -728,6 +740,7 @@ export interface FileRouteTypes {
     | '/_app/profil/customers/'
     | '/_app/profil/fee-rules/'
     | '/api/auth/google/'
+    | '/partner/event/jastiper/$id/$brandId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1168,6 +1181,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PartnerEventUbahIdRouteImport
       parentRoute: typeof PartnerRoute
     }
+    '/partner/event/jastiper/$id/$brandId': {
+      id: '/partner/event/jastiper/$id/$brandId'
+      path: '/event/jastiper/$id/$brandId'
+      fullPath: '/partner/event/jastiper/$id/$brandId'
+      preLoaderRoute: typeof PartnerEventJastiperIdBrandIdRouteImport
+      parentRoute: typeof PartnerRoute
+    }
   }
 }
 
@@ -1252,6 +1272,7 @@ interface PartnerRouteChildren {
   PartnerEventProdukIdRoute: typeof PartnerEventProdukIdRoute
   PartnerEventRekapIdRoute: typeof PartnerEventRekapIdRoute
   PartnerEventUbahIdRoute: typeof PartnerEventUbahIdRoute
+  PartnerEventJastiperIdBrandIdRoute: typeof PartnerEventJastiperIdBrandIdRoute
 }
 
 const PartnerRouteChildren: PartnerRouteChildren = {
@@ -1269,6 +1290,7 @@ const PartnerRouteChildren: PartnerRouteChildren = {
   PartnerEventProdukIdRoute: PartnerEventProdukIdRoute,
   PartnerEventRekapIdRoute: PartnerEventRekapIdRoute,
   PartnerEventUbahIdRoute: PartnerEventUbahIdRoute,
+  PartnerEventJastiperIdBrandIdRoute: PartnerEventJastiperIdBrandIdRoute,
 }
 
 const PartnerRouteWithChildren =
