@@ -1497,7 +1497,8 @@
     {
      "sizes": [
       "XL",
-      "XXL"
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 110000
@@ -1555,7 +1556,8 @@
     {
      "sizes": [
       "XL",
-      "XXL"
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 110000
@@ -1614,7 +1616,8 @@
     {
      "sizes": [
       "XL",
-      "XXL"
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 110000
@@ -1671,7 +1674,8 @@
     {
      "sizes": [
       "XL",
-      "XXL"
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 110000
@@ -1728,7 +1732,8 @@
     {
      "sizes": [
       "XL",
-      "XXL"
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 110000
@@ -1790,7 +1795,8 @@
     {
      "sizes": [
       "XL",
-      "XXL"
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 110000
@@ -1849,7 +1855,9 @@
     },
     {
      "sizes": [
-      "XL"
+      "XL",
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 110000
@@ -1905,7 +1913,9 @@
     },
     {
      "sizes": [
-      "XL"
+      "XL",
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 110000
@@ -1969,7 +1979,9 @@
     },
     {
      "sizes": [
-      "XL"
+      "XL",
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 110000
@@ -2023,7 +2035,9 @@
     },
     {
      "sizes": [
-      "XL"
+      "XL",
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 110000
@@ -2078,7 +2092,9 @@
     },
     {
      "sizes": [
-      "XL"
+      "XL",
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 110000
@@ -2136,7 +2152,8 @@
     {
      "sizes": [
       "XL",
-      "XXL"
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 110000
@@ -2194,7 +2211,8 @@
     {
      "sizes": [
       "XL",
-      "XXL"
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 110000
@@ -2256,7 +2274,8 @@
     {
      "sizes": [
       "XL",
-      "XXL"
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 110000
@@ -2315,7 +2334,8 @@
     {
      "sizes": [
       "XL",
-      "XXL"
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 110000
@@ -2459,7 +2479,8 @@
     {
      "sizes": [
       "XL",
-      "XXL"
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 110000
@@ -2519,7 +2540,8 @@
     {
      "sizes": [
       "XL",
-      "XXL"
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 110000
@@ -2573,7 +2595,9 @@
     },
     {
      "sizes": [
-      "XL"
+      "XL",
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 110000
@@ -2733,7 +2757,8 @@
     {
      "sizes": [
       "XL",
-      "XXL"
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 110000
@@ -2786,7 +2811,9 @@
     },
     {
      "sizes": [
-      "XL"
+      "XL",
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 110000
@@ -2848,7 +2875,8 @@
     {
      "sizes": [
       "XL",
-      "XXL"
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 110000
@@ -2903,7 +2931,9 @@
     },
     {
      "sizes": [
-      "XL"
+      "XL",
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 110000
@@ -2995,7 +3025,9 @@
     },
     {
      "sizes": [
-      "XL"
+      "XL",
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 110000
@@ -3050,7 +3082,8 @@
     {
      "sizes": [
       "XL",
-      "XXL"
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 110000
@@ -3105,7 +3138,8 @@
     {
      "sizes": [
       "XL",
-      "XXL"
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 110000
@@ -3163,7 +3197,8 @@
     {
      "sizes": [
       "XL",
-      "XXL"
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 110000
@@ -3215,7 +3250,9 @@
     },
     {
      "sizes": [
-      "XL"
+      "XL",
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 110000
@@ -3381,7 +3418,9 @@
     },
     {
      "sizes": [
-      "XL"
+      "XL",
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 90000
@@ -3438,7 +3477,9 @@
     },
     {
      "sizes": [
-      "XL"
+      "XL",
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 90000
@@ -3599,7 +3640,8 @@
     {
      "sizes": [
       "XL",
-      "XXL"
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 90000
@@ -3653,7 +3695,8 @@
     {
      "sizes": [
       "XL",
-      "XXL"
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 90000
@@ -3785,7 +3828,8 @@
     {
      "sizes": [
       "XL",
-      "XXL"
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 90000
@@ -3841,7 +3885,8 @@
     {
      "sizes": [
       "XL",
-      "XXL"
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 90000
@@ -3894,7 +3939,8 @@
     {
      "sizes": [
       "XL",
-      "XXL"
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 90000
@@ -3948,7 +3994,9 @@
     },
     {
      "sizes": [
-      "XL"
+      "XL",
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 90000
@@ -4001,7 +4049,9 @@
     },
     {
      "sizes": [
-      "XL"
+      "XL",
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 90000
@@ -4056,7 +4106,9 @@
     },
     {
      "sizes": [
-      "XL"
+      "XL",
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 90000
@@ -4112,7 +4164,9 @@
     },
     {
      "sizes": [
-      "XL"
+      "XL",
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 90000
@@ -4166,7 +4220,9 @@
     },
     {
      "sizes": [
-      "XL"
+      "XL",
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 90000
@@ -4227,7 +4283,8 @@
     {
      "sizes": [
       "XL",
-      "XXL"
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 90000
@@ -4347,7 +4404,8 @@
     {
      "sizes": [
       "XL",
-      "XXL"
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 90000
@@ -4406,7 +4464,8 @@
     {
      "sizes": [
       "XL",
-      "XXL"
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 90000
@@ -4466,7 +4525,8 @@
     {
      "sizes": [
       "XL",
-      "XXL"
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 90000
@@ -4524,7 +4584,8 @@
     {
      "sizes": [
       "XL",
-      "XXL"
+      "XXL",
+      "XXXL"
      ],
      "minQty": 2,
      "bundlePrice": 90000
@@ -4726,7 +4787,8 @@
     },
     {
      "sizes": [
-      "XL"
+      "XL",
+      "XXL"
      ],
      "minQty": 3,
      "bundlePrice": 120000
@@ -4825,7 +4887,8 @@
     },
     {
      "sizes": [
-      "XL"
+      "XL",
+      "XXL"
      ],
      "minQty": 3,
      "bundlePrice": 120000
@@ -4972,7 +5035,8 @@
     },
     {
      "sizes": [
-      "XL"
+      "XL",
+      "XXL"
      ],
      "minQty": 3,
      "bundlePrice": 120000
@@ -5265,7 +5329,8 @@
     },
     {
      "sizes": [
-      "XL"
+      "XL",
+      "XXL"
      ],
      "minQty": 3,
      "bundlePrice": 120000
@@ -6073,11 +6138,7 @@
    ],
    "rules": [
     {
-     "sizes": [
-      "S",
-      "M",
-      "L"
-     ],
+     "sizes": [],
      "minQty": 4,
      "bundlePrice": 100000
     }
@@ -6115,12 +6176,7 @@
    ],
    "rules": [
     {
-     "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL"
-     ],
+     "sizes": [],
      "minQty": 4,
      "bundlePrice": 100000
     }
@@ -6158,12 +6214,7 @@
    ],
    "rules": [
     {
-     "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL"
-     ],
+     "sizes": [],
      "minQty": 4,
      "bundlePrice": 100000
     }
@@ -6198,11 +6249,7 @@
    ],
    "rules": [
     {
-     "sizes": [
-      "S",
-      "M",
-      "L"
-     ],
+     "sizes": [],
      "minQty": 4,
      "bundlePrice": 100000
     }
@@ -6236,11 +6283,7 @@
    ],
    "rules": [
     {
-     "sizes": [
-      "S",
-      "M",
-      "L"
-     ],
+     "sizes": [],
      "minQty": 4,
      "bundlePrice": 100000
     }
@@ -6274,11 +6317,7 @@
    ],
    "rules": [
     {
-     "sizes": [
-      "S",
-      "M",
-      "L"
-     ],
+     "sizes": [],
      "minQty": 4,
      "bundlePrice": 100000
     }
@@ -6311,11 +6350,7 @@
    ],
    "rules": [
     {
-     "sizes": [
-      "S",
-      "M",
-      "L"
-     ],
+     "sizes": [],
      "minQty": 4,
      "bundlePrice": 100000
     }
@@ -6348,12 +6383,7 @@
    ],
    "rules": [
     {
-     "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL"
-     ],
+     "sizes": [],
      "minQty": 4,
      "bundlePrice": 100000
     }
@@ -6389,12 +6419,7 @@
    ],
    "rules": [
     {
-     "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL"
-     ],
+     "sizes": [],
      "minQty": 4,
      "bundlePrice": 100000
     }
@@ -6430,11 +6455,7 @@
    ],
    "rules": [
     {
-     "sizes": [
-      "S",
-      "M",
-      "L"
-     ],
+     "sizes": [],
      "minQty": 4,
      "bundlePrice": 100000
     }
@@ -6470,12 +6491,7 @@
    ],
    "rules": [
     {
-     "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL"
-     ],
+     "sizes": [],
      "minQty": 4,
      "bundlePrice": 100000
     }
@@ -6509,12 +6525,7 @@
    ],
    "rules": [
     {
-     "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL"
-     ],
+     "sizes": [],
      "minQty": 4,
      "bundlePrice": 100000
     }
@@ -6550,12 +6561,7 @@
    ],
    "rules": [
     {
-     "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL"
-     ],
+     "sizes": [],
      "minQty": 4,
      "bundlePrice": 100000
     }
@@ -6588,12 +6594,7 @@
    ],
    "rules": [
     {
-     "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL"
-     ],
+     "sizes": [],
      "minQty": 4,
      "bundlePrice": 100000
     }
@@ -6626,12 +6627,7 @@
    ],
    "rules": [
     {
-     "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL"
-     ],
+     "sizes": [],
      "minQty": 4,
      "bundlePrice": 100000
     }
@@ -6663,11 +6659,7 @@
    ],
    "rules": [
     {
-     "sizes": [
-      "S",
-      "M",
-      "L"
-     ],
+     "sizes": [],
      "minQty": 4,
      "bundlePrice": 100000
     }
@@ -6702,12 +6694,7 @@
    ],
    "rules": [
     {
-     "sizes": [
-      "S",
-      "M",
-      "L",
-      "XL"
-     ],
+     "sizes": [],
      "minQty": 4,
      "bundlePrice": 100000
     }
