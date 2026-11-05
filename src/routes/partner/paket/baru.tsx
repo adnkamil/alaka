@@ -18,7 +18,7 @@ function NewPartnerRulePage() {
   const queryClient = useQueryClient()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  useQuery({ queryKey: RULES_KEY, queryFn: () => listPartnerRules() })
+  const { data: rules = [] } = useQuery({ queryKey: RULES_KEY, queryFn: () => listPartnerRules() })
   const { data: products = [] } = useQuery({
     queryKey: ['partner-products'],
     queryFn: () => fetchPartnerProducts(),
@@ -61,6 +61,7 @@ function NewPartnerRulePage() {
         title="Detail aturan"
         initial={{ name: '', minQty: '3', bundlePrice: '', isActive: true, productIds: [], sizes: [] }}
         products={available}
+        allRules={rules}
         saving={saving}
         error={error}
         onSubmit={handleSubmit}

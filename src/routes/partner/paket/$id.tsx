@@ -78,6 +78,8 @@ function EditPartnerRulePage() {
             sizes: rule.sizes,
           }}
           products={selectableProducts(products)}
+          allRules={rules}
+          ruleId={rule.id}
           saving={saving}
           error={error}
           onSubmit={handleSubmit}

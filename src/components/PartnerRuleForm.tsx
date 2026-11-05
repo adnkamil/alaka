@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Search, X } from 'lucide-react'
 import RupiahInput from './ui/RupiahInput'
 
 export type RuleFormValue = {
@@ -12,14 +13,25 @@ export type RuleFormValue = {
 }
 
 /** Pilihan ukuran yang ditampilkan. Kosong berarti semua ukuran. */
+/** Lebar kolom tabel produk di modal, mengikuti tabel katalog partner. */
+const PICKER_COLUMNS = 'grid-cols-[28px_minmax(0,1fr)_130px]'
+/** Kolom daftar produk terpilih di halaman aturan: produk, status, aksi. */
+const LIST_COLUMNS = 'grid-cols-[minmax(0,1fr)_130px_56px]'
+
 export const RULE_SIZE_OPTIONS = ['Newborn', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL']
 
 export type RuleFormProduct = { id: string; name: string; isActive: boolean }
+
+/** Aturan paket lain milik partner, untuk mengecek produk yang bisa ditambahkan. */
+export type RuleFormOtherRule = { id: string; productIds: Array<string>; sizes: Array<string> }
 
 interface PartnerRuleFormProps {
   title: string
   initial: RuleFormValue
   products: Array<RuleFormProduct>
+  /** Semua aturan partner. Aturan yang sedang diedit dikenali lewat ruleId. */
+  allRules?: Array<RuleFormOtherRule>
+  ruleId?: string
   saving: boolean
   error: string | null
   onSubmit: (value: RuleFormValue) => void
@@ -34,6 +46,8 @@ export default function PartnerRuleForm({
   title,
   initial,
   products,
+  allRules = [],
+  ruleId,
   saving,
   error,
   onSubmit,
@@ -41,20 +55,54 @@ export default function PartnerRuleForm({
 }: PartnerRuleFormProps) {
   const [value, setValue] = useState<RuleFormValue>(initial)
   const [search, setSearch] = useState('')
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [pickerSearch, setPickerSearch] = useState('')
 
-  const visible = products.filter((p) =>
+  const selected = products.filter((p) => value.productIds.includes(p.id))
+  const visibleSelected = selected.filter((p) =>
     p.name.toLowerCase().includes(search.trim().toLowerCase()),
   )
-  const allVisibleChecked =
-    visible.length > 0 && visible.every((p) => value.productIds.includes(p.id))
 
-  function toggle(id: string) {
+  // Produk boleh ditambahkan kalau belum punya aturan, atau aturan lainnya
+  // rentang ukurannya tidak tumpang tindih dengan rentang aturan ini.
+  // Sizes kosong = semua ukuran (selalu bentrok dengan aturan lain pada produk yang sama).
+  function eligible(productId: string): boolean {
+    return allRules.every((r) => {
+      if (r.id === ruleId || !r.productIds.includes(productId)) return true
+      if (r.sizes.length === 0 || value.sizes.length === 0) return false
+      return !r.sizes.some((size) => value.sizes.includes(size))
+    })
+  }
+
+  // Daftar di modal: produk yang bisa masuk aturan ini (termasuk yang sudah dicentang).
+  const pickable = products.filter((p) => eligible(p.id))
+  const pickerVisible = pickable.filter((p) =>
+    p.name.toLowerCase().includes(pickerSearch.trim().toLowerCase()),
+  )
+  const allPickerChecked =
+    pickerVisible.length > 0 && pickerVisible.every((p) => value.productIds.includes(p.id))
+
+  function togglePicker(id: string) {
     setValue((v) => ({
       ...v,
       productIds: v.productIds.includes(id)
         ? v.productIds.filter((p) => p !== id)
         : [...v.productIds, id],
     }))
+  }
+
+  function toggleAllPicker() {
+    const visibleIds = pickerVisible.map((p) => p.id)
+    setValue((v) => ({
+      ...v,
+      productIds: allPickerChecked
+        ? v.productIds.filter((id) => !visibleIds.includes(id))
+        : [...new Set([...v.productIds, ...visibleIds])],
+    }))
+  }
+
+  function removeProduct(id: string) {
+    setValue((v) => ({ ...v, productIds: v.productIds.filter((p) => p !== id) }))
   }
 
   function toggleSize(size: string) {
@@ -64,16 +112,6 @@ export default function PartnerRuleForm({
         ? v.sizes.filter((s) => s !== size)
         : [...v.sizes, size],
     }))
-  }
-
-  function toggleAllVisible() {
-    setValue((v) => {
-      const visibleIds = visible.map((p) => p.id)
-      const next = allVisibleChecked
-        ? v.productIds.filter((id) => !visibleIds.includes(id))
-        : [...new Set([...v.productIds, ...visibleIds])]
-      return { ...v, productIds: next }
-    })
   }
 
   return (
@@ -184,78 +222,176 @@ export default function PartnerRuleForm({
           <div>
             <h2 className="pm-display text-base">Produk dalam aturan</h2>
             <p className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
-              {value.productIds.length} dipilih · produk yang sudah punya aturan lain tetap bisa dipilih selama ukurannya berbeda.
+              {selected.length} produk dipilih
             </p>
           </div>
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Cari produk"
-            className="app-input max-w-[240px]"
-          />
+          <div className="flex items-center gap-2">
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cari produk"
+              className="app-input max-w-[200px]"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                setPickerSearch('')
+                setPickerOpen(true)
+              }}
+              className="app-btn-outline whitespace-nowrap"
+              style={{ minHeight: 40, fontSize: 13 }}
+            >
+              + Tambah produk
+            </button>
+          </div>
         </div>
 
-        {visible.length === 0 ? (
+        {selected.length === 0 ? (
           <p className="py-6 text-center text-sm" style={{ color: 'var(--app-text-soft)' }}>
-            Tidak ada produk yang tersedia.
+            Belum ada produk di aturan ini. Tekan "Tambah produk" untuk memilih.
+          </p>
+        ) : visibleSelected.length === 0 ? (
+          <p className="py-6 text-center text-sm" style={{ color: 'var(--app-text-soft)' }}>
+            Tidak ada produk yang cocok dengan pencarian.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-2xl border" style={{ borderColor: 'var(--app-border)' }}>
-            <table className="w-full text-[13px]">
-              <thead style={{ background: 'var(--app-card-soft, #f7f1e7)' }}>
-                <tr>
-                  <th className="w-12 px-4 py-2.5 text-left">
-                    <input
-                      type="checkbox"
-                      checked={allVisibleChecked}
-                      onChange={toggleAllVisible}
-                      aria-label="Pilih semua"
-                      className="h-4 w-4 accent-[#3f7d58]"
-                    />
-                  </th>
-                  <th className="px-4 py-2.5 text-left text-[11px] font-semibold" style={{ color: 'var(--app-text-soft)' }}>
-                    Produk
-                  </th>
-                  <th className="px-4 py-2.5 text-left text-[11px] font-semibold" style={{ color: 'var(--app-text-soft)' }}>
-                    Status katalog
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {visible.map((p) => {
-                  const checked = value.productIds.includes(p.id)
-                  return (
-                    <tr
-                      key={p.id}
-                      onClick={() => toggle(p.id)}
-                      className="cursor-pointer border-t"
-                      style={{
-                        borderColor: 'var(--app-border)',
-                        background: checked ? 'var(--app-accent-soft)' : undefined,
-                      }}
-                    >
-                      <td className="px-4 py-2.5">
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => toggle(p.id)}
-                          onClick={(e) => e.stopPropagation()}
-                          aria-label={`Pilih ${p.name}`}
-                          className="h-4 w-4 accent-[#3f7d58]"
-                        />
-                      </td>
-                      <td className="px-4 py-2.5 font-bold">{p.name}</td>
-                      <td className="px-4 py-2.5">
-                        <span className="app-badge">{p.isActive ? 'Aktif' : 'Nonaktif'}</span>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+          <div className="app-card overflow-hidden">
+            <div
+              className={`grid ${LIST_COLUMNS} items-center gap-4 px-5 py-3.5 text-[11px] font-bold uppercase tracking-wide`}
+              style={{ background: 'var(--pm-tint)', color: 'var(--pm-gold)' }}
+            >
+              <span>Produk</span>
+              <span>Status katalog</span>
+              <span>Aksi</span>
+            </div>
+            {visibleSelected.map((p) => (
+              <div
+                key={p.id}
+                className={`grid ${LIST_COLUMNS} items-center gap-4 border-t px-5 py-3`}
+                style={{ borderColor: 'var(--app-border)' }}
+              >
+                <span className="truncate text-sm font-bold">{p.name}</span>
+                <span>
+                  <span className="app-badge">{p.isActive ? 'Aktif' : 'Nonaktif'}</span>
+                </span>
+                <span>
+                  <button
+                    type="button"
+                    onClick={() => removeProduct(p.id)}
+                    aria-label={`Keluarkan ${p.name}`}
+                    className="p-1"
+                    style={{ color: '#b42318' }}
+                  >
+                    <X size={16} />
+                  </button>
+                </span>
+              </div>
+            ))}
           </div>
         )}
       </section>
+
+      {pickerOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center"
+          onClick={() => setPickerOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-label="Tambah produk ke aturan"
+            className="app-card flex max-h-[85dvh] w-full max-w-lg flex-col gap-3 p-4 lg:p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <h3 className="pm-display text-base">Tambah produk</h3>
+                <p className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
+                  Hanya produk yang belum punya aturan, atau rentang ukurannya tidak bentrok dengan aturan ini.
+                </p>
+              </div>
+              <button type="button" onClick={() => setPickerOpen(false)} aria-label="Tutup" className="p-1">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="relative w-full">
+              <Search
+                size={17}
+                className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2"
+                style={{ color: 'var(--app-text-soft)' }}
+              />
+              <input
+                type="search"
+                value={pickerSearch}
+                onChange={(e) => setPickerSearch(e.target.value)}
+                placeholder="Cari nama produk"
+                aria-label="Cari nama produk"
+                className="app-input pl-10"
+                style={{ height: 42, borderRadius: 12 }}
+              />
+            </div>
+
+            {pickable.length === 0 ? (
+              <p className="py-6 text-center text-sm" style={{ color: 'var(--app-text-soft)' }}>
+                Tidak ada produk yang bisa ditambahkan ke aturan ini.
+              </p>
+            ) : pickerVisible.length === 0 ? (
+              <p className="py-6 text-center text-sm" style={{ color: 'var(--app-text-soft)' }}>
+                Tidak ada produk yang cocok dengan pencarian.
+              </p>
+            ) : (
+              <div className="app-card min-h-0 flex-1 overflow-y-auto overflow-hidden">
+                <div
+                  className={`grid ${PICKER_COLUMNS} items-center gap-4 px-5 py-3.5 text-[11px] font-bold uppercase tracking-wide`}
+                  style={{ background: 'var(--pm-tint)', color: 'var(--pm-gold)' }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={allPickerChecked}
+                    onChange={toggleAllPicker}
+                    aria-label="Pilih semua"
+                    className="h-4 w-4 accent-[#3f7d58]"
+                  />
+                  <span>Produk</span>
+                  <span>Status katalog</span>
+                </div>
+                {pickerVisible.map((p) => {
+                  const checked = value.productIds.includes(p.id)
+                  return (
+                    <div
+                      key={p.id}
+                      className={`grid ${PICKER_COLUMNS} items-center gap-4 border-t px-5 py-3`}
+                      style={{ borderColor: 'var(--app-border)' }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => togglePicker(p.id)}
+                        aria-label={`Pilih ${p.name}`}
+                        className="h-4 w-4 accent-[#3f7d58]"
+                      />
+                      <span className="truncate text-sm font-bold">{p.name}</span>
+                      <span>
+                        <span className="app-badge">{p.isActive ? 'Aktif' : 'Nonaktif'}</span>
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setPickerOpen(false)}
+                className="app-btn-primary"
+                style={{ minHeight: 44, fontSize: 14 }}
+              >
+                Selesai
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {error && (
         <p role="alert" className="text-sm" style={{ color: '#b42318' }}>
