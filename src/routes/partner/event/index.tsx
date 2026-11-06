@@ -11,6 +11,8 @@ import {
 } from 'lucide-react'
 import PartnerEventStatusBadge from '../../../components/PartnerEventStatusBadge'
 import Pagination from '../../../components/ui/Pagination'
+import PartnerTableToolbar from '../../../components/ui/PartnerTableToolbar'
+import { useDebouncedValue } from '../../../lib/use-debounced-value'
 import { formatDateRange } from '../../../lib/calendar'
 import { DEFAULT_PAGE_SIZE } from '../../../lib/pagination'
 import { partnerEventStatus } from '../../../lib/partner-event-rules'
@@ -45,10 +47,12 @@ function PartnerEventListPage() {
   const [tab, setTab] = useState<Tab>('all')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
+  const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search.trim())
   const today = todayIsoDateInAppTimeZone()
 
   const { data } = useQuery({
-    ...partnerEventsPageQuery({ tab, page, pageSize }),
+    ...partnerEventsPageQuery({ tab, page, pageSize, search: debouncedSearch }),
     // Tabel tetap tampil (data lama) selama halaman berikutnya ditarik.
     placeholderData: keepPreviousData,
   })
@@ -68,6 +72,10 @@ function PartnerEventListPage() {
 
   function changeTab(next: Tab) {
     setTab(next)
+    setPage(1)
+  }
+  function onSearchChange(value: string) {
+    setSearch(value)
     setPage(1)
   }
   const pager = {
@@ -181,7 +189,13 @@ function PartnerEventListPage() {
           </div>
         )}
 
-        <Pagination {...pager} className="justify-center" />
+        <PartnerTableToolbar
+          search={search}
+          onSearchChange={onSearchChange}
+          placeholder="Cari nama event"
+          label="Cari nama event"
+          pager={pager}
+        />
 
         <div className="pm-footer">
           <Link
@@ -199,6 +213,9 @@ function PartnerEventListPage() {
         tab={tab}
         onTab={changeTab}
         pager={pager}
+        search={search}
+        onSearchChange={onSearchChange}
+        searching={debouncedSearch !== ''}
       />
     </>
   )
@@ -219,12 +236,18 @@ function EventsDesktop({
   tab,
   onTab,
   pager,
+  search,
+  onSearchChange,
+  searching,
 }: {
   visible: Array<EventWithStatus>
   counts: Record<Tab, number>
   tab: Tab
   onTab: (tab: Tab) => void
   pager: React.ComponentProps<typeof Pagination>
+  search: string
+  onSearchChange: (value: string) => void
+  searching: boolean
 }) {
   return (
     <main className="pm-wide hidden flex-col gap-5 lg:flex">
@@ -261,7 +284,20 @@ function EventsDesktop({
         ))}
       </div>
 
-      {visible.length === 0 ? (
+      {visible.length === 0 && searching ? (
+        <>
+          <PartnerTableToolbar
+            search={search}
+            onSearchChange={onSearchChange}
+            placeholder="Cari nama event"
+            label="Cari nama event"
+            pager={pager}
+          />
+          <p className="py-6 text-center text-sm" style={{ color: 'var(--app-text-soft)' }}>
+            Tidak ada event yang cocok dengan pencarian.
+          </p>
+        </>
+      ) : visible.length === 0 ? (
         <div className="app-card flex flex-col items-center gap-2 p-10 text-center">
           <Inbox size={28} style={{ color: 'var(--app-text-mute)' }} />
           <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
@@ -272,7 +308,13 @@ function EventsDesktop({
         </div>
       ) : (
         <>
-          <Pagination {...pager} />
+          <PartnerTableToolbar
+            search={search}
+            onSearchChange={onSearchChange}
+            placeholder="Cari nama event"
+            label="Cari nama event"
+            pager={pager}
+          />
           <div className="app-card overflow-hidden">
             <div
               className={`grid ${COLUMNS} items-center gap-4 px-5 py-3.5 text-[11px] font-bold uppercase tracking-wide`}

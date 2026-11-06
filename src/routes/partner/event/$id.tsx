@@ -34,6 +34,8 @@ import {
   partnerEventQuery,
 } from '../../../lib/queries'
 import { todayIsoDateInAppTimeZone } from '../../../lib/timezone'
+import PartnerTableToolbar from '../../../components/ui/PartnerTableToolbar'
+import { useClientPager } from '../../../lib/use-client-pager'
 
 export const Route = createFileRoute('/partner/event/$id')({
   loader: ({ context, params }) =>
@@ -75,6 +77,16 @@ function PartnerEventDetailPage() {
   const [confirmEnd, setConfirmEnd] = useState(false)
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
+  const [participantSearch, setParticipantSearch] = useState('')
+  const filteredParticipants = participants.filter((row) =>
+    (row.brandName || 'Tanpa nama').toLowerCase().includes(participantSearch.trim().toLowerCase()),
+  )
+  const participantPager = useClientPager(filteredParticipants)
+  const [productSearch, setProductSearch] = useState('')
+  const filteredProducts = products.filter((product) =>
+    product.name.toLowerCase().includes(productSearch.trim().toLowerCase()),
+  )
+  const productPager = useClientPager(filteredProducts)
 
   const status = partnerEventStatus(event, todayIsoDateInAppTimeZone())
   const totalOrders = participants.reduce((sum, p) => sum + p.orderCount, 0)
@@ -249,12 +261,22 @@ function PartnerEventDetailPage() {
               <Package size={14} />
               Kelola produk
             </Link>
+            <PartnerTableToolbar
+              search={productSearch}
+              onSearchChange={(value) => {
+                setProductSearch(value)
+                productPager.resetPage()
+              }}
+              placeholder="Cari nama produk"
+              label="Cari nama produk"
+              pager={productPager.pager}
+            />
             {products.length === 0 ? (
               <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
                 Belum ada produk yang dipilih untuk event ini.
               </p>
             ) : (
-              products.map((product) => {
+              productPager.paged.map((product) => {
                 const photoUrl = partnerProductPhotoUrl(
                   product.id,
                   product.photoUpdatedAt,
@@ -307,7 +329,23 @@ function PartnerEventDetailPage() {
                 Belum ada jastiper yang ikut event ini.
               </p>
             ) : (
-              participants.map((row) => {
+              <>
+              <PartnerTableToolbar
+                search={participantSearch}
+                onSearchChange={(value) => {
+                  setParticipantSearch(value)
+                  participantPager.resetPage()
+                }}
+                placeholder="Cari nama jastiper"
+                label="Cari nama jastiper"
+                pager={participantPager.pager}
+              />
+              {participantPager.paged.length === 0 && (
+                <p className="py-4 text-center text-sm" style={{ color: 'var(--app-text-soft)' }}>
+                  Tidak ada jastiper yang cocok dengan pencarian.
+                </p>
+              )}
+              {participantPager.paged.map((row) => {
                 const name = row.brandName || 'Tanpa nama'
                 return (
                   <div
@@ -350,7 +388,8 @@ function PartnerEventDetailPage() {
                     ) : null}
                   </div>
                 )
-              })
+              })}
+              </>
             )}
           </section>
         )}
@@ -509,13 +548,23 @@ function PartnerEventDetailPage() {
               <Package size={14} />
               Kelola produk
             </Link>
+            <PartnerTableToolbar
+              search={productSearch}
+              onSearchChange={(value) => {
+                setProductSearch(value)
+                productPager.resetPage()
+              }}
+              placeholder="Cari nama produk"
+              label="Cari nama produk"
+              pager={productPager.pager}
+            />
             {products.length === 0 ? (
               <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
                 Belum ada produk yang dipilih untuk event ini.
               </p>
             ) : (
               <div className="app-card overflow-hidden">
-                {products.map((product, i) => {
+                {productPager.paged.map((product, i) => {
                   const photoUrl = partnerProductPhotoUrl(
                     product.id,
                     product.photoUpdatedAt,
@@ -570,6 +619,17 @@ function PartnerEventDetailPage() {
               Belum ada jastiper yang ikut event ini.
             </p>
           ) : (
+            <>
+            <PartnerTableToolbar
+              search={participantSearch}
+              onSearchChange={(value) => {
+                setParticipantSearch(value)
+                participantPager.resetPage()
+              }}
+              placeholder="Cari nama jastiper"
+              label="Cari nama jastiper"
+              pager={participantPager.pager}
+            />
             <div className="app-card overflow-hidden">
               <div
                 className={`grid ${PARTICIPANT_COLUMNS} items-center gap-4 px-5 py-3.5 text-[11px] font-bold uppercase tracking-wide`}
@@ -584,7 +644,7 @@ function PartnerEventDetailPage() {
                 <span>Pesanan</span>
                 <span>Aksi</span>
               </div>
-              {participants.map((row) => {
+              {participantPager.paged.map((row) => {
                 const name = row.brandName || 'Tanpa nama'
                 return (
                   <div
@@ -637,6 +697,7 @@ function PartnerEventDetailPage() {
                 )
               })}
             </div>
+            </>
           ))}
         </div>
         </div>

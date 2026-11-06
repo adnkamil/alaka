@@ -39,6 +39,7 @@ function EditPartnerRulePage() {
           bundlePrice: Number(value.bundlePrice),
           isActive: value.isActive,
           productIds: value.productIds,
+          sizes: value.sizes,
         },
       })
       await queryClient.invalidateQueries({ queryKey: RULES_KEY })
@@ -74,8 +75,11 @@ function EditPartnerRulePage() {
             bundlePrice: String(rule.bundlePrice),
             isActive: rule.isActive,
             productIds: rule.productIds,
+            sizes: rule.sizes,
           }}
-          products={selectableProducts(products, rules, rule.id)}
+          products={selectableProducts(products)}
+          allRules={rules}
+          ruleId={rule.id}
           saving={saving}
           error={error}
           onSubmit={handleSubmit}

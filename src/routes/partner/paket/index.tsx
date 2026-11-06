@@ -7,6 +7,8 @@ import { Link, createFileRoute } from '@tanstack/react-router'
 import { Layers, Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import Pagination from '../../../components/ui/Pagination'
+import PartnerTableToolbar from '../../../components/ui/PartnerTableToolbar'
+import { useDebouncedValue } from '../../../lib/use-debounced-value'
 import { DEFAULT_PAGE_SIZE } from '../../../lib/pagination'
 import { deletePartnerRule } from '../../../lib/partner-rule-functions'
 import { partnerRulesPageQuery } from '../../../lib/queries'
@@ -21,6 +23,11 @@ const COLUMNS = 'grid-cols-[minmax(0,1.5fr)_70px_150px_110px_110px_130px]'
 
 function formatPrice(value: number) {
   return `Rp${value.toLocaleString('id-ID')}`
+}
+
+/** Label rentang ukuran aturan untuk daftar: kosong = semua ukuran. */
+function sizeScopeLabel(sizes: Array<string>): string {
+  return sizes.length === 0 ? 'Semua ukuran' : sizes.join(', ')
 }
 
 function StatusBadge({ active }: { active: boolean }) {
@@ -41,8 +48,10 @@ function PartnerPaketPage() {
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
+  const [search, setSearch] = useState('')
+  const debouncedSearch = useDebouncedValue(search.trim())
   const { data, isLoading, error } = useQuery({
-    ...partnerRulesPageQuery({ page, pageSize }),
+    ...partnerRulesPageQuery({ page, pageSize, search: debouncedSearch }),
     // Tabel tetap tampil (data lama) selama halaman berikutnya ditarik.
     placeholderData: keepPreviousData,
   })
@@ -64,6 +73,11 @@ function PartnerPaketPage() {
       setPageSize(size)
       setPage(1)
     },
+  }
+  const toolbarPager = pager
+  function onSearchChange(value: string) {
+    setSearch(value)
+    setPage(1)
   }
   const [actionError, setActionError] = useState<string | null>(null)
 
@@ -132,7 +146,7 @@ function PartnerPaketPage() {
         </p>
       )}
 
-      {!isLoading && rules.length === 0 && (
+      {!isLoading && rules.length === 0 && !debouncedSearch && (
         <div className="app-card flex flex-col items-center gap-2 p-8 text-center">
           <Layers size={28} style={{ color: 'var(--app-text-soft)' }} />
           <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
@@ -141,13 +155,25 @@ function PartnerPaketPage() {
         </div>
       )}
 
-      {rules.length > 0 && (
+      {(rules.length > 0 || debouncedSearch) && (
         <>
           <div className="hidden lg:block">
-            <Pagination {...pager} />
+            <PartnerTableToolbar
+              search={search}
+              onSearchChange={onSearchChange}
+              placeholder="Cari nama aturan"
+              label="Cari nama aturan"
+              pager={toolbarPager}
+            />
           </div>
 
           {/* Mobile: kartu bertumpuk. */}
+          {rules.length === 0 && (
+            <p className="py-6 text-center text-sm" style={{ color: 'var(--app-text-soft)' }}>
+              Tidak ada aturan yang cocok dengan pencarian.
+            </p>
+          )}
+
           <div className="flex flex-col gap-3.5 lg:hidden">
             {rules.map((rule) => (
               <div key={rule.id} className="app-card flex flex-col gap-3 p-4">
@@ -158,7 +184,7 @@ function PartnerPaketPage() {
                       className="mt-0.5 text-[13px]"
                       style={{ color: 'var(--app-text-soft)' }}
                     >
-                      {rule.productIds.length} produk · min. {rule.minQty} pcs
+                      {rule.productIds.length} produk · {sizeScopeLabel(rule.sizes)} · min. {rule.minQty} pcs
                     </p>
                   </div>
                   <StatusBadge active={rule.isActive} />
@@ -233,7 +259,7 @@ function PartnerPaketPage() {
                   className="text-[13px]"
                   style={{ color: 'var(--app-text-soft)' }}
                 >
-                  {rule.productIds.length} produk
+                  {rule.productIds.length} produk · {sizeScopeLabel(rule.sizes)}
                 </span>
                 <div>
                   <StatusBadge active={rule.isActive} />
@@ -260,7 +286,12 @@ function PartnerPaketPage() {
             ))}
           </div>
 
-          <Pagination {...pager} className="justify-center lg:justify-end" />
+          <div className="hidden lg:block">
+            <Pagination {...pager} className="justify-end" />
+          </div>
+          <div className="lg:hidden">
+            <Pagination {...pager} className="justify-center" />
+          </div>
         </>
       )}
     </main>

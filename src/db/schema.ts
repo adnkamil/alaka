@@ -1192,10 +1192,22 @@ export const partnerRuleProducts = pgTable(
       .notNull()
       .references(() => partnerProducts.id, { onDelete: 'cascade' }),
   },
-  (table) => [
-    primaryKey({ columns: [table.ruleId, table.partnerProductId] }),
-    uniqueIndex('partner_rule_products_product_uq').on(table.partnerProductId),
-  ],
+  (table) => [primaryKey({ columns: [table.ruleId, table.partnerProductId] })],
+)
+
+// Rentang ukuran tiap aturan paket, dicocokkan dengan nama nilai ukuran pada
+// varian (mis. "S", "XL"). Tanpa baris = aturan berlaku untuk semua ukuran.
+// Satu produk boleh masuk beberapa aturan selama rentang ukurannya tidak
+// tumpang tindih (dicek di server).
+export const partnerRuleSizes = pgTable(
+  'partner_rule_sizes',
+  {
+    ruleId: uuid('rule_id')
+      .notNull()
+      .references(() => partnerPricingRules.id, { onDelete: 'cascade' }),
+    sizeName: varchar('size_name').notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.ruleId, table.sizeName] })],
 )
 
 // Token atur ulang kata sandi PARTNER. Pola sama dengan `password_reset_tokens`
@@ -1220,4 +1232,47 @@ export const partnerPasswordResetTokens = pgTable(
   (table) => [
     index('partner_password_reset_tokens_partner_idx').on(table.partnerId),
   ],
+)
+
+// NOTIFIKASI JASTIPER
+// Satu baris = satu notifikasi. brand_id null = broadcast ke semua brand jastiper.
+// `target` menentukan ke mana notifikasi diarahkan saat diklik; `calendar_event_id`
+// dipakai hanya kalau target = 'kalender' dan notifikasinya tentang satu event.
+export const notifications = pgTable(
+  'notifications',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    brandId: uuid('brand_id').references(() => brands.id, {
+      onDelete: 'cascade',
+    }),
+    kind: varchar().notNull(), // 'event_baru' | 'info_alaka'
+    title: varchar().notNull(),
+    body: text(),
+    target: varchar().notNull().default('none'), // 'none' | 'beranda' | 'kalender' | 'keuangan' | 'profil'
+    calendarEventId: uuid('calendar_event_id').references(
+      () => calendarEvents.id,
+      { onDelete: 'set null' },
+    ),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('notifications_brand_created_idx').on(table.brandId, table.createdAt),
+  ],
+)
+
+// Penanda notifikasi sudah dibaca, per user (bukan per brand).
+export const notificationReads = pgTable(
+  'notification_reads',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    notificationId: uuid('notification_id')
+      .notNull()
+      .references(() => notifications.id, { onDelete: 'cascade' }),
+    readAt: timestamp('read_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.notificationId] })],
 )

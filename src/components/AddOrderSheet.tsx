@@ -272,7 +272,7 @@ export default function AddOrderSheet({
       })),
       {
         rules: partnerCatalog.rules,
-        variants: partnerCatalog.variants.map((v) => ({ id: v.id, productId: v.productId })),
+        variants: partnerCatalog.variants.map((v) => ({ id: v.id, productId: v.productId, size: v.size })),
       },
     )
   }, [items, partnerCatalog])
@@ -306,11 +306,14 @@ export default function AddOrderSheet({
   const ruleNameByVariant = useMemo(() => {
     const map = new Map<string, string>()
     if (!partnerCatalog?.enabled) return map
-    for (const rule of partnerCatalog.rules) {
-      const productIds = new Set(rule.productIds)
-      for (const v of partnerCatalog.variants) {
-        if (productIds.has(v.productId) && !map.has(v.id)) map.set(v.id, rule.name)
-      }
+    for (const v of partnerCatalog.variants) {
+      // Sama dengan aturan di pratinjau: produknya ada di aturan dan ukurannya masuk rentang.
+      const rule = partnerCatalog.rules.find(
+        (r) =>
+          r.productIds.includes(v.productId) &&
+          (!r.sizes?.length || (v.size != null && r.sizes.includes(v.size))),
+      )
+      if (rule) map.set(v.id, rule.name)
     }
     return map
   }, [partnerCatalog])
@@ -633,7 +636,7 @@ export default function AddOrderSheet({
             </div>
           )}
           {catalogTarget && partnerItems && (
-            <div className="fixed inset-0 z-[60] overflow-y-auto" style={{ background: 'var(--app-bg)' }}>
+            <div className="app-canvas fixed inset-0 z-[60] overflow-y-auto">
               <PartnerCatalogPicker
                 customerName={customerName.trim()}
                 catalog={partnerItems}
@@ -744,7 +747,7 @@ export default function AddOrderSheet({
                   className="block truncate text-sm"
                   // style={{ color: 'var(--app-text-soft)' }}
                 >
-                  Item
+                  Satuan
                 </span>
                 {items.map((item, index) => {
                   const consumed = consumedQty.get(String(index)) ?? 0
@@ -1199,8 +1202,16 @@ export default function AddOrderSheet({
                     return [...byRule.entries()].map(([ruleId, group]) => (
                       <div key={`planned-${ruleId}`} className="flex flex-col gap-2">
                         <p className="text-xs" style={{ color: 'var(--app-text-mute)' }}>
-                          {group.ruleName} (Rp{group.bundlePrice.toLocaleString('id-ID')} + fee Rp0) · {group.count} paket · belum disimpan
+                          {group.ruleName}
                         </p>
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-semibold">
+                            Rp{group.bundlePrice.toLocaleString('id-ID')} + fee Rp0
+                          </p>
+                          <p className="text-xs" style={{ color: 'var(--app-text-mute)' }}>
+                            {group.count} paket · belum disimpan
+                          </p>
+                        </div>
                         {[...group.lines.values()].map((line) => (
                           <div
                             key={line.label}
@@ -1253,7 +1264,10 @@ export default function AddOrderSheet({
                 </div>
               )}
 
-              {partnerMode && items.every((item) => !item.partnerVariantId) && (
+              {partnerMode &&
+                items.every((item) => !item.partnerVariantId) &&
+                bundles.length === 0 &&
+                !(lockedTotals && lockedTotals.count > 0) && (
                 <div
                   className="rounded-2xl border border-dashed p-4 text-center"
                   style={{ borderColor: 'var(--app-border)' }}

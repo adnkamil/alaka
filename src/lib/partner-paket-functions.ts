@@ -7,6 +7,7 @@ import {
   items,
   orders,
   partnerRuleProducts,
+  partnerRuleSizes,
   partnerVariants,
 } from '../db/schema'
 import { getSessionUser } from './auth'
@@ -15,7 +16,7 @@ import { findMergeTarget } from './order-merge'
 import { recalculateOrderStatus } from './order-status-queries'
 import {
   dissolveBundle,
-  findRuleForProduct,
+  findRuleForVariant,
   isProductInEvent,
   loadVariantInfo,
   regroupRuleInOrder,
@@ -133,7 +134,7 @@ export const addPartnerItem = createServerFn({ method: 'POST' })
         })
       }
 
-      const rule = await findRuleForProduct(tx, info.productId)
+      const rule = await findRuleForVariant(tx, info.productId, info.size)
       if (rule) await regroupRuleInOrder(tx, orderId, rule.id)
 
       await recalculateOrderStatus(tx, orderId)
@@ -226,6 +227,11 @@ export const updateBundleComponent = createServerFn({ method: 'POST' })
         .from(partnerRuleProducts)
         .where(eq(partnerRuleProducts.ruleId, bundle.partnerRuleId))
       const ruleProductIds = new Set(ruleProductRows.map((r) => r.productId))
+      const ruleSizeRows = await tx
+        .select({ name: partnerRuleSizes.sizeName })
+        .from(partnerRuleSizes)
+        .where(eq(partnerRuleSizes.ruleId, bundle.partnerRuleId))
+      const ruleSizes = new Set(ruleSizeRows.map((z) => z.name))
 
       const info = (await loadVariantInfo(tx, [data.partnerVariantId])).get(
         data.partnerVariantId,
@@ -239,6 +245,12 @@ export const updateBundleComponent = createServerFn({ method: 'POST' })
       }
       if (!ruleProductIds.has(info.productId)) {
         throw new Error('Produk ini tidak masuk aturan paket.')
+      }
+      if (
+        ruleSizes.size > 0 &&
+        (info.size === null || !ruleSizes.has(info.size))
+      ) {
+        throw new Error('Ukuran ini tidak masuk rentang aturan paket.')
       }
 
       await tx

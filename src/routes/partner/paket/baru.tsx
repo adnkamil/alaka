@@ -24,7 +24,7 @@ function NewPartnerRulePage() {
     queryFn: () => fetchPartnerProducts(),
   })
 
-  const available = selectableProducts(products, rules, null)
+  const available = selectableProducts(products)
 
   async function handleSubmit(value: RuleFormValue) {
     setSaving(true)
@@ -37,6 +37,7 @@ function NewPartnerRulePage() {
           bundlePrice: Number(value.bundlePrice),
           isActive: value.isActive,
           productIds: value.productIds,
+          sizes: value.sizes,
         },
       })
       await queryClient.invalidateQueries({ queryKey: RULES_KEY })
@@ -58,8 +59,9 @@ function NewPartnerRulePage() {
       </header>
       <PartnerRuleForm
         title="Detail aturan"
-        initial={{ name: '', minQty: '3', bundlePrice: '', isActive: true, productIds: [] }}
+        initial={{ name: '', minQty: '3', bundlePrice: '', isActive: true, productIds: [], sizes: [] }}
         products={available}
+        allRules={rules}
         saving={saving}
         error={error}
         onSubmit={handleSubmit}

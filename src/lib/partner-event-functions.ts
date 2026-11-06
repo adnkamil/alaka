@@ -1,3 +1,4 @@
+import { notifyNewCalendarEvent } from './notification-queries'
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import {
@@ -93,6 +94,7 @@ export const fetchPartnerEventsPage = createServerFn({ method: 'GET' })
   .validator(
     pageParamsSchema.extend({
       tab: z.enum(['all', 'berjalan', 'mendatang', 'selesai']),
+      search: z.string().max(100).default(''),
     }),
   )
   .handler(async ({ data }) => {
@@ -137,6 +139,11 @@ export const createPartnerEvent = createServerFn({ method: 'POST' })
         bannerUpdatedAt,
         catalogUrl: catalog,
       })
+      await notifyNewCalendarEvent({
+        calendarEventId: id,
+        eventName: fields.name,
+        createdBy: partner.name,
+      }).catch((err) => console.error('[notifikasi] event partner gagal', err))
     } catch (error) {
       // Insert gagal: jangan tinggalkan file yatim di Blobs.
       if (bannerUpdatedAt) await deleteCalendarBanner(id).catch(() => {})

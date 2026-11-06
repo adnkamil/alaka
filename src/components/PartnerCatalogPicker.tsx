@@ -90,7 +90,7 @@ export default function PartnerCatalogPicker({
     const q = query.trim().toLowerCase()
     return catalog.products.filter((p) => {
       if (onlyPicked && pickedOf(p) === 0) return false
-      if (ruleFilter !== null && p.ruleId !== ruleFilter) return false
+      if (ruleFilter !== null && !(p.rules ?? []).some((r) => r.id === ruleFilter)) return false
       return !q || p.name.toLowerCase().includes(q)
     })
     // pickedOf membaca pickedQty yang sudah masuk dependency.
@@ -131,12 +131,12 @@ export default function PartnerCatalogPicker({
             }}
           />
         </label>
-        <div className="flex flex-wrap gap-2 text-xs">
+        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 text-xs [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <button
             type="button"
             onClick={() => setOnlyPicked(false)}
             aria-pressed={!onlyPicked}
-            className="min-h-[36px] rounded-full border px-4 py-1.5"
+            className="min-h-[36px] flex-shrink-0 whitespace-nowrap rounded-full border px-4 py-1.5"
             style={{ borderColor: !onlyPicked ? 'var(--app-accent)' : 'var(--app-border)' }}
           >
             Semua
@@ -145,7 +145,7 @@ export default function PartnerCatalogPicker({
             type="button"
             onClick={() => setOnlyPicked(true)}
             aria-pressed={onlyPicked}
-            className="min-h-[36px] rounded-full border px-4 py-1.5"
+            className="min-h-[36px] flex-shrink-0 whitespace-nowrap rounded-full border px-4 py-1.5"
             style={{ borderColor: onlyPicked ? 'var(--app-accent)' : 'var(--app-border)' }}
           >
             Sudah dipilih
@@ -156,7 +156,7 @@ export default function PartnerCatalogPicker({
               type="button"
               onClick={() => setRuleFilter(ruleFilter === rule.id ? null : rule.id)}
               aria-pressed={ruleFilter === rule.id}
-              className="min-h-[36px] rounded-full border px-4 py-1.5"
+              className="min-h-[36px] flex-shrink-0 whitespace-nowrap rounded-full border px-4 py-1.5"
               style={{
                 borderColor: ruleFilter === rule.id ? 'var(--app-accent)' : 'var(--app-border)',
               }}
@@ -219,11 +219,6 @@ export default function PartnerCatalogPicker({
             >
               <span className="h-12 w-12 flex-shrink-0 rounded-lg" style={{ background: tintFor(p.name) }} aria-hidden="true" />
               <div className="min-w-0 flex-1">
-                {p.ruleName && (
-                  <p className="truncate text-[11px]" style={{ color: 'var(--app-text-mute)' }}>
-                    {p.ruleName}
-                  </p>
-                )}
                 <p className="truncate text-sm font-semibold">{p.name}</p>
                 <p className="text-sm font-semibold" style={{ color: 'var(--app-accent)' }}>{priceLabel(p)}</p>
                 <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>{meta}</p>
@@ -342,6 +337,30 @@ function VariantSheet({
           </button>
         </div>
 
+        {(product.rules ?? []).length > 0 && (
+          <div>
+            <p className="mb-2 text-xs" style={{ color: 'var(--app-text-soft)' }}>Paket</p>
+            <div className="flex flex-wrap gap-2">
+              {(product.rules ?? []).map((rule) => {
+                const inRule =
+                  size === null && sizes.length > 0
+                    ? null
+                    : rule.sizes.length === 0 || (size !== null && rule.sizes.includes(size))
+                return (
+                  <Chip
+                    key={rule.id}
+                    label={rule.name}
+                    selected={inRule === true}
+                    disabled={inRule === false}
+                    filled
+                    onClick={() => {}}
+                  />
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         {sizes.length > 0 && (
           <div>
             <p className="mb-2 text-xs" style={{ color: 'var(--app-text-soft)' }}>Ukuran</p>
@@ -417,17 +436,32 @@ function VariantSheet({
   )
 }
 
-function Chip({ label, selected, disabled, onClick }: { label: string; selected: boolean; disabled: boolean; onClick: () => void }) {
+function Chip({
+  label,
+  selected,
+  disabled,
+  onClick,
+  filled = false,
+}: {
+  label: string
+  selected: boolean
+  disabled: boolean
+  onClick: () => void
+  /** Gaya tombol terisi saat terpilih (dipakai untuk chip aturan paket). */
+  filled?: boolean
+}) {
+  const solid = filled && selected
   return (
     <button
       type="button"
       disabled={disabled}
       aria-pressed={selected}
       onClick={onClick}
-      className="rounded-full border px-3 py-1.5 text-sm"
+      className={solid ? 'rounded-2xl border px-4 py-2 text-sm font-semibold' : 'rounded-full border px-3 py-1.5 text-sm'}
       style={{
         borderColor: selected ? 'var(--app-accent)' : 'var(--app-border)',
-        color: disabled ? 'var(--app-text-mute)' : selected ? 'var(--app-accent)' : 'inherit',
+        background: solid ? 'var(--app-accent)' : 'transparent',
+        color: disabled ? 'var(--app-text-mute)' : solid ? '#fff' : selected ? 'var(--app-accent)' : 'inherit',
         opacity: disabled ? 0.5 : 1,
         textDecoration: disabled ? 'line-through' : 'none',
       }}

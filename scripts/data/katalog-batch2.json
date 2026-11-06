@@ -1,0 +1,7207 @@
+{
+ "partnerEmail": "micibaby07@gmail.com",
+ "source": "BATCH_2_KATALOG_IMBEX",
+ "products": [
+  {
+   "page": 5,
+   "name": "Kingu Barrel Pants",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Light",
+    "Ice Blue",
+    "Dark",
+    "Black",
+    "BW"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "XXL"
+     ],
+     "price": 85000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 6,
+   "name": "Kingu Cheongsam Jacket",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Light",
+    "Dark",
+    "Ice Blue"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "XXL"
+     ],
+     "price": 85000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 7,
+   "name": "Kingu Kimozo Set",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "motifs": [
+    "Light",
+    "Dark"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL"
+     ],
+     "price": 90000
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL"
+     ],
+     "minQty": 3,
+     "bundlePrice": 105000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 8,
+   "name": "Kingu Klaas Set Boy",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Black",
+    "Dark"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "XXL"
+     ],
+     "price": 90000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 9,
+   "name": "Kingu Klaas Set Girl",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Black",
+    "Dark"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "XXL"
+     ],
+     "price": 90000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 10,
+   "name": "Kingu Rayyan Set Boy",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Brown",
+    "Navy",
+    "Grey"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "XXL"
+     ],
+     "price": 90000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 11,
+   "name": "Kingu Rayyan Set Girl",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Brown",
+    "Navy",
+    "Grey"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "XXL"
+     ],
+     "price": 135000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 12,
+   "name": "Qintha Namiah Girl",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Choco",
+    "Broken White",
+    "Black",
+    "Mauve"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "XXL"
+     ],
+     "price": 150000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 13,
+   "name": "Qintha Namiah Set Boy",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Broken White",
+    "Mauve",
+    "Choco",
+    "Black"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "XXL"
+     ],
+     "price": 90000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 14,
+   "name": "Qintha Long Fruit Set",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Green Orange",
+    "Yellow Avocado",
+    "Blue Apple",
+    "Red Pinapple"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "XXL"
+     ],
+     "price": 85000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 15,
+   "name": "Qintha Lotus Dad",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [],
+   "rules": [],
+   "needsReview": [],
+   "hasVariants": false,
+   "price": 100000
+  },
+  {
+   "page": 16,
+   "name": "Qintha Lotus Mom",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [],
+   "rules": [],
+   "needsReview": [],
+   "hasVariants": false,
+   "price": 100000
+  },
+  {
+   "page": 17,
+   "name": "Qintha Zamora Top Dad",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [],
+   "rules": [],
+   "needsReview": [],
+   "hasVariants": false,
+   "price": 90000
+  },
+  {
+   "page": 18,
+   "name": "Qintha Mauza Dress Mom",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [],
+   "rules": [],
+   "needsReview": [],
+   "hasVariants": false,
+   "price": 175000
+  },
+  {
+   "page": 19,
+   "name": "Qintha Zamora Dress Mom",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [],
+   "rules": [],
+   "needsReview": [],
+   "hasVariants": false,
+   "price": 175000
+  },
+  {
+   "page": 20,
+   "name": "Qintha Namiah Set Mom",
+   "sizes": [
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Broken White"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "XL"
+     ],
+     "price": 220000
+    },
+    {
+     "sizes": [
+      "XXL"
+     ],
+     "price": 240000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 21,
+   "name": "Qintha Namiah Top Dad",
+   "sizes": [
+    "XXL"
+   ],
+   "motifs": [
+    "Choco",
+    "Black",
+    "Mauve",
+    "Broken White"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "XXL"
+     ],
+     "price": 115000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 22,
+   "name": "Qintha Mayaza Set Boy",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Black",
+    "Caramel",
+    "Broken White",
+    "Grey",
+    "Maroon"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "XXL"
+     ],
+     "price": 110000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 23,
+   "name": "Qintha Mayaza Set Girl",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Black",
+    "Burgundy",
+    "Broken White",
+    "Grey"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "XXL"
+     ],
+     "price": 135000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 24,
+   "name": "Qintha Mayaza Dad",
+   "sizes": [
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Burgundy",
+    "Caramel",
+    "Black",
+    "Broken White",
+    "Grey"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "XL"
+     ],
+     "price": 100000
+    },
+    {
+     "sizes": [
+      "XXL"
+     ],
+     "price": 115000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 25,
+   "name": "Qintha Mayaza Set Mom",
+   "sizes": [
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Burgundy",
+    "Grey",
+    "Caramel",
+    "Black",
+    "Broken White"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "XL"
+     ],
+     "price": 190000
+    },
+    {
+     "sizes": [
+      "XXL"
+     ],
+     "price": 205000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 26,
+   "name": "Qintha Patch Shirt",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL",
+    "XXXL"
+   ],
+   "motifs": [
+    "Broken White",
+    "Mocca",
+    "Butter Yellow"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "price": 80000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 27,
+   "name": "Qintha Zelda Shirt Dewasa",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Ivory"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "XXL"
+     ],
+     "price": 115000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 28,
+   "name": "Qintha Zelda Vest Dewasa",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Ivory"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "XXL"
+     ],
+     "price": 95000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 30,
+   "name": "Kingu New Chatra",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Maroon",
+    "Ivory",
+    "Navy",
+    "Black",
+    "Cream",
+    "Denim"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "XXL"
+     ],
+     "price": 75000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 31,
+   "name": "Kingu Old Chatra",
+   "sizes": [
+    "S",
+    "M",
+    "L"
+   ],
+   "motifs": [
+    "White",
+    "Maroon",
+    "Sage Green"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 75000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 32,
+   "name": "Kingu Achava",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Medium",
+    "Dark",
+    "Gray",
+    "Light"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "XXL"
+     ],
+     "price": 75000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 33,
+   "name": "Kingu Haru Pants",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Dark",
+    "Light",
+    "Retro Black"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "XXL"
+     ],
+     "price": 75000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 34,
+   "name": "Kingu Loose Pants",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Light",
+    "Dark",
+    "Sandwash"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 75000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 75000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 35,
+   "name": "Kingu Lyra Skirt",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Dark",
+    "Sandwash"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 75000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 75000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 36,
+   "name": "Kingu Long Overall",
+   "sizes": [
+    "S",
+    "M",
+    "L"
+   ],
+   "motifs": [
+    "Medium",
+    "Dark"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 75000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 37,
+   "name": "Kingu Short Overall",
+   "sizes": [
+    "S",
+    "M",
+    "L"
+   ],
+   "motifs": [
+    "Medium",
+    "Dark"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 75000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 38,
+   "name": "Qintha Pouch Jacket",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Soft Green",
+    "Peach",
+    "Grey",
+    "Olive"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "XXL"
+     ],
+     "price": 75000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 39,
+   "name": "Qintha Basic Pants",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Navy",
+    "Grey",
+    "Cream",
+    "Black",
+    "Army",
+    "Moccha"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "XXL"
+     ],
+     "price": 75000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 40,
+   "name": "Qintha Skena Jeans",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Dark",
+    "Light",
+    "Medium"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "XXL"
+     ],
+     "price": 75000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 41,
+   "name": "Qintha Diandra Boy",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Army",
+    "Teracotta",
+    "Walnut"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "XXL"
+     ],
+     "price": 75000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 42,
+   "name": "Qintha Zamora Girl Dress",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "motifs": [
+    "Grey",
+    "Broken White",
+    "Moccha",
+    "Denim"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL"
+     ],
+     "price": 75000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 43,
+   "name": "Qintha Zamora Boy",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Grey",
+    "Denim",
+    "Moccha",
+    "Broken White"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "XXL"
+     ],
+     "price": 75000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 44,
+   "name": "Qintha Halona Boy",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Army",
+    "Cream",
+    "Caramel",
+    "Black"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "XXL"
+     ],
+     "price": 75000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 45,
+   "name": "Qintha Mauza Girl Dress",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "motifs": [
+    "Black",
+    "Creamy",
+    "Sage Green",
+    "Baby Blue",
+    "Choco",
+    "New Sage",
+    "New Choco",
+    "New Bw"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL"
+     ],
+     "price": 75000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 46,
+   "name": "Qintha Long Overall Corduroy",
+   "sizes": [
+    "S",
+    "M",
+    "L"
+   ],
+   "motifs": [
+    "Army",
+    "Moccha",
+    "Teracotta",
+    "Navy"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 75000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 47,
+   "name": "Qintha Damar Set",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Baby Blue",
+    "Black",
+    "Tosca",
+    "Mustard",
+    "Grey",
+    "Caramel",
+    "Moccha"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "XXL"
+     ],
+     "price": 75000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 48,
+   "name": "Qintha Wulan Set",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Baby Blue",
+    "Black",
+    "Tosca",
+    "Mustard",
+    "Dusty",
+    "Caramel",
+    "Moccha"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "XXL"
+     ],
+     "price": 75000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 49,
+   "name": "Qintha Barrel Pants",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Grey",
+    "Cream",
+    "Moccha"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "XXL"
+     ],
+     "price": 75000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 50,
+   "name": "Qintha Barrel Jacket",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Cream",
+    "Mocca",
+    "Grey"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "XXL"
+     ],
+     "price": 75000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 51,
+   "name": "Qintha Polka Dress",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Baby BLue",
+    "White",
+    "Dusty Pink",
+    "Butter Yellow"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "XXL"
+     ],
+     "price": 75000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 52,
+   "name": "Qintha Short Fruit Set",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL",
+    "XXXL"
+   ],
+   "motifs": [
+    "Green Orange",
+    "Yellow Avocado",
+    "Blue Apple",
+    "Red Pinapple"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "price": 75000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 53,
+   "name": "Qintha Zelda Shirt",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Brown",
+    "Broken White",
+    "Ivory"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "XXL"
+     ],
+     "price": 75000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": [
+    54,
+    55
+   ],
+   "name": "Qintha Pattern Barrel",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Dot Brown",
+    "Dot Grey",
+    "Stripe Teracotta",
+    "Stripe Grey",
+    "Square Brown",
+    "Square Army",
+    "Rhombus Navy",
+    "Rhombus Maroon"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "XXL"
+     ],
+     "price": 75000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": 56,
+   "name": "Qintha Milo Set",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL",
+    "XXXL"
+   ],
+   "motifs": [
+    "Cream",
+    "Choco",
+    "Denim"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "price": 75000
+    }
+   ],
+   "rules": [],
+   "needsReview": []
+  },
+  {
+   "page": [
+    61,
+    62
+   ],
+   "name": "Qintha Zane Top",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Broken White",
+    "Cream",
+    "Moccha",
+    "Brown",
+    "Army",
+    "Lemon",
+    "Black",
+    "Navy",
+    "Grey",
+    "Tosca",
+    "Baby Blue",
+    "Baby Pink",
+    "Maroon"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 50000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 55000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 100000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 110000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 63,
+   "name": "Qintha Classic Top",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Bronze",
+    "Teracotta",
+    "Green",
+    "Grey",
+    "Navy",
+    "Black"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 50000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 55000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 100000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 110000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 64,
+   "name": "Qintha Basic Shirt",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Broken White",
+    "Walnut",
+    "Moccha",
+    "Teracotta",
+    "Tosca",
+    "Army",
+    "Black"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 50000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 55000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 100000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 110000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 65,
+   "name": "Qintha Lotus Boy",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Army",
+    "Broken White",
+    "Hijau Botol",
+    "Moccha",
+    "Black"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 50000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 55000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 100000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 110000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 66,
+   "name": "Qintha Lotus Girl",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Black",
+    "Moccha",
+    "Hijau Botol",
+    "Broken White",
+    "Army"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 50000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 55000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 100000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 110000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 67,
+   "name": "Qintha Mackenzie Top",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Broken White",
+    "Mocca",
+    "Brown",
+    "Mustard",
+    "Army",
+    "Grey",
+    "Navy",
+    "Black",
+    "Maroon",
+    "Baby Blue"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 50000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 55000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 100000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 110000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 68,
+   "name": "Qintha Long Wangky",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "motifs": [
+    "Broken White",
+    "Cream",
+    "Brown",
+    "Army",
+    "Lemon",
+    "Black",
+    "Navy",
+    "Baby Blue",
+    "Maroon",
+    "Grey"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 50000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL"
+     ],
+     "price": 55000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 100000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 110000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 69,
+   "name": "Qintha Aiko Shirt",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "motifs": [
+    "Cream",
+    "Matcha",
+    "Lemon",
+    "Maroon",
+    "Broken White",
+    "Walnut",
+    "Moccha"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 50000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL"
+     ],
+     "price": 55000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 100000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 110000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": [
+    70,
+    71
+   ],
+   "name": "Qintha Turtleneck",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "motifs": [
+    "Broken White",
+    "Ivory",
+    "Mocca",
+    "Bronze",
+    "Army",
+    "Grey",
+    "Dusty Pink",
+    "Maroon",
+    "Teracotta",
+    "Green Bottle",
+    "Navy",
+    "Black"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 50000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL"
+     ],
+     "price": 55000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 100000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 110000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 72,
+   "name": "Qintha Geometric",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "motifs": [
+    "Cream",
+    "Brown",
+    "Teracotta",
+    "Ocean",
+    "Grey"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 50000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL"
+     ],
+     "price": 55000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 100000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 110000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 73,
+   "name": "Qintha Retro Design",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "motifs": [
+    "White",
+    "Cream",
+    "Grey",
+    "Brown",
+    "Yellow",
+    "Green"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 50000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL"
+     ],
+     "price": 55000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 100000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 110000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 74,
+   "name": "Qintha Rugby",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Black",
+    "Grey",
+    "Navy",
+    "Green",
+    "Teracotta",
+    "Mocca"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 50000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 55000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 100000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 110000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 75,
+   "name": "Qintha Kiyowo Skort",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Grey",
+    "Cream",
+    "Caramel",
+    "Broken White",
+    "Dusty Pink",
+    "Black"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 50000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 55000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 100000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 110000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 76,
+   "name": "Qintha Elio Top",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Broken White",
+    "Cream",
+    "Brown",
+    "Choco",
+    "Matcha",
+    "Denim",
+    "Navy",
+    "Maroon",
+    "Grey",
+    "Black"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 50000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 55000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 100000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 110000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 77,
+   "name": "Qintha Long Bhumi",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Teracotta",
+    "Black",
+    "Cream",
+    "Broken White",
+    "Caramel",
+    "Matcha",
+    "Moccha"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 50000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 55000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 100000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 110000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 78,
+   "name": "Qintha Overall",
+   "sizes": [
+    "S",
+    "M",
+    "L"
+   ],
+   "motifs": [
+    "Sawo",
+    "Mustard",
+    "Moccha",
+    "Grey",
+    "Navy",
+    "Army",
+    "Teracotta"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 50000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 100000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 79,
+   "name": "Qintha Nara Overall",
+   "sizes": [
+    "S",
+    "M",
+    "L"
+   ],
+   "motifs": [
+    "Navy",
+    "Army",
+    "Grey",
+    "Moccha",
+    "Mustard",
+    "Cream",
+    "Teracotta",
+    "Caramel"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 50000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 100000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 80,
+   "name": "Qintha Charlotte Dress",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Baby Pink",
+    "Broken White",
+    "Moccha White",
+    "Yellow",
+    "Tosca",
+    "Lilac",
+    "Baby Blue",
+    "Maroon",
+    "Brown"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 50000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 55000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 100000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 110000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 81,
+   "name": "Qintha Padel Dress",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Matcha",
+    "Lavender",
+    "Denim",
+    "Broken White",
+    "Yellow",
+    "Cream",
+    "Dusty Pink",
+    "Maroon"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 50000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 55000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 100000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 110000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 82,
+   "name": "Qintha Zelda Vest",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "motifs": [
+    "Brown",
+    "Ivory",
+    "Green",
+    "Matcha",
+    "White"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 50000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL"
+     ],
+     "price": 55000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 100000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 110000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 83,
+   "name": "Qintha Long Wafiq Dewasa",
+   "sizes": [
+    "S",
+    "M",
+    "L"
+   ],
+   "motifs": [
+    "Broken White"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 50000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 100000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 84,
+   "name": "Qintha Mauza Top Dad",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [
+    {
+     "sizes": [],
+     "price": 171250
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [],
+     "minQty": 2,
+     "bundlePrice": 100000
+    }
+   ],
+   "needsReview": [],
+   "hasVariants": false
+  },
+  {
+   "page": 85,
+   "name": "Qintha Hanania Mom",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [
+    {
+     "sizes": [],
+     "price": 171250
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [],
+     "minQty": 2,
+     "bundlePrice": 100000
+    }
+   ],
+   "needsReview": [],
+   "hasVariants": false
+  },
+  {
+   "page": 86,
+   "name": "Qintha Hanania Dad",
+   "sizes": [],
+   "motifs": [
+    "Baby Blue"
+   ],
+   "satuan": [
+    {
+     "sizes": [],
+     "price": 171250
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [],
+     "minQty": 2,
+     "bundlePrice": 100000
+    }
+   ],
+   "needsReview": [],
+   "hasVariants": false
+  },
+  {
+   "page": 87,
+   "name": "Kingu Maison Jersey",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Kniks",
+    "Miami",
+    "Boston",
+    "Houston",
+    "Lasvegas",
+    "Phoenix",
+    "Atlanta",
+    "Chicago"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 50000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 55000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 100000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 110000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 88,
+   "name": "Kingu Retro Polo",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "motifs": [
+    "Green",
+    "Brown",
+    "Denim",
+    "Navy"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 50000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL"
+     ],
+     "price": 55000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 100000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 110000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 89,
+   "name": "Kingu Clover Top",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Black",
+    "Grey",
+    "Army",
+    "Maroon",
+    "Teracotta",
+    "Broken White",
+    "Navy",
+    "Cream",
+    "Brown",
+    "Denim"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 50000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 55000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 100000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 110000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 90,
+   "name": "Kingu Dier Polo",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "motifs": [
+    "Black",
+    "Bronze",
+    "Cream",
+    "Matcha",
+    "Broken White",
+    "Teracotta"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 50000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL"
+     ],
+     "price": 55000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 100000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 110000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 91,
+   "name": "Kingu Lion Longsleeve",
+   "sizes": [
+    "S",
+    "M",
+    "L"
+   ],
+   "motifs": [
+    "BW",
+    "Black"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 50000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 100000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 92,
+   "name": "Kingu Floyd Short Pants",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "motifs": [
+    "Gray",
+    "BW",
+    "Cream",
+    "Dusty Pink",
+    "Almond",
+    "Black",
+    "Milky"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 50000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL"
+     ],
+     "price": 55000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 100000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 110000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 93,
+   "name": "Kingu Kazumi Short",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Light",
+    "Dark",
+    "Retro Black"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 50000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 55000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 100000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 110000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 94,
+   "name": "Kingu Gaia Long",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Light",
+    "Dark",
+    "Black"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 50000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 55000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 100000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 110000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 95,
+   "name": "Kingu Elvo Jegging",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "BW",
+    "Tosca",
+    "Black",
+    "Cream",
+    "Cinnamon",
+    "Navy"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 50000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 55000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 100000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 110000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 96,
+   "name": "Kingu Hugo Jogger",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "motifs": [
+    "Light",
+    "Dark",
+    "Medium"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 50000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL"
+     ],
+     "price": 55000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 100000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 110000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 97,
+   "name": "Kingu Zion Cargo",
+   "sizes": [
+    "S",
+    "M",
+    "L"
+   ],
+   "motifs": [
+    "Light",
+    "Dark"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 50000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 100000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 98,
+   "name": "Kingu Kenzie Cargo",
+   "sizes": [
+    "S",
+    "M",
+    "L"
+   ],
+   "motifs": [
+    "Light",
+    "Dark",
+    "Sandwash"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 50000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 100000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 99,
+   "name": "Kingu Jumper Jeans",
+   "sizes": [
+    "S",
+    "M",
+    "L"
+   ],
+   "motifs": [
+    "Light",
+    "Dark"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 50000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 100000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 101,
+   "name": "Kingu Kenzo Long Stripe",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "motifs": [
+    "Milky",
+    "Choco",
+    "Teracotta",
+    "Grey",
+    "Maroon",
+    "Pink",
+    "Navy",
+    "Black"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 40000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL"
+     ],
+     "price": 45000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 80000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 90000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 102,
+   "name": "Kingu Sachio Shirt",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "motifs": [
+    "Broken White",
+    "Cream",
+    "Black",
+    "Matcha",
+    "Baby Blue",
+    "Salmon",
+    "Milo",
+    "Taupe"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 40000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL"
+     ],
+     "price": 45000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 80000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 90000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 103,
+   "name": "Kingu Kaiko Shirt",
+   "sizes": [
+    "S",
+    "M",
+    "L"
+   ],
+   "motifs": [
+    "Light",
+    "Dark"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 40000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 80000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 104,
+   "name": "Kingu Zayn Shirt",
+   "sizes": [
+    "S",
+    "M",
+    "L"
+   ],
+   "motifs": [
+    "Light",
+    "Dark"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 40000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 80000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 105,
+   "name": "Kingu Basic Jacket",
+   "sizes": [
+    "S",
+    "M",
+    "L"
+   ],
+   "motifs": [
+    "Dark"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 40000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 80000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 106,
+   "name": "Kingu Gaia Short",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Dark",
+    "Retro Black"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 40000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 45000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 80000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 90000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 107,
+   "name": "Kingu Gaia Skirt",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Dark",
+    "Retro Black"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 40000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 45000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 80000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 90000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 108,
+   "name": "Kingu Rain Long",
+   "sizes": [
+    "S",
+    "M",
+    "L"
+   ],
+   "motifs": [
+    "Light",
+    "Medium",
+    "Dark"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 40000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 80000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 109,
+   "name": "Qintha Jumper Combad",
+   "sizes": [
+    "S",
+    "M",
+    "L"
+   ],
+   "motifs": [
+    "Teracotta",
+    "Mustard",
+    "Denim",
+    "Moccha",
+    "Matcha"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 40000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 80000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 110,
+   "name": "Qintha Hanania Girl",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Cream",
+    "Army",
+    "Baby Blue",
+    "Dusty Pink"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 40000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 45000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 80000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 90000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 111,
+   "name": "Qintha Hanania Boy",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Cream",
+    "Army",
+    "Baby Blue",
+    "Dusty Pink"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 40000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 45000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 80000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 90000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 112,
+   "name": "Qintha Hanania Skirt Kids",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Cream"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 40000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 45000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 80000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 90000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 113,
+   "name": "Qintha Halona Girl",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "motifs": [
+    "Sage Green",
+    "Lemon",
+    "Black",
+    "Deep Blue",
+    "Dusty Pink"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 40000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL"
+     ],
+     "price": 45000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 80000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 90000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 114,
+   "name": "Qintha Sakhi Set",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "motifs": [
+    "Cream",
+    "Green Tea",
+    "Bronze",
+    "Teracotta"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 40000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL"
+     ],
+     "price": 45000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 80000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 90000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 115,
+   "name": "Qintha Mauza Set Boy",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "motifs": [
+    "Black",
+    "Creamy",
+    "Sage Green",
+    "Broken White",
+    "Baby Blue",
+    "Choco"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 40000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL"
+     ],
+     "price": 45000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 80000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 90000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 116,
+   "name": "Qintha Piyama",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "motifs": [
+    "Blue Toy Story",
+    "Stitch",
+    "Dino",
+    "Zoo",
+    "Cream Toy Story",
+    "Tiger Cream",
+    "Shinchan"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 40000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL"
+     ],
+     "price": 45000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 80000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 90000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 117,
+   "name": "Qintha Daster",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "motifs": [
+    "Green Ribbon",
+    "Pink Flower",
+    "Brown Love",
+    "Pink Ribbon",
+    "Blue Square"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 40000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL"
+     ],
+     "price": 45000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 80000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 90000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 118,
+   "name": "Qintha Hachiro Top",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Broken White",
+    "Walnut",
+    "Cream",
+    "Army",
+    "Choco",
+    "Maroon",
+    "Grey",
+    "Navy",
+    "Black"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 40000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 45000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 80000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 90000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 119,
+   "name": "Qintha Oversized Airyfresh",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL",
+    "XXXL"
+   ],
+   "motifs": [
+    "Butter Yellow",
+    "Mahogany",
+    "Broken White",
+    "Cream",
+    "Caramel"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 40000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "price": 45000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 80000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 90000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 120,
+   "name": "Qintha Camari Shirt",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Broken White",
+    "Cream",
+    "Mocca",
+    "Walnit",
+    "Grey",
+    "Maroon",
+    "Navy",
+    "Black"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 40000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 45000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 80000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 90000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 121,
+   "name": "Qintha Short Bhumi",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Teracotta",
+    "Cream",
+    "Broken White",
+    "Black",
+    "Caramel",
+    "Matcha",
+    "Moccha"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 40000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 45000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 80000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 90000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 122,
+   "name": "Qintha Yuki Set",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Brown",
+    "Black",
+    "Grey",
+    "Army",
+    "Navy",
+    "Denim",
+    "Maroon",
+    "Lemon"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 40000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 45000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 80000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 90000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 123,
+   "name": "Qintha Eshaq Set",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Taupe",
+    "Caramel",
+    "Black",
+    "Grey",
+    "Army",
+    "Teracotta"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 40000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 45000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 80000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 90000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 125,
+   "name": "Qintha Hoodie Days Dewasa",
+   "sizes": [
+    "S",
+    "M",
+    "L"
+   ],
+   "motifs": [
+    "Monday",
+    "Tuesday",
+    "Saturday",
+    "Sunday",
+    "Friday",
+    "Thursday"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 40000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 80000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 126,
+   "name": "Qintha Dress Space Dewasa",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [
+    {
+     "sizes": [],
+     "price": 80475
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [],
+     "minQty": 2,
+     "bundlePrice": 80000
+    }
+   ],
+   "needsReview": [],
+   "hasVariants": false
+  },
+  {
+   "page": 127,
+   "name": "Qintha Space Set Dewasa",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [
+    {
+     "sizes": [],
+     "price": 98176
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [],
+     "minQty": 2,
+     "bundlePrice": 80000
+    }
+   ],
+   "needsReview": [],
+   "hasVariants": false
+  },
+  {
+   "page": 128,
+   "name": "Qintha Patch Cap",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [
+    {
+     "sizes": [],
+     "price": 69337
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [],
+     "minQty": 2,
+     "bundlePrice": 80000
+    }
+   ],
+   "needsReview": [],
+   "hasVariants": false
+  },
+  {
+   "page": 129,
+   "name": "Qintha Patch Bucket",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [
+    {
+     "sizes": [],
+     "price": 69337
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [],
+     "minQty": 2,
+     "bundlePrice": 80000
+    }
+   ],
+   "needsReview": [],
+   "hasVariants": false
+  },
+  {
+   "page": 130,
+   "name": "Qintha Slayer Cap",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [
+    {
+     "sizes": [],
+     "price": 69337
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [],
+     "minQty": 2,
+     "bundlePrice": 80000
+    }
+   ],
+   "needsReview": [],
+   "hasVariants": false
+  },
+  {
+   "page": 132,
+   "name": "Kingu Enzi Short Stripe",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "motifs": [
+    "Milky",
+    "Choco",
+    "Teracotta",
+    "Grey",
+    "Maroon",
+    "Pink",
+    "Navy",
+    "Black"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 35000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL"
+     ],
+     "price": 40000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 3,
+     "bundlePrice": 105000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "minQty": 3,
+     "bundlePrice": 120000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 133,
+   "name": "Kingu Blaze Sweater",
+   "sizes": [
+    "S",
+    "M",
+    "L"
+   ],
+   "motifs": [
+    "Mustard",
+    "Brown",
+    "BW",
+    "Matcha",
+    "Maroon",
+    "Black",
+    "Gray",
+    "Latte",
+    "Army"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 35000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 3,
+     "bundlePrice": 105000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 134,
+   "name": "Kingu Klair Sleeveless",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "motifs": [
+    "Grey",
+    "Cream",
+    "White",
+    "Teracotta",
+    "Black",
+    "Maroon",
+    "Brown"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 35000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL"
+     ],
+     "price": 40000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 3,
+     "bundlePrice": 105000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "minQty": 3,
+     "bundlePrice": 120000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 135,
+   "name": "Kingu Jogger Pants",
+   "sizes": [
+    "S",
+    "M",
+    "L"
+   ],
+   "motifs": [
+    "Medium",
+    "Dark"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 35000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 3,
+     "bundlePrice": 105000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 136,
+   "name": "Qintha Baggy Chinos",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Army",
+    "Grey",
+    "Cream",
+    "Broken White",
+    "Moccha",
+    "Black"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 35000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 40000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 3,
+     "bundlePrice": 105000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "minQty": 3,
+     "bundlePrice": 120000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 137,
+   "name": "Qintha Askana Set",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "motifs": [
+    "Cream",
+    "Teracotta",
+    "Green Tea",
+    "Bronze"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 35000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL"
+     ],
+     "price": 40000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 3,
+     "bundlePrice": 105000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "minQty": 3,
+     "bundlePrice": 120000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 138,
+   "name": "Qintha Charles Top",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Broken White",
+    "White",
+    "Denim",
+    "Matcha",
+    "Navy",
+    "Maroon",
+    "Brown",
+    "Cream",
+    "Grey",
+    "Dusty Pink"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 35000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 40000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 3,
+     "bundlePrice": 105000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "minQty": 3,
+     "bundlePrice": 120000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 139,
+   "name": "Qintha Hoodie Days Kids",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Sunday"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 35000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 40000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 3,
+     "bundlePrice": 105000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "minQty": 3,
+     "bundlePrice": 120000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 140,
+   "name": "Qintha Kemeja Flanel",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Maroon Cream",
+    "Sage Navy",
+    "Black Teracotta",
+    "Navy Bronze",
+    "Cream Tera"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 35000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 40000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 3,
+     "bundlePrice": 105000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "minQty": 3,
+     "bundlePrice": 120000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 141,
+   "name": "Qintha Tanktop Rib",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Broken White",
+    "Maroon",
+    "Olive",
+    "Denim",
+    "Dusty Pink",
+    "Grey",
+    "Black"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 35000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 40000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 3,
+     "bundlePrice": 105000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "minQty": 3,
+     "bundlePrice": 120000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 142,
+   "name": "Qintha Kirei Top",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "motifs": [
+    "Black",
+    "Moccha",
+    "Walnut",
+    "Lemon",
+    "Cream",
+    "Matcha",
+    "Broken White",
+    "Maroon"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 35000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL"
+     ],
+     "price": 40000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 3,
+     "bundlePrice": 105000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "minQty": 3,
+     "bundlePrice": 120000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 143,
+   "name": "Qintha Long Cargo Pants",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Teracotta",
+    "Army",
+    "Grey",
+    "Moccha",
+    "Caramel",
+    "Cream",
+    "Broken White"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 35000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 40000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 3,
+     "bundlePrice": 105000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "minQty": 3,
+     "bundlePrice": 120000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 145,
+   "name": "Qintha Rainbow Tshirt",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "White",
+    "Broken White",
+    "Milky",
+    "Cream",
+    "Brown",
+    "Baby Pink",
+    "Matcha",
+    "Denim",
+    "Black"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 30000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 35000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 3,
+     "bundlePrice": 90000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "minQty": 3,
+     "bundlePrice": 105000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 146,
+   "name": "Qintha Electone Top",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Cream",
+    "Ivory",
+    "White",
+    "Matcha",
+    "Denim"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 30000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 35000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 3,
+     "bundlePrice": 90000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "minQty": 3,
+     "bundlePrice": 105000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 147,
+   "name": "Qintha Pocket Shirt",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Caramel",
+    "Navy",
+    "Avocado",
+    "Cream",
+    "Maroon",
+    "Grey",
+    "Army",
+    "White"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 30000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 35000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 3,
+     "bundlePrice": 90000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "minQty": 3,
+     "bundlePrice": 105000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 148,
+   "name": "Qintha Dress Space Kids",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "motifs": [
+    "Moccha",
+    "Matcha",
+    "Teracotta"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 30000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL"
+     ],
+     "price": 35000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 3,
+     "bundlePrice": 90000
+    },
+    {
+     "sizes": [
+      "XL"
+     ],
+     "minQty": 3,
+     "bundlePrice": 105000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 149,
+   "name": "Qintha Short Chinos",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Moccha",
+    "Black",
+    "Broken White",
+    "Cream",
+    "Army",
+    "Grey"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 30000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 35000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 3,
+     "bundlePrice": 90000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "minQty": 3,
+     "bundlePrice": 105000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 150,
+   "name": "Qintha Kemeja Namiah",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Black",
+    "Creamy"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 30000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 35000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 3,
+     "bundlePrice": 90000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "minQty": 3,
+     "bundlePrice": 105000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 151,
+   "name": "Qintha Long Wafiq",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Black",
+    "Grey",
+    "Broken White",
+    "Moccha"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 30000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 35000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 3,
+     "bundlePrice": 90000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "minQty": 3,
+     "bundlePrice": 105000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 152,
+   "name": "Qintha Short Wafiq",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Moccha",
+    "Broken White",
+    "Grey",
+    "Black"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 30000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 35000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 3,
+     "bundlePrice": 90000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "minQty": 3,
+     "bundlePrice": 105000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 153,
+   "name": "Qintha Jogger Chinos",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL"
+   ],
+   "motifs": [
+    "Broken White",
+    "Moccha",
+    "Black",
+    "Grey",
+    "Army",
+    "Cream"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 30000,
+     "derived": true
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "price": 35000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 3,
+     "bundlePrice": 90000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL"
+     ],
+     "minQty": 3,
+     "bundlePrice": 105000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 154,
+   "name": "Kingu Airlie Polo",
+   "sizes": [
+    "S",
+    "M",
+    "L"
+   ],
+   "motifs": [
+    "Sage Green",
+    "Black",
+    "Rosewood",
+    "Brown"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 30000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 3,
+     "bundlePrice": 90000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 155,
+   "name": "Kingu Long Stripe",
+   "sizes": [
+    "S",
+    "M",
+    "L"
+   ],
+   "motifs": [
+    "Sage Green",
+    "Green",
+    "Navy White",
+    "Army Navy",
+    "Brown Cream",
+    "Brown Black",
+    "Yellow Black",
+    "Brown",
+    "Maroon White",
+    "Electric Blue",
+    "Green Yellow"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 30000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 3,
+     "bundlePrice": 90000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 156,
+   "name": "Kingu Short Stripe",
+   "sizes": [
+    "S",
+    "M",
+    "L"
+   ],
+   "motifs": [
+    "Green",
+    "Army Navy",
+    "Brown Black",
+    "Brown",
+    "Yellow Black"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 30000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 3,
+     "bundlePrice": 90000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 157,
+   "name": "Kingu Kavi Blouse",
+   "sizes": [
+    "S",
+    "M",
+    "L"
+   ],
+   "motifs": [
+    "Broken White",
+    "Walnut",
+    "Black",
+    "Matcha",
+    "Moccha"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 30000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 3,
+     "bundlePrice": 90000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 158,
+   "name": "Kingu Fumio Corduroy",
+   "sizes": [
+    "S",
+    "M",
+    "L"
+   ],
+   "motifs": [
+    "Army",
+    "Brown",
+    "Black",
+    "Grey",
+    "Navy"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 30000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 3,
+     "bundlePrice": 90000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 160,
+   "name": "Kingu Hazen Shirt",
+   "sizes": [
+    "S",
+    "M",
+    "L"
+   ],
+   "motifs": [
+    "Dusty Pink",
+    "Matcha",
+    "Denim",
+    "Grey",
+    "Broken White",
+    "Moccha"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 25000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [],
+     "minQty": 4,
+     "bundlePrice": 100000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 161,
+   "name": "Kingu Long Sleeve",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "motifs": [
+    "Black",
+    "Broken White",
+    "Army",
+    "Maroon",
+    "Lemon",
+    "Moccha"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL"
+     ],
+     "price": 25000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [],
+     "minQty": 4,
+     "bundlePrice": 100000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 162,
+   "name": "Kingu Short Sleeve",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "motifs": [
+    "Army",
+    "Broken White",
+    "Black",
+    "Maroon",
+    "Lemon",
+    "Moccha"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL"
+     ],
+     "price": 25000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [],
+     "minQty": 4,
+     "bundlePrice": 100000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 163,
+   "name": "Kingu Avery Long",
+   "sizes": [
+    "S",
+    "M",
+    "L"
+   ],
+   "motifs": [
+    "Matcha",
+    "Broken White",
+    "Teracotta",
+    "Lemon",
+    "Cream"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 25000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [],
+     "minQty": 4,
+     "bundlePrice": 100000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 164,
+   "name": "Kingu Avery Short",
+   "sizes": [
+    "S",
+    "M",
+    "L"
+   ],
+   "motifs": [
+    "Matcha",
+    "Brown",
+    "Teracotta",
+    "Cream"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 25000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [],
+     "minQty": 4,
+     "bundlePrice": 100000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 165,
+   "name": "Kingu Teenzu Shirt",
+   "sizes": [
+    "S",
+    "M",
+    "L"
+   ],
+   "motifs": [
+    "BW",
+    "S",
+    "M L",
+    "Army"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 25000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [],
+     "minQty": 4,
+     "bundlePrice": 100000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 166,
+   "name": "Kingu Rain Short Pants",
+   "sizes": [
+    "S",
+    "M",
+    "L"
+   ],
+   "motifs": [
+    "Light",
+    "Medium",
+    "Dark"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 25000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [],
+     "minQty": 4,
+     "bundlePrice": 100000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 167,
+   "name": "Qintha Hazel Set Kids",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "motifs": [
+    "Teracotta"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL"
+     ],
+     "price": 25000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [],
+     "minQty": 4,
+     "bundlePrice": 100000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 168,
+   "name": "Qintha Mesmerizing Set Kids",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "motifs": [
+    "Teracotta",
+    "Lemon",
+    "Moccha",
+    "Sage Green"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL"
+     ],
+     "price": 25000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [],
+     "minQty": 4,
+     "bundlePrice": 100000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 169,
+   "name": "Qintha Dean Set",
+   "sizes": [
+    "S",
+    "M",
+    "L"
+   ],
+   "motifs": [
+    "Cream",
+    "Navy",
+    "Olive",
+    "Grey",
+    "Choco",
+    "Mustard"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 25000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [],
+     "minQty": 4,
+     "bundlePrice": 100000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 170,
+   "name": "Qintha Animal T-Shirt",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "motifs": [
+    "Frog",
+    "Monkey",
+    "Seahorse",
+    "Sloth"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL"
+     ],
+     "price": 25000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [],
+     "minQty": 4,
+     "bundlePrice": 100000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 171,
+   "name": "Qintha Boy Vybra",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "motifs": [
+    "Matcha",
+    "Moccha"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL"
+     ],
+     "price": 25000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [],
+     "minQty": 4,
+     "bundlePrice": 100000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 172,
+   "name": "Qintha Girl Vybra",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "motifs": [
+    "Broken White",
+    "Grey",
+    "Matcha",
+    "Black"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL"
+     ],
+     "price": 25000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [],
+     "minQty": 4,
+     "bundlePrice": 100000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 173,
+   "name": "Qintha Wangky Independence",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "motifs": [
+    "Wangky"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL"
+     ],
+     "price": 25000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [],
+     "minQty": 4,
+     "bundlePrice": 100000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 174,
+   "name": "Qintha Longsleeve Independence",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "motifs": [
+    "Longsleeve"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL"
+     ],
+     "price": 25000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [],
+     "minQty": 4,
+     "bundlePrice": 100000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 175,
+   "name": "Qintha Joger Rib",
+   "sizes": [
+    "S",
+    "M",
+    "L"
+   ],
+   "motifs": [
+    "Bronze",
+    "Green Tea"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 25000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [],
+     "minQty": 4,
+     "bundlePrice": 100000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 176,
+   "name": "Qintha SHort Pattern",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL"
+   ],
+   "motifs": [
+    "Stripe Tera",
+    "Square Tera",
+    "Square Army"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L",
+      "XL"
+     ],
+     "price": 25000,
+     "derived": true
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [],
+     "minQty": 4,
+     "bundlePrice": 100000
+    }
+   ],
+   "needsReview": []
+  },
+  {
+   "page": 177,
+   "name": "Qintha Vetto Hat",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [
+    {
+     "sizes": [],
+     "price": 43218
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [],
+     "minQty": 4,
+     "bundlePrice": 100000
+    }
+   ],
+   "needsReview": [],
+   "hasVariants": false
+  },
+  {
+   "page": 178,
+   "name": "Qintha Merdeka Hat",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [
+    {
+     "sizes": [],
+     "price": 43218
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [],
+     "minQty": 4,
+     "bundlePrice": 100000
+    }
+   ],
+   "needsReview": [],
+   "hasVariants": false
+  },
+  {
+   "page": 179,
+   "name": "Qintha Luca Hat",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [
+    {
+     "sizes": [],
+     "price": 43218
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [],
+     "minQty": 4,
+     "bundlePrice": 100000
+    }
+   ],
+   "needsReview": [],
+   "hasVariants": false
+  },
+  {
+   "page": 180,
+   "name": "Qintha Notes Hat",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [
+    {
+     "sizes": [],
+     "price": 53218
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [],
+     "minQty": 4,
+     "bundlePrice": 100000
+    }
+   ],
+   "needsReview": [],
+   "hasVariants": false
+  },
+  {
+   "page": 181,
+   "name": "Qintha Garet Hat",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [
+    {
+     "sizes": [],
+     "price": 53218
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [],
+     "minQty": 4,
+     "bundlePrice": 100000
+    }
+   ],
+   "needsReview": [],
+   "hasVariants": false
+  },
+  {
+   "page": 183,
+   "name": "Kingu Kimozo Hat",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [],
+   "rules": [],
+   "needsReview": [],
+   "hasVariants": false,
+   "price": 35000
+  },
+  {
+   "page": 184,
+   "name": "Kingu Axel Camper",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [],
+   "rules": [],
+   "needsReview": [],
+   "hasVariants": false,
+   "price": 35000
+  },
+  {
+   "page": 185,
+   "name": "Kingu Moja Cap",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [],
+   "rules": [],
+   "needsReview": [],
+   "hasVariants": false,
+   "price": 35000
+  },
+  {
+   "page": 186,
+   "name": "Kingu King Hat",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [],
+   "rules": [],
+   "needsReview": [],
+   "hasVariants": false,
+   "price": 35000
+  },
+  {
+   "page": 187,
+   "name": "Kingu Izzy Cap",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [],
+   "rules": [],
+   "needsReview": [],
+   "hasVariants": false,
+   "price": 35000
+  },
+  {
+   "page": 188,
+   "name": "Kingu Safari Sun Hat",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [],
+   "rules": [],
+   "needsReview": [],
+   "hasVariants": false,
+   "price": 35000
+  },
+  {
+   "page": 189,
+   "name": "Qintha Nilo Camper",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [],
+   "rules": [],
+   "needsReview": [],
+   "hasVariants": false,
+   "price": 35000
+  },
+  {
+   "page": 190,
+   "name": "Qintha Levi Cap",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [],
+   "rules": [],
+   "needsReview": [],
+   "hasVariants": false,
+   "price": 35000
+  },
+  {
+   "page": 191,
+   "name": "Qintha Cashel Cap",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [],
+   "rules": [],
+   "needsReview": [],
+   "hasVariants": false,
+   "price": 35000
+  },
+  {
+   "page": 192,
+   "name": "Qintha Camper Hat",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [],
+   "rules": [],
+   "needsReview": [],
+   "hasVariants": false,
+   "price": 35000
+  },
+  {
+   "page": 193,
+   "name": "Qintha Lio Visor Cap",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [],
+   "rules": [],
+   "needsReview": [],
+   "hasVariants": false,
+   "price": 35000
+  },
+  {
+   "page": 194,
+   "name": "Qintha Classic Cap",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [],
+   "rules": [],
+   "needsReview": [],
+   "hasVariants": false,
+   "price": 35000
+  },
+  {
+   "page": 195,
+   "name": "Qintha Riku Hat",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [],
+   "rules": [],
+   "needsReview": [],
+   "hasVariants": false,
+   "price": 35000
+  },
+  {
+   "page": 196,
+   "name": "Qintha Ruffin Hat",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [],
+   "rules": [],
+   "needsReview": [],
+   "hasVariants": false,
+   "price": 35000
+  },
+  {
+   "page": 197,
+   "name": "Qintha Kudamono Hat",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [],
+   "rules": [],
+   "needsReview": [],
+   "hasVariants": false,
+   "price": 35000
+  },
+  {
+   "page": 198,
+   "name": "Qintha Animal Bucket Hat",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [],
+   "rules": [],
+   "needsReview": [],
+   "hasVariants": false,
+   "price": 35000
+  },
+  {
+   "page": 199,
+   "name": "Qintha Miki Hat",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [],
+   "rules": [],
+   "needsReview": [],
+   "hasVariants": false,
+   "price": 35000
+  },
+  {
+   "page": 200,
+   "name": "Qintha Kino Hat",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [],
+   "rules": [],
+   "needsReview": [],
+   "hasVariants": false,
+   "price": 35000
+  },
+  {
+   "page": 201,
+   "name": "Qintha Skylar Cap",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [],
+   "rules": [],
+   "needsReview": [],
+   "hasVariants": false,
+   "price": 35000
+  },
+  {
+   "page": 202,
+   "name": "Qintha Flowzy Hat",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [],
+   "rules": [],
+   "needsReview": [],
+   "hasVariants": false,
+   "price": 35000
+  },
+  {
+   "page": 203,
+   "name": "Qintha Alphabet Bucket",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [],
+   "rules": [],
+   "needsReview": [],
+   "hasVariants": false,
+   "price": 35000
+  },
+  {
+   "page": 204,
+   "name": "Qintha Astronout Cap",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [],
+   "rules": [],
+   "needsReview": [],
+   "hasVariants": false,
+   "price": 35000
+  },
+  {
+   "page": 205,
+   "name": "Qintha Treasure Camper",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [],
+   "rules": [],
+   "needsReview": [],
+   "hasVariants": false,
+   "price": 35000
+  },
+  {
+   "page": 206,
+   "name": "Qintha Polka Scarft",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [],
+   "rules": [],
+   "needsReview": [],
+   "hasVariants": false,
+   "price": 35000
+  },
+  {
+   "page": 207,
+   "name": "Qintha Lace Scarft",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [],
+   "rules": [],
+   "needsReview": [],
+   "hasVariants": false,
+   "price": 35000
+  },
+  {
+   "page": 208,
+   "name": "Qintha Natsu Hat",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [],
+   "rules": [],
+   "needsReview": [],
+   "hasVariants": false,
+   "price": 35000
+  },
+  {
+   "page": 210,
+   "name": "Qintha Klee",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [],
+   "rules": [],
+   "needsReview": [],
+   "hasVariants": false,
+   "price": 20000
+  },
+  {
+   "page": 211,
+   "name": "Qintha Clay",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [],
+   "rules": [],
+   "needsReview": [],
+   "hasVariants": false,
+   "price": 20000
+  },
+  {
+   "page": 212,
+   "name": "Qintha Amber",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [],
+   "rules": [],
+   "needsReview": [],
+   "hasVariants": false,
+   "price": 20000
+  },
+  {
+   "page": 213,
+   "name": "Qintha Patches",
+   "sizes": [],
+   "motifs": [],
+   "satuan": [],
+   "rules": [],
+   "needsReview": [],
+   "hasVariants": false,
+   "price": 20000
+  },
+  {
+   "page": [
+    59,
+    60
+   ],
+   "name": "Qintha Summer Shirt",
+   "sizes": [
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL",
+    "XXXL"
+   ],
+   "motifs": [
+    "Blue",
+    "Butter Yellow",
+    "Grey",
+    "Brown",
+    "Broken White",
+    "Mint",
+    "Mocca",
+    "Black",
+    "Army",
+    "Navy",
+    "Olive"
+   ],
+   "satuan": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "price": 50000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "price": 55000
+    }
+   ],
+   "rules": [
+    {
+     "sizes": [
+      "S",
+      "M",
+      "L"
+     ],
+     "minQty": 2,
+     "bundlePrice": 100000
+    },
+    {
+     "sizes": [
+      "XL",
+      "XXL",
+      "XXXL"
+     ],
+     "minQty": 2,
+     "bundlePrice": 110000
+    }
+   ],
+   "needsReview": []
+  }
+ ]
+}

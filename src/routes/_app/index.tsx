@@ -5,7 +5,7 @@ import { ChevronDown, ChevronRight, Plus, ShoppingBag } from 'lucide-react'
 import { listEvents } from '../../lib/events-functions'
 import { fetchCurrentUser } from '../../lib/auth-functions'
 import { APP_TIME_ZONE } from '../../lib/timezone'
-import UserAvatar from '../../components/UserAvatar'
+import NotificationBell from '../../components/NotificationBell'
 
 const eventsQuery = queryOptions({
   queryKey: ['events'],
@@ -110,14 +110,7 @@ function BerandaPage() {
             Halo {user?.name || 'Jastiper'}
           </p>
         </div>
-        <Link to="/profil" className="shrink-0" aria-label="Buka profil">
-          <UserAvatar
-            brandId={user?.brandId ?? undefined}
-            name={user?.name}
-            avatarUpdatedAt={user?.avatarUpdatedAt}
-            className="h-13 w-13"
-          />
-        </Link>
+        <NotificationBell />
       </header>
 
       <section className="mb-6 grid grid-cols-2 gap-3">

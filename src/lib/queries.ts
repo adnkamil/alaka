@@ -94,6 +94,7 @@ export type PartnerEventsPageParams = {
   tab: 'all' | 'berjalan' | 'mendatang' | 'selesai'
   page: number
   pageSize: number
+  search?: string
 }
 
 export const partnerEventsPageQuery = (params: PartnerEventsPageParams) =>
@@ -131,6 +132,7 @@ export const partnerDashboardQuery = queryOptions({
 export const partnerRulesPageQuery = (params: {
   page: number
   pageSize: number
+  search?: string
 }) =>
   queryOptions({
     queryKey: ['partner-rules', 'page', params],

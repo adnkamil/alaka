@@ -4,8 +4,15 @@ import {
   useQueryClient,
   useSuspenseQuery,
 } from '@tanstack/react-query'
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { Banknote, LogOut, Pencil, QrCode } from 'lucide-react'
+import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
+import {
+  Banknote,
+  ChevronRight,
+  LogOut,
+  Megaphone,
+  Pencil,
+  QrCode,
+} from 'lucide-react'
 import UpdateQrisModal from '../../components/UpdateQrisModal'
 import {
   fetchSubscriptionSettingsAdmin,
@@ -126,6 +133,25 @@ function AdminSettingsPage() {
       <p className="mb-6 text-xs" style={{ color: 'var(--app-text-soft)' }}>
         Pengaturan pembayaran PRO yang dipakai member saat mengajukan upgrade.
       </p>
+
+      <Link
+        to="/admin/notifikasi"
+        className="app-card mb-6 flex items-center gap-3 p-4 no-underline"
+      >
+        <span className="app-icon-tile h-10 w-10 flex-shrink-0">
+          <Megaphone size={20} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-semibold">Kirim notifikasi</span>
+          <span
+            className="block text-xs"
+            style={{ color: 'var(--app-text-soft)' }}
+          >
+            Info fitur baru atau promo ke semua jastiper
+          </span>
+        </span>
+        <ChevronRight size={18} style={{ color: 'var(--app-text-mute)' }} />
+      </Link>
 
       <section
         className="app-card mb-6 divide-y"

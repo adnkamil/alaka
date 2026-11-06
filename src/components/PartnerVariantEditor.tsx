@@ -5,6 +5,8 @@ import {
   getPartnerProductVariants,
   savePartnerProductVariants,
 } from '../lib/partner-variant-functions'
+import PartnerTableToolbar from './ui/PartnerTableToolbar'
+import { useClientPager } from '../lib/use-client-pager'
 
 type Cell = { on: boolean; price: string }
 
@@ -56,6 +58,12 @@ export default function PartnerVariantEditor({ productId }: { productId: string 
     () => (sizes.length ? sizes : [null]),
     [sizes],
   )
+  // Baris (variasi) dipaginasi dan bisa dicari; kolom (ukuran) tampil semua.
+  const [rowSearch, setRowSearch] = useState('')
+  const filteredRowLabels = rowLabels.filter((row) =>
+    (row ?? 'Standar').toLowerCase().includes(rowSearch.trim().toLowerCase()),
+  )
+  const rowPager = useClientPager(filteredRowLabels)
 
   function addValue(kind: 'size' | 'variation') {
     const raw = kind === 'size' ? newSize : newVariation
@@ -182,6 +190,16 @@ export default function PartnerVariantEditor({ productId }: { productId: string 
             onRemove={(name) => removeValue('variation', name)}
           />
 
+          <PartnerTableToolbar
+            search={rowSearch}
+            onSearchChange={(value) => {
+              setRowSearch(value)
+              rowPager.resetPage()
+            }}
+            placeholder="Cari variasi"
+            label="Cari variasi"
+            pager={rowPager.pager}
+          />
           <div className="overflow-x-auto rounded-2xl border" style={{ borderColor: 'var(--app-border)' }}>
             <table className="w-full text-[13px]">
               <thead style={{ background: 'var(--app-card-soft, #f7f1e7)' }}>
@@ -201,7 +219,7 @@ export default function PartnerVariantEditor({ productId }: { productId: string 
                 </tr>
               </thead>
               <tbody>
-                {rowLabels.map((row) => (
+                {rowPager.paged.map((row) => (
                   <tr key={row ?? '-'} className="border-t" style={{ borderColor: 'var(--app-border)' }}>
                     <td className="px-3 py-2 font-bold">{row ?? 'Standar'}</td>
                     {colLabels.map((col) => {

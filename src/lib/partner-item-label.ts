@@ -10,12 +10,20 @@ export interface PartnerItemVariant {
   price: number
 }
 
+export interface PartnerItemRule {
+  id: string
+  name: string
+  minQty: number
+  bundlePrice: number
+  /** Kosong = semua ukuran. */
+  sizes: Array<string>
+}
+
 export interface PartnerItemProduct {
   id: string
   name: string
-  /** Aturan paket yang berlaku untuk produk ini (null kalau tidak ada / bukan PRO). */
-  ruleId?: string | null
-  ruleName?: string | null
+  /** Semua aturan paket yang memuat produk ini (kosong kalau tidak ada / bukan PRO). */
+  rules?: Array<PartnerItemRule>
   variants: Array<PartnerItemVariant>
 }
 
@@ -23,7 +31,7 @@ export interface PartnerEventItemCatalog {
   /** True kalau event terhubung ke partner. Di event ini nama barang tidak boleh diketik bebas. */
   isPartnerEvent: boolean
   /** Aturan paket aktif di event ini, untuk filter katalog. */
-  rules?: Array<{ id: string; name: string; minQty: number }>
+  rules?: Array<PartnerItemRule>
   products: Array<PartnerItemProduct>
 }
 

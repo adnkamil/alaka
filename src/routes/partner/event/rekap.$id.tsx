@@ -3,6 +3,8 @@ import { Link, createFileRoute } from '@tanstack/react-router'
 import { ArrowLeft, PackageCheck } from 'lucide-react'
 import { useState } from 'react'
 import { getPartnerEventPicklist } from '../../../lib/partner-picklist-functions'
+import { useClientPager } from '../../../lib/use-client-pager'
+import PartnerTableToolbar from '../../../components/ui/PartnerTableToolbar'
 
 export const Route = createFileRoute('/partner/event/rekap/$id')({
   component: PartnerEventRekapPage,
@@ -20,6 +22,12 @@ function PartnerEventRekapPage() {
   })
 
   const totalPcs = data?.rows.reduce((sum, r) => sum + r.total, 0) ?? 0
+
+  const [search, setSearch] = useState('')
+  const rekapRows = (data?.rows ?? []).filter((row) =>
+    row.productName.toLowerCase().includes(search.trim().toLowerCase()),
+  )
+  const rekapPager = useClientPager(rekapRows)
 
   return (
     <main className="pm-wide flex flex-col gap-4 px-5 pb-8 pt-4 lg:gap-5">
@@ -80,8 +88,23 @@ function PartnerEventRekapPage() {
 
       {data && data.rows.length > 0 && (
         <>
+        <PartnerTableToolbar
+          search={search}
+          onSearchChange={(value) => {
+            setSearch(value)
+            rekapPager.resetPage()
+          }}
+          placeholder="Cari nama produk"
+          label="Cari nama produk"
+          pager={rekapPager.pager}
+        />
+        {rekapRows.length === 0 && (
+          <p className="py-6 text-center text-sm" style={{ color: 'var(--app-text-soft)' }}>
+            Tidak ada produk yang cocok dengan pencarian.
+          </p>
+        )}
         <div className="flex flex-col gap-3 lg:hidden">
-          {data.rows.map((row) => (
+          {rekapPager.paged.map((row) => (
             <article
               key={`m-${row.ruleId ?? 'satuan'}|${row.productName}|${row.size ?? ''}|${row.variation ?? ''}`}
               className="app-card flex flex-col gap-2 p-4"
@@ -121,7 +144,7 @@ function PartnerEventRekapPage() {
               </tr>
             </thead>
             <tbody>
-              {data.rows.map((row) => (
+              {rekapPager.paged.map((row) => (
                 <tr
                   key={`${row.ruleId ?? 'satuan'}|${row.productName}|${row.size ?? ''}|${row.variation ?? ''}`}
                   className="border-t"

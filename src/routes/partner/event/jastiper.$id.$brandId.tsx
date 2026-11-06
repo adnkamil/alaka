@@ -4,6 +4,8 @@ import { ArrowLeft, PackageCheck } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { buildWhatsAppLink, formatPhoneNumber } from '../../../lib/format'
 import { formatRupiah } from '../../../lib/partner-product-rules'
+import PartnerTableToolbar from '../../../components/ui/PartnerTableToolbar'
+import { useClientPager } from '../../../lib/use-client-pager'
 import {
   getPartnerJastiperDetail,
   type JastiperDetailRow,
@@ -73,6 +75,11 @@ function PartnerJastiperDetailPage() {
     () => (data ? groupRows(data.rows, split) : []),
     [data, split],
   )
+  const [search, setSearch] = useState('')
+  const filteredGrouped = grouped.filter((row) =>
+    row.productName.toLowerCase().includes(search.trim().toLowerCase()),
+  )
+  const groupedPager = useClientPager(filteredGrouped)
 
   return (
     <main className="pm-wide flex flex-col gap-4 px-5 pb-8 pt-4 lg:gap-5">
@@ -249,6 +256,17 @@ function PartnerJastiperDetailPage() {
                   </p>
                 </div>
               ) : (
+                <>
+                <PartnerTableToolbar
+                  search={search}
+                  onSearchChange={(value) => {
+                    setSearch(value)
+                    groupedPager.resetPage()
+                  }}
+                  placeholder="Cari nama produk"
+                  label="Cari nama produk"
+                  pager={groupedPager.pager}
+                />
                 <div className="app-card overflow-x-auto p-0">
                   <table className="w-full text-[13px]">
                     <thead style={{ background: 'var(--pm-tint)' }}>
@@ -272,7 +290,7 @@ function PartnerJastiperDetailPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {grouped.map((row) => (
+                      {groupedPager.paged.map((row) => (
                         <tr
                           key={row.key}
                           className="border-t"
@@ -306,6 +324,7 @@ function PartnerJastiperDetailPage() {
                     </tbody>
                   </table>
                 </div>
+                </>
               )}
             </div>
           </div>

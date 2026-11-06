@@ -17,8 +17,10 @@ export type PreviewCatalog = {
     minQty: number
     bundlePrice: number
     productIds: Array<string>
+    /** Kosong atau tidak ada = semua ukuran. */
+    sizes?: Array<string>
   }>
-  variants: Array<{ id: string; productId: string }>
+  variants: Array<{ id: string; productId: string; size?: string | null }>
 }
 
 export type PreviewBundle = {
@@ -38,20 +40,25 @@ export function previewPartnerBundles(
   drafts: Array<PreviewDraft>,
   catalog: PreviewCatalog,
 ): { bundles: Array<PreviewBundle>; pending: Array<PreviewPending> } {
-  const productByVariant = new Map(catalog.variants.map((v) => [v.id, v.productId]))
-  const ruleByProduct = new Map<string, (typeof catalog.rules)[number]>()
-  for (const rule of catalog.rules) {
-    for (const productId of rule.productIds) {
-      if (!ruleByProduct.has(productId)) ruleByProduct.set(productId, rule)
-    }
+  const variantById = new Map(catalog.variants.map((v) => [v.id, v]))
+  // Aturan yang cocok untuk satu barang: produknya ada di aturan dan ukurannya
+  // masuk rentang aturan (kosong = semua ukuran).
+  const ruleFor = (variantId: string) => {
+    const variant = variantById.get(variantId)
+    if (!variant) return undefined
+    return catalog.rules.find(
+      (rule) =>
+        rule.productIds.includes(variant.productId) &&
+        (!rule.sizes?.length ||
+          (variant.size != null && rule.sizes.includes(variant.size))),
+    )
   }
 
   // Kelompokkan barang per aturan. Urutan form dipakai sebagai urutan masuk (FIFO).
   const groups = new Map<string, { rule: (typeof catalog.rules)[number]; rows: Array<{ draft: PreviewDraft; index: number }> }>()
   drafts.forEach((draft, index) => {
     if (!draft.partnerVariantId || draft.qty < 1) return
-    const productId = productByVariant.get(draft.partnerVariantId)
-    const rule = productId ? ruleByProduct.get(productId) : undefined
+    const rule = ruleFor(draft.partnerVariantId)
     if (!rule) return
     const group = groups.get(rule.id) ?? { rule, rows: [] }
     group.rows.push({ draft, index })

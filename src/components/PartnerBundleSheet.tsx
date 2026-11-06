@@ -8,6 +8,8 @@ export type CatalogRule = {
   minQty: number
   bundlePrice: number
   productIds: Array<string>
+  /** Kosong atau tidak ada = semua ukuran. */
+  sizes?: Array<string>
 }
 
 export type CatalogProduct = { id: string; name: string }
@@ -187,7 +189,7 @@ export default function PartnerBundleSheet({
               >
                 <span className="block text-sm font-semibold">{r.name}</span>
                 <span className="block text-xs" style={{ color: 'var(--app-text-soft)' }}>
-                  {r.minQty} pcs · {rupiah(r.bundlePrice)}
+                  {r.name}
                 </span>
               </button>
             )

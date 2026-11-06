@@ -5,7 +5,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { Inbox, Package, Plus, Search } from 'lucide-react'
+import { Inbox, Package, Plus } from 'lucide-react'
 import Pagination from '../../../components/ui/Pagination'
 import Toast from '../../../components/ui/Toast'
 import { getErrorMessage } from '../../../lib/error-message'
@@ -21,6 +21,7 @@ import type {
   PartnerProductListRow,
   PartnerProductRow,
 } from '../../../lib/partner-product-queries'
+import PartnerTableToolbar from '../../../components/ui/PartnerTableToolbar'
 
 export const Route = createFileRoute('/partner/katalog/')({
   // Halaman pertama dimuat dulu; halaman/filter berikutnya ditarik per halaman.
@@ -109,22 +110,13 @@ function PartnerCatalogPage() {
       <main className="flex flex-col gap-3.5 px-5 pb-[150px] pt-4 lg:hidden">
         <h1 className="pm-display text-[22px] leading-tight">Katalog Produk</h1>
 
-        <div
-          className="flex h-[46px] items-center gap-2 rounded-xl border px-3.5"
-          style={{
-            borderColor: 'var(--app-border)',
-            background: 'var(--pm-input)',
-          }}
-        >
-          <Search size={18} style={{ color: 'var(--app-text-mute)' }} />
-          <input
-            value={search}
-            onChange={(e) => changeSearch(e.target.value)}
-            placeholder="Cari produk"
-            className="min-w-0 flex-1 border-0 bg-transparent text-sm font-medium outline-none"
-            style={{ color: 'var(--app-text)' }}
-          />
-        </div>
+        <PartnerTableToolbar
+          search={search}
+          onSearchChange={changeSearch}
+          placeholder="Cari produk"
+          label="Cari produk"
+          pager={pager}
+        />
 
         <div className="flex flex-wrap gap-2">
           {TABS.map((t) => (
@@ -315,22 +307,6 @@ function CatalogDesktop({
             </button>
           ))}
         </div>
-        <div className="relative w-full max-w-[336px]">
-          <Search
-            size={17}
-            className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2"
-            style={{ color: 'var(--app-text-soft)' }}
-          />
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => onSearch(e.target.value)}
-            placeholder="Cari nama atau kode produk"
-            aria-label="Cari nama atau kode produk"
-            className="app-input pl-10"
-            style={{ height: 42, borderRadius: 12 }}
-          />
-        </div>
       </div>
 
       {visible.length === 0 ? (
@@ -344,7 +320,13 @@ function CatalogDesktop({
         </div>
       ) : (
         <>
-          <Pagination {...pager} />
+          <PartnerTableToolbar
+            search={search}
+            onSearchChange={onSearch}
+            placeholder="Cari nama atau kode produk"
+            label="Cari nama atau kode produk"
+            pager={pager}
+          />
           <div className="app-card overflow-hidden">
             <div
               className={`grid ${COLUMNS} items-center gap-4 px-5 py-3.5 text-[11px] font-bold uppercase tracking-wide`}
