@@ -1,3 +1,4 @@
+import { notifyNewCalendarEvent } from './notification-queries'
 import { createServerFn } from '@tanstack/react-start'
 import { asc, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
@@ -138,6 +139,11 @@ export const createCalendarEvent = createServerFn({ method: 'POST' })
         bannerUpdatedAt,
         createdBy: admin.id,
       })
+      await notifyNewCalendarEvent({
+        calendarEventId: id,
+        eventName: data.name,
+        createdBy: 'ALAKA',
+      }).catch((err) => console.error('[notifikasi] event admin gagal', err))
     } catch (error) {
       // Insert gagal: jangan tinggalkan file yatim di Blobs.
       if (bannerUpdatedAt) await deleteCalendarBanner(id).catch(() => {})

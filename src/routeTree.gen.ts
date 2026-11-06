@@ -17,9 +17,11 @@ import { Route as PartnerRouteImport } from './routes/partner'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppKeuanganRouteImport } from './routes/_app/keuangan'
+import { Route as AppNotifikasiRouteImport } from './routes/_app/notifikasi'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminCustomersRouteImport } from './routes/admin/customers'
 import { Route as AdminLanggananPartnerRouteImport } from './routes/admin/langganan-partner'
+import { Route as AdminNotifikasiRouteImport } from './routes/admin/notifikasi'
 import { Route as AdminPartnerRouteImport } from './routes/admin/partner'
 import { Route as AdminPengaturanRouteImport } from './routes/admin/pengaturan'
 import { Route as PartnerIndexRouteImport } from './routes/partner/index'
@@ -109,6 +111,11 @@ const AppKeuanganRoute = AppKeuanganRouteImport.update({
   path: '/keuangan',
   getParentRoute: () => AppRoute,
 } as any)
+const AppNotifikasiRoute = AppNotifikasiRouteImport.update({
+  id: '/notifikasi',
+  path: '/notifikasi',
+  getParentRoute: () => AppRoute,
+} as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -122,6 +129,11 @@ const AdminCustomersRoute = AdminCustomersRouteImport.update({
 const AdminLanggananPartnerRoute = AdminLanggananPartnerRouteImport.update({
   id: '/langganan-partner',
   path: '/langganan-partner',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminNotifikasiRoute = AdminNotifikasiRouteImport.update({
+  id: '/notifikasi',
+  path: '/notifikasi',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminPartnerRoute = AdminPartnerRouteImport.update({
@@ -383,8 +395,10 @@ export interface FileRoutesByFullPath {
   '/partner': typeof PartnerRouteWithChildren
   '/register': typeof RegisterRoute
   '/keuangan': typeof AppKeuanganRoute
+  '/notifikasi': typeof AppNotifikasiRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/langganan-partner': typeof AdminLanggananPartnerRoute
+  '/admin/notifikasi': typeof AdminNotifikasiRoute
   '/admin/partner': typeof AdminPartnerRoute
   '/admin/pengaturan': typeof AdminPengaturanRoute
   '/partner/profil': typeof PartnerProfilRoute
@@ -441,8 +455,10 @@ export interface FileRoutesByTo {
   '/lupa-sandi': typeof LupaSandiRoute
   '/register': typeof RegisterRoute
   '/keuangan': typeof AppKeuanganRoute
+  '/notifikasi': typeof AppNotifikasiRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/langganan-partner': typeof AdminLanggananPartnerRoute
+  '/admin/notifikasi': typeof AdminNotifikasiRoute
   '/admin/partner': typeof AdminPartnerRoute
   '/admin/pengaturan': typeof AdminPengaturanRoute
   '/partner/profil': typeof PartnerProfilRoute
@@ -504,8 +520,10 @@ export interface FileRoutesById {
   '/partner': typeof PartnerRouteWithChildren
   '/register': typeof RegisterRoute
   '/_app/keuangan': typeof AppKeuanganRoute
+  '/_app/notifikasi': typeof AppNotifikasiRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/langganan-partner': typeof AdminLanggananPartnerRoute
+  '/admin/notifikasi': typeof AdminNotifikasiRoute
   '/admin/partner': typeof AdminPartnerRoute
   '/admin/pengaturan': typeof AdminPengaturanRoute
   '/partner/profil': typeof PartnerProfilRoute
@@ -568,8 +586,10 @@ export interface FileRouteTypes {
     | '/partner'
     | '/register'
     | '/keuangan'
+    | '/notifikasi'
     | '/admin/customers'
     | '/admin/langganan-partner'
+    | '/admin/notifikasi'
     | '/admin/partner'
     | '/admin/pengaturan'
     | '/partner/profil'
@@ -626,8 +646,10 @@ export interface FileRouteTypes {
     | '/lupa-sandi'
     | '/register'
     | '/keuangan'
+    | '/notifikasi'
     | '/admin/customers'
     | '/admin/langganan-partner'
+    | '/admin/notifikasi'
     | '/admin/partner'
     | '/admin/pengaturan'
     | '/partner/profil'
@@ -688,8 +710,10 @@ export interface FileRouteTypes {
     | '/partner'
     | '/register'
     | '/_app/keuangan'
+    | '/_app/notifikasi'
     | '/admin/customers'
     | '/admin/langganan-partner'
+    | '/admin/notifikasi'
     | '/admin/partner'
     | '/admin/pengaturan'
     | '/partner/profil'
@@ -824,6 +848,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppKeuanganRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/notifikasi': {
+      id: '/_app/notifikasi'
+      path: '/notifikasi'
+      fullPath: '/notifikasi'
+      preLoaderRoute: typeof AppNotifikasiRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/admin/': {
       id: '/admin/'
       path: '/'
@@ -843,6 +874,13 @@ declare module '@tanstack/react-router' {
       path: '/langganan-partner'
       fullPath: '/admin/langganan-partner'
       preLoaderRoute: typeof AdminLanggananPartnerRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/notifikasi': {
+      id: '/admin/notifikasi'
+      path: '/notifikasi'
+      fullPath: '/admin/notifikasi'
+      preLoaderRoute: typeof AdminNotifikasiRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/partner': {
@@ -1193,6 +1231,7 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppKeuanganRoute: typeof AppKeuanganRoute
+  AppNotifikasiRoute: typeof AppNotifikasiRoute
   AppIndexRoute: typeof AppIndexRoute
   AppEventsEventIdRoute: typeof AppEventsEventIdRoute
   AppEventsNewRoute: typeof AppEventsNewRoute
@@ -1213,6 +1252,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppKeuanganRoute: AppKeuanganRoute,
+  AppNotifikasiRoute: AppNotifikasiRoute,
   AppIndexRoute: AppIndexRoute,
   AppEventsEventIdRoute: AppEventsEventIdRoute,
   AppEventsNewRoute: AppEventsNewRoute,
@@ -1236,6 +1276,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 interface AdminRouteChildren {
   AdminCustomersRoute: typeof AdminCustomersRoute
   AdminLanggananPartnerRoute: typeof AdminLanggananPartnerRoute
+  AdminNotifikasiRoute: typeof AdminNotifikasiRoute
   AdminPartnerRoute: typeof AdminPartnerRoute
   AdminPengaturanRoute: typeof AdminPengaturanRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -1247,6 +1288,7 @@ interface AdminRouteChildren {
 const AdminRouteChildren: AdminRouteChildren = {
   AdminCustomersRoute: AdminCustomersRoute,
   AdminLanggananPartnerRoute: AdminLanggananPartnerRoute,
+  AdminNotifikasiRoute: AdminNotifikasiRoute,
   AdminPartnerRoute: AdminPartnerRoute,
   AdminPengaturanRoute: AdminPengaturanRoute,
   AdminIndexRoute: AdminIndexRoute,
