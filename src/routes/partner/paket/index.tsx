@@ -259,7 +259,7 @@ function PartnerPaketPage() {
                   className="text-[13px]"
                   style={{ color: 'var(--app-text-soft)' }}
                 >
-                  {rule.productIds.length} produk · {sizeScopeLabel(rule.sizes)}
+                  {rule.productIds.length} produk
                 </span>
                 <div>
                   <StatusBadge active={rule.isActive} />
