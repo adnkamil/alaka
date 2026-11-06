@@ -1,6 +1,8 @@
 import { useState } from 'react'
-import { Search, X } from 'lucide-react'
+import { X } from 'lucide-react'
+import PartnerTableToolbar from './ui/PartnerTableToolbar'
 import RupiahInput from './ui/RupiahInput'
+import { DEFAULT_PAGE_SIZE, pageCount } from '../lib/pagination'
 
 export type RuleFormValue = {
   name: string
@@ -57,6 +59,10 @@ export default function PartnerRuleForm({
   const [search, setSearch] = useState('')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [pickerSearch, setPickerSearch] = useState('')
+  const [listPage, setListPage] = useState(1)
+  const [listPageSize, setListPageSize] = useState<number>(DEFAULT_PAGE_SIZE)
+  const [pickerPage, setPickerPage] = useState(1)
+  const [pickerPageSize, setPickerPageSize] = useState<number>(DEFAULT_PAGE_SIZE)
 
   const selected = products.filter((p) => value.productIds.includes(p.id))
   const visibleSelected = selected.filter((p) =>
@@ -79,8 +85,18 @@ export default function PartnerRuleForm({
   const pickerVisible = pickable.filter((p) =>
     p.name.toLowerCase().includes(pickerSearch.trim().toLowerCase()),
   )
+  const listSafePage = Math.min(listPage, pageCount(visibleSelected.length, listPageSize))
+  const listPaged = visibleSelected.slice(
+    (listSafePage - 1) * listPageSize,
+    listSafePage * listPageSize,
+  )
+  const pickerSafePage = Math.min(pickerPage, pageCount(pickerVisible.length, pickerPageSize))
+  const pickerPaged = pickerVisible.slice(
+    (pickerSafePage - 1) * pickerPageSize,
+    pickerSafePage * pickerPageSize,
+  )
   const allPickerChecked =
-    pickerVisible.length > 0 && pickerVisible.every((p) => value.productIds.includes(p.id))
+    pickerPaged.length > 0 && pickerPaged.every((p) => value.productIds.includes(p.id))
 
   function togglePicker(id: string) {
     setValue((v) => ({
@@ -92,7 +108,7 @@ export default function PartnerRuleForm({
   }
 
   function toggleAllPicker() {
-    const visibleIds = pickerVisible.map((p) => p.id)
+    const visibleIds = pickerPaged.map((p) => p.id)
     setValue((v) => ({
       ...v,
       productIds: allPickerChecked
@@ -226,12 +242,6 @@ export default function PartnerRuleForm({
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cari produk"
-              className="app-input max-w-[200px]"
-            />
             <button
               type="button"
               onClick={() => {
@@ -255,6 +265,26 @@ export default function PartnerRuleForm({
             Tidak ada produk yang cocok dengan pencarian.
           </p>
         ) : (
+          <>
+          <PartnerTableToolbar
+            search={search}
+            onSearchChange={(value) => {
+              setSearch(value)
+              setListPage(1)
+            }}
+            placeholder="Cari produk"
+            label="Cari produk"
+            pager={{
+              page: listSafePage,
+              pageSize: listPageSize,
+              total: visibleSelected.length,
+              onPageChange: setListPage,
+              onPageSizeChange: (size: number) => {
+                setListPageSize(size)
+                setListPage(1)
+              },
+            }}
+          />
           <div className="app-card overflow-hidden">
             <div
               className={`grid ${LIST_COLUMNS} items-center gap-4 px-5 py-3.5 text-[11px] font-bold uppercase tracking-wide`}
@@ -264,7 +294,7 @@ export default function PartnerRuleForm({
               <span>Status katalog</span>
               <span>Aksi</span>
             </div>
-            {visibleSelected.map((p) => (
+            {listPaged.map((p) => (
               <div
                 key={p.id}
                 className={`grid ${LIST_COLUMNS} items-center gap-4 border-t px-5 py-3`}
@@ -288,6 +318,7 @@ export default function PartnerRuleForm({
               </div>
             ))}
           </div>
+          </>
         )}
       </section>
 
@@ -313,22 +344,25 @@ export default function PartnerRuleForm({
                 <X size={18} />
               </button>
             </div>
-            <div className="relative w-full">
-              <Search
-                size={17}
-                className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2"
-                style={{ color: 'var(--app-text-soft)' }}
-              />
-              <input
-                type="search"
-                value={pickerSearch}
-                onChange={(e) => setPickerSearch(e.target.value)}
-                placeholder="Cari nama produk"
-                aria-label="Cari nama produk"
-                className="app-input pl-10"
-                style={{ height: 42, borderRadius: 12 }}
-              />
-            </div>
+            <PartnerTableToolbar
+              search={pickerSearch}
+              onSearchChange={(value) => {
+                setPickerSearch(value)
+                setPickerPage(1)
+              }}
+              placeholder="Cari nama produk"
+              label="Cari nama produk"
+              pager={{
+                page: pickerSafePage,
+                pageSize: pickerPageSize,
+                total: pickerVisible.length,
+                onPageChange: setPickerPage,
+                onPageSizeChange: (size: number) => {
+                  setPickerPageSize(size)
+                  setPickerPage(1)
+                },
+              }}
+            />
 
             {pickable.length === 0 ? (
               <p className="py-6 text-center text-sm" style={{ color: 'var(--app-text-soft)' }}>
@@ -354,7 +388,7 @@ export default function PartnerRuleForm({
                   <span>Produk</span>
                   <span>Status katalog</span>
                 </div>
-                {pickerVisible.map((p) => {
+                {pickerPaged.map((p) => {
                   const checked = value.productIds.includes(p.id)
                   return (
                     <div

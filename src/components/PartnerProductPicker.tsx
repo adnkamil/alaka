@@ -12,6 +12,8 @@ import {
   partnerProductPhotoUrl,
 } from '../lib/partner-product-rules'
 import type { PartnerProductRow } from '../lib/partner-product-queries'
+import Pagination from './ui/Pagination'
+import { useClientPager } from '../lib/use-client-pager'
 
 /** Cocok kalau nama atau kode produk mengandung kata kunci (tanpa huruf besar/kecil). */
 export function matchesProductQuery(product: PartnerProductRow, query: string) {
@@ -168,6 +170,8 @@ export function ProductChecklist({
   const visibleIds = visible.map((p) => p.id)
   const state = selectionState(selected, visibleIds)
   const filtering = query.trim() !== '' || scope === 'dipilih'
+  // Daftar tampil per halaman; "pilih semua" tetap bekerja pada seluruh hasil.
+  const pager = useClientPager(visible)
 
   useEffect(() => {
     if (allRef.current) allRef.current.indeterminate = state === 'some'
@@ -188,7 +192,15 @@ export function ProductChecklist({
         }
         style={desktop ? undefined : { background: 'var(--app-bg)' }}
       >
-        <ProductSearchInput value={query} onChange={setQuery} />
+        <div className="flex flex-col gap-2">
+          <ProductSearchInput
+            value={query}
+            onChange={(value) => {
+              setQuery(value)
+              pager.resetPage()
+            }}
+          />
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           {scopes.map((item) => (
             <button
@@ -261,7 +273,7 @@ export function ProductChecklist({
               : 'flex flex-col gap-2.5'
           }
         >
-          {visible.map((product) => (
+          {pager.paged.map((product) => (
             <ProductCheckRow
               key={product.id}
               product={product}
@@ -270,6 +282,9 @@ export function ProductChecklist({
             />
           ))}
         </div>
+      )}
+      {visible.length > 0 && (
+        <Pagination {...pager.pager} className="justify-center" />
       )}
     </div>
   )

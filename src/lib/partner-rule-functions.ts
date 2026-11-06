@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, asc, count, eq, inArray } from 'drizzle-orm'
+import { and, asc, count, eq, ilike, inArray } from 'drizzle-orm'
 import { z } from 'zod'
 import { clampPage, pageOffset, pageParamsSchema } from './pagination'
 import { requirePartner } from './partner-auth'
@@ -94,13 +94,23 @@ export const listPartnerRules = createServerFn({ method: 'GET' }).handler(
  * `listPartnerRules` tetap dipakai form/kartu yang memang butuh semua aturan.
  */
 export const listPartnerRulesPage = createServerFn({ method: 'GET' })
-  .validator(pageParamsSchema)
+  .validator(
+    pageParamsSchema.extend({
+      search: z.string().max(100).default(''),
+    }),
+  )
   .handler(async ({ data }) => {
     const partner = await requirePartner()
     const { db } = await import('../db')
     const { partnerPricingRules, partnerRuleProducts, partnerRuleSizes } =
       await import('../db/schema')
-    const owned = eq(partnerPricingRules.partnerId, partner.id)
+    const term = data.search.trim()
+    const owned = term
+      ? and(
+          eq(partnerPricingRules.partnerId, partner.id),
+          ilike(partnerPricingRules.name, `%${term.replace(/[\\%_]/g, (c) => `\\${c}`)}%`),
+        )
+      : eq(partnerPricingRules.partnerId, partner.id)
     const [{ total }] = await db
       .select({ total: count() })
       .from(partnerPricingRules)

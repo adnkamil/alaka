@@ -1,4 +1,4 @@
-import { and, asc, eq, isNotNull, isNull, or, sql } from 'drizzle-orm'
+import { and, asc, eq, ilike, isNotNull, isNull, or, sql } from 'drizzle-orm'
 import { db } from '../db'
 import { calendarEvents } from '../db/schema'
 import { calendarBannerSrc } from './calendar'
@@ -133,7 +133,7 @@ function statusCondition(status: PartnerEventStatus, today: string) {
  */
 export async function listPartnerEventsPage(
   partnerId: string,
-  input: { tab: PartnerEventTab; page: number; pageSize: number },
+  input: { tab: PartnerEventTab; page: number; pageSize: number; search?: string },
 ): Promise<PartnerEventPage> {
   const today = todayIsoDateInAppTimeZone()
   const owned = eq(calendarEvents.partnerId, partnerId)
@@ -154,10 +154,22 @@ export async function listPartnerEventsPage(
     selesai: c.selesai,
   }
 
-  const total = counts[input.tab]
-  const page = clampPage(input.page, total, input.pageSize)
-  const where =
+  const term = (input.search ?? '').trim()
+  const tabWhere =
     input.tab === 'all' ? owned : and(owned, statusCondition(input.tab, today))
+  const where = term
+    ? and(tabWhere, ilike(calendarEvents.name, `%${term.replace(/[\\%_]/g, (c) => `\\${c}`)}%`))
+    : tabWhere
+  // Dengan pencarian, jumlah dihitung ulang sesuai hasil cari.
+  const total = term
+    ? (
+        await db
+          .select({ n: sql<number>`count(*)::int` })
+          .from(calendarEvents)
+          .where(where)
+      )[0].n
+    : counts[input.tab]
+  const page = clampPage(input.page, total, input.pageSize)
 
   const rows = await db
     .select(columns)

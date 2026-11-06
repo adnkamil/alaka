@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import {
   PAGE_SIZE_OPTIONS,
   pageCount,
@@ -40,7 +40,8 @@ export default function Pagination({
   const [pageDraft, setPageDraft] = useState<string | null>(null)
   const [jumpDraft, setJumpDraft] = useState('')
 
-  if (total <= PAGE_SIZE_OPTIONS[0]) return null
+  // Tetap tampil selama ada data, supaya tampilannya seragam di semua tabel.
+  if (total === 0) return null
 
   function commit(text: string) {
     const target = parsePageInput(text, totalPages)
@@ -58,19 +59,27 @@ export default function Pagination({
       style={{ color: 'var(--app-text-soft)' }}
     >
       <label className="flex items-center gap-2">
-        <select
-          value={pageSize}
-          onChange={(e) => onPageSizeChange(Number(e.target.value))}
-          aria-label="Jumlah data per halaman"
-          className="h-9 rounded-lg border px-2.5 text-sm font-medium outline-none focus:border-[var(--app-accent)]"
-          style={boxStyle}
-        >
-          {PAGE_SIZE_OPTIONS.map((size) => (
-            <option key={size} value={size}>
-              {size}
-            </option>
-          ))}
-        </select>
+        <span className="relative inline-flex">
+          <select
+            value={pageSize}
+            onChange={(e) => onPageSizeChange(Number(e.target.value))}
+            aria-label="Jumlah data per halaman"
+            className="h-9 appearance-none rounded-lg border pl-2.5 pr-8 text-sm font-medium outline-none focus:border-[var(--app-accent)]"
+            style={boxStyle}
+          >
+            {PAGE_SIZE_OPTIONS.map((size) => (
+              <option key={size} value={size}>
+                {size}
+              </option>
+            ))}
+          </select>
+          <ChevronDown
+            size={16}
+            aria-hidden
+            className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2"
+            style={{ color: 'var(--app-text-soft)' }}
+          />
+        </span>
         per halaman
       </label>
 

@@ -93,6 +93,7 @@ export const fetchPartnerEventsPage = createServerFn({ method: 'GET' })
   .validator(
     pageParamsSchema.extend({
       tab: z.enum(['all', 'berjalan', 'mendatang', 'selesai']),
+      search: z.string().max(100).default(''),
     }),
   )
   .handler(async ({ data }) => {
