@@ -20,6 +20,9 @@ const PICKER_COLUMNS = 'grid-cols-[28px_minmax(0,1fr)_130px]'
 /** Kolom daftar produk terpilih di halaman aturan: produk, status, aksi. */
 const LIST_COLUMNS = 'grid-cols-[minmax(0,1fr)_130px_56px]'
 
+/** id form aturan, dipakai tombol Simpan di header halaman lewat atribut `form`. */
+export const FORM_ID = 'partner-rule-form'
+
 export const RULE_SIZE_OPTIONS = ['Newborn', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL']
 
 export type RuleFormProduct = { id: string; name: string; isActive: boolean }
@@ -132,12 +135,15 @@ export default function PartnerRuleForm({
 
   return (
     <form
-      className="flex flex-col gap-4"
+      id={FORM_ID}
+      className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,3fr)_minmax(0,7fr)] lg:items-start lg:gap-6"
       onSubmit={(e) => {
         e.preventDefault()
+        if (value.productIds.length === 0) return
         onSubmit(value)
       }}
     >
+      <div className="flex flex-col gap-4 lg:sticky lg:top-24 lg:max-h-[calc(100dvh-rem)] lg:overflow-y-auto lg:pb-1">
       <section className="app-card flex flex-col gap-4 p-4 lg:p-5">
         <h2 className="pm-display text-base">{title}</h2>
         <div className="flex flex-col gap-3.5 lg:grid lg:grid-cols-2 lg:gap-4">
@@ -232,6 +238,13 @@ export default function PartnerRuleForm({
           </button>
         </div>
       </section>
+
+      {error && (
+        <p role="alert" className="text-sm" style={{ color: '#b42318' }}>
+          {error}
+        </p>
+      )}
+      </div>
 
       <section className="app-card flex flex-col gap-3 p-4 lg:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -427,24 +440,6 @@ export default function PartnerRuleForm({
         </div>
       )}
 
-      {error && (
-        <p role="alert" className="text-sm" style={{ color: '#b42318' }}>
-          {error}
-        </p>
-      )}
-      <div className="flex justify-end gap-2">
-        <button type="button" onClick={onCancel} disabled={saving} className="app-btn-outline" style={{ minHeight: 44, fontSize: 14 }}>
-          Batal
-        </button>
-        <button
-          type="submit"
-          disabled={saving || value.productIds.length === 0}
-          className="app-btn-primary"
-          style={{ minHeight: 44, fontSize: 14 }}
-        >
-          {saving ? 'Menyimpan…' : 'Simpan aturan'}
-        </button>
-      </div>
     </form>
   )
 }

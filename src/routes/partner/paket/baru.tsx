@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { ArrowLeft } from 'lucide-react'
 import { useState } from 'react'
-import PartnerRuleForm, { type RuleFormValue } from '../../../components/PartnerRuleForm'
+import PartnerRuleForm, { FORM_ID, type RuleFormValue } from '../../../components/PartnerRuleForm'
 import { fetchPartnerProducts } from '../../../lib/partner-product-functions'
 import { listPartnerRules, savePartnerRule } from '../../../lib/partner-rule-functions'
 import { selectableProducts } from '../../../lib/partner-rule-availability'
@@ -51,11 +51,25 @@ function NewPartnerRulePage() {
 
   return (
     <main className="pm-wide flex flex-col gap-4 px-5 pb-8 pt-4 lg:gap-5">
-      <header className="flex items-center gap-3">
+      <header className="flex flex-wrap items-center gap-3">
         <Link to="/partner/paket" aria-label="Kembali" className="-ml-1 flex size-8 items-center justify-center" style={{ color: 'var(--app-text)' }}>
           <ArrowLeft size={22} />
         </Link>
         <h1 className="pm-display text-[22px] leading-tight lg:text-[26px]">Aturan Paket Baru</h1>
+        <div className="ml-auto flex items-center gap-2">
+          <Link to="/partner/paket" className="app-btn-outline" style={{ minHeight: 44, fontSize: 14 }}>
+            Batal
+          </Link>
+          <button
+            type="submit"
+            form={FORM_ID}
+            disabled={saving}
+            className="app-btn-primary"
+            style={{ minHeight: 44, fontSize: 14 }}
+          >
+            {saving ? 'Menyimpan…' : 'Simpan aturan'}
+          </button>
+        </div>
       </header>
       <PartnerRuleForm
         title="Detail aturan"
