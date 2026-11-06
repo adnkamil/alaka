@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useImperativeHandle, useMemo, useState } from 'react'
 import RupiahInput from './ui/RupiahInput'
 import {
   getPartnerProductVariants,
@@ -7,6 +7,8 @@ import {
 } from '../lib/partner-variant-functions'
 import PartnerTableToolbar from './ui/PartnerTableToolbar'
 import { useClientPager } from '../lib/use-client-pager'
+
+export type PartnerVariantEditorHandle = { save: () => Promise<void> }
 
 type Cell = { on: boolean; price: string }
 
@@ -18,7 +20,13 @@ function cellKey(size: string | null, variation: string | null) {
  * Editor varian produk partner. Gaya mengikuti PartnerProductForm: kartu
  * `app-card`, input `app-input`, chip `pm-chip`, dan switch hijau.
  */
-export default function PartnerVariantEditor({ productId }: { productId: string }) {
+export default function PartnerVariantEditor({
+  productId,
+  ref,
+}: {
+  productId: string
+  ref?: React.Ref<PartnerVariantEditorHandle>
+}) {
   const queryClient = useQueryClient()
   const queryKey = ['partner-product-variants', productId]
   const { data, error: loadError } = useQuery({
@@ -34,7 +42,6 @@ export default function PartnerVariantEditor({ productId }: { productId: string 
   const [newSize, setNewSize] = useState('')
   const [newVariation, setNewVariation] = useState('')
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null)
-  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (!data) return
@@ -95,7 +102,6 @@ export default function PartnerVariantEditor({ productId }: { productId: string 
 
   async function handleSave() {
     setStatus(null)
-    setSaving(true)
     try {
       const chosen: Array<{ size: string | null; variation: string | null; price: number }> = []
       if (hasVariants) {
@@ -122,10 +128,11 @@ export default function PartnerVariantEditor({ productId }: { productId: string 
       setStatus({ ok: true, text: 'Varian tersimpan.' })
     } catch (err) {
       setStatus({ ok: false, text: err instanceof Error ? err.message : 'Gagal menyimpan varian' })
-    } finally {
-      setSaving(false)
+      throw err
     }
   }
+
+  useImperativeHandle(ref, () => ({ save: handleSave }))
 
   if (loadError) {
     return <div className="app-card p-4 text-sm text-red-600">Gagal memuat varian.</div>
@@ -261,17 +268,6 @@ export default function PartnerVariantEditor({ productId }: { productId: string 
           {status.text}
         </p>
       )}
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saving}
-          className="app-btn-primary"
-          style={{ minHeight: 44, fontSize: 14 }}
-        >
-          {saving ? 'Menyimpan…' : 'Simpan varian'}
-        </button>
-      </div>
     </section>
   )
 }

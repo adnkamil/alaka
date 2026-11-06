@@ -53,10 +53,8 @@ export default function PartnerRuleForm({
   products,
   allRules = [],
   ruleId,
-  saving,
   error,
   onSubmit,
-  onCancel,
 }: PartnerRuleFormProps) {
   const [value, setValue] = useState<RuleFormValue>(initial)
   const [search, setSearch] = useState('')
@@ -136,14 +134,14 @@ export default function PartnerRuleForm({
   return (
     <form
       id={FORM_ID}
-      className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,3fr)_minmax(0,7fr)] lg:items-start lg:gap-6"
+      className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start lg:gap-6"
       onSubmit={(e) => {
         e.preventDefault()
         if (value.productIds.length === 0) return
         onSubmit(value)
       }}
     >
-      <div className="flex flex-col gap-4 lg:sticky lg:top-24 lg:max-h-[calc(100dvh-rem)] lg:overflow-y-auto lg:pb-1">
+      <div className="flex flex-col gap-4 lg:sticky lg:top-24 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto lg:pb-1">
       <section className="app-card flex flex-col gap-4 p-4 lg:p-5">
         <h2 className="pm-display text-base">{title}</h2>
         <div className="flex flex-col gap-3.5 lg:grid lg:grid-cols-2 lg:gap-4">

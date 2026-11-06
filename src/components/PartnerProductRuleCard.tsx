@@ -1,8 +1,10 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
+import { useEffect, useImperativeHandle, useState } from 'react'
 import { listPartnerRules, setPartnerProductRules } from '../lib/partner-rule-functions'
 
 const RULES_KEY = ['partner-rules']
+
+export type PartnerProductRuleCardHandle = { save: () => Promise<void> }
 
 function rulesOf(rules: Array<{ id: string; productIds: Array<string> }>, productId: string) {
   return rules.filter((r) => r.productIds.includes(productId)).map((r) => r.id)
@@ -12,7 +14,13 @@ function rulesOf(rules: Array<{ id: string; productIds: Array<string> }>, produc
  * Kartu "Paket" di halaman produk. Satu produk bisa masuk beberapa aturan
  * (mis. S–L dan XL–XXL dengan harga paket berbeda). Centang aturan yang dipakai.
  */
-export default function PartnerProductRuleCard({ productId }: { productId: string }) {
+export default function PartnerProductRuleCard({
+  productId,
+  ref,
+}: {
+  productId: string
+  ref?: React.Ref<PartnerProductRuleCardHandle>
+}) {
   const queryClient = useQueryClient()
   const { data: rules = [], error: loadError } = useQuery({
     queryKey: RULES_KEY,
@@ -22,7 +30,6 @@ export default function PartnerProductRuleCard({ productId }: { productId: strin
   const currentKey = currentIds.slice().sort().join(',')
   const [selected, setSelected] = useState<Array<string>>([])
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null)
-  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     setSelected(currentIds)
@@ -37,7 +44,6 @@ export default function PartnerProductRuleCard({ productId }: { productId: strin
   }
 
   async function save() {
-    setSaving(true)
     setStatus(null)
     try {
       await setPartnerProductRules({ data: { productId, ruleIds: selected } })
@@ -45,10 +51,15 @@ export default function PartnerProductRuleCard({ productId }: { productId: strin
       setStatus({ ok: true, text: 'Paket produk tersimpan.' })
     } catch (err) {
       setStatus({ ok: false, text: err instanceof Error ? err.message : 'Gagal menyimpan paket' })
-    } finally {
-      setSaving(false)
+      throw err
     }
   }
+
+  useImperativeHandle(ref, () => ({
+    save: async () => {
+      if (dirty) await save()
+    },
+  }))
 
   if (loadError) return null
 
@@ -97,17 +108,6 @@ export default function PartnerProductRuleCard({ productId }: { productId: strin
           {status.text}
         </p>
       )}
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={save}
-          disabled={!dirty || saving}
-          className="app-btn-outline"
-          style={{ minHeight: 40, fontSize: 13 }}
-        >
-          {saving ? 'Menyimpan…' : 'Simpan paket'}
-        </button>
-      </div>
     </section>
   )
 }

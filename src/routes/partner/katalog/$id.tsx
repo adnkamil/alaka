@@ -1,13 +1,21 @@
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
-import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
+import { Link, createFileRoute } from '@tanstack/react-router'
 import { ArrowLeft } from 'lucide-react'
-import PartnerProductForm from '../../../components/PartnerProductForm'
-import PartnerVariantEditor from '../../../components/PartnerVariantEditor'
-import PartnerProductRuleCard from '../../../components/PartnerProductRuleCard'
+import { useRef, useState } from 'react'
+import PartnerProductForm, {
+  type PartnerProductFormHandle,
+  type PartnerProductFormValue,
+} from '../../../components/PartnerProductForm'
+import PartnerVariantEditor, {
+  type PartnerVariantEditorHandle,
+} from '../../../components/PartnerVariantEditor'
+import PartnerProductRuleCard, {
+  type PartnerProductRuleCardHandle,
+} from '../../../components/PartnerProductRuleCard'
+import { getErrorMessage } from '../../../lib/error-message'
 import { updateOwnPartnerProduct } from '../../../lib/partner-product-functions'
 import { partnerProductPhotoUrl } from '../../../lib/partner-product-rules'
 import { partnerProductQuery } from '../../../lib/queries'
-import type { PartnerProductFormValue } from '../../../components/PartnerProductForm'
 
 export const Route = createFileRoute('/partner/katalog/$id')({
   loader: ({ context, params }) =>
@@ -18,10 +26,16 @@ export const Route = createFileRoute('/partner/katalog/$id')({
 function EditPartnerProductPage() {
   const { id } = Route.useParams()
   const { data: product } = useSuspenseQuery(partnerProductQuery(id))
-  const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const productRef = useRef<PartnerProductFormHandle>(null)
+  const variantRef = useRef<PartnerVariantEditorHandle>(null)
+  const ruleRef = useRef<PartnerProductRuleCardHandle>(null)
+  const [saving, setSaving] = useState(false)
+  const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(
+    null,
+  )
 
-  async function handleSubmit(value: PartnerProductFormValue) {
+  async function handleProductSubmit(value: PartnerProductFormValue) {
     await updateOwnPartnerProduct({
       data: {
         id,
@@ -35,12 +49,51 @@ function EditPartnerProductPage() {
     })
     await queryClient.invalidateQueries({ queryKey: ['partner-products'] })
     await queryClient.invalidateQueries({ queryKey: ['partner-product', id] })
-    await navigate({ to: '/partner/katalog' })
   }
 
+  // Satu tombol untuk semua bagian: produk, varian, lalu paket.
+  async function saveAll() {
+    setSaving(true)
+    setStatus(null)
+    try {
+      await productRef.current?.save()
+      await variantRef.current?.save()
+      await ruleRef.current?.save()
+      setStatus({ ok: true, text: 'Perubahan tersimpan.' })
+    } catch (err) {
+      setStatus({
+        ok: false,
+        text: getErrorMessage(err, 'Gagal menyimpan perubahan'),
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const actions = (
+    <div className="ml-auto flex gap-2 lg:gap-3">
+      <Link
+        to="/partner/katalog"
+        className="app-btn-outline no-underline"
+        style={{ minHeight: 44, fontSize: 14 }}
+      >
+        Batal
+      </Link>
+      <button
+        type="button"
+        onClick={saveAll}
+        disabled={saving}
+        className="app-btn-primary"
+        style={{ minHeight: 44, fontSize: 14 }}
+      >
+        {saving ? 'Menyimpan...' : 'Simpan perubahan'}
+      </button>
+    </div>
+  )
+
   return (
-    <main className="pm-wide flex flex-col gap-4 px-5 pt-4">
-      <header className="flex items-center gap-3 lg:hidden">
+    <main className="pm-wide flex flex-col gap-4 px-5 pt-4 pb-8">
+      <header className="flex flex-wrap items-center gap-3 lg:hidden">
         <Link
           to="/partner/katalog"
           aria-label="Kembali"
@@ -50,8 +103,21 @@ function EditPartnerProductPage() {
           <ArrowLeft size={22} />
         </Link>
         <h1 className="pm-display text-[22px] leading-tight">Ubah Produk</h1>
+        {actions}
       </header>
+
+      {status && (
+        <p
+          role="status"
+          className="text-sm"
+          style={{ color: status.ok ? '#3f7d58' : 'var(--app-danger)' }}
+        >
+          {status.text}
+        </p>
+      )}
+
       <PartnerProductForm
+        ref={productRef}
         initial={{
           name: product.name,
           code: product.code,
@@ -63,10 +129,11 @@ function EditPartnerProductPage() {
         title="Ubah Produk"
         breadcrumb="Ubah produk"
         submitLabel="Simpan perubahan"
-        onSubmit={handleSubmit}
+        onSubmit={handleProductSubmit}
+        headerActions={actions}
       />
-      <PartnerVariantEditor productId={id} />
-      <PartnerProductRuleCard productId={id} />
+      <PartnerVariantEditor ref={variantRef} productId={id} />
+      <PartnerProductRuleCard ref={ruleRef} productId={id} />
     </main>
   )
 }
