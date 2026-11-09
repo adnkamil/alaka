@@ -12,6 +12,7 @@ import {
 } from '../db/schema'
 import { getSessionUser } from './auth'
 import { brandIdOf } from './brand'
+import { assertOrdersEditable } from './event-slot'
 import { findMergeTarget } from './order-merge'
 import { recalculateOrderStatus } from './order-status-queries'
 import {
@@ -57,6 +58,7 @@ export const addPartnerItem = createServerFn({ method: 'POST' })
         where: and(eq(events.id, data.eventId), eq(events.brandId, brandId)),
       })
       if (!event) throw new Error('Event tidak ditemukan')
+      assertOrdersEditable(event)
       if (!event.isActive) {
         throw new Error('Event ini nonaktif, jadi tidak bisa menambah pesanan.')
       }
@@ -162,6 +164,8 @@ async function loadOwnedComponent(
     throw new Error('Barang tidak ditemukan')
   }
   if (!bundle.isBundle) throw new Error('Barang ini bukan paket')
+  // Setelah submit, isi paket hanya berubah lewat jalur sanggah.
+  assertOrdersEditable(bundle.order.event)
   return { component, bundle }
 }
 

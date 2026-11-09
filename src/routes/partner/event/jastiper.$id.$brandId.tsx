@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { ArrowLeft, PackageCheck } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import PartnerSlotReview from '../../../components/PartnerSlotReview'
 import { buildWhatsAppLink, formatPhoneNumber } from '../../../lib/format'
 import { formatRupiah } from '../../../lib/partner-product-rules'
 import PartnerTableToolbar from '../../../components/ui/PartnerTableToolbar'
@@ -126,6 +127,8 @@ function PartnerJastiperDetailPage() {
           Memuat…
         </p>
       )}
+
+      <PartnerSlotReview calendarEventId={id} brandId={brandId} />
 
       {data && (
         <>

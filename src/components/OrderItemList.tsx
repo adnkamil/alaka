@@ -21,6 +21,8 @@ export type OrderItemView = {
   ruleName: string | null
   partnerVariantId: string | null
   qty: number
+  /** Alur slot: jumlah yang diminta sebelum dicek partner (qty = yang dapat). Null = belum dicek. */
+  requestedQty?: number | null
   originalPrice: string
   fee: string
   components: Array<{
@@ -30,6 +32,8 @@ export type OrderItemView = {
     size: string | null
     variation: string | null
     qty: number
+    /** Alur slot: jumlah disetujui partner. Null = belum dicek / menunggu verifikasi. */
+    approvedQty?: number | null
   }>
 }
 
@@ -47,6 +51,10 @@ interface OrderItemListProps {
   /** Tidak dipakai lagi: isi paket tidak bisa diganti, hanya dihapus lalu ditambah ulang. */
   variantOptionsByRule?: Record<string, Array<VariantOption>>
   onChangeComponent?: (componentId: string, partnerVariantId: string) => Promise<void>
+  /** Pesanan sudah dikirim ke partner: isi paket tidak bisa dihapus dari sini. */
+  locked?: boolean
+  /** Event ini sudah dicek partner (menampilkan status per barang). */
+  reviewed?: boolean
 }
 
 type ComponentView = OrderItemView['components'][number]
@@ -59,6 +67,33 @@ type MergedLine = {
   /** Id komponen asli, urut dari yang paling lama masuk. */
   ids: Array<string>
   qty: number
+  /** Jumlah disetujui (hanya setelah dicek); null kalau ada yang menunggu verifikasi. */
+  approved: number | null
+}
+
+/** Label hasil pengecekan partner untuk satu baris. */
+function approvalTag(requested: number, approved: number | null) {
+  if (approved === null) return { text: 'Menunggu verifikasi', danger: false }
+  if (approved <= 0) return { text: 'Tidak dapat', danger: true }
+  if (approved < requested) return { text: `Dapat ${approved} dari ${requested}`, danger: true }
+  return null
+}
+
+function ApprovalBadge({ requested, approved }: { requested: number; approved: number | null }) {
+  const tag = approvalTag(requested, approved)
+  if (!tag) return null
+  return (
+    <span
+      className="app-badge flex-shrink-0"
+      style={
+        tag.danger
+          ? { background: 'var(--app-danger-soft, #fdecea)', color: 'var(--app-danger)' }
+          : { background: 'var(--app-accent-soft)', color: 'var(--app-accent)' }
+      }
+    >
+      {tag.text}
+    </span>
+  )
 }
 
 function mergeComponents(groupItems: Array<OrderItemView>): Array<MergedLine> {
@@ -70,8 +105,18 @@ function mergeComponents(groupItems: Array<OrderItemView>): Array<MergedLine> {
       if (existing) {
         existing.ids.push(c.id)
         existing.qty += c.qty
+        existing.approved =
+          existing.approved === null || c.approvedQty == null
+            ? null
+            : existing.approved + c.approvedQty
       } else {
-        lines.set(key, { key, component: c, ids: [c.id], qty: c.qty })
+        lines.set(key, {
+          key,
+          component: c,
+          ids: [c.id],
+          qty: c.qty,
+          approved: c.approvedQty ?? null,
+        })
       }
     }
   }
@@ -100,18 +145,28 @@ export default function OrderItemList({
   formatIDR,
   onSaveBundlePrice,
   onRemoveComponent,
+  locked = false,
+  reviewed = false,
 }: OrderItemListProps) {
   const { singles: rawSingles, bundles } = splitOrderItems(items)
   // Barang satuan yang sama (varian, harga, fee) ditampilkan sebagai satu baris dengan qty.
   const singles = useMemo(() => {
-    const map = new Map<string, OrderItemView & { mergedQty: number }>()
+    const map = new Map<
+      string,
+      OrderItemView & { mergedQty: number; mergedRequested: number }
+    >()
     for (const item of rawSingles) {
       const key = `${item.partnerVariantId ?? item.id}|${Number(item.originalPrice)}|${Number(item.fee)}`
       const existing = map.get(key)
       if (existing) {
         existing.mergedQty += item.qty
+        existing.mergedRequested += item.requestedQty ?? item.qty
       } else {
-        map.set(key, { ...item, mergedQty: item.qty })
+        map.set(key, {
+          ...item,
+          mergedQty: item.qty,
+          mergedRequested: item.requestedQty ?? item.qty,
+        })
       }
     }
     return [...map.values()]
@@ -230,6 +285,9 @@ export default function OrderItemList({
                 )}
               </div>
               <span className="flex flex-shrink-0 items-center gap-2 whitespace-nowrap">
+                {reviewed && item.mergedQty < item.mergedRequested && (
+                  <ApprovalBadge requested={item.mergedRequested} approved={item.mergedQty} />
+                )}
                 {item.mergedQty > 1 && (
                   <span
                     className="app-badge"
@@ -307,6 +365,7 @@ export default function OrderItemList({
                         className="flex items-center gap-2 px-3 py-2 text-left"
                       >
                         <ComponentLine component={line.component} />
+                        {reviewed && <ApprovalBadge requested={line.qty} approved={line.approved} />}
                         {line.qty > 1 && (
                           <span
                             className="app-badge flex-shrink-0"
@@ -317,7 +376,7 @@ export default function OrderItemList({
                         )}
                         {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                       </button>
-                      {open && (
+                      {open && !locked && (
                         <div
                           className="flex items-center justify-end border-t px-3 py-2"
                           style={{ borderColor: 'var(--app-border)' }}

@@ -37,6 +37,8 @@ export function buildInvoiceBlocks(items: Array<InvoiceItemInput>): Array<Invoic
   const singles: Array<InvoiceBlock> = []
   const bundles: Array<InvoiceBlock> = []
   for (const item of items) {
+    // Barang yang tidak dapat (qty 0, alur slot partner) tidak ikut ke invoice.
+    if (!item.isBundle && item.qty <= 0) continue
     if (!item.isBundle) {
       singles.push({ kind: 'single' as const, item })
     } else {
