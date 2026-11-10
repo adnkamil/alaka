@@ -7,6 +7,8 @@ import { partnerOwnsEvent } from './partner-event-queries'
 const idSchema = z.uuid()
 
 export type JastiperDetailRow = {
+  /** Varian produk partner; dipakai untuk mencocokkan baris dengan hasil pengecekan. */
+  variantId: string | null
   productName: string
   size: string | null
   variation: string | null
@@ -166,6 +168,7 @@ async function loadJastiperEventDetail(
         const pcs = item.qty * c.qty
         paketPcs += pcs
         rows.push({
+          variantId: c.partnerVariantId,
           productName: meta?.productName ?? c.productName,
           size: meta?.size ?? c.size,
           variation: meta?.variation ?? c.variation,
@@ -182,6 +185,7 @@ async function loadJastiperEventDetail(
       const meta = variantMeta.get(item.partnerVariantId)!
       satuanPcs += item.qty
       rows.push({
+        variantId: item.partnerVariantId,
         productName: meta.productName,
         size: meta.size,
         variation: meta.variation,
