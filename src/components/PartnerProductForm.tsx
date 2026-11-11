@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useImperativeHandle, useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Trash2, Upload } from 'lucide-react'
 import RupiahInput from './ui/RupiahInput'
@@ -38,6 +38,9 @@ export interface PartnerProductFormInitial {
   photoUrl: string | null
 }
 
+/** Dipanggil halaman induk untuk menyimpan form ini bersama bagian lain. */
+export type PartnerProductFormHandle = { save: () => Promise<void> }
+
 interface PartnerProductFormProps {
   initial?: PartnerProductFormInitial
   submitLabel: string
@@ -45,6 +48,9 @@ interface PartnerProductFormProps {
   title: string
   breadcrumb: string
   onSubmit: (value: PartnerProductFormValue) => Promise<void>
+  /** Tombol aksi di header desktop. Kalau kosong, form memakai Batal/Simpan sendiri. */
+  headerActions?: React.ReactNode
+  ref?: React.Ref<PartnerProductFormHandle>
 }
 
 const FORM_ID = 'partner-product-form'
@@ -83,6 +89,8 @@ export default function PartnerProductForm({
   title,
   breadcrumb,
   onSubmit,
+  headerActions,
+  ref,
 }: PartnerProductFormProps) {
   const fileInput = useRef<HTMLInputElement>(null)
   const [name, setName] = useState(initial?.name ?? '')
@@ -131,12 +139,13 @@ export default function PartnerProductForm({
     setPhoto(initial?.photoUrl ? { action: 'remove' } : { action: 'keep' })
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  async function submit(): Promise<void> {
     setError(null)
     if (price === null) {
-      setError('Harga tidak valid. Isi angka rupiah, mis. 189000 atau 189.000.')
-      return
+      const msg =
+        'Harga tidak valid. Isi angka rupiah, mis. 189000 atau 189.000.'
+      setError(msg)
+      throw new Error(msg)
     }
     setIsSubmitting(true)
     try {
@@ -150,10 +159,18 @@ export default function PartnerProductForm({
       })
     } catch (err) {
       setError(getErrorMessage(err, 'Gagal menyimpan produk'))
+      throw err
     } finally {
       setIsSubmitting(false)
     }
   }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    await submit().catch(() => {})
+  }
+
+  useImperativeHandle(ref, () => ({ save: submit }))
 
   const submitText = isSubmitting ? 'Menyimpan...' : submitLabel
 
@@ -161,7 +178,7 @@ export default function PartnerProductForm({
     <>
       <form
         id={FORM_ID}
-        className="flex flex-col gap-3.5 pb-[120px] lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start lg:gap-x-4 lg:gap-y-5 lg:pb-0"
+        className={`flex flex-col gap-3.5 lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start lg:gap-x-4 lg:gap-y-5 lg:pb-0 ${headerActions === undefined ? 'pb-[120px]' : ''}`}
         onSubmit={handleSubmit}
       >
         <header className="hidden items-start justify-between gap-4 lg:col-span-2 lg:row-start-1 lg:flex">
@@ -181,23 +198,25 @@ export default function PartnerProductForm({
               / {breadcrumb}
             </p>
           </div>
-          <div className="flex gap-3">
-            <Link
-              to="/partner/katalog"
-              className="app-btn-outline no-underline"
-              style={{ minHeight: 44, fontSize: 14 }}
-            >
-              Batal
-            </Link>
-            <button
-              type="submit"
-              disabled={isSubmitting || photoBusy}
-              className="app-btn-primary"
-              style={{ minHeight: 44, fontSize: 14 }}
-            >
-              {submitText}
-            </button>
-          </div>
+          {headerActions ?? (
+            <div className="flex gap-3">
+              <Link
+                to="/partner/katalog"
+                className="app-btn-outline no-underline"
+                style={{ minHeight: 44, fontSize: 14 }}
+              >
+                Batal
+              </Link>
+              <button
+                type="submit"
+                disabled={isSubmitting || photoBusy}
+                className="app-btn-primary"
+                style={{ minHeight: 44, fontSize: 14 }}
+              >
+                {submitText}
+              </button>
+            </div>
+          )}
         </header>
 
         <input
@@ -352,16 +371,18 @@ export default function PartnerProductForm({
         )}
       </form>
 
-      <div className="pm-footer lg:hidden">
-        <button
-          type="submit"
-          form={FORM_ID}
-          disabled={isSubmitting || photoBusy}
-          className="app-btn-primary w-full"
-        >
-          {submitText}
-        </button>
-      </div>
+      {headerActions === undefined && (
+        <div className="pm-footer lg:hidden">
+          <button
+            type="submit"
+            form={FORM_ID}
+            disabled={isSubmitting || photoBusy}
+            className="app-btn-primary w-full"
+          >
+            {submitText}
+          </button>
+        </div>
+      )}
     </>
   )
 }

@@ -480,6 +480,19 @@ export const events = pgTable(
      * menampilkannya yang berubah. Diatur dari menu ⋮ di halaman Detail Event.
      */
     hideFee: boolean('hide_fee').notNull().default(false),
+    /**
+     * Alur slot event partner. Diisi server saat jastiper menekan "Submit
+     * orderan ke partner" (jam server, bukan jam perangkat). Non-null = semua
+     * pesanan terkunci. Urutan antrean = urutan `submitted_at` per event
+     * kalender (lihat `event-slot-queries.ts`).
+     */
+    submittedAt: timestamp('submitted_at', { withTimezone: true }),
+    /** Partner selesai mengecek barang. Non-null = fase sanggah dimulai. */
+    reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
+    /** Batas waktu sanggah, diisi partner. Lewat batas = paket bermasalah otomatis "tidak ganti". */
+    sanggahDeadline: timestamp('sanggah_deadline', { withTimezone: true }),
+    /** Terakhir kali jastiper memutuskan "tidak ganti" (manual atau otomatis). Dipakai label status di sisi partner. */
+    decidedAt: timestamp('decided_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -537,6 +550,13 @@ export const items = pgTable('items', {
   }).notNull(),
   fee: decimal({ precision: 12, scale: 2 }).notNull(),
   qty: integer().notNull().default(1),
+  /**
+   * Jumlah yang diminta jastiper sebelum dicek partner (alur slot). Diisi saat
+   * partner mengecek: `qty` lalu menjadi jumlah yang DAPAT (boleh 0 = tidak
+   * dapat), sehingga total, FIFO, dan invoice otomatis memakai yang dapat.
+   * Null = belum pernah dicek / bukan event slot.
+   */
+  requestedQty: integer('requested_qty'),
   // Checklist belanja (live shopping): true = barang sudah didapat/dibeli di toko.
   obtained: boolean().notNull().default(false),
   // Bundling (paket). `is_bundle` = true untuk bundle baru; bundle lama yang
@@ -580,6 +600,12 @@ export const itemComponents = pgTable(
     size: varchar(),
     variation: varchar(),
     qty: integer().notNull().default(1),
+    /**
+     * Jumlah yang disetujui partner (alur slot). Null = belum dicek, atau
+     * pengganti yang menunggu verifikasi partner. Kurang dari `qty` = bagian
+     * paket ini bermasalah dan paketnya masuk sanggah.
+     */
+    approvedQty: integer('approved_qty'),
     // Waktu asli item satuan masuk. Dipakai FIFO saat komponen kembali ke satuan.
     addedAt: timestamp('added_at', { withTimezone: true })
       .notNull()
@@ -792,6 +818,13 @@ export const calendarEvents = pgTable(
      * partner), yang tidak dipakai lagi.
      */
     catalogUrl: varchar('catalog_url'),
+    /**
+     * Alur slot (hanya event partner): waktu slot pemesanan dibuka dan ditutup,
+     * diisi partner. Keduanya terisi = event memakai alur slot (submit, cek,
+     * sanggah). Keduanya kosong = alur lama, order jastiper bebas diubah.
+     */
+    slotOpensAt: timestamp('slot_opens_at', { withTimezone: true }),
+    slotClosesAt: timestamp('slot_closes_at', { withTimezone: true }),
     /**
      * Brand yang dipamerkan di event ini, berupa nama bebas (mis. brand skincare
      * yang ikut bazar) — BUKAN relasi ke tabel `brands` (itu brand jastiper).

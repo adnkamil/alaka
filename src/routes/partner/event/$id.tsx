@@ -11,6 +11,7 @@ import {
   Phone,
 } from 'lucide-react'
 import { EventDescription } from '../../../components/EventDescription'
+import PartnerSlotSection from '../../../components/PartnerSlotSection'
 import PartnerEventStatusBadge from '../../../components/PartnerEventStatusBadge'
 import ConfirmModal from '../../../components/ui/ConfirmModal'
 import Toast from '../../../components/ui/Toast'
@@ -218,6 +219,7 @@ function PartnerEventDetailPage() {
                 </p>
               )}
             </div>
+            <PartnerSlotSection calendarEventId={id} />
             <div className="flex gap-2.5">
               <Link
                 to="/partner/event/ubah/$id"
@@ -447,6 +449,8 @@ function PartnerEventDetailPage() {
               ))}
             </dl>
           </section>
+
+          <PartnerSlotSection calendarEventId={id} />
 
           <section className="app-card flex flex-col gap-4 p-5">
             <div className="flex flex-col gap-1.5 rounded-2xl p-4" style={{ background: 'var(--app-accent-soft)' }}>

@@ -2,10 +2,12 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { ArrowLeft, PackageCheck } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import PartnerReviewFooter from '../../../components/PartnerReviewFooter'
 import { buildWhatsAppLink, formatPhoneNumber } from '../../../lib/format'
 import { formatRupiah } from '../../../lib/partner-product-rules'
 import PartnerTableToolbar from '../../../components/ui/PartnerTableToolbar'
 import { useClientPager } from '../../../lib/use-client-pager'
+import { usePartnerReview } from '../../../lib/use-partner-review'
 import {
   getPartnerJastiperDetail,
   type JastiperDetailRow,
@@ -17,6 +19,11 @@ export const Route = createFileRoute('/partner/event/jastiper/$id/$brandId')({
 
 type GroupedRow = {
   key: string
+  /** Varian produk; kunci pencocokan dengan hasil pengecekan. */
+  variantId: string | null
+  /** Diisi saat mode cek: jumlah diminta dan pcs pengganti yang menunggu verifikasi. */
+  requested?: number
+  pendingPcs?: number
   productName: string
   size: string | null
   variation: string | null
@@ -48,6 +55,7 @@ function groupRows(
     } else {
       map.set(key, {
         key,
+        variantId: r.variantId,
         productName: r.productName,
         size: r.size,
         variation: r.variation,
@@ -71,10 +79,33 @@ function PartnerJastiperDetailPage() {
       getPartnerJastiperDetail({ data: { calendarEventId: id, brandId } }),
   })
 
-  const grouped = useMemo(
-    () => (data ? groupRows(data.rows, split) : []),
-    [data, split],
-  )
+  const review = usePartnerReview(id, brandId)
+  // Cek barang dilakukan per varian, jadi hanya di tampilan gabungan.
+  const reviewing = !split && review.submitted && !!review.data?.groups.length
+
+  const grouped = useMemo(() => {
+    if (!data) return []
+    if (!reviewing || !review.data) return groupRows(data.rows, split)
+    const priceByVariant = new Map<string, number>()
+    for (const r of data.rows) {
+      if (r.variantId) priceByVariant.set(r.variantId, r.unitPrice)
+    }
+    return review.data.groups.map(
+      (g): GroupedRow => ({
+        key: g.variantId,
+        variantId: g.variantId,
+        productName: g.productName,
+        size: g.size,
+        variation: g.variation,
+        ruleName: null,
+        qty: g.requestedPcs,
+        requested: g.requestedPcs,
+        pendingPcs: g.pendingPcs,
+        unitPrice: priceByVariant.get(g.variantId) ?? 0,
+      }),
+    )
+  }, [data, split, reviewing, review.data])
+  const hasPending = reviewing && grouped.some((g) => (g.pendingPcs ?? 0) > 0)
   const [search, setSearch] = useState('')
   const filteredGrouped = grouped.filter((row) =>
     row.productName.toLowerCase().includes(search.trim().toLowerCase()),
@@ -230,6 +261,7 @@ function PartnerJastiperDetailPage() {
             </aside>
 
             <div className="flex min-w-0 flex-col gap-4">
+              <PartnerReviewFooter review={review} />
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
@@ -240,6 +272,15 @@ function PartnerJastiperDetailPage() {
                 >
                   Pisahkan paket
                 </button>
+                {split && review.submitted && (
+                  <span
+                    className="text-[12px]"
+                    style={{ color: 'var(--app-text-soft)' }}
+                  >
+                    Matikan &quot;Pisahkan paket&quot; untuk mengisi jumlah yang
+                    dapat.
+                  </span>
+                )}
               </div>
 
               {data.rows.length === 0 ? (
@@ -277,11 +318,17 @@ function PartnerJastiperDetailPage() {
                           'Variasi',
                           ...(split ? ['Jenis paket'] : []),
                           'Harga partner',
-                          'Qty (pcs)',
+                          ...(reviewing
+                            ? [
+                                'Diminta (pcs)',
+                                'Dapat (pcs)',
+                                ...(hasPending ? ['Pengganti dapat'] : []),
+                              ]
+                            : ['Qty (pcs)']),
                         ].map((h) => (
                           <th
                             key={h}
-                            className={`px-4 py-3 text-left text-[11px] font-semibold ${h.startsWith('Qty') || h === 'Harga partner' ? 'text-right' : ''}`}
+                            className={`px-4 py-3 text-left text-[11px] font-semibold ${h.startsWith('Qty') || h === 'Harga partner' || (reviewing && h !== 'Produk' && h !== 'Ukuran' && h !== 'Variasi') ? 'text-right' : ''}`}
                             style={{ color: 'var(--app-text-soft)' }}
                           >
                             {h}
@@ -313,12 +360,85 @@ function PartnerJastiperDetailPage() {
                           <td className="pm-num px-4 py-3 text-right">
                             {formatRupiah(row.unitPrice)}
                           </td>
-                          <td
-                            className="pm-num px-4 py-3 text-right text-sm font-bold"
-                            style={{ color: 'var(--app-accent)' }}
-                          >
-                            {row.qty}
-                          </td>
+                          {reviewing && row.variantId ? (
+                            <>
+                              <td className="pm-num px-4 py-3 text-right text-sm font-bold">
+                                {row.requested}
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={row.requested}
+                                  inputMode="numeric"
+                                  aria-label={`Dapat: ${row.productName} ${row.size ?? ''} ${row.variation ?? ''}`}
+                                  value={review.approved[row.variantId] ?? ''}
+                                  onChange={(e) =>
+                                    review.setApprovedFor(
+                                      row.variantId as string,
+                                      e.target.value,
+                                    )
+                                  }
+                                  className="pm-num w-20 rounded-xl border px-2 py-1.5 text-right text-sm font-bold"
+                                  style={{
+                                    borderColor: 'var(--app-border)',
+                                    color:
+                                      Number(
+                                        review.approved[row.variantId] ??
+                                          row.requested,
+                                      ) < (row.requested ?? 0)
+                                        ? '#b42318'
+                                        : 'var(--app-accent)',
+                                  }}
+                                />
+                              </td>
+                              {hasPending && (
+                                <td className="px-4 py-3 text-right">
+                                  {(row.pendingPcs ?? 0) > 0 ? (
+                                    <span className="inline-flex items-center gap-1.5">
+                                      <input
+                                        type="number"
+                                        min={0}
+                                        max={row.pendingPcs}
+                                        inputMode="numeric"
+                                        aria-label={`Pengganti dapat: ${row.productName}`}
+                                        value={
+                                          review.pending[row.variantId] ?? ''
+                                        }
+                                        onChange={(e) =>
+                                          review.setPendingFor(
+                                            row.variantId as string,
+                                            e.target.value,
+                                          )
+                                        }
+                                        className="pm-num w-16 rounded-xl border px-2 py-1.5 text-right text-sm"
+                                        style={{
+                                          borderColor: 'var(--app-border)',
+                                        }}
+                                      />
+                                      <span
+                                        className="text-[12px]"
+                                        style={{
+                                          color: 'var(--app-text-soft)',
+                                        }}
+                                      >
+                                        / {row.pendingPcs}
+                                      </span>
+                                    </span>
+                                  ) : (
+                                    '-'
+                                  )}
+                                </td>
+                              )}
+                            </>
+                          ) : (
+                            <td
+                              className="pm-num px-4 py-3 text-right text-sm font-bold"
+                              style={{ color: 'var(--app-accent)' }}
+                            >
+                              {row.qty}
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>

@@ -60,6 +60,9 @@ import { listFeeRules } from '../../lib/fee-rules-functions'
 import { getOrderSuggestions } from '../../lib/order-suggestions-functions'
 import { APP_TIME_ZONE, todayIsoDateInAppTimeZone } from '../../lib/timezone'
 import OrderItemList from '../../components/OrderItemList'
+import EventSlotAction from '../../components/EventSlotAction'
+import EventSlotBanner from '../../components/EventSlotBanner'
+import EventSlotPanel from '../../components/EventSlotPanel'
 import { partnerItemName, variantLabel } from '../../lib/partner-item-label'
 import {
   removeBundleComponent,
@@ -343,6 +346,7 @@ function EventDetailPage() {
   const [dpPromptOrderId, setDpPromptOrderId] = useState<string | null>(null)
   const [isSavingDpAmount, setIsSavingDpAmount] = useState(false)
   const [showEventMenu, setShowEventMenu] = useState(false)
+  const [showSlotStatus, setShowSlotStatus] = useState(false)
   // Modal ubah nama/tanggal/deskripsi event (dari menu ⋮ atau tap judul).
   const [showEditEvent, setShowEditEvent] = useState(false)
   // Info singkat setelah aksi pesanan: barang digabung, hasil import, atau
@@ -366,6 +370,9 @@ function EventDetailPage() {
     queryFn: () => getEventDetail({ data: { id: eventId } }),
   })
   const { data: event } = useSuspenseQuery(query)
+  // Alur slot partner: setelah submit, isi pesanan terkunci (server juga menolak).
+  const ordersLocked = event.submittedAt != null
+  const ordersReviewed = event.reviewedAt != null
 
   // Jaga-jaga: URL `?addOrder=true` pada event nonaktif tidak boleh membuka form
   // tambah pesanan (servernya juga sudah menolak `createOrder`-nya) — biar UI
@@ -459,6 +466,7 @@ function EventDetailPage() {
 
   async function refreshEventData() {
     await queryClient.invalidateQueries({ queryKey: ['event', eventId] })
+    await queryClient.invalidateQueries({ queryKey: ['event-slot', eventId] })
     await queryClient.invalidateQueries({ queryKey: ['events'] })
     await queryClient.invalidateQueries({ queryKey: ['finance-summary'] })
   }
@@ -918,6 +926,14 @@ function EventDetailPage() {
             </p>
           </div>
         </div>
+        <div className="flex flex-shrink-0 items-start gap-1">
+          {event.calendarEventId && (
+            <EventSlotAction
+              eventId={eventId}
+              onChanged={refreshEventData}
+              onOpenStatus={() => setShowSlotStatus(true)}
+            />
+          )}
         <div className="relative">
           <button
             type="button"
@@ -1010,7 +1026,7 @@ function EventDetailPage() {
                     menu ini — di halaman event nggak ada tombol terpisah. */}
                 <button
                   type="button"
-                  disabled={!event.isActive}
+                  disabled={!event.isActive || ordersLocked}
                   onClick={() => {
                     setShowEventMenu(false)
                     setShowImportOrders(true)
@@ -1107,7 +1123,24 @@ function EventDetailPage() {
             </>
           )}
         </div>
+        </div>
       </header>
+      {event.calendarEventId && (
+        <>
+          <EventSlotBanner
+            eventId={eventId}
+            onOpenStatus={() => setShowSlotStatus(true)}
+          />
+          <EventSlotPanel
+            eventId={eventId}
+            orders={event.orders}
+            variantOptionsByRule={variantOptionsByRule}
+            onChanged={refreshEventData}
+            open={showSlotStatus}
+            onClose={() => setShowSlotStatus(false)}
+          />
+        </>
+      )}
 
       {!event.isActive && (
         <div
@@ -1617,6 +1650,8 @@ function EventDetailPage() {
                     }
                     onRemoveComponent={handleRemoveComponent}
                     onChangeComponent={handleChangeComponent}
+                    locked={ordersLocked}
+                    reviewed={ordersReviewed}
                   />
                   <div
                     className="mt-1 flex justify-between border-t pt-2 text-sm font-semibold"
@@ -1648,6 +1683,7 @@ function EventDetailPage() {
                       </div>
                     </div>
                   )}
+                  {!ordersLocked && (
                   <div
                     className="mt-2 flex gap-2 border-t pt-3"
                     style={{ borderColor: 'var(--app-border)' }}
@@ -1723,6 +1759,7 @@ function EventDetailPage() {
                       Hapus
                     </button>
                   </div>
+                  )}
                 </div>
               </details>
             )
@@ -1775,7 +1812,7 @@ function EventDetailPage() {
         </div>
       )}
 
-      {event.isActive && (
+      {event.isActive && !ordersLocked && (
         <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 mx-auto flex max-w-lg justify-end px-6">
           <button
             onClick={() => openSheet({ type: 'create' })}

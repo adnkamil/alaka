@@ -28,6 +28,7 @@ import { derivePaymentStatus } from './order-totals'
 import { buildPartnerBundle } from './partner-bundle-build'
 import { lineTotal, partitionLockedItems } from './partner-bundle-lock'
 import { carryCreatedAt } from './item-created-at'
+import { assertOrdersEditable } from './event-slot'
 import { regroupAllRulesInOrder } from './partner-paket-queries'
 import type { BundleLine } from './partner-pricing'
 
@@ -143,6 +144,7 @@ export const createOrder = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const user = await requireUser()
     const event = await assertEventOwnership(data.eventId, brandIdOf(user))
+    assertOrdersEditable(event)
 
     // Event nonaktif = sudah ditutup, jadi tidak boleh nambah pesanan baru.
     // Pesanan lama tetap bisa diedit/dihapus (lihat updateOrder/deleteOrder).
@@ -399,6 +401,7 @@ export const updateOrder = createServerFn({ method: 'POST' })
     if (!order || order.event.brandId !== brandIdOf(user)) {
       throw new Error('Pesanan tidak ditemukan')
     }
+    assertOrdersEditable(order.event)
 
     // Baris bundle partner terkunci: tidak diubah lewat form ini, tapi tetap
     // masuk ke total tagihan.
@@ -532,6 +535,7 @@ export const deleteOrder = createServerFn({ method: 'POST' })
     if (!order || order.event.brandId !== brandIdOf(user)) {
       throw new Error('Pesanan tidak ditemukan')
     }
+    assertOrdersEditable(order.event)
 
     await db.delete(orders).where(eq(orders.id, data.orderId))
   })
@@ -548,6 +552,7 @@ export const deleteItem = createServerFn({ method: 'POST' })
     if (!item || item.order.event.brandId !== brandIdOf(user)) {
       throw new Error('Barang tidak ditemukan')
     }
+    assertOrdersEditable(item.order.event)
 
     await db.delete(items).where(eq(items.id, data.itemId))
   })

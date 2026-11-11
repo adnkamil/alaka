@@ -15,6 +15,11 @@ const bundle: InvoiceItemInput = {
 }
 
 describe('buildInvoiceBlocks', () => {
+  it('barang yang tidak dapat (qty 0) tidak ikut ke invoice', () => {
+    const blocks = buildInvoiceBlocks([{ ...single, id: 's0', qty: 0 }, single])
+    assert.deepEqual(blocks.map((b) => b.item.id), ['s1'])
+  })
+
   it('barang satuan selalu di atas, lalu paket', () => {
     const blocks = buildInvoiceBlocks([bundle, single])
     assert.deepEqual(blocks.map((b) => b.kind), ['single', 'bundle'])
