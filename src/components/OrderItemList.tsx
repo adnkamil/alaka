@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ChevronDown, ChevronUp, Pencil, Trash2, X } from 'lucide-react'
+import { Pencil, Trash2, X } from 'lucide-react'
 import ConfirmModal from './ui/ConfirmModal'
 import RupiahInput from './ui/RupiahInput'
 import { lineTotal } from '../lib/order-totals'
@@ -172,17 +172,6 @@ export default function OrderItemList({
     return [...map.values()]
   }, [rawSingles])
 
-  // Baris paket yang sedang dibuka (menampilkan harga dan tombol hapus).
-  const [expandedLines, setExpandedLines] = useState<Set<string>>(() => new Set())
-  function toggleLine(key: string) {
-    setExpandedLines((prev) => {
-      const next = new Set(prev)
-      if (next.has(key)) next.delete(key)
-      else next.add(key)
-      return next
-    })
-  }
-
   // Paket dikelompokkan per nama aturan, urutan mengikuti kemunculan pertama.
   const groups = useMemo(() => {
     const map = new Map<string, Array<OrderItemView>>()
@@ -327,18 +316,21 @@ export default function OrderItemList({
 
           {groups.map((group) => {
             const first = group.bundles[0]
+            // Harga satu paket = harga jual + fee. Jumlah paket = total pcs grup dibagi pcs per paket.
+            const unitPrice = first
+              ? Math.round(Number(first.originalPrice)) + Math.round(Number(first.fee))
+              : 0
             const pcsPerBundle = first
               ? first.components.reduce((sum, c) => sum + c.qty, 0) || 1
               : 1
-            const perPcs = first
-              ? (Math.round(Number(first.originalPrice)) + Math.round(Number(first.fee))) / pcsPerBundle
-              : 0
+            const totalPcs = group.lines.reduce((sum, line) => sum + line.qty, 0)
+            const bundleCount = Math.round(totalPcs / pcsPerBundle)
             return (
               <div key={group.label} className="flex flex-col gap-2">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-semibold">{group.label}</p>
                   <div className="flex flex-shrink-0 items-center gap-2">
-                    <span className="text-sm font-semibold">{formatIDR(perPcs)}</span>
+                    <span className="text-sm font-semibold">{bundleCount} paket (@{unitPrice.toLocaleString('id-ID')})</span>
                     <button
                       type="button"
                       aria-label="Ubah harga dan fee"
@@ -350,51 +342,35 @@ export default function OrderItemList({
                     </button>
                   </div>
                 </div>
-                {group.lines.map((line) => {
-                  const open = expandedLines.has(line.key)
-                  return (
-                    <div
-                      key={line.key}
-                      className="flex flex-col rounded-xl border"
-                      style={{ borderColor: 'var(--app-border)' }}
-                    >
+                {group.lines.map((line) => (
+                  <div
+                    key={line.key}
+                    className="flex items-center gap-2 rounded-xl border px-3 py-2"
+                    style={{ borderColor: 'var(--app-border)' }}
+                  >
+                    <ComponentLine component={line.component} />
+                    {reviewed && <ApprovalBadge requested={line.qty} approved={line.approved} />}
+                    {line.qty > 1 && (
+                      <span
+                        className="app-badge flex-shrink-0"
+                        style={{ background: 'var(--app-accent-soft)', color: 'var(--app-accent)' }}
+                      >
+                        ×{line.qty}
+                      </span>
+                    )}
+                    {!locked && (
                       <button
                         type="button"
-                        onClick={() => toggleLine(line.key)}
-                        aria-expanded={open}
-                        className="flex items-center gap-2 px-3 py-2 text-left"
+                        aria-label={`Hapus ${componentDisplayName(line.component)}`}
+                        className="flex-shrink-0 p-1"
+                        style={{ color: 'var(--app-danger)' }}
+                        onClick={() => askRemove(line.component, line.ids[line.ids.length - 1])}
                       >
-                        <ComponentLine component={line.component} />
-                        {reviewed && <ApprovalBadge requested={line.qty} approved={line.approved} />}
-                        {line.qty > 1 && (
-                          <span
-                            className="app-badge flex-shrink-0"
-                            style={{ background: 'var(--app-accent-soft)', color: 'var(--app-accent)' }}
-                          >
-                            ×{line.qty}
-                          </span>
-                        )}
-                        {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        <Trash2 size={16} />
                       </button>
-                      {open && !locked && (
-                        <div
-                          className="flex items-center justify-end border-t px-3 py-2"
-                          style={{ borderColor: 'var(--app-border)' }}
-                        >
-                          <button
-                            type="button"
-                            aria-label={`Hapus ${componentDisplayName(line.component)}`}
-                            className="flex-shrink-0 p-1"
-                            style={{ color: 'var(--app-danger)' }}
-                            onClick={() => askRemove(line.component, line.ids[line.ids.length - 1])}
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
+                    )}
+                  </div>
+                ))}
               </div>
             )
           })}
