@@ -1247,7 +1247,7 @@ Route auth Google: `GET /api/auth/google` (mulai OAuth) dan `GET /api/auth/googl
 ### 8.2 Perintah & skrip
 
 - `pnpm dev` (port 3000), `pnpm build` (`vite build` + `scripts/build-sw.mjs` yang menyuntik manifest ke service worker `scripts/sw-src.js`), `pnpm preview`, `pnpm lint`, `pnpm check` (prettier), `pnpm format`, `pnpm test` (`tsx --test src/**/*.test.ts`; sekarang 59 file tes, semuanya di `src/lib/` — tes di folder lain tidak akan terjangkau glob tanpa tanda kutip), `pnpm generate-routes`.
-- Database: `db:generate`, `db:migrate`, `db:migrate:neon` (⚠ produksi, lihat 7.1), `db:push` (jangan — lihat 7.1), `db:pull`, `db:studio` / `db:studio:neon`, `db:baseline`, `db:seed-dummy`, `db:seed-calendar` / `db:seed-calendar:neon`.
+- Database: `db:generate`, `db:migrate`, `db:migrate:neon` (⚠ produksi, lihat 7.1), `db:migrate-neon-stg` (Neon staging, baca `.env.neon.stg.local`), `db:push` (jangan — lihat 7.1), `db:pull`, `db:studio` / `db:studio:neon`, `db:baseline`, `db:seed-dummy`, `db:seed-calendar` / `db:seed-calendar:neon`.
 - Skrip di `scripts/` tanpa alias npm (jalankan lewat `tsx`, sisa migrasi): `backfill-brands.ts`, `backfill-trial.ts`, `backfill-paid-amount.ts`, `migrate-payment-methods.ts`.
 - **PWA**: `vite-plugin-pwa` (`registerType: 'autoUpdate'`) + service worker custom (Workbox `injectManifest`). Hanya **precache aset statis** (js/css/font/gambar/webmanifest, ≤ 4 MB); navigasi selalu `NetworkOnly`, jadi halaman **tidak** bisa dibuka offline. `dev-dist/` adalah keluaran mode dev (artefak generate).
 
