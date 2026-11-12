@@ -19,9 +19,16 @@ export const NOTIFICATION_TARGETS = [
   'kalender',
   'keuangan',
   'profil',
+  'event',
 ] as const
 
 export type NotificationTarget = (typeof NOTIFICATION_TARGETS)[number]
+
+/** Target yang boleh dipilih admin ALAKA; 'event' hanya dibuat sistem. */
+export type AdminNotificationTarget = Exclude<NotificationTarget, 'event'>
+export const ADMIN_NOTIFICATION_TARGETS = NOTIFICATION_TARGETS.filter(
+  (t): t is AdminNotificationTarget => t !== 'event',
+)
 
 export type NotificationItem = {
   id: string
@@ -30,6 +37,8 @@ export type NotificationItem = {
   body: string | null
   target: NotificationTarget
   calendarEventId: string | null
+  /** Event belanja jastiper yang dituju (target 'event'). */
+  eventId: string | null
   createdAt: string
   isRead: boolean
 }
@@ -57,6 +66,7 @@ export const fetchNotifications = createServerFn({ method: 'GET' }).handler(
         body: notifications.body,
         target: notifications.target,
         calendarEventId: notifications.calendarEventId,
+        eventId: notifications.eventId,
         createdAt: notifications.createdAt,
         readAt: notificationReads.readAt,
       })
@@ -79,6 +89,7 @@ export const fetchNotifications = createServerFn({ method: 'GET' }).handler(
       body: r.body,
       target: asTarget(r.target),
       calendarEventId: r.calendarEventId,
+      eventId: r.eventId,
       createdAt: r.createdAt.toISOString(),
       isRead: r.readAt !== null,
     }))
@@ -126,7 +137,7 @@ export const sendAlakaNotification = createServerFn({ method: 'POST' })
     z.object({
       title: z.string().trim().min(1).max(120),
       body: z.string().trim().max(500).optional(),
-      target: z.enum(NOTIFICATION_TARGETS).default('none'),
+      target: z.enum(ADMIN_NOTIFICATION_TARGETS).default('none'),
     }),
   )
   .handler(async ({ data }) => {

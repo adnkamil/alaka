@@ -12,6 +12,13 @@ import {
 } from 'lucide-react'
 import { EventDescription } from '../../../components/EventDescription'
 import PartnerSlotSection from '../../../components/PartnerSlotSection'
+import PartnerStatusBadge from '../../../components/PartnerStatusBadge'
+import PartnerRevenueCard from '../../../components/PartnerRevenueCard'
+import PartnerStatusChips from '../../../components/PartnerStatusChips'
+import Pagination from '../../../components/ui/Pagination'
+import { partnerStatusFilterKey } from '../../../lib/event-slot'
+import type { PartnerStatusFilter } from '../../../lib/event-slot'
+import { getPartnerSlotQueue } from '../../../lib/partner-slot-functions'
 import PartnerEventStatusBadge from '../../../components/PartnerEventStatusBadge'
 import ConfirmModal from '../../../components/ui/ConfirmModal'
 import Toast from '../../../components/ui/Toast'
@@ -53,6 +60,9 @@ export const Route = createFileRoute('/partner/event/$id')({
 type Tab = 'info' | 'produk' | 'jastiper'
 
 const PARTICIPANT_COLUMNS = 'grid-cols-[minmax(0,1fr)_150px_170px_90px_130px]'
+/** Dengan kolom Urutan dan Status (event memakai slot). */
+const PARTICIPANT_COLUMNS_SLOT =
+  'grid-cols-[minmax(0,1fr)_120px_160px_90px_80px_190px]'
 
 /** Inisial dari nama brand, mis. "Mici Shop" → "MS". */
 function initialsOf(name: string) {
@@ -73,14 +83,39 @@ function PartnerEventDetailPage() {
   const { data: revenue } = useQuery({
     queryKey: ['partner-event-revenue', id, participants.length],
     queryFn: () => getPartnerEventRevenue({ data: { calendarEventId: id } }),
+    // Hampir realtime: server serverless tidak mendukung koneksi persisten.
+    refetchInterval: 15_000,
   })
   const [tab, setTab] = useState<Tab>('jastiper')
   const [confirmEnd, setConfirmEnd] = useState(false)
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [participantSearch, setParticipantSearch] = useState('')
-  const filteredParticipants = participants.filter((row) =>
-    (row.brandName || 'Tanpa nama').toLowerCase().includes(participantSearch.trim().toLowerCase()),
+  const [statusFilter, setStatusFilter] = useState<PartnerStatusFilter>('semua')
+  const { data: queue = [] } = useQuery({
+    queryKey: ['partner-slot-queue', id],
+    queryFn: () => getPartnerSlotQueue({ data: { calendarEventId: id } }),
+    refetchInterval: 15_000,
+  })
+  // Status dan urutan hanya ada untuk event yang memakai slot.
+  const slotEnabled = queue.some((q) => q.status !== null)
+  const queueByBrand = new Map(queue.map((q) => [q.brandId, q]))
+  const statusCounts: Record<PartnerStatusFilter, number> = {
+    semua: participants.length,
+    draft: 0,
+    pengajuan: 0,
+    dikembalikan: 0,
+    disetujui: 0,
+  }
+  for (const p of participants) {
+    statusCounts[partnerStatusFilterKey(queueByBrand.get(p.brandId)?.status ?? null)] += 1
+  }
+  const filteredParticipants = participants.filter(
+    (row) =>
+      (row.brandName || 'Tanpa nama').toLowerCase().includes(participantSearch.trim().toLowerCase()) &&
+      (!slotEnabled ||
+        statusFilter === 'semua' ||
+        partnerStatusFilterKey(queueByBrand.get(row.brandId)?.status ?? null) === statusFilter),
   )
   const participantPager = useClientPager(filteredParticipants)
   const [productSearch, setProductSearch] = useState('')
@@ -136,6 +171,7 @@ function PartnerEventDetailPage() {
         <Link
           to="/partner/event/rekap/$id"
           params={{ id }}
+          search={{ status: slotEnabled ? statusFilter : 'semua' }}
           className="app-btn-outline self-start no-underline"
           style={{ minHeight: 40, fontSize: 13 }}
         >
@@ -219,7 +255,10 @@ function PartnerEventDetailPage() {
                 </p>
               )}
             </div>
-            <PartnerSlotSection calendarEventId={id} />
+            <PartnerSlotSection
+              calendarEventId={id}
+              eventEndDate={event.endDate ?? event.eventDate}
+            />
             <div className="flex gap-2.5">
               <Link
                 to="/partner/event/ubah/$id"
@@ -332,6 +371,16 @@ function PartnerEventDetailPage() {
               </p>
             ) : (
               <>
+              {slotEnabled && (
+                <PartnerStatusChips
+                  counts={statusCounts}
+                  active={statusFilter}
+                  onChange={(next) => {
+                    setStatusFilter(next)
+                    participantPager.resetPage()
+                  }}
+                />
+              )}
               <PartnerTableToolbar
                 search={participantSearch}
                 onSearchChange={(value) => {
@@ -374,6 +423,11 @@ function PartnerEventDetailPage() {
                           ? ` · ${formatPhoneNumber(row.waNumber)}`
                           : ''}
                       </p>
+                      {slotEnabled && (
+                        <div className="mt-1">
+                          <PartnerStatusBadge status={queueByBrand.get(row.brandId)?.status ?? null} />
+                        </div>
+                      )}
                     </div>
                     {row.waNumber ? (
                       <a
@@ -403,15 +457,8 @@ function PartnerEventDetailPage() {
             <h1 className="pm-display truncate text-[26px] leading-tight">
               {event.name}
             </h1>
-            <p
-              className="mt-1 text-[13px]"
-              style={{ color: 'var(--app-text-soft)' }}
-            >
-              <Link
-                to="/partner/event"
-                className="no-underline"
-                style={{ color: 'inherit' }}
-              >
+            <p className="mt-1 text-[13px]" style={{ color: 'var(--app-text-soft)' }}>
+              <Link to="/partner/event" className="no-underline" style={{ color: 'inherit' }}>
                 Event
               </Link>{' '}
               / {event.name}
@@ -431,279 +478,192 @@ function PartnerEventDetailPage() {
         </header>
 
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
-        <aside className="flex flex-col gap-5 lg:order-last lg:sticky lg:top-6">
-          <section className="app-card flex flex-col gap-4 p-5">
-            <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: 'var(--pm-gold)' }}>Info event</p>
-            <dl className="flex flex-col text-[13px]">
-              {[
-                { label: 'Tipe', value: event.isOnline ? 'Online' : 'Offline' },
-                { label: 'Tanggal', value: formatDateRange(event.eventDate, event.endDate) },
-                { label: 'Lokasi', value: event.location },
-                { label: 'Jastiper', value: `${participants.length} bergabung` },
-                { label: 'Pesanan', value: `${totalOrders} masuk` },
-              ].map((item) => (
-                <div key={item.label} className="flex items-start justify-between gap-3 border-t py-2.5" style={{ borderColor: 'var(--app-border)' }}>
-                  <dt style={{ color: 'var(--app-text-soft)' }}>{item.label}</dt>
-                  <dd className="pm-num text-right font-bold">{item.value}</dd>
-                </div>
-              ))}
-            </dl>
-          </section>
-
-          <PartnerSlotSection calendarEventId={id} />
-
-          <section className="app-card flex flex-col gap-4 p-5">
-            <div className="flex flex-col gap-1.5 rounded-2xl p-4" style={{ background: 'var(--app-accent-soft)' }}>
-              <p className="text-[12px] font-semibold" style={{ color: '#9c463b' }}>Total pendapatan event</p>
-              <p className="pm-num text-[28px] font-bold leading-tight" style={{ color: '#9c463b' }}>
-                {formatRupiah(revenue?.totalAmount ?? 0)}
-              </p>
-              <p className="text-[11px]" style={{ color: '#9c463b', opacity: 0.8 }}>
-                Harga produk partner × pcs dari semua jastiper
-              </p>
-            </div>
-            {revenue && revenue.perBrand.length > 0 && (
-              <div className="flex flex-col">
-                {revenue.perBrand.map((b) => (
-                  <div key={b.brandId} className="flex items-center justify-between gap-3 border-t py-2.5 text-[13px]" style={{ borderColor: 'var(--app-border)' }}>
-                    <span className="truncate font-bold">{b.brandName}</span>
-                    <span className="pm-num shrink-0 font-bold">{formatRupiah(b.totalAmount)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-        </aside>
-        <div className="flex min-w-0 flex-col gap-5">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex flex-wrap gap-2" role="tablist" aria-label="Isi event">
-              {tabs.map((item) => (
-                <button
-                  key={item.key}
-                  type="button"
-                  role="tab"
-                  aria-selected={tab === item.key}
-                  onClick={() => setTab(item.key)}
-                  className={`pm-chip ${tab === item.key ? 'pm-chip--active' : ''}`}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-            <Link to="/partner/event/rekap/$id" params={{ id }} className="app-btn-outline ml-auto no-underline" style={{ minHeight: 40, fontSize: 13 }}>
-              Rekap  Orderan
-            </Link>
-          </div>
-
-        {tab === 'info' && (
-          <section className="app-card flex flex-col gap-4 p-6">
-            {event.bannerSrc && (
-              <img
-                src={event.bannerSrc}
-                alt={event.name}
-                className="h-[200px] w-full rounded-2xl object-cover"
-              />
-            )}
-            {event.description ? (
-              <EventDescription text={event.description} />
-            ) : (
-              <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
-                Belum ada deskripsi. Tambahkan lewat Edit event.
-              </p>
-            )}
-            <div>
-              {event.isEnded ? (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void handleSetEnded(false)}
-                  className="app-btn-outline disabled:opacity-50"
-                  style={{ minHeight: 44, fontSize: 14 }}
-                >
-                  Buka kembali
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => setConfirmEnd(true)}
-                  className="app-btn-outline disabled:opacity-50"
-                  style={{
-                    minHeight: 44,
-                    fontSize: 14,
-                    color: 'var(--app-danger)',
-                  }}
-                >
-                  Akhiri event
-                </button>
-              )}
-            </div>
-          </section>
-        )}
-
-        {tab === 'produk' && (
-          <section className="flex flex-col gap-3">
+          <aside className="flex flex-col gap-5 lg:order-last lg:sticky lg:top-6">
             <Link
-              to="/partner/event/produk/$id"
+              to="/partner/event/rekap/$id"
               params={{ id }}
-              className="app-btn-outline gap-1.5 self-start no-underline"
+              search={{ status: slotEnabled ? statusFilter : 'semua' }}
+              className="app-btn-outline w-full no-underline"
               style={{ minHeight: 44, fontSize: 14 }}
             >
-              <Package size={14} />
-              Kelola produk
+              Rekap Orderan
             </Link>
-            <PartnerTableToolbar
-              search={productSearch}
-              onSearchChange={(value) => {
-                setProductSearch(value)
-                productPager.resetPage()
-              }}
-              placeholder="Cari nama produk"
-              label="Cari nama produk"
-              pager={productPager.pager}
+
+            <PartnerRevenueCard
+              slotEnabled={revenue?.slotEnabled ?? false}
+              totalAmount={revenue?.totalAmount ?? 0}
+              approvedAmount={revenue?.approvedAmount ?? 0}
+              waitingAmount={revenue?.waitingAmount ?? 0}
             />
-            {products.length === 0 ? (
+
+            <section className="app-card flex flex-col gap-4 p-5">
+              <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: 'var(--pm-gold)' }}>Info event</p>
+              {event.bannerSrc && (
+                <img
+                  src={event.bannerSrc}
+                  alt={event.name}
+                  className="h-[112px] w-full rounded-2xl object-cover"
+                />
+              )}
+              <dl className="flex flex-col text-[13px]">
+                {[
+                  { label: 'Tipe', value: event.isOnline ? 'Online' : 'Offline' },
+                  { label: 'Tanggal', value: formatDateRange(event.eventDate, event.endDate) },
+                  { label: 'Lokasi', value: event.location },
+                  { label: 'Jastiper', value: `${participants.length} bergabung` },
+                  {
+                    label: 'Pesanan',
+                    value: slotEnabled
+                      ? `${revenue?.approvedPcs ?? 0} pcs masuk`
+                      : `${totalOrders} masuk`,
+                  },
+                ].map((item) => (
+                  <div key={item.label} className="flex items-start justify-between gap-3 border-t py-2.5" style={{ borderColor: 'var(--app-border)' }}>
+                    <dt style={{ color: 'var(--app-text-soft)' }}>{item.label}</dt>
+                    <dd className="pm-num text-right font-bold">{item.value}</dd>
+                  </div>
+                ))}
+              </dl>
+              {event.description && (
+                <div className="border-t pt-3 text-[13px]" style={{ borderColor: 'var(--app-border)' }}>
+                  <EventDescription text={event.description} />
+                </div>
+              )}
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3 text-[13px]" style={{ borderColor: 'var(--app-border)' }}>
+                <Link
+                  to="/partner/event/produk/$id"
+                  params={{ id }}
+                  className="inline-flex items-center gap-1.5 font-semibold no-underline"
+                  style={{ color: 'var(--app-accent)' }}
+                >
+                  <Package size={14} />
+                  Kelola produk ({products.length})
+                </Link>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => (event.isEnded ? void handleSetEnded(false) : setConfirmEnd(true))}
+                  className="font-semibold disabled:opacity-50"
+                  style={{ color: event.isEnded ? 'var(--app-accent)' : 'var(--app-danger)' }}
+                >
+                  {event.isEnded ? 'Buka kembali' : 'Akhiri event'}
+                </button>
+              </div>
+            </section>
+
+            <PartnerSlotSection
+              calendarEventId={id}
+              eventEndDate={event.endDate ?? event.eventDate}
+            />
+          </aside>
+
+          <div className="flex min-w-0 flex-col gap-4">
+            {participants.length === 0 ? (
               <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
-                Belum ada produk yang dipilih untuk event ini.
+                Belum ada jastiper yang ikut event ini.
               </p>
             ) : (
-              <div className="app-card overflow-hidden">
-                {productPager.paged.map((product, i) => {
-                  const photoUrl = partnerProductPhotoUrl(
-                    product.id,
-                    product.photoUpdatedAt,
-                  )
-                  return (
-                    <div
-                      key={product.id}
-                      className="flex items-center gap-3.5 px-5 py-3"
-                      style={{
-                        borderTop:
-                          i === 0 ? undefined : '1px solid var(--app-border)',
-                      }}
-                    >
+              <>
+                {slotEnabled && (
+                  <PartnerStatusChips
+                    counts={statusCounts}
+                    active={statusFilter}
+                    onChange={(next) => {
+                      setStatusFilter(next)
+                      participantPager.resetPage()
+                    }}
+                  />
+                )}
+                <PartnerTableToolbar
+                  search={participantSearch}
+                  onSearchChange={(value) => {
+                    setParticipantSearch(value)
+                    participantPager.resetPage()
+                  }}
+                  placeholder="Cari nama jastiper"
+                  label="Cari nama jastiper"
+                  pager={participantPager.pager}
+                />
+                <div className="app-card overflow-hidden">
+                  <div
+                    className={`grid ${slotEnabled ? PARTICIPANT_COLUMNS_SLOT : PARTICIPANT_COLUMNS} items-center gap-4 px-5 py-3.5 text-[11px] font-bold uppercase tracking-wide`}
+                    style={{ background: 'var(--pm-tint)', color: 'var(--pm-gold)' }}
+                  >
+                    <span>Jastiper</span>
+                    <span>{slotEnabled ? 'Tanggal' : 'Tanggal ikut'}</span>
+                    <span>No. WhatsApp</span>
+                    <span>Pesanan</span>
+                    {slotEnabled && <span>Urutan</span>}
+                    {slotEnabled ? <span>Status</span> : <span>Aksi</span>}
+                  </div>
+                  {participantPager.paged.length === 0 && (
+                    <p className="border-t px-5 py-6 text-center text-sm" style={{ borderColor: 'var(--app-border)', color: 'var(--app-text-soft)' }}>
+                      Tidak ada jastiper yang cocok.
+                    </p>
+                  )}
+                  {participantPager.paged.map((row) => {
+                    const name = row.brandName || 'Tanpa nama'
+                    const slotRow = queueByBrand.get(row.brandId)
+                    return (
                       <div
-                        className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-xl"
-                        style={{
-                          background: 'var(--pm-tint)',
-                          color: 'var(--pm-gold)',
-                        }}
+                        key={row.brandId}
+                        className={`grid ${slotEnabled ? PARTICIPANT_COLUMNS_SLOT : PARTICIPANT_COLUMNS} items-center gap-4 border-t px-5 py-3`}
+                        style={{ borderColor: 'var(--app-border)' }}
                       >
-                        {photoUrl ? (
-                          <img
-                            src={photoUrl}
-                            alt=""
-                            loading="lazy"
-                            className="h-full w-full object-cover"
-                          />
+                        <Link
+                          to="/partner/event/jastiper/$id/$brandId"
+                          params={{ id, brandId: row.brandId }}
+                          className="flex min-w-0 items-center gap-3.5 no-underline"
+                          style={{ color: 'inherit' }}
+                        >
+                          <span
+                            className="pm-display flex size-11 shrink-0 items-center justify-center rounded-full text-sm"
+                            style={{ background: 'var(--app-accent-soft)', color: '#9c463b' }}
+                          >
+                            {initialsOf(row.brandName ?? '')}
+                          </span>
+                          <p className="truncate text-sm font-bold">{name}</p>
+                        </Link>
+                        <span className="text-[13px]" style={{ color: 'var(--app-text-soft)' }}>
+                          {formatDate(row.joinedAt)}
+                        </span>
+                        <span className="pm-num text-[13px] font-medium">
+                          {row.waNumber ? formatPhoneNumber(row.waNumber) : '-'}
+                        </span>
+                        <span className="text-sm font-bold">{row.orderCount}</span>
+                        {slotEnabled ? (
+                          <>
+                            <span className="pm-num text-sm font-bold">
+                              {slotRow?.rank != null ? `#${slotRow.rank}` : '–'}
+                            </span>
+                            <div>
+                              <PartnerStatusBadge status={slotRow?.status ?? null} />
+                            </div>
+                          </>
                         ) : (
-                          <Package size={20} />
+                          <div>
+                            {row.waNumber ? (
+                              <a
+                                href={buildWhatsAppLink(row.waNumber, '')}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="app-btn-outline gap-2 no-underline"
+                                style={{ minHeight: 38, fontSize: 13 }}
+                              >
+                                <Phone size={15} />
+                                Hubungi
+                              </a>
+                            ) : null}
+                          </div>
                         )}
                       </div>
-                      <p className="min-w-0 flex-1 truncate text-sm font-bold">
-                        {product.name}
-                      </p>
-                      <p
-                        className="pm-num text-sm font-bold"
-                        style={{ color: 'var(--app-accent)' }}
-                      >
-                        {formatRupiah(product.price)}
-                      </p>
-                    </div>
-                  )
-                })}
-              </div>
+                    )
+                  })}
+                </div>
+                <Pagination {...participantPager.pager} className="justify-end" />
+              </>
             )}
-          </section>
-        )}
-
-        {tab === 'jastiper' &&
-          (participants.length === 0 ? (
-            <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
-              Belum ada jastiper yang ikut event ini.
-            </p>
-          ) : (
-            <>
-            <PartnerTableToolbar
-              search={participantSearch}
-              onSearchChange={(value) => {
-                setParticipantSearch(value)
-                participantPager.resetPage()
-              }}
-              placeholder="Cari nama jastiper"
-              label="Cari nama jastiper"
-              pager={participantPager.pager}
-            />
-            <div className="app-card overflow-hidden">
-              <div
-                className={`grid ${PARTICIPANT_COLUMNS} items-center gap-4 px-5 py-3.5 text-[11px] font-bold uppercase tracking-wide`}
-                style={{
-                  background: 'var(--pm-tint)',
-                  color: 'var(--pm-gold)',
-                }}
-              >
-                <span>Jastiper</span>
-                <span>Tanggal ikut</span>
-                <span>No. WhatsApp</span>
-                <span>Pesanan</span>
-                <span>Aksi</span>
-              </div>
-              {participantPager.paged.map((row) => {
-                const name = row.brandName || 'Tanpa nama'
-                return (
-                  <div
-                    key={row.brandId}
-                    className={`grid ${PARTICIPANT_COLUMNS} items-center gap-4 border-t px-5 py-3`}
-                    style={{ borderColor: 'var(--app-border)' }}
-                  >
-                    <Link
-                      to="/partner/event/jastiper/$id/$brandId"
-                      params={{ id, brandId: row.brandId }}
-                      className="flex min-w-0 items-center gap-3.5 no-underline"
-                      style={{ color: 'inherit' }}
-                    >
-                      <span
-                        className="pm-display flex size-11 shrink-0 items-center justify-center rounded-full text-sm"
-                        style={{
-                          background: 'var(--app-accent-soft)',
-                          color: '#9c463b',
-                        }}
-                      >
-                        {initialsOf(row.brandName ?? '')}
-                      </span>
-                      <p className="truncate text-sm font-bold">{name}</p>
-                    </Link>
-                    <span
-                      className="text-[13px]"
-                      style={{ color: 'var(--app-text-soft)' }}
-                    >
-                      {formatDate(row.joinedAt)}
-                    </span>
-                    <span className="pm-num text-[13px] font-medium">
-                      {row.waNumber ? formatPhoneNumber(row.waNumber) : '-'}
-                    </span>
-                    <span className="text-sm font-bold">{row.orderCount}</span>
-                    <div>
-                      {row.waNumber ? (
-                        <a
-                          href={buildWhatsAppLink(row.waNumber, '')}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="app-btn-outline gap-2 no-underline"
-                          style={{ minHeight: 38, fontSize: 13 }}
-                        >
-                          <Phone size={15} />
-                          Hubungi
-                        </a>
-                      ) : null}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-            </>
-          ))}
-        </div>
+          </div>
         </div>
       </main>
 

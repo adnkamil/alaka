@@ -260,6 +260,20 @@
       "when": 1793957735230,
       "tag": "0036_event_slot_flow",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1794369913261,
+      "tag": "0037_notification_event_link",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1794451232221,
+      "tag": "0038_item_component_replaced_from",
+      "breakpoints": true
     }
   ]
 }

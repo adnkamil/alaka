@@ -2,22 +2,36 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { ArrowLeft, PackageCheck } from 'lucide-react'
 import { useState } from 'react'
+import { PARTNER_STATUS_FILTERS } from '../../../lib/event-slot'
 import { getPartnerEventPicklist } from '../../../lib/partner-picklist-functions'
 import { useClientPager } from '../../../lib/use-client-pager'
 import PartnerTableToolbar from '../../../components/ui/PartnerTableToolbar'
 
 export const Route = createFileRoute('/partner/event/rekap/$id')({
+  // Status jastiper yang direkap, mengikuti chip di halaman event.
+  validateSearch: (search: Record<string, unknown>) => ({
+    status:
+      PARTNER_STATUS_FILTERS.find((f) => f.key === search.status)?.key ??
+      ('semua' as const),
+  }),
   component: PartnerEventRekapPage,
 })
 
 function PartnerEventRekapPage() {
   const { id } = Route.useParams()
+  const { status } = Route.useSearch()
+  const statusLabel =
+    PARTNER_STATUS_FILTERS.find((f) => f.key === status)?.label ?? 'Semua'
   const [filter, setFilter] = useState<string>('')
   const { data, error, isLoading } = useQuery({
-    queryKey: ['partner-event-picklist', id, filter],
+    queryKey: ['partner-event-picklist', id, filter, status],
     queryFn: () =>
       getPartnerEventPicklist({
-        data: { calendarEventId: id, ruleFilter: filter === '' ? null : filter },
+        data: {
+          calendarEventId: id,
+          ruleFilter: filter === '' ? null : filter,
+          status,
+        },
       }),
   })
 
@@ -45,7 +59,7 @@ function PartnerEventRekapPage() {
           <div>
             <h1 className="pm-display text-[22px] leading-tight lg:text-[26px]">Rekap  Orderan</h1>
             <p className="mt-1 text-[13px]" style={{ color: 'var(--app-text-soft)' }}>
-              {totalPcs} pcs untuk disiapkan
+              {totalPcs} pcs untuk disiapkan · Status: {statusLabel}
             </p>
           </div>
         </div>

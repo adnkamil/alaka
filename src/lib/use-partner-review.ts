@@ -49,7 +49,10 @@ export function usePartnerReview(calendarEventId: string, brandId: string) {
     setBusy(true)
     setMessage(null)
     try {
-      const results = data.groups.map((g) => ({
+      // Baris bentukan ulang untuk barang yang ditukar tidak punya pesanan sendiri.
+      const results = data.groups
+        .filter((g) => g.requestedPcs > 0 || g.pendingPcs > 0)
+        .map((g) => ({
         variantId: g.variantId,
         approvedPcs: Number(approved[g.variantId] ?? g.requestedPcs),
         ...(g.pendingPcs > 0
@@ -65,6 +68,9 @@ export function usePartnerReview(calendarEventId: string, brandId: string) {
       })
       await queryClient.invalidateQueries({
         queryKey: ['partner-jastiper-detail', calendarEventId, brandId],
+      })
+      await queryClient.invalidateQueries({
+        queryKey: ['partner-event-revenue', calendarEventId],
       })
       setMessage({ text: 'Hasil pengecekan disimpan.', error: false })
     } catch (err) {

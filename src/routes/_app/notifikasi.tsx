@@ -78,6 +78,10 @@ function NotifikasiPage() {
       })
       return
     }
+    if (item.target === 'event' && item.eventId) {
+      navigate({ to: '/events/$eventId', params: { eventId: item.eventId } })
+      return
+    }
     switch (item.target) {
       case 'beranda':
         navigate({ to: '/' })

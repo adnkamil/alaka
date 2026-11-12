@@ -1,7 +1,11 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, min } from 'drizzle-orm'
 import { z } from 'zod'
-import { parseWibLocal, validateSlotWindow } from './event-slot'
+import {
+  parseWibLocal,
+  validateSlotChange,
+  validateSlotWindow,
+} from './event-slot'
 import { requirePartner } from './partner-auth'
 import { partnerOwnsEvent } from './partner-event-queries'
 
@@ -40,7 +44,31 @@ export const setPartnerSlotWindow = createServerFn({ method: 'POST' })
     if (problem) throw new Error(problem)
 
     const { db } = await import('../db')
-    const { calendarEvents } = await import('../db/schema')
+    const { calendarEvents, events } = await import('../db/schema')
+    const [current, firstSubmit] = await Promise.all([
+      db
+        .select({
+          opensAt: calendarEvents.slotOpensAt,
+          closesAt: calendarEvents.slotClosesAt,
+        })
+        .from(calendarEvents)
+        .where(eq(calendarEvents.id, data.calendarEventId))
+        .then((rows) => rows.at(0)),
+      db
+        .select({ at: min(events.submittedAt) })
+        .from(events)
+        .where(eq(events.calendarEventId, data.calendarEventId))
+        .then((rows) => rows.at(0)),
+    ])
+    const changeProblem = validateSlotChange({
+      current: {
+        opensAt: current?.opensAt ?? null,
+        closesAt: current?.closesAt ?? null,
+      },
+      next: { opensAt, closesAt },
+      earliestSubmittedAt: firstSubmit?.at ?? null,
+    })
+    if (changeProblem) throw new Error(changeProblem)
     await db
       .update(calendarEvents)
       .set({
@@ -134,13 +162,28 @@ export const getPartnerReviewGroups = createServerFn({ method: 'GET' })
     }
     const event = await loadJastiperEvent(data.calendarEventId, data.brandId)
     const { db } = await import('../db')
-    const { loadReviewGroups } = await import('./event-slot-queries')
-    return db.transaction(async (tx) => ({
-      submittedAt: event.submittedAt,
-      reviewedAt: event.reviewedAt,
-      sanggahDeadline: event.sanggahDeadline,
-      groups: event.submittedAt ? await loadReviewGroups(tx, event.id) : [],
-    }))
+    const { loadReviewGroups, getSlotSummary } =
+      await import('./event-slot-queries')
+    const { calendarEvents } = await import('../db/schema')
+    return db.transaction(async (tx) => {
+      const summary = await getSlotSummary(tx, event, new Date())
+      const calendarEvent = await tx
+        .select({ name: calendarEvents.name })
+        .from(calendarEvents)
+        .where(eq(calendarEvents.id, data.calendarEventId))
+        .then((rows) => rows.at(0))
+      return {
+        status: summary?.status ?? null,
+        sanggahCount: Object.values(summary?.bundleStates ?? {}).filter(
+          (state) => state === 'sanggah',
+        ).length,
+        eventName: calendarEvent?.name ?? '',
+        submittedAt: event.submittedAt,
+        reviewedAt: event.reviewedAt,
+        sanggahDeadline: event.sanggahDeadline,
+        groups: event.submittedAt ? await loadReviewGroups(tx, event.id) : [],
+      }
+    })
   })
 
 const resultSchema = z.object({

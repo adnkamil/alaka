@@ -1,11 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Link } from '@tanstack/react-router'
+import { Link, useRouterState } from '@tanstack/react-router'
 import { CalendarDays, Package, Search } from 'lucide-react'
 import PartnerLogo from './PartnerLogo'
 import { matchesSearch } from '../lib/partner-dashboard-rules'
 import { partnerInitials } from '../lib/partner-logo-rules'
-import { partnerEventsQuery, partnerProductsQuery } from '../lib/queries'
+import { getPartnerJastiperDetail } from '../lib/partner-jastiper-detail'
+import {
+  partnerEventQuery,
+  partnerEventsQuery,
+  partnerProductsQuery,
+} from '../lib/queries'
 
 interface PartnerTopbarProps {
   name: string
@@ -24,6 +29,24 @@ export default function PartnerTopbar({ name, logoUrl }: PartnerTopbarProps) {
   const [open, setOpen] = useState(false)
   const [armed, setArmed] = useState(false)
   const boxRef = useRef<HTMLDivElement>(null)
+
+  // Halaman detail jastiper menampilkan breadcrumb sebagai ganti kolom cari.
+  const pathname = useRouterState({ select: (st) => st.location.pathname })
+  const crumb = /^\/partner\/event\/jastiper\/([^/]+)\/([^/]+)/.exec(pathname)
+  const crumbEventId = crumb?.[1] ?? ''
+  const crumbBrandId = crumb?.[2] ?? ''
+  const { data: crumbEvent } = useQuery({
+    ...partnerEventQuery(crumbEventId),
+    enabled: crumb !== null,
+  })
+  const { data: crumbDetail } = useQuery({
+    queryKey: ['partner-jastiper-detail', crumbEventId, crumbBrandId],
+    queryFn: () =>
+      getPartnerJastiperDetail({
+        data: { calendarEventId: crumbEventId, brandId: crumbBrandId },
+      }),
+    enabled: crumb !== null,
+  })
 
   const { data: products = [] } = useQuery({
     ...partnerProductsQuery,
@@ -58,6 +81,30 @@ export default function PartnerTopbar({ name, logoUrl }: PartnerTopbarProps) {
 
   return (
     <header className="pm-topbar">
+      {crumb ? (
+        <nav
+          aria-label="Breadcrumb"
+          className="flex min-w-0 items-center gap-2 text-[13px]"
+          style={{ color: 'var(--app-text-soft)' }}
+        >
+          <Link to="/partner/event" className="no-underline" style={{ color: 'inherit' }}>
+            Event
+          </Link>
+          <span>/</span>
+          <Link
+            to="/partner/event/$id"
+            params={{ id: crumbEventId }}
+            className="truncate no-underline"
+            style={{ color: 'inherit' }}
+          >
+            {crumbEvent?.name ?? '…'}
+          </Link>
+          <span>/</span>
+          <span className="truncate font-semibold" style={{ color: 'var(--app-text)' }}>
+            {crumbDetail?.brandName ?? '…'}
+          </span>
+        </nav>
+      ) : (
       <div ref={boxRef} className="relative w-full max-w-[362px]">
         <Search
           size={17}
@@ -139,6 +186,7 @@ export default function PartnerTopbar({ name, logoUrl }: PartnerTopbarProps) {
           </div>
         )}
       </div>
+      )}
 
       <div className="flex items-center gap-3">
         <PartnerLogo

@@ -3,6 +3,8 @@ import { and, eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
 import { requirePartner } from './partner-auth'
 import { partnerOwnsEvent } from './partner-event-queries'
+import { billingBucket, bundleBillingAmount } from './partner-billing'
+import type { BillingBucket } from './partner-billing'
 
 const idSchema = z.uuid()
 
@@ -29,6 +31,10 @@ type JastiperEventDetail = {
   satuanPcs: number
   paketPcs: number
   paketCount: number
+  /**
+   * Tagihan ke partner: harga paket untuk paket lengkap, harga satuan untuk
+   * sisanya (termasuk paket yang belum lengkap, sementara).
+   */
   totalAmount: number
   rows: Array<JastiperDetailRow>
 }
@@ -46,6 +52,7 @@ async function loadJastiperEventDetail(
   const { db } = await import('../db')
   const schema = await import('../db/schema')
   const {
+    events,
     orders,
     items,
     itemComponents,
@@ -61,6 +68,12 @@ async function loadJastiperEventDetail(
     .select({ id: orders.id })
     .from(orders)
     .where(eq(orders.eventId, jastiperEventId))
+  const jastiperEvent = await db
+    .select({ reviewedAt: events.reviewedAt })
+    .from(events)
+    .where(eq(events.id, jastiperEventId))
+    .then((rows) => rows.at(0))
+  const reviewed = jastiperEvent?.reviewedAt != null
 
   const rules = await db
     .select({ id: partnerPricingRules.id, name: partnerPricingRules.name })
@@ -151,6 +164,7 @@ async function loadJastiperEventDetail(
   const rows: Array<JastiperDetailRow> = []
   let satuanPcs = 0
   let paketPcs = 0
+  let totalAmount = 0
   const paketCountByRule = new Map<string, number>()
 
   for (const item of itemRows) {
@@ -161,7 +175,20 @@ async function loadJastiperEventDetail(
           ruleId,
           (paketCountByRule.get(ruleId) ?? 0) + item.qty,
         )
-      for (const c of componentRows.filter((c) => c.itemId === item.id)) {
+      const comps = componentRows.filter((c) => c.itemId === item.id)
+      totalAmount += bundleBillingAmount({
+        bundleQty: item.qty,
+        bundlePrice: item.hpp === null ? null : Number(item.hpp),
+        reviewed,
+        components: comps.map((c) => ({
+          qty: c.qty,
+          approvedQty: c.approvedQty,
+          unitPrice: c.partnerVariantId
+            ? (variantMeta.get(c.partnerVariantId)?.price ?? 0)
+            : 0,
+        })),
+      })
+      for (const c of comps) {
         const meta = c.partnerVariantId
           ? variantMeta.get(c.partnerVariantId)
           : undefined
@@ -184,6 +211,7 @@ async function loadJastiperEventDetail(
     ) {
       const meta = variantMeta.get(item.partnerVariantId)!
       satuanPcs += item.qty
+      totalAmount += item.qty * meta.price
       rows.push({
         variantId: item.partnerVariantId,
         productName: meta.productName,
@@ -206,7 +234,7 @@ async function loadJastiperEventDetail(
     satuanPcs,
     paketPcs,
     paketCount: [...paketCountByRule.values()].reduce((s, n) => s + n, 0),
-    totalAmount: rows.reduce((s, r) => s + r.qty * r.unitPrice, 0),
+    totalAmount,
     rows,
   }
 }
@@ -275,8 +303,9 @@ export const getPartnerJastiperDetail = createServerFn({ method: 'GET' })
   })
 
 /**
- * Ringkasan total seluruh jastiper di satu event partner: total belanjaan
- * (harga partner × pcs) per jastiper dan totalnya.
+ * Ringkasan tagihan seluruh jastiper di satu event partner. Untuk event dengan
+ * alur slot, tagihan dikelompokkan: disetujui, menunggu persetujuan, dan draft
+ * (draft tidak dihitung karena belum dikirim).
  */
 export const getPartnerEventRevenue = createServerFn({ method: 'GET' })
   .validator(z.object({ calendarEventId: idSchema }))
@@ -285,21 +314,51 @@ export const getPartnerEventRevenue = createServerFn({ method: 'GET' })
     if (!(await partnerOwnsEvent(partner.id, data.calendarEventId))) {
       throw new Error('Event tidak ditemukan')
     }
+    const { db } = await import('../db')
+    const { listSlotQueue } = await import('./event-slot-queries')
     const jastiper = await listEventJastiper(data.calendarEventId)
+    const { resolveExpiredSanggah } = await import('./event-slot-queries')
+    const now = new Date()
+    // Batas sanggah yang sudah lewat dibereskan dulu supaya angka tidak basi.
+    await db.transaction(async (tx) => {
+      for (const { eventId } of jastiper) {
+        await resolveExpiredSanggah(tx, eventId, now)
+      }
+    })
+    const queue = await db.transaction((tx) =>
+      listSlotQueue(tx, data.calendarEventId, now),
+    )
+    const statusByBrand = new Map(queue.map((q) => [q.brandId, q.status]))
+    const slotEnabled = queue.some((q) => q.status !== null)
     const perBrand = await Promise.all(
       jastiper.map(async ({ eventId, brand }) => {
         const d = await loadJastiperEventDetail(partner.id, eventId, brand)
+        const status = statusByBrand.get(brand.id) ?? null
         return {
           brandId: d.brandId,
           brandName: d.brandName,
           totalPcs: d.totalPcs,
           totalAmount: d.totalAmount,
+          status,
+          bucket: slotEnabled ? billingBucket(status) : 'approved',
         }
       }),
     )
+    const sum = (bucket: BillingBucket) =>
+      perBrand
+        .filter((b) => b.bucket === bucket)
+        .reduce((s, b) => s + b.totalAmount, 0)
     return {
+      slotEnabled,
       totalAmount: perBrand.reduce((s, b) => s + b.totalAmount, 0),
       totalPcs: perBrand.reduce((s, b) => s + b.totalPcs, 0),
+      approvedAmount: sum('approved'),
+      /** Pcs yang sudah disetujui (paket dihitung per pcs isinya). */
+      approvedPcs: perBrand
+        .filter((b) => b.bucket === 'approved')
+        .reduce((s, b) => s + b.totalPcs, 0),
+      waitingAmount: sum('waiting'),
+      draftCount: perBrand.filter((b) => b.bucket === 'draft').length,
       perBrand,
     }
   })

@@ -357,3 +357,273 @@ const wibDateTime = new Intl.DateTimeFormat('id-ID', {
 export function formatWibDateTime(date: Date | string): string {
   return `${wibDateTime.format(new Date(date))} WIB`
 }
+
+// ---------------------------------------------------------------------------
+// Notifikasi perubahan status ke jastiper
+
+export type SlotNotice = { kind: 'status_pesanan'; title: string; body: string }
+
+/**
+ * Isi notifikasi untuk jastiper saat status pesanannya berubah karena partner
+ * (selesai cek, koreksi, verifikasi pengganti) atau karena batas sanggah lewat.
+ * Null = tidak ada yang perlu diberitahukan.
+ */
+export function slotStatusNotice(input: {
+  reason: 'review' | 'expired'
+  status: SlotStatus | null
+  previous: SlotStatus | null
+  firstReview: boolean
+  /** Hasil cek berubah (jumlah dapat / pengganti) sejak sebelum disimpan. */
+  resultsChanged: boolean
+  eventName: string
+  sanggahDeadline: Date | null
+  /** Pengganti belum mencukupi dan paketnya langsung difinalkan (sanggah hanya sekali). */
+  finalizedShortage?: boolean
+}): SlotNotice | null {
+  const { status, eventName } = input
+  if (status === null) return null
+
+  if (
+    input.finalizedShortage === true &&
+    (status === 'disetujui' || status === 'menyetujui')
+  ) {
+    return {
+      kind: 'status_pesanan',
+      title: `Pesanan final: ${eventName}`,
+      body: 'Barang pengganti belum mencukupi. Kesempatan mengganti hanya sekali, jadi barang yang tidak dapat tidak masuk tagihan.',
+    }
+  }
+
+  if (input.reason === 'expired') {
+    return {
+      kind: 'status_pesanan',
+      title: `Batas sanggah lewat: ${eventName}`,
+      body: 'Paket yang bermasalah diproses tanpa pengganti. Pesananmu sudah final.',
+    }
+  }
+
+  const changed = status !== input.previous
+  if (!input.firstReview && !changed && !input.resultsChanged) return null
+
+  if (status === 'sanggah') {
+    return {
+      kind: 'status_pesanan',
+      title: `Ada barang kurang di ${eventName}`,
+      body: input.sanggahDeadline
+        ? `Putuskan ganti atau tidak ganti sebelum ${formatWibDateTime(input.sanggahDeadline)}.`
+        : 'Putuskan ganti atau tidak ganti paket yang bermasalah.',
+    }
+  }
+  if ((status === 'disetujui' || status === 'menyetujui') && changed) {
+    return {
+      kind: 'status_pesanan',
+      title: `Pesanan disetujui: ${eventName}`,
+      body: 'Partner sudah selesai mengecek barangmu. Buka pesanan untuk melihat hasil akhirnya.',
+    }
+  }
+  return {
+    kind: 'status_pesanan',
+    title: `Hasil pengecekan diperbarui: ${eventName}`,
+    body: 'Partner memperbarui hasil cek. Buka pesanan untuk melihat jumlah terbaru.',
+  }
+}
+
+/** Pesan WhatsApp partner ke jastiper (tombol "Kabari jastiper"). */
+export function buildKabariMessage(input: {
+  status: SlotStatus | null
+  brandName: string
+  eventName: string
+  totalAmount: number
+  sanggahDeadline: Date | null
+}): string {
+  const rupiah = `Rp${Math.round(input.totalAmount).toLocaleString('id-ID')}`
+  const head = `Halo ${input.brandName}, ini update pesanan kamu di ${input.eventName}.`
+  if (input.status === 'sanggah') {
+    const until = input.sanggahDeadline
+      ? ` sebelum ${formatWibDateTime(input.sanggahDeadline)}`
+      : ''
+    return `${head} Ada barang yang kurang. Mohon putuskan ganti atau tidak ganti di ALAKA${until}.`
+  }
+  if (input.status === 'disetujui' || input.status === 'menyetujui') {
+    return `${head} Pesanan kamu sudah disetujui. Total tagihan ${rupiah}. Terima kasih!`
+  }
+  return `${head} Silakan cek statusnya di ALAKA.`
+}
+
+// ---------------------------------------------------------------------------
+// Badge dan teks status di sisi partner
+
+export type PartnerBadgeTone = 'neutral' | 'info' | 'warn' | 'success'
+
+/** Label badge status pesanan jastiper di Partner Portal. */
+export function partnerStatusBadge(status: SlotStatus | null): {
+  label: string
+  tone: PartnerBadgeTone
+} {
+  switch (status) {
+    case 'terkirim':
+    case 'menunggu_verifikasi':
+      return { label: 'Pengajuan', tone: 'info' }
+    case 'sanggah':
+      return { label: 'Pesanan dikembalikan', tone: 'warn' }
+    case 'menyetujui':
+    case 'disetujui':
+      return { label: 'Disetujui', tone: 'success' }
+    default:
+      return { label: 'Draft', tone: 'neutral' }
+  }
+}
+
+/** Judul dan keterangan kartu status di halaman detail jastiper (partner). */
+export function partnerStatusCopy(input: {
+  status: SlotStatus | null
+  hasItems: boolean
+  sanggahCount: number
+}): { title: string; description: string } {
+  switch (input.status) {
+    case 'terkirim':
+      return {
+        title: 'Cek pesanan ini',
+        description: 'Isi jumlah yang dapat di tabel, lalu tekan Selesai dicek.',
+      }
+    case 'menunggu_verifikasi':
+      return {
+        title: 'Cek pengganti',
+        description:
+          'Jastiper sudah mengganti barang yang kurang. Isi jumlah pengganti yang dapat, lalu tekan Selesai dicek. Ini kesempatan terakhir: kalau masih kurang, hasilnya final.',
+      }
+    case 'sanggah':
+      return {
+        title: 'Menunggu jawaban jastiper',
+        description: `${input.sanggahCount > 0 ? `${input.sanggahCount} paket kurang barang. ` : ''}Jastiper memilih ganti atau tidak ganti.`,
+      }
+    case 'menyetujui':
+      return {
+        title: 'Hasil final',
+        description:
+          'Jastiper memilih tidak mengganti. Barang yang tidak dapat tidak masuk tagihan.',
+      }
+    case 'disetujui':
+      return {
+        title: 'Hasil final',
+        description:
+          'Semua barang sudah dicek. Yang tidak dapat tidak masuk tagihan.',
+      }
+    default:
+      return input.hasItems
+        ? {
+            title: 'Menunggu jastiper',
+            description: 'Jastiper belum menekan Submit. Pesanan belum bisa dicek.',
+          }
+        : {
+            title: 'Menunggu jastiper',
+            description:
+              'Jastiper belum memasukkan pesanan. Barang muncul di sini begitu jastiper menambahkannya, bahkan sebelum submit.',
+          }
+  }
+}
+
+export type PartnerStatusFilter =
+  | 'semua'
+  | 'draft'
+  | 'pengajuan'
+  | 'dikembalikan'
+  | 'disetujui'
+
+export const PARTNER_STATUS_FILTERS: Array<{
+  key: PartnerStatusFilter
+  label: string
+}> = [
+  { key: 'semua', label: 'Semua' },
+  { key: 'draft', label: 'Draft' },
+  { key: 'pengajuan', label: 'Pengajuan' },
+  { key: 'dikembalikan', label: 'Pesanan dikembalikan' },
+  { key: 'disetujui', label: 'Disetujui' },
+]
+
+/** Kelompok filter chip daftar jastiper untuk satu status slot. */
+export function partnerStatusFilterKey(
+  status: SlotStatus | null,
+): Exclude<PartnerStatusFilter, 'semua'> {
+  switch (status) {
+    case 'terkirim':
+    case 'menunggu_verifikasi':
+      return 'pengajuan'
+    case 'sanggah':
+      return 'dikembalikan'
+    case 'menyetujui':
+    case 'disetujui':
+      return 'disetujui'
+    default:
+      return 'draft'
+  }
+}
+
+/** Subjudul halaman detail jastiper di Partner Portal. */
+export function partnerPageSubtitle(status: SlotStatus | null): string {
+  switch (status) {
+    case 'terkirim':
+      return 'Cek pesanan jastiper di event ini'
+    case 'menunggu_verifikasi':
+      return 'Cek pesanan jastiper di event ini · sudah ada pengganti'
+    case 'menyetujui':
+    case 'disetujui':
+      return 'Hasil pesanan jastiper di event ini · hanya baca'
+    default:
+      return 'Detail pesanan jastiper di event ini · hanya baca'
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Penguncian hasil cek dan perubahan slot
+
+/** Hasil cek terkunci setelah dikembalikan ke jastiper atau sudah final. */
+export function reviewLockedReason(status: SlotStatus | null): string | null {
+  if (status === 'sanggah' || status === 'disetujui' || status === 'menyetujui') {
+    return 'Hasil pengecekan sudah dikunci.'
+  }
+  return null
+}
+
+/**
+ * Setelah ada jastiper yang mengirim pesanan, urutan antrean tidak boleh
+ * berubah: slot tidak bisa dimatikan, waktu buka tidak boleh lebih lambat dari
+ * pengiriman pertama, dan waktu tutup hanya boleh diperpanjang.
+ */
+export function validateSlotChange(input: {
+  current: { opensAt: Date | null; closesAt: Date | null }
+  next: { opensAt: Date | null; closesAt: Date | null }
+  earliestSubmittedAt: Date | null
+}): string | null {
+  const { current, next, earliestSubmittedAt } = input
+  if (earliestSubmittedAt === null) return null
+  if (next.opensAt === null || next.closesAt === null) {
+    return 'Sudah ada jastiper yang mengirim pesanan, jadi slot tidak bisa dimatikan.'
+  }
+  if (next.opensAt.getTime() > earliestSubmittedAt.getTime()) {
+    return `Waktu buka tidak boleh lebih lambat dari pesanan pertama yang sudah dikirim (${formatWibDateTime(earliestSubmittedAt)}).`
+  }
+  if (
+    current.closesAt !== null &&
+    next.closesAt.getTime() < current.closesAt.getTime()
+  ) {
+    return 'Sudah ada pesanan yang dikirim, jadi waktu tutup hanya boleh diperpanjang.'
+  }
+  return null
+}
+
+/** Peringatan lunak (tidak memblokir) untuk pengaturan slot. */
+export function slotWindowWarnings(input: {
+  closesAt: Date | null
+  /** Tanggal event berakhir, format YYYY-MM-DD. */
+  eventEndDate: string | null
+}): Array<string> {
+  if (input.closesAt === null || input.eventEndDate === null) return []
+  const endOfEvent = parseWibLocal(`${input.eventEndDate.slice(0, 10)}T23:59`)
+  if (endOfEvent && input.closesAt.getTime() > endOfEvent.getTime()) {
+    return [
+      'Slot ditutup setelah event berakhir. Pastikan ini memang disengaja.',
+    ]
+  }
+  return []
+}
