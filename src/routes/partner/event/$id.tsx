@@ -10,7 +10,6 @@ import {
   Pencil,
   Phone,
 } from 'lucide-react'
-import { EventDescription } from '../../../components/EventDescription'
 import PartnerSlotSection from '../../../components/PartnerSlotSection'
 import PartnerStatusBadge from '../../../components/PartnerStatusBadge'
 import PartnerRevenueCard from '../../../components/PartnerRevenueCard'
@@ -243,18 +242,6 @@ function PartnerEventDetailPage() {
 
         {tab === 'info' && (
           <section className="flex flex-col gap-3">
-            <div className="app-card p-4">
-              {event.description ? (
-                <EventDescription text={event.description} />
-              ) : (
-                <p
-                  className="text-sm"
-                  style={{ color: 'var(--app-text-soft)' }}
-                >
-                  Belum ada deskripsi. Tambahkan lewat Ubah event.
-                </p>
-              )}
-            </div>
             <PartnerSlotSection
               calendarEventId={id}
               eventEndDate={event.endDate ?? event.eventDate}
@@ -524,11 +511,6 @@ function PartnerEventDetailPage() {
                   </div>
                 ))}
               </dl>
-              {event.description && (
-                <div className="border-t pt-3 text-[13px]" style={{ borderColor: 'var(--app-border)' }}>
-                  <EventDescription text={event.description} />
-                </div>
-              )}
               <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3 text-[13px]" style={{ borderColor: 'var(--app-border)' }}>
                 <Link
                   to="/partner/event/produk/$id"
