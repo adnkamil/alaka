@@ -29,6 +29,17 @@ export const paymentStatusEnum = pgEnum('payment_status', [
   'shipped',
 ])
 
+/**
+ * Status per baris (satuan maupun komponen paket) pada alur submit bertahap.
+ * Null = belum disubmit (masih bisa diubah). Setelah disubmit, qty dan hapus
+ * terkunci; yang tetap bisa diubah hanya harga jual dan fee.
+ */
+export const submitStatusEnum = pgEnum('submit_status', [
+  'pengajuan',
+  'disetujui',
+  'disanggah',
+])
+
 export const paymentMethodTypeEnum = pgEnum('payment_method_type', [
   'bank',
   'wallet',
@@ -535,6 +546,32 @@ export const orders = pgTable('orders', {
     .defaultNow(),
 })
 
+/**
+ * Satu kali jastiper menekan "Submit" untuk sebuah event. Submit pertama =
+ * submit_no 1. Submit ulang (pengganti barang yang disanggah) = 2, 3, dst.
+ * Dipakai untuk kolom "submit ke" di halaman detil event partner.
+ */
+export const eventSubmissions = pgTable(
+  'event_submissions',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    eventId: uuid('event_id')
+      .notNull()
+      .references(() => events.id, { onDelete: 'cascade' }),
+    submitNo: integer('submit_no').notNull(),
+    submittedAt: timestamp('submitted_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('event_submissions_event_no_unique').on(
+      table.eventId,
+      table.submitNo,
+    ),
+    check('event_submissions_no_pos', sql`${table.submitNo} > 0`),
+  ],
+)
+
 // Fee is stored per-item (not recalculated) so past transactions stay
 // unchanged if fee_tiers are edited/removed later. `fee` berlaku PER UNIT:
 // total baris = (original_price + fee) * qty.
@@ -557,6 +594,12 @@ export const items = pgTable('items', {
    * Null = belum pernah dicek / bukan event slot.
    */
   requestedQty: integer('requested_qty'),
+  /** Submit tempat baris satuan ini diajukan. Null = belum disubmit. */
+  submissionId: uuid('submission_id').references(() => eventSubmissions.id, {
+    onDelete: 'set null',
+  }),
+  /** Status baris satuan. Null = belum disubmit. Harus selaras dengan submission_id. */
+  submitStatus: submitStatusEnum('submit_status'),
   // Checklist belanja (live shopping): true = barang sudah didapat/dibeli di toko.
   obtained: boolean().notNull().default(false),
   // Bundling (paket). `is_bundle` = true untuk bundle baru; bundle lama yang
@@ -581,7 +624,12 @@ export const items = pgTable('items', {
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),
-})
+}, (table) => [
+  check(
+    'items_submit_pair',
+    sql`(${table.submitStatus} is null) = (${table.submissionId} is null)`,
+  ),
+])
 
 // Isi sebuah bundle, satu baris per barang. Total pcs = items.qty * qty di sini.
 // Nama, ukuran, dan variasi disimpan sebagai snapshot.
@@ -616,6 +664,13 @@ export const itemComponents = pgTable(
       { onDelete: 'set null' },
     ),
     replacedLabel: text('replaced_label'),
+    /** Submit tempat komponen ini diajukan. Null = belum disubmit. */
+    submissionId: uuid('submission_id').references(
+      () => eventSubmissions.id,
+      { onDelete: 'set null' },
+    ),
+    /** Status komponen. Null = belum disubmit. Harus selaras dengan submission_id. */
+    submitStatus: submitStatusEnum('submit_status'),
     // Waktu asli item satuan masuk. Dipakai FIFO saat komponen kembali ke satuan.
     addedAt: timestamp('added_at', { withTimezone: true })
       .notNull()
@@ -625,6 +680,49 @@ export const itemComponents = pgTable(
     index('item_components_item_idx').on(table.itemId),
     index('item_components_variant_idx').on(table.partnerVariantId),
     check('item_components_qty_pos', sql`${table.qty} > 0`),
+    check(
+      'item_components_submit_pair',
+      sql`(${table.submitStatus} is null) = (${table.submissionId} is null)`,
+    ),
+  ],
+)
+
+/**
+ * Riwayat perpindahan status per pcs, supaya jastiper dan partner bisa
+ * menelusuri kenapa sebuah baris berubah (disetujui -> kembali ke satuan,
+ * disanggah, dll). Tidak dihapus walau baris asalnya sudah berubah.
+ */
+export const itemStatusLogs = pgTable(
+  'item_status_logs',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    eventId: uuid('event_id')
+      .notNull()
+      .references(() => events.id, { onDelete: 'cascade' }),
+    itemId: uuid('item_id').references(() => items.id, {
+      onDelete: 'set null',
+    }),
+    componentId: uuid('component_id').references(() => itemComponents.id, {
+      onDelete: 'set null',
+    }),
+    submissionId: uuid('submission_id').references(
+      () => eventSubmissions.id,
+      { onDelete: 'set null' },
+    ),
+    fromStatus: submitStatusEnum('from_status'),
+    toStatus: submitStatusEnum('to_status'),
+    qty: integer().notNull(),
+    /** Teks alasan singkat, mis. "tidak tersedia dari partner". */
+    note: text(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('item_status_logs_event_idx').on(table.eventId),
+    index('item_status_logs_item_idx').on(table.itemId),
+    index('item_status_logs_component_idx').on(table.componentId),
+    check('item_status_logs_qty_nonneg', sql`${table.qty} >= 0`),
   ],
 )
 
