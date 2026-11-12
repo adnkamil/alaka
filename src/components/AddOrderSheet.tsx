@@ -1276,14 +1276,6 @@ export default function AddOrderSheet({
                   <p className="mt-1 text-xs" style={{ color: 'var(--app-text-soft)' }}>
                     Cari barang di katalog partner, lalu pilih ukuran dan variasinya.
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => setCatalogTarget({ mode: 'add' })}
-                    className="app-btn-primary mt-3 w-full"
-                    style={{ minHeight: 44, fontSize: 14 }}
-                  >
-                    Cari di katalog partner
-                  </button>
                 </div>
               )}
               {bundlePreview.pending.map((p) => (
