@@ -956,11 +956,7 @@ function EventDetailPage() {
         </div>
         <div className="flex flex-shrink-0 items-start gap-1">
           {event.calendarEventId && (
-            <EventSlotAction
-              eventId={eventId}
-              onChanged={refreshEventData}
-              onOpenStatus={() => setShowSlotStatus(true)}
-            />
+            <EventSlotAction eventId={eventId} />
           )}
         <div className="relative">
           <button

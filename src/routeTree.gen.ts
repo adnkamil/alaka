@@ -60,6 +60,7 @@ import { Route as PartnerPaketIndexRouteImport } from './routes/partner/paket/in
 import { Route as PartnerPaketIdRouteImport } from './routes/partner/paket/$id'
 import { Route as PartnerPaketBaruRouteImport } from './routes/partner/paket/baru'
 import { Route as TagihanEventIdOrderIdRouteImport } from './routes/tagihan.$eventId.$orderId'
+import { Route as AppEventsEventIdStatusRouteImport } from './routes/_app/events.$eventId_.status'
 import { Route as AppInvoiceEventIdOrderIdRouteImport } from './routes/_app/invoice.$eventId.$orderId'
 import { Route as AppProfilCustomersIndexRouteImport } from './routes/_app/profil/customers/index'
 import { Route as AppProfilFeeRulesIndexRouteImport } from './routes/_app/profil/fee-rules/index'
@@ -328,6 +329,11 @@ const TagihanEventIdOrderIdRoute = TagihanEventIdOrderIdRouteImport.update({
   path: '/tagihan/$eventId/$orderId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppEventsEventIdStatusRoute = AppEventsEventIdStatusRouteImport.update({
+  id: '/events/$eventId_/status',
+  path: '/events/$eventId/status',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppInvoiceEventIdOrderIdRoute =
   AppInvoiceEventIdOrderIdRouteImport.update({
     id: '/invoice/$eventId/$orderId',
@@ -438,6 +444,7 @@ export interface FileRoutesByFullPath {
   '/partner/event/': typeof PartnerEventIndexRoute
   '/partner/katalog/': typeof PartnerKatalogIndexRoute
   '/partner/paket/': typeof PartnerPaketIndexRoute
+  '/events/$eventId/status': typeof AppEventsEventIdStatusRoute
   '/invoice/$eventId/$orderId': typeof AppInvoiceEventIdOrderIdRoute
   '/profil/fee-rules/$feeRuleId': typeof AppProfilFeeRulesFeeRuleIdRoute
   '/profil/fee-rules/new': typeof AppProfilFeeRulesNewRoute
@@ -499,6 +506,7 @@ export interface FileRoutesByTo {
   '/partner/event': typeof PartnerEventIndexRoute
   '/partner/katalog': typeof PartnerKatalogIndexRoute
   '/partner/paket': typeof PartnerPaketIndexRoute
+  '/events/$eventId/status': typeof AppEventsEventIdStatusRoute
   '/invoice/$eventId/$orderId': typeof AppInvoiceEventIdOrderIdRoute
   '/profil/fee-rules/$feeRuleId': typeof AppProfilFeeRulesFeeRuleIdRoute
   '/profil/fee-rules/new': typeof AppProfilFeeRulesNewRoute
@@ -564,6 +572,7 @@ export interface FileRoutesById {
   '/partner/event/': typeof PartnerEventIndexRoute
   '/partner/katalog/': typeof PartnerKatalogIndexRoute
   '/partner/paket/': typeof PartnerPaketIndexRoute
+  '/_app/events/$eventId_/status': typeof AppEventsEventIdStatusRoute
   '/_app/invoice/$eventId/$orderId': typeof AppInvoiceEventIdOrderIdRoute
   '/_app/profil/fee-rules/$feeRuleId': typeof AppProfilFeeRulesFeeRuleIdRoute
   '/_app/profil/fee-rules/new': typeof AppProfilFeeRulesNewRoute
@@ -629,6 +638,7 @@ export interface FileRouteTypes {
     | '/partner/event/'
     | '/partner/katalog/'
     | '/partner/paket/'
+    | '/events/$eventId/status'
     | '/invoice/$eventId/$orderId'
     | '/profil/fee-rules/$feeRuleId'
     | '/profil/fee-rules/new'
@@ -690,6 +700,7 @@ export interface FileRouteTypes {
     | '/partner/event'
     | '/partner/katalog'
     | '/partner/paket'
+    | '/events/$eventId/status'
     | '/invoice/$eventId/$orderId'
     | '/profil/fee-rules/$feeRuleId'
     | '/profil/fee-rules/new'
@@ -754,6 +765,7 @@ export interface FileRouteTypes {
     | '/partner/event/'
     | '/partner/katalog/'
     | '/partner/paket/'
+    | '/_app/events/$eventId_/status'
     | '/_app/invoice/$eventId/$orderId'
     | '/_app/profil/fee-rules/$feeRuleId'
     | '/_app/profil/fee-rules/new'
@@ -1149,6 +1161,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TagihanEventIdOrderIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/events/$eventId_/status': {
+      id: '/_app/events/$eventId_/status'
+      path: '/events/$eventId/status'
+      fullPath: '/events/$eventId/status'
+      preLoaderRoute: typeof AppEventsEventIdStatusRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/invoice/$eventId/$orderId': {
       id: '/_app/invoice/$eventId/$orderId'
       path: '/invoice/$eventId/$orderId'
@@ -1243,6 +1262,7 @@ interface AppRouteChildren {
   AppProfilTimRoute: typeof AppProfilTimRoute
   AppKalenderIndexRoute: typeof AppKalenderIndexRoute
   AppProfilIndexRoute: typeof AppProfilIndexRoute
+  AppEventsEventIdStatusRoute: typeof AppEventsEventIdStatusRoute
   AppInvoiceEventIdOrderIdRoute: typeof AppInvoiceEventIdOrderIdRoute
   AppProfilFeeRulesFeeRuleIdRoute: typeof AppProfilFeeRulesFeeRuleIdRoute
   AppProfilFeeRulesNewRoute: typeof AppProfilFeeRulesNewRoute
@@ -1264,6 +1284,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppProfilTimRoute: AppProfilTimRoute,
   AppKalenderIndexRoute: AppKalenderIndexRoute,
   AppProfilIndexRoute: AppProfilIndexRoute,
+  AppEventsEventIdStatusRoute: AppEventsEventIdStatusRoute,
   AppInvoiceEventIdOrderIdRoute: AppInvoiceEventIdOrderIdRoute,
   AppProfilFeeRulesFeeRuleIdRoute: AppProfilFeeRulesFeeRuleIdRoute,
   AppProfilFeeRulesNewRoute: AppProfilFeeRulesNewRoute,
