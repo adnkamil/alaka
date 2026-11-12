@@ -1,0 +1,3 @@
+ALTER TABLE "item_components" ADD COLUMN "replaced_variant_id" uuid;--> statement-breakpoint
+ALTER TABLE "item_components" ADD COLUMN "replaced_label" text;--> statement-breakpoint
+ALTER TABLE "item_components" ADD CONSTRAINT "item_components_replaced_variant_id_partner_variants_id_fk" FOREIGN KEY ("replaced_variant_id") REFERENCES "public"."partner_variants"("id") ON DELETE set null ON UPDATE no action;

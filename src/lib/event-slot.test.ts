@@ -6,6 +6,7 @@ import {
   applySatuanApproval,
   approvalKind,
   assertOrdersEditable,
+  buildKabariMessage,
   bundleReviewState,
   checkCanSubmit,
   checkComponentApproval,
@@ -16,7 +17,15 @@ import {
   isSlotEnabled,
   parseWibLocal,
   planReplacement,
+  partnerPageSubtitle,
+  partnerStatusBadge,
+  partnerStatusCopy,
+  partnerStatusFilterKey,
+  reviewLockedReason,
+  slotWindowWarnings,
+  validateSlotChange,
   slotPhase,
+  slotStatusNotice,
   toWibLocal,
   validateSanggahDeadline,
   validateSlotWindow
@@ -374,5 +383,242 @@ describe('parseWibLocal / toWibLocal', () => {
     assert.equal(parseWibLocal(''), null)
     assert.equal(parseWibLocal('2026-11-10'), null)
     assert.equal(parseWibLocal('2026-13-40T99:99'), null)
+  })
+})
+
+describe('slotStatusNotice', () => {
+  const base = {
+    reason: 'review' as const,
+    previous: 'terkirim' as const,
+    firstReview: true,
+    resultsChanged: true,
+    eventName: 'Wikibex',
+    sanggahDeadline: new Date('2026-11-12T11:00:00Z'),
+  }
+
+  it('cek pertama dengan barang kurang: minta jastiper memutuskan', () => {
+    const n = slotStatusNotice({ ...base, status: 'sanggah' })
+    assert.match(n?.title ?? '', /Ada barang kurang di Wikibex/)
+    assert.match(n?.body ?? '', /sebelum/)
+  })
+
+  it('cek pertama semua cukup: pesanan disetujui', () => {
+    const n = slotStatusNotice({ ...base, status: 'disetujui' })
+    assert.match(n?.title ?? '', /Pesanan disetujui/)
+  })
+
+  it('koreksi tanpa perubahan status maupun jumlah: tidak ada notifikasi', () => {
+    const n = slotStatusNotice({
+      ...base,
+      firstReview: false,
+      previous: 'sanggah',
+      status: 'sanggah',
+      resultsChanged: false,
+    })
+    assert.equal(n, null)
+  })
+
+  it('koreksi yang mengubah jumlah: hasil diperbarui', () => {
+    const n = slotStatusNotice({
+      ...base,
+      firstReview: false,
+      previous: 'sanggah',
+      status: 'sanggah',
+      resultsChanged: true,
+    })
+    assert.equal(n?.title, 'Ada barang kurang di Wikibex')
+    const updated = slotStatusNotice({
+      ...base,
+      firstReview: false,
+      previous: 'menunggu_verifikasi',
+      status: 'menunggu_verifikasi',
+      resultsChanged: true,
+    })
+    assert.match(updated?.title ?? '', /Hasil pengecekan diperbarui/)
+  })
+
+  it('verifikasi pengganti selesai: pesanan disetujui', () => {
+    const n = slotStatusNotice({
+      ...base,
+      firstReview: false,
+      previous: 'menunggu_verifikasi',
+      status: 'disetujui',
+    })
+    assert.match(n?.title ?? '', /Pesanan disetujui/)
+  })
+
+  it('pengganti kurang: langsung final, tidak ada sanggah kedua', () => {
+    const n = slotStatusNotice({
+      ...base,
+      firstReview: false,
+      previous: 'menunggu_verifikasi',
+      status: 'menyetujui',
+      finalizedShortage: true,
+    })
+    assert.match(n?.title ?? '', /Pesanan final/)
+    assert.match(n?.body ?? '', /hanya sekali/)
+  })
+
+  it('batas sanggah lewat', () => {
+    const n = slotStatusNotice({ ...base, reason: 'expired', status: 'menyetujui' })
+    assert.match(n?.title ?? '', /Batas sanggah lewat/)
+  })
+
+  it('tanpa alur slot: null', () => {
+    assert.equal(slotStatusNotice({ ...base, status: null }), null)
+  })
+})
+
+describe('buildKabariMessage', () => {
+  const input = {
+    brandName: 'Jastip by Mici',
+    eventName: 'Wikibex',
+    totalAmount: 155000,
+    sanggahDeadline: new Date('2026-11-12T11:00:00Z'),
+  }
+  it('disetujui menyebut total tagihan', () => {
+    const m = buildKabariMessage({ ...input, status: 'disetujui' })
+    assert.match(m, /Jastip by Mici/)
+    assert.match(m, /155\.000/)
+  })
+  it('sanggah menyebut batas waktu', () => {
+    assert.match(buildKabariMessage({ ...input, status: 'sanggah' }), /sebelum/)
+  })
+})
+
+describe('partnerStatusBadge', () => {
+  it('memetakan status slot ke label desain', () => {
+    assert.equal(partnerStatusBadge('draft').label, 'Draft')
+    assert.equal(partnerStatusBadge('belum_dibuka').label, 'Draft')
+    assert.equal(partnerStatusBadge('terkirim').label, 'Pengajuan')
+    assert.equal(partnerStatusBadge('menunggu_verifikasi').label, 'Pengajuan')
+    assert.equal(partnerStatusBadge('sanggah').label, 'Pesanan dikembalikan')
+    assert.equal(partnerStatusBadge('menyetujui').label, 'Disetujui')
+    assert.equal(partnerStatusBadge('disetujui').tone, 'success')
+    assert.equal(partnerStatusBadge(null).label, 'Draft')
+  })
+})
+
+describe('partnerStatusCopy', () => {
+  it('draft tanpa barang (layar 2) beda dari draft dengan barang (layar 2b)', () => {
+    const kosong = partnerStatusCopy({ status: 'draft', hasItems: false, sanggahCount: 0 })
+    const berisi = partnerStatusCopy({ status: 'draft', hasItems: true, sanggahCount: 0 })
+    assert.equal(kosong.title, 'Menunggu jastiper')
+    assert.match(kosong.description, /belum memasukkan pesanan/)
+    assert.match(berisi.description, /belum menekan Submit/)
+  })
+
+  it('sanggah menyebut jumlah paket', () => {
+    const c = partnerStatusCopy({ status: 'sanggah', hasItems: true, sanggahCount: 2 })
+    assert.match(c.description, /2 paket kurang barang/)
+  })
+
+  it('pengajuan memakai istilah "Selesai dicek"', () => {
+    for (const status of ['terkirim', 'menunggu_verifikasi'] as const) {
+      assert.match(
+        partnerStatusCopy({ status, hasItems: true, sanggahCount: 0 }).description,
+        /Selesai dicek/,
+      )
+    }
+  })
+})
+
+describe('partnerStatusFilterKey', () => {
+  it('selaras dengan label badge', () => {
+    const all = [
+      'belum_dibuka', 'draft', 'ditutup', 'terkirim', 'sanggah',
+      'menunggu_verifikasi', 'menyetujui', 'disetujui',
+    ] as const
+    const labelOf = {
+      draft: 'Draft',
+      pengajuan: 'Pengajuan',
+      dikembalikan: 'Pesanan dikembalikan',
+      disetujui: 'Disetujui',
+    }
+    for (const status of all) {
+      assert.equal(
+        labelOf[partnerStatusFilterKey(status)],
+        partnerStatusBadge(status).label,
+      )
+    }
+  })
+})
+
+describe('partnerPageSubtitle', () => {
+  it('mengikuti subjudul di desain', () => {
+    assert.equal(partnerPageSubtitle('terkirim'), 'Cek pesanan jastiper di event ini')
+    assert.match(partnerPageSubtitle('menunggu_verifikasi'), /sudah ada pengganti/)
+    assert.match(partnerPageSubtitle('disetujui'), /^Hasil pesanan/)
+    assert.match(partnerPageSubtitle('sanggah'), /hanya baca/)
+    assert.match(partnerPageSubtitle('draft'), /^Detail pesanan/)
+  })
+})
+
+describe('reviewLockedReason', () => {
+  it('terkunci saat dikembalikan atau final, terbuka saat pengajuan', () => {
+    assert.ok(reviewLockedReason('sanggah'))
+    assert.ok(reviewLockedReason('disetujui'))
+    assert.ok(reviewLockedReason('menyetujui'))
+    assert.equal(reviewLockedReason('terkirim'), null)
+    assert.equal(reviewLockedReason('menunggu_verifikasi'), null)
+  })
+})
+
+describe('validateSlotChange', () => {
+  const t = (iso: string) => new Date(iso)
+  const current = { opensAt: t('2026-11-09T10:00:00Z'), closesAt: t('2026-11-13T10:00:00Z') }
+  const first = t('2026-11-09T12:00:00Z')
+
+  it('belum ada yang submit: bebas', () => {
+    assert.equal(
+      validateSlotChange({ current, next: { opensAt: null, closesAt: null }, earliestSubmittedAt: null }),
+      null,
+    )
+  })
+  it('sudah ada yang submit: tidak boleh dimatikan', () => {
+    assert.match(
+      validateSlotChange({ current, next: { opensAt: null, closesAt: null }, earliestSubmittedAt: first }) ?? '',
+      /tidak bisa dimatikan/,
+    )
+  })
+  it('waktu buka tidak boleh melewati submit pertama', () => {
+    assert.match(
+      validateSlotChange({
+        current,
+        next: { opensAt: t('2026-11-10T00:00:00Z'), closesAt: current.closesAt },
+        earliestSubmittedAt: first,
+      }) ?? '',
+      /Waktu buka/,
+    )
+  })
+  it('waktu tutup hanya boleh diperpanjang', () => {
+    assert.match(
+      validateSlotChange({
+        current,
+        next: { opensAt: current.opensAt, closesAt: t('2026-11-12T10:00:00Z') },
+        earliestSubmittedAt: first,
+      }) ?? '',
+      /diperpanjang/,
+    )
+    assert.equal(
+      validateSlotChange({
+        current,
+        next: { opensAt: t('2026-11-09T08:00:00Z'), closesAt: t('2026-11-14T10:00:00Z') },
+        earliestSubmittedAt: first,
+      }),
+      null,
+    )
+  })
+})
+
+describe('slotWindowWarnings', () => {
+  it('memperingatkan kalau slot tutup setelah event berakhir', () => {
+    const late = new Date('2026-11-13T10:00:00Z')
+    assert.equal(slotWindowWarnings({ closesAt: late, eventEndDate: '2026-11-11' }).length, 1)
+  })
+  it('tidak ada peringatan kalau masih di dalam event', () => {
+    const ok = new Date('2026-11-11T10:00:00Z')
+    assert.deepEqual(slotWindowWarnings({ closesAt: ok, eventEndDate: '2026-11-11' }), [])
+    assert.deepEqual(slotWindowWarnings({ closesAt: null, eventEndDate: '2026-11-11' }), [])
   })
 })

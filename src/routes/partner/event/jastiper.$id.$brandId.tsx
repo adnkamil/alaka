@@ -1,57 +1,52 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { ArrowLeft, PackageCheck } from 'lucide-react'
+import { ArrowLeft, Ellipsis } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import PartnerReviewFooter from '../../../components/PartnerReviewFooter'
-import { buildWhatsAppLink, formatPhoneNumber } from '../../../lib/format'
-import { formatRupiah } from '../../../lib/partner-product-rules'
+import PartnerRowChip from '../../../components/PartnerRowChip'
+import Pagination from '../../../components/ui/Pagination'
 import PartnerTableToolbar from '../../../components/ui/PartnerTableToolbar'
+import { partnerPageSubtitle } from '../../../lib/event-slot'
+import { partnerItemName, variantLabel } from '../../../lib/partner-item-label'
+import { buildWhatsAppLink, formatPhoneNumber } from '../../../lib/format'
+import { getPartnerJastiperDetail } from '../../../lib/partner-jastiper-detail'
+import { formatRupiah } from '../../../lib/partner-product-rules'
 import { useClientPager } from '../../../lib/use-client-pager'
 import { usePartnerReview } from '../../../lib/use-partner-review'
-import {
-  getPartnerJastiperDetail,
-  type JastiperDetailRow,
-} from '../../../lib/partner-jastiper-detail'
+import type { PartnerBadgeTone } from '../../../lib/event-slot'
+import type { JastiperDetailRow } from '../../../lib/partner-jastiper-detail'
 
 export const Route = createFileRoute('/partner/event/jastiper/$id/$brandId')({
   component: PartnerJastiperDetailPage,
 })
 
-type GroupedRow = {
+type TableRow = {
   key: string
-  /** Varian produk; kunci pencocokan dengan hasil pengecekan. */
   variantId: string | null
-  /** Diisi saat mode cek: jumlah diminta dan pcs pengganti yang menunggu verifikasi. */
-  requested?: number
-  pendingPcs?: number
   productName: string
   size: string | null
   variation: string | null
-  ruleName: string | null
-  qty: number
   unitPrice: number
+  /** Kolom "Diminta". */
+  requested: number
+  /** Kolom "Dapat" yang tersimpan; null = belum dicek. */
+  approved: number | null
+  /** Baris barang pengganti yang menunggu verifikasi. */
+  replacement: boolean
+  /** Pcs baris ini yang sudah digantikan barang pengganti. */
+  replacedPcs: number
+  /** Untuk baris pengganti: barang yang digantikannya. */
+  replaces: Array<{ variantId: string | null; label: string }>
 }
 
-/**
- * Gabungkan baris. Dengan "Pisahkan paket" nyala, tiap jenis paket dan
- * barang satuan jadi baris sendiri. Kalau mati, semua pcs untuk produk yang
- * sama digabung jadi satu baris tanpa kolom jenis paket.
- */
-function groupRows(
-  rows: Array<JastiperDetailRow>,
-  split: boolean,
-): Array<GroupedRow> {
-  const map = new Map<string, GroupedRow>()
+/** Draft: gabungkan semua pcs untuk produk yang sama jadi satu baris. */
+function draftRows(rows: Array<JastiperDetailRow>): Array<TableRow> {
+  const map = new Map<string, TableRow>()
   for (const r of rows) {
-    const key = [
-      r.productName,
-      r.size ?? '',
-      r.variation ?? '',
-      split ? (r.ruleId ?? 'satuan') : '',
-    ].join('|')
+    const key = [r.productName, r.size ?? '', r.variation ?? ''].join('|')
     const existing = map.get(key)
     if (existing) {
-      existing.qty += r.qty
+      existing.requested += r.qty
     } else {
       map.set(key, {
         key,
@@ -59,9 +54,12 @@ function groupRows(
         productName: r.productName,
         size: r.size,
         variation: r.variation,
-        ruleName: split ? (r.ruleName ?? null) : null,
-        qty: r.qty,
         unitPrice: r.unitPrice,
+        requested: r.qty,
+        approved: null,
+        replacement: false,
+        replacedPcs: 0,
+        replaces: [],
       })
     }
   }
@@ -72,45 +70,115 @@ function groupRows(
 
 function PartnerJastiperDetailPage() {
   const { id, brandId } = Route.useParams()
-  const [split, setSplit] = useState(false)
   const { data, error, isLoading } = useQuery({
     queryKey: ['partner-jastiper-detail', id, brandId],
     queryFn: () =>
       getPartnerJastiperDetail({ data: { calendarEventId: id, brandId } }),
   })
-
   const review = usePartnerReview(id, brandId)
-  // Cek barang dilakukan per varian, jadi hanya di tampilan gabungan.
-  const reviewing = !split && review.submitted && !!review.data?.groups.length
+  const status = review.data?.status ?? null
+  const reviewing = review.submitted && !!review.data?.groups.length
+  const verifying = status === 'menunggu_verifikasi'
+  const isDraft = !!review.data && !review.submitted
 
-  const grouped = useMemo(() => {
+  const rows = useMemo<Array<TableRow>>(() => {
     if (!data) return []
-    if (!reviewing || !review.data) return groupRows(data.rows, split)
+    if (!reviewing || !review.data) return draftRows(data.rows)
     const priceByVariant = new Map<string, number>()
     for (const r of data.rows) {
       if (r.variantId) priceByVariant.set(r.variantId, r.unitPrice)
     }
-    return review.data.groups.map(
-      (g): GroupedRow => ({
-        key: g.variantId,
+    const out: Array<TableRow> = []
+    for (const g of review.data.groups) {
+      const base = {
         variantId: g.variantId,
         productName: g.productName,
         size: g.size,
         variation: g.variation,
-        ruleName: null,
-        qty: g.requestedPcs,
-        requested: g.requestedPcs,
-        pendingPcs: g.pendingPcs,
         unitPrice: priceByVariant.get(g.variantId) ?? 0,
-      }),
-    )
-  }, [data, split, reviewing, review.data])
-  const hasPending = reviewing && grouped.some((g) => (g.pendingPcs ?? 0) > 0)
+      }
+      const requested = g.requestedPcs + g.replacedPcs
+      if (requested > 0 || g.pendingPcs === 0) {
+        out.push({
+          ...base,
+          key: g.variantId,
+          requested,
+          approved: g.approvedPcs,
+          replacement: false,
+          replacedPcs: g.replacedPcs,
+          replaces: [],
+        })
+      }
+      if (g.pendingPcs > 0) {
+        out.push({
+          ...base,
+          key: `${g.variantId}:pengganti`,
+          requested: g.pendingPcs,
+          approved: null,
+          replacement: true,
+          replacedPcs: 0,
+          replaces: g.replaces,
+        })
+      }
+    }
+    return out
+  }, [data, reviewing, review.data])
+
   const [search, setSearch] = useState('')
-  const filteredGrouped = grouped.filter((row) =>
+  const filtered = rows.filter((row) =>
     row.productName.toLowerCase().includes(search.trim().toLowerCase()),
   )
-  const groupedPager = useClientPager(filteredGrouped)
+  const pager = useClientPager(filtered)
+
+  const nameOf = (r: TableRow) =>
+    partnerItemName(
+      r.productName,
+      variantLabel({ size: r.size, variation: r.variation }),
+    )
+  /** Barang pengganti untuk satu barang yang sudah diganti. */
+  const replacementsFor = (variantId: string | null) =>
+    rows
+      .filter(
+        (r) =>
+          r.replacement && r.replaces.some((x) => x.variantId === variantId),
+      )
+      .map(nameOf)
+  const allSufficient =
+    rows.length > 0 &&
+    rows.every((r) => r.replacement || (r.approved ?? r.requested) >= r.requested)
+
+  /** Status baris: Cukup / Kurang N / Menunggu / Sudah diganti / Pengganti. */
+  function chipFor(row: TableRow): { label: string; tone: PartnerBadgeTone | 'danger' } {
+    if (isDraft || status === null) {
+      return { label: 'Belum disubmit', tone: 'neutral' }
+    }
+    if (row.replacement) return { label: 'Pengganti', tone: 'info' }
+    if (verifying && row.replacedPcs > 0) {
+      return { label: 'Sudah diganti', tone: 'danger' }
+    }
+    const live =
+      status === 'terkirim' && row.variantId
+        ? Number(review.approved[row.variantId] ?? row.requested)
+        : (row.approved ?? row.requested)
+    const short = row.requested - live
+    if (short <= 0) return { label: 'Cukup', tone: 'success' }
+    if (verifying) return { label: 'Sudah diganti', tone: 'danger' }
+    if (status === 'sanggah') return { label: 'Menunggu', tone: 'danger' }
+    return { label: `Kurang ${short}`, tone: 'danger' }
+  }
+
+  const columns = [
+    ...(verifying ? ['No'] : []),
+    'Produk',
+    'Ukuran',
+    'Variasi',
+    'Harga partner',
+    'Diminta',
+    ...(isDraft ? [] : ['Dapat']),
+    'Status',
+    ...(verifying ? ['Keterangan'] : []),
+  ]
+  const rightAligned = new Set(['Harga partner', 'Diminta', 'Dapat'])
 
   return (
     <main className="pm-wide flex flex-col gap-4 px-5 pb-8 pt-4 lg:gap-5">
@@ -129,11 +197,8 @@ function PartnerJastiperDetailPage() {
             <h1 className="pm-display text-[22px] leading-tight lg:text-[26px]">
               {data?.brandName ?? 'Jastiper'}
             </h1>
-            <p
-              className="mt-1 text-[13px]"
-              style={{ color: 'var(--app-text-soft)' }}
-            >
-              Detail pesanan jastiper di event ini
+            <p className="mt-1 text-[13px]" style={{ color: 'var(--app-text-soft)' }}>
+              {partnerPageSubtitle(status)}
             </p>
           </div>
         </div>
@@ -159,22 +224,45 @@ function PartnerJastiperDetailPage() {
       )}
 
       {data && (
-        <>
-          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
-            <aside className="app-card flex flex-col gap-5 p-5 lg:order-last lg:sticky lg:top-6">
-              <div className="flex flex-col gap-3">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
+          <aside className="flex flex-col gap-4 lg:order-last lg:sticky lg:top-6">
+            <PartnerReviewFooter
+              review={review}
+              hasItems={data.rows.length > 0}
+              allSufficient={allSufficient}
+              contact={{
+                waNumber: data.waNumber,
+                brandName: data.brandName,
+                totalAmount: data.totalAmount,
+              }}
+            />
+
+            {!isDraft && (
+              <section className="app-card flex flex-col gap-3 p-5">
                 <p
                   className="text-[11px] font-bold uppercase tracking-wide"
                   style={{ color: 'var(--pm-gold)' }}
                 >
-                  Ringkasan pesanan
+                  Ringkasan
                 </p>
+                <div className="flex flex-col gap-0.5">
+                  <p className="text-[13px]" style={{ color: 'var(--app-text-soft)' }}>
+                    Total tagihan
+                  </p>
+                  <p className="pm-num text-[26px] font-bold leading-tight">
+                    {formatRupiah(data.totalAmount)}
+                  </p>
+                  {verifying && (
+                    <p className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
+                      Termasuk pengganti (harga sementara)
+                    </p>
+                  )}
+                </div>
                 <dl
-                  className="flex flex-col divide-y text-[13px]"
+                  className="flex flex-col border-t pt-1 text-[13px]"
                   style={{ borderColor: 'var(--app-border)' }}
                 >
                   {[
-                    { label: 'Jumlah pesanan', value: `${data.orderCount}` },
                     { label: 'Total pcs', value: `${data.totalPcs} pcs` },
                     {
                       label: 'Paket terjual',
@@ -182,154 +270,82 @@ function PartnerJastiperDetailPage() {
                     },
                     { label: 'Barang satuan', value: `${data.satuanPcs} pcs` },
                   ].map((r) => (
-                    <div
-                      key={r.label}
-                      className="flex items-center justify-between gap-3 py-2.5"
-                      style={{ borderColor: 'var(--app-border)' }}
-                    >
-                      <dt style={{ color: 'var(--app-text-soft)' }}>
-                        {r.label}
-                      </dt>
+                    <div key={r.label} className="flex items-center justify-between gap-3 py-2">
+                      <dt style={{ color: 'var(--app-text-soft)' }}>{r.label}</dt>
                       <dd className="pm-num font-bold">{r.value}</dd>
                     </div>
                   ))}
                 </dl>
-              </div>
+              </section>
+            )}
 
-              <div
-                className="flex flex-col gap-1.5 rounded-2xl p-4"
-                style={{ background: 'var(--app-accent-soft)' }}
+            <section className="app-card flex flex-col gap-2 p-5">
+              <p
+                className="text-[11px] font-bold uppercase tracking-wide"
+                style={{ color: 'var(--pm-gold)' }}
               >
-                <p
-                  className="text-[12px] font-semibold"
-                  style={{ color: '#9c463b' }}
+                Kontak jastiper
+              </p>
+              <p className="text-[13px] font-semibold">
+                {data.brandName}
+                {data.waNumber ? ` · ${formatPhoneNumber(data.waNumber)}` : ''}
+              </p>
+              {data.waNumber ? (
+                <a
+                  href={buildWhatsAppLink(data.waNumber, '')}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="app-btn-outline w-full no-underline"
+                  style={{ minHeight: 40, fontSize: 13 }}
                 >
-                  Total tagihan (harga partner)
-                </p>
-                <p
-                  className="pm-num text-[28px] font-bold leading-tight"
-                  style={{ color: '#9c463b' }}
-                >
-                  {formatRupiah(data.totalAmount)}
-                </p>
-                <p
-                  className="text-[11px]"
-                  style={{ color: '#9c463b', opacity: 0.8 }}
-                >
-                  Dihitung dari harga produk partner × pcs
-                </p>
-              </div>
-
-              <div
-                className="flex flex-col gap-2 border-t pt-5"
-                style={{ borderColor: 'var(--app-border)' }}
-              >
-                <p
-                  className="text-[11px] font-bold uppercase tracking-wide"
-                  style={{ color: 'var(--pm-gold)' }}
-                >
-                  Kontak jastiper
-                </p>
-                <p className="text-sm font-bold">{data.brandName}</p>
-                {data.waNumber ? (
-                  <>
-                    <p
-                      className="pm-num text-[13px]"
-                      style={{ color: 'var(--app-text-soft)' }}
-                    >
-                      {formatPhoneNumber(data.waNumber)}
-                    </p>
-                    <a
-                      href={buildWhatsAppLink(data.waNumber, '')}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="app-btn-outline mt-1 gap-2 no-underline"
-                      style={{ minHeight: 40, fontSize: 13 }}
-                    >
-                      Hubungi via WhatsApp
-                    </a>
-                  </>
-                ) : (
-                  <p
-                    className="text-[13px]"
-                    style={{ color: 'var(--app-text-soft)' }}
-                  >
-                    Nomor WhatsApp belum diisi.
-                  </p>
-                )}
-              </div>
-            </aside>
-
-            <div className="flex min-w-0 flex-col gap-4">
-              <PartnerReviewFooter review={review} />
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={split}
-                  onClick={() => setSplit((v) => !v)}
-                  className={`pm-chip ${split ? 'pm-chip--active' : ''}`}
-                >
-                  Pisahkan paket
-                </button>
-                {split && review.submitted && (
-                  <span
-                    className="text-[12px]"
-                    style={{ color: 'var(--app-text-soft)' }}
-                  >
-                    Matikan &quot;Pisahkan paket&quot; untuk mengisi jumlah yang
-                    dapat.
-                  </span>
-                )}
-              </div>
-
-              {data.rows.length === 0 ? (
-                <div className="app-card flex flex-col items-center gap-2 p-8 text-center">
-                  <PackageCheck
-                    size={28}
-                    style={{ color: 'var(--app-text-soft)' }}
-                  />
-                  <p
-                    className="text-sm"
-                    style={{ color: 'var(--app-text-soft)' }}
-                  >
-                    Belum ada barang dari jastiper ini.
-                  </p>
-                </div>
+                  Hubungi via WhatsApp
+                </a>
               ) : (
-                <>
+                <p className="text-[13px]" style={{ color: 'var(--app-text-soft)' }}>
+                  Nomor WhatsApp belum diisi.
+                </p>
+              )}
+            </section>
+          </aside>
+
+          <div className="flex min-w-0 flex-col gap-4">
+            {rows.length === 0 ? (
+              <div className="app-card flex flex-col items-center gap-3 px-8 py-14 text-center">
+                <span
+                  className="flex size-14 items-center justify-center rounded-full"
+                  style={{ background: 'var(--pm-tint)', color: 'var(--pm-gold)' }}
+                >
+                  <Ellipsis size={22} />
+                </span>
+                <p className="text-[15px] font-bold">
+                  Jastiper ini belum memasukkan pesanan.
+                </p>
+                <p className="max-w-md text-[13px]" style={{ color: 'var(--app-text-soft)' }}>
+                  Barang muncul di sini begitu jastiper menambahkannya, bahkan
+                  sebelum submit.
+                </p>
+              </div>
+            ) : (
+              <>
                 <PartnerTableToolbar
                   search={search}
                   onSearchChange={(value) => {
                     setSearch(value)
-                    groupedPager.resetPage()
+                    pager.resetPage()
                   }}
                   placeholder="Cari nama produk"
                   label="Cari nama produk"
-                  pager={groupedPager.pager}
+                  pager={pager.pager}
                 />
                 <div className="app-card overflow-x-auto p-0">
                   <table className="w-full text-[13px]">
                     <thead style={{ background: 'var(--pm-tint)' }}>
                       <tr>
-                        {[
-                          'Produk',
-                          'Ukuran',
-                          'Variasi',
-                          ...(split ? ['Jenis paket'] : []),
-                          'Harga partner',
-                          ...(reviewing
-                            ? [
-                                'Diminta (pcs)',
-                                'Dapat (pcs)',
-                                ...(hasPending ? ['Pengganti dapat'] : []),
-                              ]
-                            : ['Qty (pcs)']),
-                        ].map((h) => (
+                        {columns.map((h) => (
                           <th
                             key={h}
-                            className={`px-4 py-3 text-left text-[11px] font-semibold ${h.startsWith('Qty') || h === 'Harga partner' || (reviewing && h !== 'Produk' && h !== 'Ukuran' && h !== 'Variasi') ? 'text-right' : ''}`}
-                            style={{ color: 'var(--app-text-soft)' }}
+                            className={`px-4 py-3 text-[11px] font-semibold uppercase tracking-wide ${rightAligned.has(h) ? 'text-right' : 'text-left'}`}
+                            style={{ color: 'var(--pm-gold)' }}
                           >
                             {h}
                           </th>
@@ -337,118 +353,97 @@ function PartnerJastiperDetailPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {groupedPager.paged.map((row) => (
-                        <tr
-                          key={row.key}
-                          className="border-t"
-                          style={{ borderColor: 'var(--app-border)' }}
-                        >
-                          <td className="px-4 py-3 font-bold">
-                            {row.productName}
-                          </td>
-                          <td className="px-4 py-3">{row.size ?? '-'}</td>
-                          <td className="px-4 py-3">{row.variation ?? '-'}</td>
-                          {split && (
-                            <td className="px-4 py-3">
-                              <span className="app-badge">
-                                {row.ruleName
-                                  ? `Paket: ${row.ruleName}`
-                                  : 'Satuan'}
-                              </span>
-                            </td>
-                          )}
-                          <td className="pm-num px-4 py-3 text-right">
-                            {formatRupiah(row.unitPrice)}
-                          </td>
-                          {reviewing && row.variantId ? (
-                            <>
-                              <td className="pm-num px-4 py-3 text-right text-sm font-bold">
-                                {row.requested}
+                      {pager.paged.map((row, i) => {
+                        const chip = chipFor(row)
+                        const number = pager.pager.pageSize * (pager.pager.page - 1) + i + 1
+                        const editableInput =
+                          row.variantId !== null &&
+                          ((status === 'terkirim' && !row.replacement) ||
+                            (verifying && row.replacement))
+                        const inputValue: string | undefined = row.variantId
+                          ? (row.replacement ? review.pending : review.approved)[
+                              row.variantId
+                            ]
+                          : undefined
+                        const short =
+                          Number(inputValue ?? row.requested) < row.requested
+                        return (
+                          <tr
+                            key={row.key}
+                            className="border-t"
+                            style={{ borderColor: 'var(--app-border)' }}
+                          >
+                            {verifying && (
+                              <td className="pm-num px-4 py-3" style={{ color: 'var(--app-text-soft)' }}>
+                                #{number}
                               </td>
+                            )}
+                            <td className="px-4 py-3 font-bold">{row.productName}</td>
+                            <td className="px-4 py-3">{row.size ?? '-'}</td>
+                            <td className="px-4 py-3">{row.variation ?? '-'}</td>
+                            <td className="pm-num px-4 py-3 text-right">
+                              {formatRupiah(row.unitPrice)}
+                            </td>
+                            <td className="pm-num px-4 py-3 text-right font-bold">
+                              {row.requested}
+                            </td>
+                            {!isDraft && (
                               <td className="px-4 py-3 text-right">
-                                <input
-                                  type="number"
-                                  min={0}
-                                  max={row.requested}
-                                  inputMode="numeric"
-                                  aria-label={`Dapat: ${row.productName} ${row.size ?? ''} ${row.variation ?? ''}`}
-                                  value={review.approved[row.variantId] ?? ''}
-                                  onChange={(e) =>
-                                    review.setApprovedFor(
-                                      row.variantId as string,
-                                      e.target.value,
-                                    )
-                                  }
-                                  className="pm-num w-20 rounded-xl border px-2 py-1.5 text-right text-sm font-bold"
-                                  style={{
-                                    borderColor: 'var(--app-border)',
-                                    color:
-                                      Number(
-                                        review.approved[row.variantId] ??
-                                          row.requested,
-                                      ) < (row.requested ?? 0)
-                                        ? '#b42318'
-                                        : 'var(--app-accent)',
-                                  }}
-                                />
+                                {editableInput && row.variantId ? (
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    max={row.requested}
+                                    inputMode="numeric"
+                                    aria-label={`Dapat: ${row.productName} ${row.size ?? ''} ${row.variation ?? ''}`}
+                                    value={inputValue ?? ''}
+                                    onChange={(e) =>
+                                      row.replacement
+                                        ? review.setPendingFor(row.variantId as string, e.target.value)
+                                        : review.setApprovedFor(row.variantId as string, e.target.value)
+                                    }
+                                    className="pm-num w-16 rounded-xl border px-2 py-1.5 text-right text-sm font-bold"
+                                    style={{
+                                      borderColor: short ? '#b42318' : 'var(--app-border)',
+                                    }}
+                                  />
+                                ) : (
+                                  <span className="pm-num font-bold">
+                                    {row.approved ?? '-'}
+                                  </span>
+                                )}
                               </td>
-                              {hasPending && (
-                                <td className="px-4 py-3 text-right">
-                                  {(row.pendingPcs ?? 0) > 0 ? (
-                                    <span className="inline-flex items-center gap-1.5">
-                                      <input
-                                        type="number"
-                                        min={0}
-                                        max={row.pendingPcs}
-                                        inputMode="numeric"
-                                        aria-label={`Pengganti dapat: ${row.productName}`}
-                                        value={
-                                          review.pending[row.variantId] ?? ''
-                                        }
-                                        onChange={(e) =>
-                                          review.setPendingFor(
-                                            row.variantId as string,
-                                            e.target.value,
-                                          )
-                                        }
-                                        className="pm-num w-16 rounded-xl border px-2 py-1.5 text-right text-sm"
-                                        style={{
-                                          borderColor: 'var(--app-border)',
-                                        }}
-                                      />
-                                      <span
-                                        className="text-[12px]"
-                                        style={{
-                                          color: 'var(--app-text-soft)',
-                                        }}
-                                      >
-                                        / {row.pendingPcs}
-                                      </span>
-                                    </span>
-                                  ) : (
-                                    '-'
-                                  )}
-                                </td>
-                              )}
-                            </>
-                          ) : (
-                            <td
-                              className="pm-num px-4 py-3 text-right text-sm font-bold"
-                              style={{ color: 'var(--app-accent)' }}
-                            >
-                              {row.qty}
+                            )}
+                            <td className="px-4 py-3">
+                              <PartnerRowChip label={chip.label} tone={chip.tone} />
                             </td>
-                          )}
-                        </tr>
-                      ))}
+                            {verifying && (
+                              <td className="px-4 py-3 text-[12px]" style={{ color: 'var(--app-text-soft)' }}>
+                                {row.replacement
+                                  ? row.replaces.length > 0
+                                    ? `pengganti ${row.replaces.map((x) => x.label).join(', ')}`
+                                    : 'pengganti barang yang kurang'
+                                  : row.replacedPcs > 0
+                                    ? `diganti ${replacementsFor(row.variantId).join(', ') || 'barang lain'}`
+                                    : '—'}
+                              </td>
+                            )}
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>
-                </>
-              )}
-            </div>
+                {isDraft && (
+                  <p className="text-[12px]" style={{ color: 'var(--app-text-soft)' }}>
+                    Belum disubmit. Barang belum masuk pengecekan dan tagihan.
+                  </p>
+                )}
+                <Pagination {...pager.pager} className="justify-end" />
+              </>
+            )}
           </div>
-        </>
+        </div>
       )}
     </main>
   )

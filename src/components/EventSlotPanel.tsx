@@ -1,3 +1,4 @@
+import { buildWhatsAppLink } from '../lib/format'
 import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Lock, X } from 'lucide-react'
@@ -214,6 +215,25 @@ export default function EventSlotPanel({
               atau tidak ganti: sisa barang dari paket kembali jadi satuan.
               Kalau tidak memilih sampai batas waktu, otomatis tidak ganti.
             </p>
+            <p className="text-xs font-semibold" style={{ color: 'var(--app-danger)' }}>
+              Kesempatan mengganti hanya sekali. Kalau barang penggantinya masih
+              kurang saat dicek partner, hasilnya final dan yang tidak dapat
+              tidak masuk tagihan.
+            </p>
+            {summary.partnerContact?.waNumber && (
+              <a
+                href={buildWhatsAppLink(
+                  summary.partnerContact.waNumber,
+                  `Halo ${summary.partnerContact.name}, saya mau memastikan stok produk pengganti sebelum memilih ganti di ALAKA.`,
+                )}
+                target="_blank"
+                rel="noreferrer"
+                className="app-btn-outline w-fit no-underline"
+                style={{ minHeight: 36, fontSize: 12 }}
+              >
+                Pastikan stok ke {summary.partnerContact.name} via WhatsApp
+              </a>
+            )}
             {sanggahBundles.map(({ order, item }) => {
               const options = item.partnerRuleId
                 ? (variantOptionsByRule[item.partnerRuleId] ?? [])

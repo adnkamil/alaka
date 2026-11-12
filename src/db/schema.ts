@@ -606,6 +606,16 @@ export const itemComponents = pgTable(
      * paket ini bermasalah dan paketnya masuk sanggah.
      */
     approvedQty: integer('approved_qty'),
+    /**
+     * Untuk barang pengganti: varian yang digantikan dan labelnya (snapshot,
+     * mis. "Kingu Avery Long · L · Teracotta"). Dipakai halaman cek partner
+     * untuk menampilkan "Sudah diganti" / "Pengganti". Null = bukan pengganti.
+     */
+    replacedVariantId: uuid('replaced_variant_id').references(
+      () => partnerVariants.id,
+      { onDelete: 'set null' },
+    ),
+    replacedLabel: text('replaced_label'),
     // Waktu asli item satuan masuk. Dipakai FIFO saat komponen kembali ke satuan.
     addedAt: timestamp('added_at', { withTimezone: true })
       .notNull()
@@ -1278,14 +1288,22 @@ export const notifications = pgTable(
     brandId: uuid('brand_id').references(() => brands.id, {
       onDelete: 'cascade',
     }),
-    kind: varchar().notNull(), // 'event_baru' | 'info_alaka'
+    kind: varchar().notNull(), // 'event_baru' | 'info_alaka' | 'status_pesanan'
     title: varchar().notNull(),
     body: text(),
-    target: varchar().notNull().default('none'), // 'none' | 'beranda' | 'kalender' | 'keuangan' | 'profil'
+    target: varchar().notNull().default('none'), // 'none' | 'beranda' | 'kalender' | 'keuangan' | 'profil' | 'event'
     calendarEventId: uuid('calendar_event_id').references(
       () => calendarEvents.id,
       { onDelete: 'set null' },
     ),
+    /**
+     * Event belanja jastiper yang dituju kalau target = 'event' (mis. status
+     * pesanan di event partner berubah). CASCADE: notifikasinya ikut hilang
+     * kalau event belanjanya dihapus.
+     */
+    eventId: uuid('event_id').references(() => events.id, {
+      onDelete: 'cascade',
+    }),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),

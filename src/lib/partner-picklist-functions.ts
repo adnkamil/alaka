@@ -2,6 +2,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { and, eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
 import { requirePartner } from './partner-auth'
+import { partnerStatusFilterKey } from './event-slot'
 import { buildPicklist, type PicklistSourceRow } from './partner-picklist-rules'
 
 const idSchema = z.uuid()
@@ -17,6 +18,13 @@ export const getPartnerEventPicklist = createServerFn({ method: 'GET' })
       calendarEventId: idSchema,
       /** null = semua, "satuan" = hanya satuan, atau id aturan paket. */
       ruleFilter: z.string().nullable().optional(),
+      /**
+       * Rekap hanya jastiper dengan status ini (sama dengan chip di halaman
+       * event). "semua" (bawaan) ikut menghitung draft.
+       */
+      status: z
+        .enum(['semua', 'draft', 'pengajuan', 'dikembalikan', 'disetujui'])
+        .default('semua'),
     }),
   )
   .handler(async ({ data }) => {
@@ -55,10 +63,23 @@ export const getPartnerEventPicklist = createServerFn({ method: 'GET' })
       .where(eq(partnerPricingRules.partnerId, partner.id))
     const ruleNameById = new Map(rules.map((r) => [r.id, r.name]))
 
-    const jastiperEvents = await db
+    const allJastiperEvents = await db
       .select({ id: events.id, brandId: events.brandId })
       .from(events)
       .where(eq(events.calendarEventId, data.calendarEventId))
+    let jastiperEvents = allJastiperEvents
+    if (data.status !== 'semua' && allJastiperEvents.length > 0) {
+      const { listSlotQueue } = await import('./event-slot-queries')
+      const queue = await db.transaction((tx) =>
+        listSlotQueue(tx, data.calendarEventId, new Date()),
+      )
+      const statusByEvent = new Map(queue.map((q) => [q.eventId, q.status]))
+      jastiperEvents = allJastiperEvents.filter(
+        (e) =>
+          partnerStatusFilterKey(statusByEvent.get(e.id) ?? null) ===
+          data.status,
+      )
+    }
     if (jastiperEvents.length === 0) {
       return { rules, rows: [] }
     }

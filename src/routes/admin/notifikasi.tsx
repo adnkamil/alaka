@@ -11,7 +11,7 @@ import {
   listAlakaNotifications,
   sendAlakaNotification,
 } from '../../lib/notification-functions'
-import type { NotificationTarget } from '../../lib/notification-functions'
+import type { AdminNotificationTarget } from '../../lib/notification-functions'
 import { APP_TIME_ZONE } from '../../lib/timezone'
 
 const alakaNotificationsQuery = queryOptions({
@@ -25,7 +25,7 @@ export const Route = createFileRoute('/admin/notifikasi')({
   component: AdminNotifikasiPage,
 })
 
-const TARGET_OPTIONS: Array<{ value: NotificationTarget; label: string }> = [
+const TARGET_OPTIONS: Array<{ value: AdminNotificationTarget; label: string }> = [
   { value: 'none', label: 'Tidak ada (hanya info)' },
   { value: 'beranda', label: 'Beranda' },
   { value: 'kalender', label: 'Daftar event' },
@@ -35,7 +35,7 @@ const TARGET_OPTIONS: Array<{ value: NotificationTarget; label: string }> = [
 
 const TARGET_LABEL = Object.fromEntries(
   TARGET_OPTIONS.map((o) => [o.value, o.label]),
-) as Record<NotificationTarget, string>
+) as Record<string, string | undefined>
 
 const TITLE_MAX = 120
 const BODY_MAX = 500
@@ -46,7 +46,7 @@ function AdminNotifikasiPage() {
 
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
-  const [target, setTarget] = useState<NotificationTarget>('none')
+  const [target, setTarget] = useState<AdminNotificationTarget>('none')
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -156,7 +156,7 @@ function AdminNotifikasiPage() {
             id="notif-target"
             className="app-input w-full"
             value={target}
-            onChange={(e) => setTarget(e.target.value as NotificationTarget)}
+            onChange={(e) => setTarget(e.target.value as AdminNotificationTarget)}
           >
             {TARGET_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
@@ -226,7 +226,7 @@ function AdminNotifikasiPage() {
                   minute: '2-digit',
                   timeZone: APP_TIME_ZONE,
                 })}{' '}
-                · Tujuan: {TARGET_LABEL[item.target]}
+                · Tujuan: {TARGET_LABEL[item.target] ?? 'Detail pesanan'}
               </p>
             </div>
           ))}

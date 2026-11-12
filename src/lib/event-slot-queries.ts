@@ -7,8 +7,10 @@ import {
   events,
   itemComponents,
   items,
+  notifications,
   orders,
   partnerRuleProducts,
+  partners,
   partnerRuleSizes,
   partnerVariants,
 } from '../db/schema'
@@ -19,9 +21,16 @@ import {
   deriveSlotStatus,
   isSanggahExpired,
   planReplacement,
+  reviewLockedReason,
+  slotStatusNotice,
   validateSanggahDeadline,
 } from './event-slot'
-import type { BundleReviewState, SlotConfig, SlotStatus } from './event-slot'
+import type {
+  BundleReviewState,
+  SlotConfig,
+  SlotNotice,
+  SlotStatus,
+} from './event-slot'
 import type { OrderTx } from './order-status-queries'
 import { recalculateOrderStatus } from './order-status-queries'
 import { partnerItemName, variantLabel } from './partner-item-label'
@@ -140,6 +149,8 @@ export type SlotSummary = {
   total: number | null
   /** Status review per id paket; hanya terisi setelah partner selesai mengecek. */
   bundleStates: Record<string, BundleReviewState>
+  /** Kontak partner (brand) supaya jastiper bisa memastikan stok pengganti. */
+  partnerContact: { name: string; waNumber: string | null } | null
 }
 
 type SlotEventRow = Pick<
@@ -186,7 +197,71 @@ export async function getSlotSummary(
     rank: position?.rank ?? null,
     total: position?.total ?? null,
     bundleStates: reviewed ? Object.fromEntries(states) : {},
+    partnerContact: config.partnerId
+      ? ((await tx
+          .select({ name: partners.name, waNumber: partners.waNumber })
+          .from(partners)
+          .where(eq(partners.id, config.partnerId))
+          .then((rows) => rows.at(0))) ?? null)
+      : null,
   }
+}
+
+// ---------------------------------------------------------------------------
+// Notifikasi status ke jastiper
+
+async function readSlotStatus(
+  tx: OrderTx,
+  eventId: string,
+  now: Date,
+): Promise<SlotStatus | null> {
+  const event = await tx.query.events.findFirst({
+    where: eq(events.id, eventId),
+  })
+  if (!event) return null
+  return (await getSlotSummary(tx, event, now))?.status ?? null
+}
+
+/** Sidik jari hasil cek (jumlah dapat dan pengganti) untuk mendeteksi koreksi. */
+async function reviewSnapshot(tx: OrderTx, eventId: string): Promise<string> {
+  const groups = await loadReviewGroups(tx, eventId)
+  return JSON.stringify(
+    groups.map((g) => [g.variantId, g.approvedPcs, g.pendingPcs]),
+  )
+}
+
+async function loadCalendarEventName(
+  tx: OrderTx,
+  calendarEventId: string | null,
+): Promise<string> {
+  if (!calendarEventId) return 'event'
+  const row = await tx
+    .select({ name: calendarEvents.name })
+    .from(calendarEvents)
+    .where(eq(calendarEvents.id, calendarEventId))
+    .then((rows) => rows.at(0))
+  return row?.name ?? 'event'
+}
+
+/**
+ * Catat notifikasi perubahan status untuk brand pemilik event jastiper. Dipakai
+ * di dalam transaksi yang sama dengan perubahannya, jadi notifikasi tidak bisa
+ * tertinggal atau terkirim dobel.
+ */
+async function notifyJastiperStatus(
+  tx: OrderTx,
+  event: { id: string; brandId: string; calendarEventId: string | null },
+  notice: SlotNotice,
+) {
+  await tx.insert(notifications).values({
+    brandId: event.brandId,
+    kind: notice.kind,
+    title: notice.title,
+    body: notice.body,
+    target: 'event',
+    eventId: event.id,
+    calendarEventId: event.calendarEventId,
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -301,10 +376,25 @@ export async function replaceBundleComponent(
     variation: info.variation,
   }
 
+  // Catat barang yang digantikan supaya partner melihat "diganti" / "pengganti".
+  const replacedFrom =
+    component.partnerVariantId === input.variantId
+      ? {
+          replacedVariantId: component.replacedVariantId,
+          replacedLabel: component.replacedLabel,
+        }
+      : {
+          replacedVariantId: component.partnerVariantId,
+          replacedLabel: partnerItemName(
+            component.productName,
+            variantLabel({ size: component.size, variation: component.variation }),
+          ),
+        }
+
   if (plan.kind === 'swap') {
     await tx
       .update(itemComponents)
-      .set({ ...snapshot, approvedQty: null })
+      .set({ ...snapshot, ...replacedFrom, approvedQty: null })
       .where(eq(itemComponents.id, component.id))
   } else {
     await tx
@@ -314,6 +404,7 @@ export async function replaceBundleComponent(
     await tx.insert(itemComponents).values({
       itemId: bundle.id,
       ...snapshot,
+      ...replacedFrom,
       qty: plan.newQty,
       approvedQty: null,
       addedAt: component.addedAt,
@@ -377,6 +468,16 @@ export async function resolveExpiredSanggah(
       .update(events)
       .set({ decidedAt: now })
       .where(eq(events.id, eventId))
+    const notice = slotStatusNotice({
+      reason: 'expired',
+      status: await readSlotStatus(tx, eventId, now),
+      previous: null,
+      firstReview: false,
+      resultsChanged: true,
+      eventName: await loadCalendarEventName(tx, event.calendarEventId),
+      sanggahDeadline: event.sanggahDeadline,
+    })
+    if (notice) await notifyJastiperStatus(tx, event, notice)
   }
   return resolved
 }
@@ -415,6 +516,10 @@ export type ReviewGroup = {
   approvedPcs: number | null
   /** Pcs barang pengganti yang menunggu verifikasi. */
   pendingPcs: number
+  /** Pcs varian ini yang sudah digantikan barang pengganti (menunggu verifikasi). */
+  replacedPcs: number
+  /** Untuk baris pengganti: barang yang digantikannya. */
+  replaces: Array<{ variantId: string | null; label: string }>
 }
 
 type DemandRow = {
@@ -424,6 +529,8 @@ type DemandRow = {
   variantId: string
   kind: 'satuan' | 'komponen'
   pending: boolean
+  replacedVariantId?: string | null
+  replacedLabel?: string | null
 }
 
 async function loadEventDemand(
@@ -455,6 +562,8 @@ async function loadEventDemand(
       approvedQty: itemComponents.approvedQty,
       addedAt: itemComponents.addedAt,
       variantId: itemComponents.partnerVariantId,
+      replacedVariantId: itemComponents.replacedVariantId,
+      replacedLabel: itemComponents.replacedLabel,
     })
     .from(itemComponents)
     .innerJoin(items, eq(items.id, itemComponents.itemId))
@@ -492,6 +601,8 @@ async function loadEventDemand(
       pending: reviewed && c.approvedQty === null,
       requested: c.qty,
       approved: reviewed ? c.approvedQty : null,
+      replacedVariantId: c.replacedVariantId,
+      replacedLabel: c.replacedLabel,
     })
   }
   return rows
@@ -508,10 +619,10 @@ export async function loadReviewGroups(
   if (!event) return []
   const reviewed = event.reviewedAt !== null
   const demand = await loadEventDemand(tx, eventId, reviewed)
-  const infoMap = await loadVariantInfo(
-    tx,
-    demand.map((d) => d.variantId),
-  )
+  const infoMap = await loadVariantInfo(tx, [
+    ...demand.map((d) => d.variantId),
+    ...demand.flatMap((d) => (d.replacedVariantId ? [d.replacedVariantId] : [])),
+  ])
   const groups = new Map<string, ReviewGroup>()
   for (const d of demand) {
     const info = infoMap.get(d.variantId)
@@ -528,9 +639,17 @@ export async function loadReviewGroups(
         paketPcs: 0,
         approvedPcs: reviewed ? 0 : null,
         pendingPcs: 0,
+        replacedPcs: 0,
+        replaces: [],
       } satisfies ReviewGroup)
     if (d.pending) {
       group.pendingPcs += d.qty
+      if (d.replacedLabel) {
+        group.replaces.push({
+          variantId: d.replacedVariantId ?? null,
+          label: d.replacedLabel,
+        })
+      }
     } else {
       group.requestedPcs += d.requested
       if (d.kind === 'satuan') group.satuanPcs += d.requested
@@ -539,6 +658,33 @@ export async function loadReviewGroups(
         group.approvedPcs = (group.approvedPcs ?? 0) + (d.approved ?? 0)
     }
     groups.set(d.variantId, group)
+  }
+  // Barang yang digantikan: tambahkan pcs-nya ke baris aslinya. Kalau seluruhnya
+  // ditukar (tidak dapat sama sekali), baris aslinya sudah tidak ada di data,
+  // jadi dibentuk ulang dari label yang tersimpan.
+  for (const d of demand) {
+    if (!d.pending || !d.replacedVariantId) continue
+    const originalInfo = infoMap.get(d.replacedVariantId)
+    const original =
+      groups.get(d.replacedVariantId) ??
+      ({
+        variantId: d.replacedVariantId,
+        productName:
+          originalInfo?.productName ??
+          d.replacedLabel ??
+          'Barang yang digantikan',
+        size: originalInfo?.size ?? null,
+        variation: originalInfo?.variation ?? null,
+        requestedPcs: 0,
+        satuanPcs: 0,
+        paketPcs: 0,
+        approvedPcs: 0,
+        pendingPcs: 0,
+        replacedPcs: 0,
+        replaces: [],
+      } satisfies ReviewGroup)
+    original.replacedPcs += d.qty
+    groups.set(d.replacedVariantId, original)
   }
   return [...groups.values()].sort(
     (a, b) =>
@@ -598,7 +744,7 @@ export async function saveReviewResults(
     deadline: Date | null
     now: Date
   },
-): Promise<{ firstReview: boolean }> {
+): Promise<{ firstReview: boolean; finalizedShortage: number }> {
   const event = await tx.query.events.findFirst({
     where: eq(events.id, input.eventId),
   })
@@ -607,6 +753,10 @@ export async function saveReviewResults(
     throw new Error('Jastiper ini belum mengirim pesanan.')
   }
   const firstReview = event.reviewedAt === null
+  const statusBefore = await readSlotStatus(tx, event.id, input.now)
+  const locked = reviewLockedReason(statusBefore)
+  if (locked) throw new Error(locked)
+  const snapshotBefore = await reviewSnapshot(tx, event.id)
 
   let deadline = event.sanggahDeadline
   if (input.deadline !== null) {
@@ -627,6 +777,7 @@ export async function saveReviewResults(
   for (const d of demand) {
     byVariant.set(d.variantId, [...(byVariant.get(d.variantId) ?? []), d])
   }
+  let finalizedShortage = 0
   const resultByVariant = new Map(input.results.map((r) => [r.variantId, r]))
   for (const r of input.results) {
     if (!byVariant.has(r.variantId)) {
@@ -667,6 +818,40 @@ export async function saveReviewResults(
         .set({ sanggahDeadline: deadline })
         .where(eq(events.id, input.eventId))
     }
+    // Sanggah hanya sekali: paket yang sudah diganti tapi penggantinya masih
+    // kurang langsung difinalkan (hanya pcs yang dapat), tidak ada putaran kedua.
+    if (statusBefore === 'menunggu_verifikasi') {
+      const bundleRows = await tx
+        .select({ id: items.id })
+        .from(items)
+        .innerJoin(orders, eq(orders.id, items.orderId))
+        .where(and(eq(orders.eventId, input.eventId), eq(items.isBundle, true)))
+      for (const { id } of bundleRows) {
+        const bundle = await tx.query.items.findFirst({
+          where: eq(items.id, id),
+          with: { components: true },
+        })
+        if (!bundle) continue
+        const replaced = bundle.components.some(
+          (c) => c.replacedVariantId !== null,
+        )
+        const pending = bundle.components.some((c) => c.approvedQty === null)
+        if (
+          replaced &&
+          !pending &&
+          bundleReviewState(bundle.components) === 'sanggah'
+        ) {
+          await keepBundleWithoutReplacement(tx, id)
+          finalizedShortage += 1
+        }
+      }
+      if (finalizedShortage > 0) {
+        await tx
+          .update(events)
+          .set({ decidedAt: input.now })
+          .where(eq(events.id, input.eventId))
+      }
+    }
   }
 
   // Pcs yang disetujui bisa membentuk paket baru (FIFO), dan total pesanan berubah.
@@ -677,7 +862,19 @@ export async function saveReviewResults(
   for (const order of eventOrders) {
     await regroupAllRulesInOrder(tx, order.id)
   }
-  return { firstReview }
+
+  const notice = slotStatusNotice({
+    reason: 'review',
+    status: await readSlotStatus(tx, event.id, input.now),
+    previous: statusBefore,
+    firstReview,
+    resultsChanged: (await reviewSnapshot(tx, event.id)) !== snapshotBefore,
+    eventName: await loadCalendarEventName(tx, event.calendarEventId),
+    sanggahDeadline: deadline,
+    finalizedShortage: finalizedShortage > 0,
+  })
+  if (notice) await notifyJastiperStatus(tx, event, notice)
+  return { firstReview, finalizedShortage }
 }
 
 // ---------------------------------------------------------------------------
