@@ -18,7 +18,7 @@ export default function PartnerRevenueCard({
   approvedAmount: number
   waitingAmount: number
 }) {
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
   const label = {
     color: 'var(--app-text-soft)',
   }

@@ -23,7 +23,7 @@ export const getPartnerEventPicklist = createServerFn({ method: 'GET' })
        * event). "semua" (bawaan) ikut menghitung draft.
        */
       status: z
-        .enum(['semua', 'draft', 'pengajuan', 'dikembalikan', 'disetujui'])
+        .enum(['semua', 'draft', 'pengajuan', 'selesai'])
         .default('semua'),
     }),
   )

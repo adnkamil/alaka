@@ -1,33 +1,16 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import {
-  ORDERS_LOCKED_MESSAGE,
-  allocateApproval,
-  applySatuanApproval,
-  approvalKind,
-  assertOrdersEditable,
-  buildKabariMessage,
-  bundleReviewState,
-  checkCanSubmit,
-  checkComponentApproval,
-  componentsToReturn,
   deriveSlotStatus,
   formatRemaining,
-  isSanggahExpired,
   isSlotEnabled,
   parseWibLocal,
-  planReplacement,
-  partnerPageSubtitle,
   partnerStatusBadge,
-  partnerStatusCopy,
   partnerStatusFilterKey,
-  reviewLockedReason,
   slotWindowWarnings,
   validateSlotChange,
   slotPhase,
-  slotStatusNotice,
   toWibLocal,
-  validateSanggahDeadline,
   validateSlotWindow
   
 } from './event-slot'
@@ -76,241 +59,57 @@ describe('validateSlotWindow', () => {
   })
 })
 
-describe('checkCanSubmit', () => {
-  const base = { config, submittedAt: null, itemCount: 2, now: at(11) }
-  it('lolos saat slot terbuka dan ada barang', () => {
-    assert.deepEqual(checkCanSubmit(base), { ok: true })
-  })
-  it('ditolak sebelum slot dibuka', () => {
-    const r = checkCanSubmit({ ...base, now: at(9) })
-    assert.equal(r.ok, false)
-  })
-  it('ditolak setelah slot ditutup', () => {
-    const r = checkCanSubmit({ ...base, now: at(12, 0, 1) })
-    assert.equal(r.ok, false)
-  })
-  it('ditolak kalau sudah submit', () => {
-    const r = checkCanSubmit({ ...base, submittedAt: at(10, 30) })
-    assert.equal(r.ok, false)
-  })
-  it('ditolak kalau tidak ada barang', () => {
-    const r = checkCanSubmit({ ...base, itemCount: 0 })
-    assert.equal(r.ok, false)
-  })
-  it('ditolak untuk event tanpa alur slot', () => {
-    assert.equal(checkCanSubmit({ ...base, config: null }).ok, false)
-    assert.equal(
-      checkCanSubmit({ ...base, config: { ...config, partnerId: null } }).ok,
-      false,
-    )
-  })
-})
-
-describe('kunci pesanan', () => {
-  it('bebas diubah sebelum submit, terkunci sesudahnya', () => {
-    assert.doesNotThrow(() => assertOrdersEditable({ submittedAt: null }))
-    assert.throws(
-      () => assertOrdersEditable({ submittedAt: at(10, 5) }),
-      new Error(ORDERS_LOCKED_MESSAGE),
-    )
-  })
-})
-
-describe('applySatuanApproval', () => {
-  it('menyimpan permintaan asli dan memakai jumlah yang dapat', () => {
-    assert.deepEqual(applySatuanApproval({ qty: 5, requestedQty: null }, 3), {
-      qty: 3,
-      requestedQty: 5,
-    })
-  })
-  it('koreksi memakai permintaan asli sebagai batas atas', () => {
-    assert.deepEqual(applySatuanApproval({ qty: 3, requestedQty: 5 }, 5), {
-      qty: 5,
-      requestedQty: 5,
-    })
-    assert.throws(() => applySatuanApproval({ qty: 3, requestedQty: 5 }, 6))
-  })
-  it('tidak dapat = 0, tidak boleh negatif atau pecahan', () => {
-    assert.deepEqual(applySatuanApproval({ qty: 2, requestedQty: null }, 0), {
-      qty: 0,
-      requestedQty: 2,
-    })
-    assert.throws(() => applySatuanApproval({ qty: 2, requestedQty: null }, -1))
-    assert.throws(() =>
-      applySatuanApproval({ qty: 2, requestedQty: null }, 1.5),
-    )
-  })
-})
-
-describe('checkComponentApproval / approvalKind', () => {
-  it('batas jumlah komponen', () => {
-    assert.doesNotThrow(() => checkComponentApproval(2, 0))
-    assert.doesNotThrow(() => checkComponentApproval(2, 2))
-    assert.throws(() => checkComponentApproval(2, 3))
-    assert.throws(() => checkComponentApproval(2, -1))
-  })
-  it('jenis hasil', () => {
-    assert.equal(approvalKind(3, 3), 'dapat')
-    assert.equal(approvalKind(3, 1), 'sebagian')
-    assert.equal(approvalKind(3, 0), 'tidak_dapat')
-  })
-})
-
-describe('bundleReviewState', () => {
-  it('ok kalau semua disetujui penuh', () => {
-    assert.equal(
-      bundleReviewState([
-        { qty: 1, approvedQty: 1 },
-        { qty: 2, approvedQty: 2 },
-      ]),
-      'ok',
-    )
-  })
-  it('sanggah kalau ada yang tidak atau sebagian dapat', () => {
-    assert.equal(
-      bundleReviewState([
-        { qty: 1, approvedQty: 1 },
-        { qty: 1, approvedQty: 0 },
-      ]),
-      'sanggah',
-    )
-    assert.equal(bundleReviewState([{ qty: 3, approvedQty: 2 }]), 'sanggah')
-  })
-  it('verifikasi kalau ada pengganti yang menunggu partner', () => {
-    assert.equal(
-      bundleReviewState([
-        { qty: 1, approvedQty: 1 },
-        { qty: 1, approvedQty: null },
-      ]),
-      'verifikasi',
-    )
-  })
-  it('sanggah didahulukan dari verifikasi', () => {
-    assert.equal(
-      bundleReviewState([
-        { qty: 1, approvedQty: 0 },
-        { qty: 1, approvedQty: null },
-      ]),
-      'sanggah',
-    )
-  })
-})
-
 describe('deriveSlotStatus', () => {
-  const base = {
-    config,
-    submittedAt: null as Date | null,
-    reviewedAt: null as Date | null,
-    decidedAt: null as Date | null,
-    bundleStates: [] as Array<'ok' | 'sanggah' | 'verifikasi'>,
-    now: at(11),
-  }
-  it('null untuk event tanpa alur slot', () => {
+  const now = new Date('2026-11-13T10:00:00+07:00')
+  const open = {
+    opensAt: new Date('2026-11-13T08:00:00+07:00'),
+    closesAt: new Date('2026-11-13T18:00:00+07:00'),
+  } as const
+  const base = { submittedAt: null, pendingCount: 0, disanggahCount: 0, now }
+
+  it('null kalau slot tidak aktif', () => {
     assert.equal(deriveSlotStatus({ ...base, config: null }), null)
   })
-  it('sebelum submit mengikuti fase slot', () => {
-    assert.equal(deriveSlotStatus({ ...base, now: at(9) }), 'belum_dibuka')
-    assert.equal(deriveSlotStatus(base), 'draft')
-    assert.equal(deriveSlotStatus({ ...base, now: at(13) }), 'ditutup')
-  })
-  it('terkirim sampai partner selesai mengecek', () => {
+
+  it('belum submit: draft saat slot terbuka', () => {
     assert.equal(
-      deriveSlotStatus({ ...base, submittedAt: at(10, 1) }),
+      deriveSlotStatus({ ...base, config: { ...open, partnerId: 'p1' } as never }),
+      'draft',
+    )
+  })
+
+  it('setelah submit dengan pengajuan menunggu: terkirim', () => {
+    assert.equal(
+      deriveSlotStatus({
+        ...base,
+        submittedAt: now,
+        pendingCount: 2,
+        config: { ...open, partnerId: 'p1' } as never,
+      }),
       'terkirim',
     )
   })
-  it('setelah dicek: sanggah, verifikasi, menyetujui, disetujui', () => {
-    const reviewed = {
-      ...base,
-      submittedAt: at(10, 1),
-      reviewedAt: at(14),
-      now: at(15),
-    }
-    assert.equal(deriveSlotStatus(reviewed), 'disetujui')
+
+  it('tidak ada yang menunggu tapi ada barang disanggah: sanggah', () => {
     assert.equal(
-      deriveSlotStatus({ ...reviewed, bundleStates: ['ok', 'sanggah'] }),
+      deriveSlotStatus({
+        ...base,
+        submittedAt: now,
+        disanggahCount: 1,
+        config: { ...open, partnerId: 'p1' } as never,
+      }),
       'sanggah',
     )
+  })
+
+  it('selesai dicek tanpa sanggah: disetujui', () => {
     assert.equal(
       deriveSlotStatus({
-        ...reviewed,
-        bundleStates: ['sanggah', 'verifikasi'],
+        ...base,
+        submittedAt: now,
+        config: { ...open, partnerId: 'p1' } as never,
       }),
-      'menunggu_verifikasi',
-    )
-    assert.equal(
-      deriveSlotStatus({
-        ...reviewed,
-        decidedAt: at(16),
-        bundleStates: ['ok'],
-      }),
-      'menyetujui',
-    )
-  })
-})
-
-describe('validateSanggahDeadline', () => {
-  it('harus di masa depan', () => {
-    assert.match(
-      validateSanggahDeadline(at(10), at(11), null) ?? '',
-      /masa depan/,
-    )
-    assert.equal(validateSanggahDeadline(at(12), at(11), null), null)
-  })
-  it('hanya boleh diperpanjang', () => {
-    assert.match(
-      validateSanggahDeadline(at(13), at(11), at(14)) ?? '',
-      /diperpanjang/,
-    )
-    assert.equal(validateSanggahDeadline(at(15), at(11), at(14)), null)
-  })
-  it('tanggal tidak valid ditolak', () => {
-    assert.match(
-      validateSanggahDeadline(new Date('x'), at(11), null) ?? '',
-      /tidak valid/,
-    )
-  })
-  it('isSanggahExpired', () => {
-    assert.equal(isSanggahExpired(null, at(11)), false)
-    assert.equal(isSanggahExpired(at(11), at(11)), true)
-    assert.equal(isSanggahExpired(at(12), at(11)), false)
-  })
-})
-
-describe('planReplacement', () => {
-  it('tidak dapat sama sekali: tukar varian', () => {
-    assert.deepEqual(planReplacement({ qty: 2, approvedQty: 0 }, false), {
-      kind: 'swap',
-    })
-  })
-  it('dapat sebagian: pecah komponen', () => {
-    assert.deepEqual(planReplacement({ qty: 3, approvedQty: 1 }, false), {
-      kind: 'split',
-      keepQty: 1,
-      newQty: 2,
-    })
-  })
-  it('menolak yang belum dicek, tidak bermasalah, atau varian sama', () => {
-    assert.throws(() => planReplacement({ qty: 1, approvedQty: null }, false))
-    assert.throws(() => planReplacement({ qty: 1, approvedQty: 1 }, false))
-    assert.throws(() => planReplacement({ qty: 1, approvedQty: 0 }, true))
-  })
-})
-
-describe('componentsToReturn', () => {
-  it('mengembalikan yang dapat dan mencatat yang diminta', () => {
-    const r = componentsToReturn([
-      { qty: 1, approvedQty: 1 },
-      { qty: 2, approvedQty: 1 },
-      { qty: 1, approvedQty: 0 },
-    ])
-    assert.deepEqual(
-      r.map((c) => [c.returnQty, c.requestedQty]),
-      [
-        [1, 1],
-        [1, 2],
-        [0, 1],
-      ],
+      'disetujui',
     )
   })
 })
@@ -339,40 +138,6 @@ describe('formatRemaining', () => {
   })
 })
 
-describe('allocateApproval', () => {
-  const demands = [
-    { key: 'b', qty: 2, at: at(10, 5) },
-    { key: 'a', qty: 3, at: at(10, 1) },
-    { key: 'c', qty: 1, at: at(10, 9) },
-  ]
-  it('membagi ke pemesan yang masuk lebih dulu', () => {
-    const r = allocateApproval(demands, 4)
-    assert.equal(r.get('a'), 3)
-    assert.equal(r.get('b'), 1)
-    assert.equal(r.get('c'), 0)
-  })
-  it('dapat semua dan tidak dapat sama sekali', () => {
-    const all = allocateApproval(demands, 6)
-    assert.deepEqual([...all.values()].sort(), [1, 2, 3])
-    const none = allocateApproval(demands, 0)
-    assert.deepEqual([...none.values()], [0, 0, 0])
-  })
-  it('waktu sama dipecah dengan key supaya hasilnya tetap', () => {
-    const tie = [
-      { key: 'y', qty: 1, at: at(10) },
-      { key: 'x', qty: 1, at: at(10) },
-    ]
-    const r = allocateApproval(tie, 1)
-    assert.equal(r.get('x'), 1)
-    assert.equal(r.get('y'), 0)
-  })
-  it('menolak jumlah di luar batas', () => {
-    assert.throws(() => allocateApproval(demands, 7))
-    assert.throws(() => allocateApproval(demands, -1))
-    assert.throws(() => allocateApproval(demands, 1.5))
-  })
-})
-
 describe('parseWibLocal / toWibLocal', () => {
   it('jam dinding WIB <-> instant', () => {
     const d = parseWibLocal('2026-11-10T19:30')
@@ -386,181 +151,24 @@ describe('parseWibLocal / toWibLocal', () => {
   })
 })
 
-describe('slotStatusNotice', () => {
-  const base = {
-    reason: 'review' as const,
-    previous: 'terkirim' as const,
-    firstReview: true,
-    resultsChanged: true,
-    eventName: 'Wikibex',
-    sanggahDeadline: new Date('2026-11-12T11:00:00Z'),
-  }
-
-  it('cek pertama dengan barang kurang: minta jastiper memutuskan', () => {
-    const n = slotStatusNotice({ ...base, status: 'sanggah' })
-    assert.match(n?.title ?? '', /Ada barang kurang di Wikibex/)
-    assert.match(n?.body ?? '', /sebelum/)
-  })
-
-  it('cek pertama semua cukup: pesanan disetujui', () => {
-    const n = slotStatusNotice({ ...base, status: 'disetujui' })
-    assert.match(n?.title ?? '', /Pesanan disetujui/)
-  })
-
-  it('koreksi tanpa perubahan status maupun jumlah: tidak ada notifikasi', () => {
-    const n = slotStatusNotice({
-      ...base,
-      firstReview: false,
-      previous: 'sanggah',
-      status: 'sanggah',
-      resultsChanged: false,
-    })
-    assert.equal(n, null)
-  })
-
-  it('koreksi yang mengubah jumlah: hasil diperbarui', () => {
-    const n = slotStatusNotice({
-      ...base,
-      firstReview: false,
-      previous: 'sanggah',
-      status: 'sanggah',
-      resultsChanged: true,
-    })
-    assert.equal(n?.title, 'Ada barang kurang di Wikibex')
-    const updated = slotStatusNotice({
-      ...base,
-      firstReview: false,
-      previous: 'menunggu_verifikasi',
-      status: 'menunggu_verifikasi',
-      resultsChanged: true,
-    })
-    assert.match(updated?.title ?? '', /Hasil pengecekan diperbarui/)
-  })
-
-  it('verifikasi pengganti selesai: pesanan disetujui', () => {
-    const n = slotStatusNotice({
-      ...base,
-      firstReview: false,
-      previous: 'menunggu_verifikasi',
-      status: 'disetujui',
-    })
-    assert.match(n?.title ?? '', /Pesanan disetujui/)
-  })
-
-  it('pengganti kurang: langsung final, tidak ada sanggah kedua', () => {
-    const n = slotStatusNotice({
-      ...base,
-      firstReview: false,
-      previous: 'menunggu_verifikasi',
-      status: 'menyetujui',
-      finalizedShortage: true,
-    })
-    assert.match(n?.title ?? '', /Pesanan final/)
-    assert.match(n?.body ?? '', /hanya sekali/)
-  })
-
-  it('batas sanggah lewat', () => {
-    const n = slotStatusNotice({ ...base, reason: 'expired', status: 'menyetujui' })
-    assert.match(n?.title ?? '', /Batas sanggah lewat/)
-  })
-
-  it('tanpa alur slot: null', () => {
-    assert.equal(slotStatusNotice({ ...base, status: null }), null)
-  })
-})
-
-describe('buildKabariMessage', () => {
-  const input = {
-    brandName: 'Jastip by Mici',
-    eventName: 'Wikibex',
-    totalAmount: 155000,
-    sanggahDeadline: new Date('2026-11-12T11:00:00Z'),
-  }
-  it('disetujui menyebut total tagihan', () => {
-    const m = buildKabariMessage({ ...input, status: 'disetujui' })
-    assert.match(m, /Jastip by Mici/)
-    assert.match(m, /155\.000/)
-  })
-  it('sanggah menyebut batas waktu', () => {
-    assert.match(buildKabariMessage({ ...input, status: 'sanggah' }), /sebelum/)
-  })
-})
-
 describe('partnerStatusBadge', () => {
   it('memetakan status slot ke label desain', () => {
     assert.equal(partnerStatusBadge('draft').label, 'Draft')
     assert.equal(partnerStatusBadge('belum_dibuka').label, 'Draft')
     assert.equal(partnerStatusBadge('terkirim').label, 'Pengajuan')
-    assert.equal(partnerStatusBadge('menunggu_verifikasi').label, 'Pengajuan')
     assert.equal(partnerStatusBadge('sanggah').label, 'Pesanan dikembalikan')
-    assert.equal(partnerStatusBadge('menyetujui').label, 'Disetujui')
     assert.equal(partnerStatusBadge('disetujui').tone, 'success')
     assert.equal(partnerStatusBadge(null).label, 'Draft')
   })
 })
 
-describe('partnerStatusCopy', () => {
-  it('draft tanpa barang (layar 2) beda dari draft dengan barang (layar 2b)', () => {
-    const kosong = partnerStatusCopy({ status: 'draft', hasItems: false, sanggahCount: 0 })
-    const berisi = partnerStatusCopy({ status: 'draft', hasItems: true, sanggahCount: 0 })
-    assert.equal(kosong.title, 'Menunggu jastiper')
-    assert.match(kosong.description, /belum memasukkan pesanan/)
-    assert.match(berisi.description, /belum menekan Submit/)
-  })
-
-  it('sanggah menyebut jumlah paket', () => {
-    const c = partnerStatusCopy({ status: 'sanggah', hasItems: true, sanggahCount: 2 })
-    assert.match(c.description, /2 paket kurang barang/)
-  })
-
-  it('pengajuan memakai istilah "Selesai dicek"', () => {
-    for (const status of ['terkirim', 'menunggu_verifikasi'] as const) {
-      assert.match(
-        partnerStatusCopy({ status, hasItems: true, sanggahCount: 0 }).description,
-        /Selesai dicek/,
-      )
-    }
-  })
-})
-
 describe('partnerStatusFilterKey', () => {
-  it('selaras dengan label badge', () => {
-    const all = [
-      'belum_dibuka', 'draft', 'ditutup', 'terkirim', 'sanggah',
-      'menunggu_verifikasi', 'menyetujui', 'disetujui',
-    ] as const
-    const labelOf = {
-      draft: 'Draft',
-      pengajuan: 'Pengajuan',
-      dikembalikan: 'Pesanan dikembalikan',
-      disetujui: 'Disetujui',
-    }
-    for (const status of all) {
-      assert.equal(
-        labelOf[partnerStatusFilterKey(status)],
-        partnerStatusBadge(status).label,
-      )
-    }
-  })
-})
-
-describe('partnerPageSubtitle', () => {
-  it('mengikuti subjudul di desain', () => {
-    assert.equal(partnerPageSubtitle('terkirim'), 'Cek pesanan jastiper di event ini')
-    assert.match(partnerPageSubtitle('menunggu_verifikasi'), /sudah ada pengganti/)
-    assert.match(partnerPageSubtitle('disetujui'), /^Hasil pesanan/)
-    assert.match(partnerPageSubtitle('sanggah'), /hanya baca/)
-    assert.match(partnerPageSubtitle('draft'), /^Detail pesanan/)
-  })
-})
-
-describe('reviewLockedReason', () => {
-  it('terkunci saat dikembalikan atau final, terbuka saat pengajuan', () => {
-    assert.ok(reviewLockedReason('sanggah'))
-    assert.ok(reviewLockedReason('disetujui'))
-    assert.ok(reviewLockedReason('menyetujui'))
-    assert.equal(reviewLockedReason('terkirim'), null)
-    assert.equal(reviewLockedReason('menunggu_verifikasi'), null)
+  it('mengelompokkan status ke tab yang sesuai', () => {
+    assert.equal(partnerStatusFilterKey('draft'), 'draft')
+    assert.equal(partnerStatusFilterKey('belum_dibuka'), 'draft')
+    assert.equal(partnerStatusFilterKey('terkirim'), 'pengajuan')
+    assert.equal(partnerStatusFilterKey('sanggah'), 'selesai')
+    assert.equal(partnerStatusFilterKey('disetujui'), 'selesai')
   })
 })
 

@@ -60,6 +60,7 @@ import { Route as PartnerPaketIndexRouteImport } from './routes/partner/paket/in
 import { Route as PartnerPaketIdRouteImport } from './routes/partner/paket/$id'
 import { Route as PartnerPaketBaruRouteImport } from './routes/partner/paket/baru'
 import { Route as TagihanEventIdOrderIdRouteImport } from './routes/tagihan.$eventId.$orderId'
+import { Route as AppEventsEventIdStatusRouteImport } from './routes/_app/events.$eventId_.status'
 import { Route as AppInvoiceEventIdOrderIdRouteImport } from './routes/_app/invoice.$eventId.$orderId'
 import { Route as AppProfilCustomersIndexRouteImport } from './routes/_app/profil/customers/index'
 import { Route as AppProfilFeeRulesIndexRouteImport } from './routes/_app/profil/fee-rules/index'
@@ -70,6 +71,7 @@ import { Route as ApiAuthGoogleCallbackRouteImport } from './routes/api/auth/goo
 import { Route as PartnerEventProdukIdRouteImport } from './routes/partner/event/produk.$id'
 import { Route as PartnerEventRekapIdRouteImport } from './routes/partner/event/rekap.$id'
 import { Route as PartnerEventUbahIdRouteImport } from './routes/partner/event/ubah.$id'
+import { Route as AppEventsEventIdSubmitSubmitNoRouteImport } from './routes/_app/events.$eventId_.submit.$submitNo'
 import { Route as PartnerEventJastiperIdBrandIdRouteImport } from './routes/partner/event/jastiper.$id.$brandId'
 
 const AppRoute = AppRouteImport.update({
@@ -328,6 +330,11 @@ const TagihanEventIdOrderIdRoute = TagihanEventIdOrderIdRouteImport.update({
   path: '/tagihan/$eventId/$orderId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppEventsEventIdStatusRoute = AppEventsEventIdStatusRouteImport.update({
+  id: '/events/$eventId_/status',
+  path: '/events/$eventId/status',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppInvoiceEventIdOrderIdRoute =
   AppInvoiceEventIdOrderIdRouteImport.update({
     id: '/invoice/$eventId/$orderId',
@@ -380,6 +387,12 @@ const PartnerEventUbahIdRoute = PartnerEventUbahIdRouteImport.update({
   path: '/event/ubah/$id',
   getParentRoute: () => PartnerRoute,
 } as any)
+const AppEventsEventIdSubmitSubmitNoRoute =
+  AppEventsEventIdSubmitSubmitNoRouteImport.update({
+    id: '/events/$eventId_/submit/$submitNo',
+    path: '/events/$eventId/submit/$submitNo',
+    getParentRoute: () => AppRoute,
+  } as any)
 const PartnerEventJastiperIdBrandIdRoute =
   PartnerEventJastiperIdBrandIdRouteImport.update({
     id: '/event/jastiper/$id/$brandId',
@@ -438,6 +451,7 @@ export interface FileRoutesByFullPath {
   '/partner/event/': typeof PartnerEventIndexRoute
   '/partner/katalog/': typeof PartnerKatalogIndexRoute
   '/partner/paket/': typeof PartnerPaketIndexRoute
+  '/events/$eventId/status': typeof AppEventsEventIdStatusRoute
   '/invoice/$eventId/$orderId': typeof AppInvoiceEventIdOrderIdRoute
   '/profil/fee-rules/$feeRuleId': typeof AppProfilFeeRulesFeeRuleIdRoute
   '/profil/fee-rules/new': typeof AppProfilFeeRulesNewRoute
@@ -448,6 +462,7 @@ export interface FileRoutesByFullPath {
   '/profil/customers/': typeof AppProfilCustomersIndexRoute
   '/profil/fee-rules/': typeof AppProfilFeeRulesIndexRoute
   '/api/auth/google/': typeof ApiAuthGoogleIndexRoute
+  '/events/$eventId/submit/$submitNo': typeof AppEventsEventIdSubmitSubmitNoRoute
   '/partner/event/jastiper/$id/$brandId': typeof PartnerEventJastiperIdBrandIdRoute
 }
 export interface FileRoutesByTo {
@@ -499,6 +514,7 @@ export interface FileRoutesByTo {
   '/partner/event': typeof PartnerEventIndexRoute
   '/partner/katalog': typeof PartnerKatalogIndexRoute
   '/partner/paket': typeof PartnerPaketIndexRoute
+  '/events/$eventId/status': typeof AppEventsEventIdStatusRoute
   '/invoice/$eventId/$orderId': typeof AppInvoiceEventIdOrderIdRoute
   '/profil/fee-rules/$feeRuleId': typeof AppProfilFeeRulesFeeRuleIdRoute
   '/profil/fee-rules/new': typeof AppProfilFeeRulesNewRoute
@@ -509,6 +525,7 @@ export interface FileRoutesByTo {
   '/profil/customers': typeof AppProfilCustomersIndexRoute
   '/profil/fee-rules': typeof AppProfilFeeRulesIndexRoute
   '/api/auth/google': typeof ApiAuthGoogleIndexRoute
+  '/events/$eventId/submit/$submitNo': typeof AppEventsEventIdSubmitSubmitNoRoute
   '/partner/event/jastiper/$id/$brandId': typeof PartnerEventJastiperIdBrandIdRoute
 }
 export interface FileRoutesById {
@@ -564,6 +581,7 @@ export interface FileRoutesById {
   '/partner/event/': typeof PartnerEventIndexRoute
   '/partner/katalog/': typeof PartnerKatalogIndexRoute
   '/partner/paket/': typeof PartnerPaketIndexRoute
+  '/_app/events/$eventId_/status': typeof AppEventsEventIdStatusRoute
   '/_app/invoice/$eventId/$orderId': typeof AppInvoiceEventIdOrderIdRoute
   '/_app/profil/fee-rules/$feeRuleId': typeof AppProfilFeeRulesFeeRuleIdRoute
   '/_app/profil/fee-rules/new': typeof AppProfilFeeRulesNewRoute
@@ -574,6 +592,7 @@ export interface FileRoutesById {
   '/_app/profil/customers/': typeof AppProfilCustomersIndexRoute
   '/_app/profil/fee-rules/': typeof AppProfilFeeRulesIndexRoute
   '/api/auth/google/': typeof ApiAuthGoogleIndexRoute
+  '/_app/events/$eventId_/submit/$submitNo': typeof AppEventsEventIdSubmitSubmitNoRoute
   '/partner/event/jastiper/$id/$brandId': typeof PartnerEventJastiperIdBrandIdRoute
 }
 export interface FileRouteTypes {
@@ -629,6 +648,7 @@ export interface FileRouteTypes {
     | '/partner/event/'
     | '/partner/katalog/'
     | '/partner/paket/'
+    | '/events/$eventId/status'
     | '/invoice/$eventId/$orderId'
     | '/profil/fee-rules/$feeRuleId'
     | '/profil/fee-rules/new'
@@ -639,6 +659,7 @@ export interface FileRouteTypes {
     | '/profil/customers/'
     | '/profil/fee-rules/'
     | '/api/auth/google/'
+    | '/events/$eventId/submit/$submitNo'
     | '/partner/event/jastiper/$id/$brandId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -690,6 +711,7 @@ export interface FileRouteTypes {
     | '/partner/event'
     | '/partner/katalog'
     | '/partner/paket'
+    | '/events/$eventId/status'
     | '/invoice/$eventId/$orderId'
     | '/profil/fee-rules/$feeRuleId'
     | '/profil/fee-rules/new'
@@ -700,6 +722,7 @@ export interface FileRouteTypes {
     | '/profil/customers'
     | '/profil/fee-rules'
     | '/api/auth/google'
+    | '/events/$eventId/submit/$submitNo'
     | '/partner/event/jastiper/$id/$brandId'
   id:
     | '__root__'
@@ -754,6 +777,7 @@ export interface FileRouteTypes {
     | '/partner/event/'
     | '/partner/katalog/'
     | '/partner/paket/'
+    | '/_app/events/$eventId_/status'
     | '/_app/invoice/$eventId/$orderId'
     | '/_app/profil/fee-rules/$feeRuleId'
     | '/_app/profil/fee-rules/new'
@@ -764,6 +788,7 @@ export interface FileRouteTypes {
     | '/_app/profil/customers/'
     | '/_app/profil/fee-rules/'
     | '/api/auth/google/'
+    | '/_app/events/$eventId_/submit/$submitNo'
     | '/partner/event/jastiper/$id/$brandId'
   fileRoutesById: FileRoutesById
 }
@@ -1149,6 +1174,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TagihanEventIdOrderIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/events/$eventId_/status': {
+      id: '/_app/events/$eventId_/status'
+      path: '/events/$eventId/status'
+      fullPath: '/events/$eventId/status'
+      preLoaderRoute: typeof AppEventsEventIdStatusRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/invoice/$eventId/$orderId': {
       id: '/_app/invoice/$eventId/$orderId'
       path: '/invoice/$eventId/$orderId'
@@ -1219,6 +1251,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PartnerEventUbahIdRouteImport
       parentRoute: typeof PartnerRoute
     }
+    '/_app/events/$eventId_/submit/$submitNo': {
+      id: '/_app/events/$eventId_/submit/$submitNo'
+      path: '/events/$eventId/submit/$submitNo'
+      fullPath: '/events/$eventId/submit/$submitNo'
+      preLoaderRoute: typeof AppEventsEventIdSubmitSubmitNoRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/partner/event/jastiper/$id/$brandId': {
       id: '/partner/event/jastiper/$id/$brandId'
       path: '/event/jastiper/$id/$brandId'
@@ -1243,11 +1282,13 @@ interface AppRouteChildren {
   AppProfilTimRoute: typeof AppProfilTimRoute
   AppKalenderIndexRoute: typeof AppKalenderIndexRoute
   AppProfilIndexRoute: typeof AppProfilIndexRoute
+  AppEventsEventIdStatusRoute: typeof AppEventsEventIdStatusRoute
   AppInvoiceEventIdOrderIdRoute: typeof AppInvoiceEventIdOrderIdRoute
   AppProfilFeeRulesFeeRuleIdRoute: typeof AppProfilFeeRulesFeeRuleIdRoute
   AppProfilFeeRulesNewRoute: typeof AppProfilFeeRulesNewRoute
   AppProfilCustomersIndexRoute: typeof AppProfilCustomersIndexRoute
   AppProfilFeeRulesIndexRoute: typeof AppProfilFeeRulesIndexRoute
+  AppEventsEventIdSubmitSubmitNoRoute: typeof AppEventsEventIdSubmitSubmitNoRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -1264,11 +1305,13 @@ const AppRouteChildren: AppRouteChildren = {
   AppProfilTimRoute: AppProfilTimRoute,
   AppKalenderIndexRoute: AppKalenderIndexRoute,
   AppProfilIndexRoute: AppProfilIndexRoute,
+  AppEventsEventIdStatusRoute: AppEventsEventIdStatusRoute,
   AppInvoiceEventIdOrderIdRoute: AppInvoiceEventIdOrderIdRoute,
   AppProfilFeeRulesFeeRuleIdRoute: AppProfilFeeRulesFeeRuleIdRoute,
   AppProfilFeeRulesNewRoute: AppProfilFeeRulesNewRoute,
   AppProfilCustomersIndexRoute: AppProfilCustomersIndexRoute,
   AppProfilFeeRulesIndexRoute: AppProfilFeeRulesIndexRoute,
+  AppEventsEventIdSubmitSubmitNoRoute: AppEventsEventIdSubmitSubmitNoRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

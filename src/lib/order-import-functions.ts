@@ -4,7 +4,6 @@ import { z } from 'zod'
 import { db } from '../db'
 import { events, items, orders } from '../db/schema'
 import { brandIdOf } from './brand'
-import { assertOrdersEditable } from './event-slot'
 import { getSessionUser } from './auth'
 import { findMergeTarget, mergeItemLines, mergePaidAmount } from './order-merge'
 import { MAX_IMPORT_ORDERS } from './order-import'
@@ -66,7 +65,6 @@ export const importOrders = createServerFn({ method: 'POST' })
       ),
     })
     if (!event) throw new Error('Event tidak ditemukan')
-    assertOrdersEditable(event)
 
     // Event nonaktif = sudah ditutup, jadi tidak boleh nambah pesanan baru —
     // sama seperti `createOrder`.

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, Plus, Trash2, User, X } from 'lucide-react'
 import NumberInput from './ui/NumberInput'
 import Switch from './ui/Switch'
@@ -24,7 +24,8 @@ import {
 } from '../lib/partner-item-label'
 import type {PartnerEventItemCatalog} from '../lib/partner-item-label';
 import PartnerCatalogPicker, {type CatalogPick} from './PartnerCatalogPicker';
-import OrderItemList, { type OrderItemView } from './OrderItemList'
+import OrderItemList, { SubmitStatusBadge, type OrderItemView } from './OrderItemList'
+import { updateSubmittedItemPrice } from '../lib/submit-price-functions'
 import { previewPartnerBundles } from '../lib/partner-paket-preview'
 import { pendingNoteText } from '../lib/order-item-groups'
 
@@ -35,7 +36,10 @@ interface FeeTier {
 }
 
 interface ItemDraft {
+  id?: string
   name: string
+  /** Status submit bertahap, hanya untuk tampilan. */
+  submitStatus?: 'pengajuan' | 'disetujui' | 'disanggah' | null
   /**
    * Mode bundling: satu harga & fee untuk beberapa barang sekaligus (mis. paket
    * "100/3 item"). Waktu aktif, `bundleNames` yang dipakai dan `name` diabaikan.
@@ -67,6 +71,10 @@ export interface AddOrderSheetItemValue {
   qty: number
   obtained: boolean
   partnerVariantId?: string | null
+  /** Id baris di database. Dipakai untuk ubah harga barang yang sudah terkirim. */
+  id?: string
+  /** Alur submit bertahap. Null/undefined = belum dikirim ke partner. */
+  submitStatus?: 'pengajuan' | 'disetujui' | 'disanggah' | null
 }
 
 interface CustomerOption {
@@ -123,6 +131,7 @@ interface AddOrderSheetProps {
       size: string | null
       variation: string | null
       qty: number
+      submitStatus?: 'pengajuan' | 'disetujui' | 'disanggah' | null
     }>
   }>
   onEditLockedBundle?: (itemId: string) => void
@@ -132,6 +141,8 @@ interface AddOrderSheetProps {
   onChangeLockedComponent?: (componentId: string, partnerVariantId: string) => Promise<void>
   onRemoveLockedComponent?: (componentId: string) => Promise<void>
   onClose: () => void
+  /** Dipanggil setelah harga barang terkirim disimpan, supaya data halaman ikut diperbarui. */
+  onSubmittedPriceSaved?: () => void
   onSubmit: (value: {
     customerName: string
     paymentStatus: 'unpaid' | 'dp' | 'paid' | 'shipped'
@@ -215,6 +226,88 @@ function itemNameForSubmit(item: ItemDraft) {
   return item.bundle ? cleanBundleNames(item.bundleNames) : item.name.trim()
 }
 
+/**
+ * Harga jual dan fee barang yang sudah terkirim ke partner. Jumlah dan nama
+ * tetap terkunci, jadi hanya dua angka ini yang bisa disimpan di sini.
+ */
+function SubmittedPriceEditor({
+  itemId,
+  originalPrice,
+  fee,
+  onSaved,
+}: {
+  itemId: string
+  originalPrice: number
+  fee: number
+  onSaved?: () => void
+}) {
+  const [price, setPrice] = useState(String(originalPrice))
+  const [feeValue, setFeeValue] = useState(String(fee))
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [saved, setSaved] = useState(false)
+
+  async function save() {
+    setBusy(true)
+    setError(null)
+    setSaved(false)
+    try {
+      await updateSubmittedItemPrice({
+        data: {
+          itemId,
+          originalPrice: Number(price),
+          fee: Number(feeValue),
+        },
+      })
+      setSaved(true)
+      onSaved?.()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Gagal menyimpan')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="mb-3 space-y-2 rounded-lg border p-3" style={{ borderColor: 'var(--app-border)' }}>
+      <p className="text-xs">Sudah dikirim ke partner. Hanya harga dan fee yang bisa diubah.</p>
+      <div className="flex gap-2">
+        <label className="flex flex-1 flex-col text-xs">
+          Harga jual
+          <input
+            type="number"
+            min={0}
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            className="rounded border px-2 py-1 text-sm"
+          />
+        </label>
+        <label className="flex flex-1 flex-col text-xs">
+          Fee
+          <input
+            type="number"
+            min={0}
+            value={feeValue}
+            onChange={(e) => setFeeValue(e.target.value)}
+            className="rounded border px-2 py-1 text-sm"
+          />
+        </label>
+      </div>
+      {error && <p className="text-xs text-red-600">{error}</p>}
+      {saved && <p className="text-xs">Tersimpan.</p>}
+      <button
+        type="button"
+        onClick={save}
+        disabled={busy}
+        className="rounded-lg px-3 py-1.5 text-sm font-semibold disabled:opacity-40"
+        style={{ background: 'var(--app-accent)', color: '#fff' }}
+      >
+        Simpan harga
+      </button>
+    </div>
+  )
+}
+
 export default function AddOrderSheet({
   eventName,
   feeTiers,
@@ -225,6 +318,7 @@ export default function AddOrderSheet({
   submitLabel = 'Simpan pesanan',
   initialValue,
   onClose,
+  onSubmittedPriceSaved,
   onSubmit,
   lockedTotals,
   partnerCatalog,
@@ -235,6 +329,24 @@ export default function AddOrderSheet({
   onRemoveLockedComponent,
 }: AddOrderSheetProps) {
   const partnerMode = Boolean(partnerItems?.isPartnerEvent)
+
+  // Banner katalog partner: sekali ditutup jastiper, tidak muncul lagi di browser ini.
+  const PARTNER_BANNER_KEY = 'alaka:partner-catalog-banner-dismissed'
+  const [partnerBannerHidden, setPartnerBannerHidden] = useState(() => {
+    try {
+      return window.localStorage.getItem(PARTNER_BANNER_KEY) === '1'
+    } catch {
+      return false
+    }
+  })
+  function dismissPartnerBanner() {
+    setPartnerBannerHidden(true)
+    try {
+      window.localStorage.setItem(PARTNER_BANNER_KEY, '1')
+    } catch {
+      // Penyimpanan tidak tersedia: banner tetap tersembunyi untuk sesi ini.
+    }
+  }
 
   const [customerName, setCustomerName] = useState(
     initialValue?.customerName ?? '',
@@ -258,6 +370,18 @@ export default function AddOrderSheet({
       ? mergeSingleDrafts(initialValue.items.map((item) => toDraft(item)))
       : [{ ...emptyItem }],
   )
+
+  // Nama produk, ukuran, dan warna dari katalog partner, supaya barang pratinjau
+  // tampil sama dengan barang paket yang sudah tersimpan (dan bisa digabung).
+  function partnerComponentFields(variantId: string | null | undefined, fallbackName: string) {
+    const variant = partnerCatalog?.enabled ? partnerCatalog.variants.find((v) => v.id === variantId) : undefined
+    const product = variant ? partnerCatalog?.products.find((p) => p.id === variant.productId) : undefined
+    return {
+      productName: product?.name ?? fallbackName,
+      size: variant?.size ?? null,
+      variation: variant?.variation ?? null,
+    }
+  }
 
   // Pratinjau paket: dihitung dari barang di form, sama dengan aturan server.
   // Hanya untuk partner PRO (katalog enabled).
@@ -422,7 +546,25 @@ export default function AddOrderSheet({
     window.setTimeout(() => setCatalogToast(null), 2000)
   }
 
+  // Validasi native form (sama seperti tombol simpan): dipicu setelah kartu yang belum lengkap terbuka.
+  const formRef = useRef<HTMLFormElement>(null)
+  const [validateTick, setValidateTick] = useState(0)
+  useEffect(() => {
+    if (validateTick === 0) return
+    formRef.current?.reportValidity()
+  }, [validateTick])
+
   function addItem() {
+    // Sama seperti simpan: barang sebelumnya yang belum lengkap dibuka dan field kosongnya ditandai.
+    if (!partnerMode) {
+      const incompleteIndex = firstIncompleteItemIndex(items)
+      if (incompleteIndex !== -1) {
+        setOpenIndex(incompleteIndex)
+        setValidateTick((t) => t + 1)
+        return
+      }
+    }
+    setError(null)
     // Barang baru langsung terbuka (dan yang lain menutup) supaya bisa diisi.
     setOpenIndex(items.length)
     setItems((prev) => [...prev, { ...emptyItem }])
@@ -514,6 +656,8 @@ export default function AddOrderSheet({
   const totalPrice = itemsPrice + (lockedTotals?.subtotal ?? 0) + bundlesSubtotal
   const totalFee = itemsFee + (lockedTotals?.totalFee ?? 0) + bundlesFee
   const totalTagihan = totalPrice + totalFee
+  // Ada barang yang masih menunggu cek partner: angka ini belum final.
+  const hasPendingCheck = items.some((item) => item.submitStatus === 'pengajuan')
   // "Total harga jual" memakai harga partner (HPP), bukan harga jual yang bisa diubah.
   const partnerVariantPrice = (variantId: string | null | undefined) =>
     variantId
@@ -601,6 +745,8 @@ export default function AddOrderSheet({
         paymentStatus,
         paidAmount: paymentStatus === 'dp' ? dpAmount : undefined,
         items: submitItems.map((item) => ({
+          // Id dikirim untuk baris yang sudah ada, supaya server bisa menjaga baris terkirim.
+          id: item.id,
           name: itemNameForSubmit(item),
           originalPrice: item.originalPrice,
           fee: item.fee,
@@ -623,16 +769,27 @@ export default function AddOrderSheet({
         className="app-shell mx-auto flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl"
         style={{ borderTop: '1px solid var(--app-border)' }}
       >
-        <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit}>
-          {partnerMode && (
+        <form ref={formRef} className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit}>
+          {partnerMode && !partnerBannerHidden && (
             <div
-              className="mx-4 mt-3 rounded-xl p-3 text-xs"
+              className="mx-4 mt-3 flex items-start gap-2 rounded-xl p-3 text-xs"
               style={{ background: 'var(--app-accent-soft, #f3e3de)', color: 'var(--app-accent)' }}
             >
-              <span className="font-semibold">Event ini memakai katalog partner.</span>{' '}
-              <span style={{ color: 'var(--app-text-soft)' }}>
-                Barang dipilih dari katalog partner. Nama, varian, dan harga mengikuti partner dan tidak bisa diketik manual.
-              </span>
+              <p className="min-w-0 flex-1">
+                <span className="font-semibold">Event ini memakai katalog partner.</span>{' '}
+                <span style={{ color: 'var(--app-text-soft)' }}>
+                  Barang dipilih dari katalog partner. Nama, varian, dan harga mengikuti partner dan tidak bisa diketik manual.
+                </span>
+              </p>
+              <button
+                type="button"
+                aria-label="Tutup pemberitahuan katalog partner"
+                onClick={dismissPartnerBanner}
+                className="flex-shrink-0 p-0.5"
+                style={{ color: 'var(--app-accent)' }}
+              >
+                <X size={14} />
+              </button>
             </div>
           )}
           {catalogTarget && partnerItems && (
@@ -759,6 +916,8 @@ export default function AddOrderSheet({
                     key={index}
                     id={`order-item-${index}`}
                     className="app-card"
+                    // Riwayat yang disanggah partner: tampil redup, tidak masuk total.
+                    style={{ opacity: item.submitStatus === 'disanggah' ? 0.55 : 1 }}
                   >
                     <button
                       type="button"
@@ -767,6 +926,7 @@ export default function AddOrderSheet({
                       aria-controls={`order-item-body-${index}`}
                       className="flex w-full items-center gap-2.5 px-3.5 py-3 text-left"
                     >
+                      <SubmitStatusBadge status={item.submitStatus} />
                       <span className="min-w-0 flex-1">
                         {item.partnerVariantId && variantDisplayById.get(item.partnerVariantId) ? (
                           <>
@@ -835,8 +995,19 @@ export default function AddOrderSheet({
                       aria-hidden={openIndex !== index}
                     >
                       <div className="min-h-0 overflow-hidden">
-                      {/* Saat tertutup, kontrol di dalamnya dinonaktifkan supaya tidak ikut validasi form. */}
-                      <fieldset disabled={openIndex !== index} className="m-0 min-w-0 border-0 p-0">
+                      {/* Barang terkirim: hanya harga dan fee yang bisa diubah, lewat editor di atas form. */}
+                      {item.id && item.submitStatus && openIndex === index && (
+                        <div className="px-3 pt-3">
+                          <SubmittedPriceEditor
+                            itemId={item.id}
+                            originalPrice={item.originalPrice}
+                            fee={item.fee}
+                            onSaved={onSubmittedPriceSaved}
+                          />
+                        </div>
+                      )}
+                      {/* Saat tertutup, kontrol di dalamnya dinonaktifkan supaya tidak ikut validasi form. Barang terkirim juga dikunci. */}
+                      <fieldset disabled={openIndex !== index || Boolean(item.submitStatus)} className="m-0 min-w-0 border-0 p-0">
                       <div
                         id={`order-item-body-${index}`}
                         className="border-t p-3"
@@ -1152,86 +1323,62 @@ export default function AddOrderSheet({
               {((lockedBundles && lockedBundles.length > 0) || bundlePreview.bundles.length > 0) && (
                 <div className="flex flex-col gap-2">
                   <OrderItemList
-                    items={(lockedBundles ?? []).map((bundle) => ({
-                      id: bundle.id,
-                      name: bundle.name,
-                      isBundle: true,
-                      partnerRuleId: bundle.partnerRuleId,
-                      ruleName: bundle.ruleName,
-                      partnerVariantId: null,
-                      qty: bundle.qty,
-                      originalPrice: String(bundle.sellPrice),
-                      fee: String(bundle.fee),
-                      components: bundle.components,
-                    }))}
+                    items={[
+                      ...(lockedBundles ?? []).map((bundle) => ({
+                        id: bundle.id,
+                        name: bundle.name,
+                        isBundle: true,
+                        partnerRuleId: bundle.partnerRuleId,
+                        ruleName: bundle.ruleName,
+                        partnerVariantId: null,
+                        qty: bundle.qty,
+                        originalPrice: String(bundle.sellPrice),
+                        fee: String(bundle.fee),
+                        components: bundle.components,
+                      })),
+                      // Pratinjau: paket yang akan terbentuk dari barang di form (belum tersimpan).
+                      ...bundlePreview.bundles.map((bundle, index) => ({
+                        id: `preview-${index}`,
+                        name: bundle.ruleName,
+                        isBundle: true,
+                        partnerRuleId: bundle.ruleId,
+                        ruleName: bundle.ruleName,
+                        partnerVariantId: null,
+                        qty: 1,
+                        originalPrice: String(bundle.bundlePrice),
+                        fee: '0',
+                        components: bundle.parts.map((part) => {
+                          const draft = items[Number(part.key)]
+                          return {
+                            id: `draft-${part.key}`,
+                            partnerVariantId: draft?.partnerVariantId ?? null,
+                            ...partnerComponentFields(draft?.partnerVariantId, draft?.name ?? part.label),
+                            qty: part.qty,
+                          }
+                        }),
+                      })),
+                    ]}
                     pendingRules={[]}
                     variantOptionsByRule={variantOptionsByRule}
                     formatIDR={(value) => `Rp${value.toLocaleString('id-ID')}`}
                     onSaveBundlePrice={async (item: OrderItemView, sellPrice, fee) => {
+                      // Harga pratinjau diatur partner; hanya paket tersimpan yang bisa diubah.
+                      if (item.id.startsWith('preview-')) return
                       if (onSaveLockedBundlePrice) await onSaveLockedBundlePrice(item.id, sellPrice, fee)
                     }}
                     onRemoveComponent={async (componentId) => {
+                      // Barang pratinjau dibuang dari form; barang tersimpan lewat handler server.
+                      if (componentId.startsWith('draft-')) {
+                        const index = componentId.slice('draft-'.length)
+                        setItems((prev) => prev.filter((_, i) => String(i) !== index))
+                        return
+                      }
                       if (onRemoveLockedComponent) await onRemoveLockedComponent(componentId)
                     }}
                     onChangeComponent={async (componentId, partnerVariantId) => {
                       if (onChangeLockedComponent) await onChangeLockedComponent(componentId, partnerVariantId)
                     }}
                   />
-                </div>
-              )}
-
-              {bundlePreview.bundles.length > 0 && (
-                <div className="flex flex-col gap-3">
-                  {(() => {
-                    const byRule = new Map<
-                      string,
-                      { ruleName: string; bundlePrice: number; count: number; lines: Map<string, { label: string; qty: number }> }
-                    >()
-                    for (const bundle of bundlePreview.bundles) {
-                      const group =
-                        byRule.get(bundle.ruleId) ??
-                        { ruleName: bundle.ruleName, bundlePrice: bundle.bundlePrice, count: 0, lines: new Map() }
-                      group.count += 1
-                      for (const part of bundle.parts) {
-                        const line = group.lines.get(part.label) ?? { label: part.label, qty: 0 }
-                        line.qty += part.qty
-                        group.lines.set(part.label, line)
-                      }
-                      byRule.set(bundle.ruleId, group)
-                    }
-                    return [...byRule.entries()].map(([ruleId, group]) => (
-                      <div key={`planned-${ruleId}`} className="flex flex-col gap-2">
-                        <p className="text-xs" style={{ color: 'var(--app-text-mute)' }}>
-                          {group.ruleName}
-                        </p>
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="text-sm font-semibold">
-                            Rp{group.bundlePrice.toLocaleString('id-ID')} + fee Rp0
-                          </p>
-                          <p className="text-xs" style={{ color: 'var(--app-text-mute)' }}>
-                            {group.count} paket · belum disimpan
-                          </p>
-                        </div>
-                        {[...group.lines.values()].map((line) => (
-                          <div
-                            key={line.label}
-                            className="flex items-center gap-2 rounded-xl border px-3 py-2"
-                            style={{ borderColor: 'var(--app-border)' }}
-                          >
-                            <p className="min-w-0 flex-1 truncate text-sm">{line.label}</p>
-                            {line.qty > 1 && (
-                              <span
-                                className="app-badge flex-shrink-0"
-                                style={{ background: 'var(--app-accent-soft)', color: 'var(--app-accent)' }}
-                              >
-                                ×{line.qty}
-                              </span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    ))
-                  })()}
                 </div>
               )}
 
@@ -1276,14 +1423,6 @@ export default function AddOrderSheet({
                   <p className="mt-1 text-xs" style={{ color: 'var(--app-text-soft)' }}>
                     Cari barang di katalog partner, lalu pilih ukuran dan variasinya.
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => setCatalogTarget({ mode: 'add' })}
-                    className="app-btn-primary mt-3 w-full"
-                    style={{ minHeight: 44, fontSize: 14 }}
-                  >
-                    Cari di katalog partner
-                  </button>
                 </div>
               )}
               {bundlePreview.pending.map((p) => (
@@ -1305,7 +1444,7 @@ export default function AddOrderSheet({
                   <button
                     type="button"
                     onClick={addItem}
-                    className="app-btn-outline"
+                    className="app-btn-outline col-span-full w-full"
                     style={{ color: 'var(--app-accent)' }}
                   >
                     + Tambah barang
@@ -1335,7 +1474,17 @@ export default function AddOrderSheet({
                   </p>
                 )}
                 <div className="flex justify-between gap-3 font-semibold">
-                  <span>Total tagihan</span>
+                  <span>
+                    {hasPendingCheck ? 'Total sementara' : 'Total tagihan'}
+                    {hasPendingCheck && (
+                      <span
+                        className="ml-1.5 text-[11px] font-normal"
+                        style={{ color: 'var(--app-text-mute)' }}
+                      >
+                        (menunggu cek partner)
+                      </span>
+                    )}
+                  </span>
                   <span className="whitespace-nowrap">
                     {totalTagihan.toLocaleString('id-ID')}
                   </span>

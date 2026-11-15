@@ -4,7 +4,6 @@ import { z } from 'zod'
 import { requirePartner } from './partner-auth'
 import { partnerOwnsEvent } from './partner-event-queries'
 import { billingBucket, bundleBillingAmount } from './partner-billing'
-import type { BillingBucket } from './partner-billing'
 
 const idSchema = z.uuid()
 
@@ -24,12 +23,24 @@ export type JastiperDetailRow = {
 
 type JastiperEventDetail = {
   brandId: string
+  /** Nilai barang yang masih menunggu cek partner (pengajuan). Belum ditagih. */
+  pendingAmount: number
   brandName: string
   waNumber: string | null
   orderCount: number
   totalPcs: number
   satuanPcs: number
   paketPcs: number
+  /** Pcs yang sudah disetujui (satuan + paket). */
+  approvedPcs: number
+  /** Pcs yang masih menunggu cek partner. */
+  pendingPcs: number
+  /** Nomor submit yang sudah disetujui (untuk baris Disetujui). */
+  approvedSubmitNos: Array<number>
+  /** Nomor submit yang masih menunggu cek (untuk baris Pengajuan). */
+  pendingSubmitNos: Array<number>
+  /** Pengajuan per submit: satu baris per submit di daftar partner. */
+  pendingBySubmit: Array<{ submitNo: number; pcs: number; amount: number }>
   paketCount: number
   /**
    * Tagihan ke partner: harga paket untuk paket lengkap, harga satuan untuk
@@ -52,7 +63,6 @@ async function loadJastiperEventDetail(
   const { db } = await import('../db')
   const schema = await import('../db/schema')
   const {
-    events,
     orders,
     items,
     itemComponents,
@@ -68,12 +78,14 @@ async function loadJastiperEventDetail(
     .select({ id: orders.id })
     .from(orders)
     .where(eq(orders.eventId, jastiperEventId))
-  const jastiperEvent = await db
-    .select({ reviewedAt: events.reviewedAt })
-    .from(events)
-    .where(eq(events.id, jastiperEventId))
+  // Event yang sudah disubmit pakai alur submit bertahap: barang draft belum
+  // dikirim ke partner dan tidak dihitung.
+  const eventRow = await db
+    .select({ submittedAt: schema.events.submittedAt })
+    .from(schema.events)
+    .where(eq(schema.events.id, jastiperEventId))
     .then((rows) => rows.at(0))
-  const reviewed = jastiperEvent?.reviewedAt != null
+  const slotFlow = eventRow?.submittedAt != null
 
   const rules = await db
     .select({ id: partnerPricingRules.id, name: partnerPricingRules.name })
@@ -164,7 +176,20 @@ async function loadJastiperEventDetail(
   const rows: Array<JastiperDetailRow> = []
   let satuanPcs = 0
   let paketPcs = 0
+  let approvedPcs = 0
+  let pendingPcs = 0
+  const approvedSubmitIds = new Set<string>()
+  const pendingSubmitIds = new Set<string>()
+  const pendingBySubmitId = new Map<string, { pcs: number; amount: number }>()
+  const addPendingBySubmit = (id: string | null, pcs: number, amount: number) => {
+    if (!id) return
+    const cur = pendingBySubmitId.get(id) ?? { pcs: 0, amount: 0 }
+    cur.pcs += pcs
+    cur.amount += amount
+    pendingBySubmitId.set(id, cur)
+  }
   let totalAmount = 0
+  let pendingAmount = 0
   const paketCountByRule = new Map<string, number>()
 
   for (const item of itemRows) {
@@ -176,13 +201,18 @@ async function loadJastiperEventDetail(
           (paketCountByRule.get(ruleId) ?? 0) + item.qty,
         )
       const comps = componentRows.filter((c) => c.itemId === item.id)
+      for (const c of comps) {
+        if (c.submitStatus === 'pengajuan' && c.partnerVariantId) {
+          pendingAmount +=
+            item.qty * c.qty * (variantMeta.get(c.partnerVariantId)?.price ?? 0)
+        }
+      }
       totalAmount += bundleBillingAmount({
         bundleQty: item.qty,
         bundlePrice: item.hpp === null ? null : Number(item.hpp),
-        reviewed,
         components: comps.map((c) => ({
           qty: c.qty,
-          approvedQty: c.approvedQty,
+          status: c.submitStatus,
           unitPrice: c.partnerVariantId
             ? (variantMeta.get(c.partnerVariantId)?.price ?? 0)
             : 0,
@@ -194,6 +224,18 @@ async function loadJastiperEventDetail(
           : undefined
         const pcs = item.qty * c.qty
         paketPcs += pcs
+        if (c.submitStatus === 'disetujui') {
+          approvedPcs += pcs
+          if (c.submissionId) approvedSubmitIds.add(c.submissionId)
+        } else if (c.submitStatus === 'pengajuan') {
+          pendingPcs += pcs
+          if (c.submissionId) pendingSubmitIds.add(c.submissionId)
+          addPendingBySubmit(
+            c.submissionId,
+            pcs,
+            pcs * (variantMeta.get(c.partnerVariantId ?? '')?.price ?? 0),
+          )
+        }
         rows.push({
           variantId: c.partnerVariantId,
           productName: meta?.productName ?? c.productName,
@@ -207,27 +249,60 @@ async function loadJastiperEventDetail(
       }
     } else if (
       item.partnerVariantId &&
-      variantMeta.has(item.partnerVariantId)
+      variantMeta.has(item.partnerVariantId) &&
+      // Disanggah tidak tersedia: tidak dihitung. Draft tidak dihitung kalau event sudah disubmit.
+      item.submitStatus !== 'disanggah' &&
+      !(slotFlow && item.submitStatus === null)
     ) {
       const meta = variantMeta.get(item.partnerVariantId)!
-      satuanPcs += item.qty
-      totalAmount += item.qty * meta.price
-      rows.push({
-        variantId: item.partnerVariantId,
-        productName: meta.productName,
-        size: meta.size,
-        variation: meta.variation,
-        ruleId: null,
-        ruleName: null,
-        qty: item.qty,
-        unitPrice: meta.price,
-      })
+      if (item.submitStatus === 'pengajuan') {
+        // Menunggu cek partner: belum dihitung sebagai pendapatan, hanya ditampilkan.
+        pendingAmount += item.qty * meta.price
+        pendingPcs += item.qty
+        if (item.submissionId) pendingSubmitIds.add(item.submissionId)
+        addPendingBySubmit(item.submissionId, item.qty, item.qty * meta.price)
+      } else {
+        approvedPcs += item.qty
+        if (item.submissionId) approvedSubmitIds.add(item.submissionId)
+        satuanPcs += item.qty
+        totalAmount += item.qty * meta.price
+        rows.push({
+          variantId: item.partnerVariantId,
+          productName: meta.productName,
+          size: meta.size,
+          variation: meta.variation,
+          ruleId: null,
+          ruleName: null,
+          qty: item.qty,
+          unitPrice: meta.price,
+        })
+      }
     }
   }
 
+  const submitRows = await db
+    .select({ id: schema.eventSubmissions.id, submitNo: schema.eventSubmissions.submitNo })
+    .from(schema.eventSubmissions)
+    .where(eq(schema.eventSubmissions.eventId, jastiperEventId))
+  const submitNoById = new Map(submitRows.map((r) => [r.id, r.submitNo]))
+  const toNos = (ids: Set<string>) =>
+    [...ids]
+      .map((id) => submitNoById.get(id))
+      .filter((n): n is number => n !== undefined)
+      .sort((a, b) => a - b)
+
   return {
+    approvedPcs,
+    pendingPcs,
+    approvedSubmitNos: toNos(approvedSubmitIds),
+    pendingSubmitNos: toNos(pendingSubmitIds),
+    pendingBySubmit: [...pendingBySubmitId.entries()]
+      .map(([id, v]) => ({ submitNo: submitNoById.get(id), ...v }))
+      .filter((x): x is { submitNo: number; pcs: number; amount: number } => x.submitNo !== undefined)
+      .sort((a, b) => a.submitNo - b.submitNo),
     brandId: brand.id,
     brandName: brand.name ?? 'Jastiper',
+    pendingAmount,
     waNumber: brand.waNumber ?? null,
     orderCount: orderRows.length,
     totalPcs: satuanPcs + paketPcs,
@@ -317,14 +392,7 @@ export const getPartnerEventRevenue = createServerFn({ method: 'GET' })
     const { db } = await import('../db')
     const { listSlotQueue } = await import('./event-slot-queries')
     const jastiper = await listEventJastiper(data.calendarEventId)
-    const { resolveExpiredSanggah } = await import('./event-slot-queries')
     const now = new Date()
-    // Batas sanggah yang sudah lewat dibereskan dulu supaya angka tidak basi.
-    await db.transaction(async (tx) => {
-      for (const { eventId } of jastiper) {
-        await resolveExpiredSanggah(tx, eventId, now)
-      }
-    })
     const queue = await db.transaction((tx) =>
       listSlotQueue(tx, data.calendarEventId, now),
     )
@@ -339,25 +407,29 @@ export const getPartnerEventRevenue = createServerFn({ method: 'GET' })
           brandName: d.brandName,
           totalPcs: d.totalPcs,
           totalAmount: d.totalAmount,
+          pendingAmount: d.pendingAmount,
+          approvedPcs: d.approvedPcs,
+          pendingPcs: d.pendingPcs,
+          approvedSubmitNos: d.approvedSubmitNos,
+          pendingSubmitNos: d.pendingSubmitNos,
+          pendingBySubmit: d.pendingBySubmit,
           status,
           bucket: slotEnabled ? billingBucket(status) : 'approved',
         }
       }),
     )
-    const sum = (bucket: BillingBucket) =>
-      perBrand
-        .filter((b) => b.bucket === bucket)
-        .reduce((s, b) => s + b.totalAmount, 0)
+    // Hitungan per barang (bukan per status event): brand yang sudah submit
+    // tetap menghitung barang yang sudah disetujui, walau sebagian masih menunggu.
+    const counted = perBrand.filter((b) => b.bucket !== 'draft')
     return {
       slotEnabled,
       totalAmount: perBrand.reduce((s, b) => s + b.totalAmount, 0),
       totalPcs: perBrand.reduce((s, b) => s + b.totalPcs, 0),
-      approvedAmount: sum('approved'),
+      approvedAmount: counted.reduce((s, b) => s + b.totalAmount, 0),
       /** Pcs yang sudah disetujui (paket dihitung per pcs isinya). */
-      approvedPcs: perBrand
-        .filter((b) => b.bucket === 'approved')
-        .reduce((s, b) => s + b.totalPcs, 0),
-      waitingAmount: sum('waiting'),
+      approvedPcs: counted.reduce((s, b) => s + b.totalPcs, 0),
+      /** Nilai barang yang masih menunggu cek partner. Belum masuk pendapatan. */
+      waitingAmount: counted.reduce((s, b) => s + b.pendingAmount, 0),
       draftCount: perBrand.filter((b) => b.bucket === 'draft').length,
       perBrand,
     }

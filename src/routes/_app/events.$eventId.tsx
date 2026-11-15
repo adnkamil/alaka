@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import ConfirmModal from '../../components/ui/ConfirmModal'
 import DpAmountModal from '../../components/ui/DpAmountModal'
 import RupiahInput from '../../components/ui/RupiahInput'
@@ -25,7 +25,6 @@ import {
   Info,
   Lock,
   MoreVertical,
-  Pencil,
   Plus,
   ReceiptText,
   Search,
@@ -59,11 +58,9 @@ import {
 import { listFeeRules } from '../../lib/fee-rules-functions'
 import { getOrderSuggestions } from '../../lib/order-suggestions-functions'
 import { APP_TIME_ZONE, todayIsoDateInAppTimeZone } from '../../lib/timezone'
-import OrderItemList from '../../components/OrderItemList'
+import type { OrderItemView } from '../../components/OrderItemList'
 import EventSlotAction from '../../components/EventSlotAction'
 import EventSlotBanner from '../../components/EventSlotBanner'
-import EventSlotPanel from '../../components/EventSlotPanel'
-import { partnerItemName, variantLabel } from '../../lib/partner-item-label'
 import {
   removeBundleComponent,
   updateBundleComponent,
@@ -103,6 +100,22 @@ const currentUserQuery = queryOptions({
   queryKey: ['current-user'],
   queryFn: () => fetchCurrentUser(),
 })
+
+/** Daftar barang untuk ringkasan kartu: paket dibuka jadi barangnya, satuan apa adanya. */
+function previewItemLines(items: Array<OrderItemView>): Array<{ name: string; qty: number }> {
+  const totals = new Map<string, number>()
+  for (const item of items) {
+    if (item.isBundle) {
+      for (const c of item.components) {
+        const name = componentDisplayName(c)
+        totals.set(name, (totals.get(name) ?? 0) + c.qty)
+      }
+    } else {
+      totals.set(item.name, (totals.get(item.name) ?? 0) + item.qty)
+    }
+  }
+  return [...totals.entries()].map(([name, qty]) => ({ name, qty }))
+}
 
 export const Route = createFileRoute('/_app/events/$eventId')({
   validateSearch: searchSchema,
@@ -206,13 +219,17 @@ function summarizeItemQty(
     // Paket dibongkar jadi per barang: setiap komponen dihitung sebagai barang
     // sendiri dengan qty = qty komponen x jumlah paket. Barang satuan tetap satu baris.
     const lines = order.items.flatMap((item) => {
+      // Barang yang ditolak partner tidak dihitung di tab Per Item.
+      if (item.submitStatus === 'disanggah') return []
       if (item.isBundle && item.components.length > 0) {
-        return item.components.map((c) => ({
-          id: item.id,
-          name: componentDisplayName(c),
-          qty: c.qty * item.qty,
-          obtained: item.obtained,
-        }))
+        return item.components
+          .filter((c) => c.submitStatus !== 'disanggah')
+          .map((c) => ({
+            id: item.id,
+            name: componentDisplayName(c),
+            qty: c.qty * item.qty,
+            obtained: item.obtained,
+          }))
       }
       return [{ id: item.id, name: item.name, qty: item.qty, obtained: item.obtained }]
     })
@@ -344,9 +361,17 @@ function EventDetailPage() {
   // Modal nominal DP — dibuka waktu user pilih status "DP" dari dropdown cepat
   // di list order (bukan lewat form edit yang sudah punya field nominal sendiri).
   const [dpPromptOrderId, setDpPromptOrderId] = useState<string | null>(null)
+  const [expandedOrderIds, setExpandedOrderIds] = useState<Set<string>>(() => new Set())
+  function toggleOrderExpanded(orderId: string) {
+    setExpandedOrderIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(orderId)) next.delete(orderId)
+      else next.add(orderId)
+      return next
+    })
+  }
   const [isSavingDpAmount, setIsSavingDpAmount] = useState(false)
   const [showEventMenu, setShowEventMenu] = useState(false)
-  const [showSlotStatus, setShowSlotStatus] = useState(false)
   // Modal ubah nama/tanggal/deskripsi event (dari menu ⋮ atau tap judul).
   const [showEditEvent, setShowEditEvent] = useState(false)
   // Info singkat setelah aksi pesanan: barang digabung, hasil import, atau
@@ -371,8 +396,8 @@ function EventDetailPage() {
   })
   const { data: event } = useSuspenseQuery(query)
   // Alur slot partner: setelah submit, isi pesanan terkunci (server juga menolak).
-  const ordersLocked = event.submittedAt != null
-  const ordersReviewed = event.reviewedAt != null
+  // Alur submit bertahap: kunci per barang (lihat assertQtyEditable), bukan per event.
+  const ordersLocked = false
 
   // Jaga-jaga: URL `?addOrder=true` pada event nonaktif tidak boleh membuka form
   // tambah pesanan (servernya juga sudah menolak `createOrder`-nya) — biar UI
@@ -442,27 +467,6 @@ function EventDetailPage() {
     queryFn: () => getEventPartnerCatalog({ data: { eventId } }),
   })
   const { data: partnerCatalog } = useQuery(partnerCatalogQuery)
-  // Varian yang boleh dipilih untuk mengganti komponen paket, per aturan.
-  const variantOptionsByRule = useMemo(() => {
-    const out: Record<string, Array<{ id: string; label: string }>> = {}
-    if (!partnerCatalog) return out
-    for (const rule of partnerCatalog.rules) {
-      const productIds = new Set(rule.productIds)
-      out[rule.id] = partnerCatalog.variants
-        .filter((v) => productIds.has(v.productId))
-        .map((v) => {
-          const product = partnerCatalog.products.find((p) => p.id === v.productId)
-          return {
-            id: v.id,
-            label: partnerItemName(
-              product?.name ?? '',
-              variantLabel({ size: v.size, variation: v.variation }),
-            ),
-          }
-        })
-    }
-    return out
-  }, [partnerCatalog])
 
   async function refreshEventData() {
     await queryClient.invalidateQueries({ queryKey: ['event', eventId] })
@@ -566,9 +570,13 @@ function EventDetailPage() {
 
   // Tab Per Item: checklist belanja dihitung dari SEMUA pesanan, nggak
   // dipengaruhi status pembayaran — yang dipakai cuma filter Dapat/Belum dapat.
-  const eventItems = event.orders.flatMap((order) => order.items)
-  const obtainedItemCount = eventItems.filter((item) => item.obtained).length
-  const pendingItemCount = eventItems.length - obtainedItemCount
+  // Hitungan tab dalam pcs (bukan jumlah jenis barang): pcs yang belum dan sudah didapat.
+  const allItemSummary = summarizeItemQty(event.orders, '')
+  const pendingItemCount = allItemSummary.reduce((sum, item) => sum + item.pendingQty, 0)
+  const obtainedItemCount = allItemSummary.reduce(
+    (sum, item) => sum + (item.qty - item.pendingQty),
+    0,
+  )
 
   const itemSummary = summarizeItemQty(event.orders, search).filter((item) =>
     obtainedFilter === 'obtained'
@@ -928,11 +936,7 @@ function EventDetailPage() {
         </div>
         <div className="flex flex-shrink-0 items-start gap-1">
           {event.calendarEventId && (
-            <EventSlotAction
-              eventId={eventId}
-              onChanged={refreshEventData}
-              onOpenStatus={() => setShowSlotStatus(true)}
-            />
+            <EventSlotAction eventId={eventId} />
           )}
         <div className="relative">
           <button
@@ -1129,15 +1133,13 @@ function EventDetailPage() {
         <>
           <EventSlotBanner
             eventId={eventId}
-            onOpenStatus={() => setShowSlotStatus(true)}
-          />
-          <EventSlotPanel
-            eventId={eventId}
-            orders={event.orders}
-            variantOptionsByRule={variantOptionsByRule}
-            onChanged={refreshEventData}
-            open={showSlotStatus}
-            onClose={() => setShowSlotStatus(false)}
+            onOpenStatus={() =>
+              navigate({
+                to: '/events/$eventId/status',
+                search: { tab: undefined },
+                params: { eventId },
+              })
+            }
           />
         </>
       )}
@@ -1559,9 +1561,22 @@ function EventDetailPage() {
             const orderTotal = summarizeItems(order.items).total
             // `paid_amount` di DB NOT NULL default 0, jadi tidak perlu fallback null.
             const remaining = Math.max(0, orderTotal - Number(order.paidAmount))
+            const isOpen = expandedOrderIds.has(order.id)
             return (
-              <details key={order.id} className="app-card p-3">
-                <summary className="flex cursor-pointer items-center gap-3">
+              <div key={order.id} className="app-card p-3">
+                <div
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={isOpen}
+                  onClick={() => toggleOrderExpanded(order.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      toggleOrderExpanded(order.id)
+                    }
+                  }}
+                  className="flex cursor-pointer items-center gap-3"
+                >
                   <span className="app-avatar h-9 w-9 flex-shrink-0">
                     {order.customerName.at(0)?.toUpperCase()}
                   </span>
@@ -1577,6 +1592,11 @@ function EventDetailPage() {
                     >
                       <span className="whitespace-nowrap">
                         {order.items.length} item · {formatIDR(orderTotal)}
+                        {order.items.some((item) => item.submitStatus === 'pengajuan') && (
+                          <span className="ml-1 text-[11px]" style={{ color: 'var(--app-text-mute)' }}>
+                            (sementara)
+                          </span>
+                        )}
                       </span>
                       {order.paymentStatus === 'dp' && (
                         <span style={{ color: 'var(--app-danger)' }}>
@@ -1634,31 +1654,56 @@ function EventDetailPage() {
                     size={16}
                     style={{ color: 'var(--app-text-mute)' }}
                   />
-                </summary>
+                </div>
+                <div
+                  className="grid"
+                  style={{
+                    gridTemplateRows: isOpen ? '1fr' : '0fr',
+                    transition: 'grid-template-rows 300ms ease',
+                  }}
+                  aria-hidden={!isOpen}
+                >
+                <div className="min-h-0 overflow-hidden">
                 <div
                   className="mt-3 flex flex-col gap-2 border-t pt-3"
                   style={{ borderColor: 'var(--app-border)' }}
                 >
-                  <OrderItemList
-                    items={order.items}
-                    bundleSummaryOnly
-                    pendingRules={order.pendingRules}
-                    variantOptionsByRule={variantOptionsByRule}
-                    formatIDR={(value) => formatIDR(value)}
-                    onSaveBundlePrice={(item, sellPrice, fee) =>
-                      handleSaveBundlePriceInline(item.id, sellPrice, fee)
-                    }
-                    onRemoveComponent={handleRemoveComponent}
-                    onChangeComponent={handleChangeComponent}
-                    locked={ordersLocked}
-                    reviewed={ordersReviewed}
-                  />
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openSheet({ type: 'edit', orderId: order.id })}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        openSheet({ type: 'edit', orderId: order.id })
+                      }
+                    }}
+                    className="flex cursor-pointer flex-col gap-2"
+                  >
+                  <ul className="flex flex-col gap-1.5">
+                    {previewItemLines(order.items).slice(0, 3).map((line) => (
+                      <li key={line.name} className="flex items-center justify-between gap-2 text-sm">
+                        <span className="min-w-0 truncate">{line.name}</span>
+                        <span className="flex-shrink-0 font-semibold">×{line.qty}</span>
+                      </li>
+                    ))}
+                    {previewItemLines(order.items).length > 3 && (
+                      <li
+                        className="text-center text-lg font-bold leading-none"
+                        style={{ color: 'var(--app-text-mute)' }}
+                        aria-label="Ada barang lain"
+                      >
+                        ...
+                      </li>
+                    )}
+                  </ul>
                   <div
                     className="mt-1 flex justify-between border-t pt-2 text-sm font-semibold"
                     style={{ borderColor: 'var(--app-border)' }}
                   >
                     <span>Total</span>
                     <span>{formatIDR(orderTotal)}</span>
+                  </div>
                   </div>
                   {order.paymentStatus === 'dp' && (
                     <div
@@ -1732,21 +1777,6 @@ function EventDetailPage() {
                       type="button"
                       onClick={(e) => {
                         e.preventDefault()
-                        openSheet({ type: 'edit', orderId: order.id })
-                      }}
-                      className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-2 text-xs font-semibold"
-                      style={{
-                        borderColor: 'var(--app-border)',
-                        color: 'var(--app-text-soft)',
-                      }}
-                    >
-                      <Pencil size={13} />
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault()
                         setDeletingOrderId(order.id)
                       }}
                       className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-2 text-xs font-semibold"
@@ -1761,7 +1791,9 @@ function EventDetailPage() {
                   </div>
                   )}
                 </div>
-              </details>
+                </div>
+                </div>
+              </div>
             )
           })}
       </div>
@@ -1870,6 +1902,7 @@ function EventDetailPage() {
           partnerCatalog={partnerCatalog}
           partnerItems={partnerItems}
           title="Edit Pesanan"
+          onSubmittedPriceSaved={() => refreshEventData()}
           submitLabel="Simpan perubahan"
           initialValue={{
             customerName: editingOrder.customerName,
@@ -1879,11 +1912,13 @@ function EventDetailPage() {
             items: editingOrder.items
               .filter((item) => item.partnerRuleId === null)
               .map((item) => ({
+              id: item.id,
               name: item.name,
               originalPrice: Number(item.originalPrice),
               fee: Number(item.fee),
               qty: item.qty,
               partnerVariantId: item.partnerVariantId,
+              submitStatus: item.submitStatus,
               // Checklist belanja dibawa terus, biar updateOrder yang hapus +
               // insert ulang item nggak me-reset status "sudah didapat".
               obtained: item.obtained,
@@ -1908,6 +1943,7 @@ function EventDetailPage() {
                 size: c.size,
                 variation: c.variation,
                 qty: c.qty,
+                submitStatus: c.submitStatus,
               })),
             }))}
           onSaveLockedBundlePrice={handleSaveBundlePriceInline}

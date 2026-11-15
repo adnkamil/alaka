@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
-import { ChevronDown, ChevronUp, Pencil, Trash2, X } from 'lucide-react'
+import { Pencil, Trash2, X } from 'lucide-react'
 import ConfirmModal from './ui/ConfirmModal'
 import RupiahInput from './ui/RupiahInput'
 import { lineTotal } from '../lib/order-totals'
+import type { SubmitStatus } from '../lib/submit-status'
 import type { PendingRuleInfo } from '../lib/partner-paket-pending'
 import {
   bundleRuleLabel,
@@ -12,6 +13,8 @@ import {
 } from '../lib/order-item-groups'
 
 export type OrderItemView = {
+  /** Alur submit bertahap: null = belum dikirim, disanggah = tidak dihitung total. */
+  submitStatus?: SubmitStatus | null
   id: string
   name: string
   /** Nama aturan paket untuk barang satuan (kosong jika tidak masuk aturan). */
@@ -22,7 +25,6 @@ export type OrderItemView = {
   partnerVariantId: string | null
   qty: number
   /** Alur slot: jumlah yang diminta sebelum dicek partner (qty = yang dapat). Null = belum dicek. */
-  requestedQty?: number | null
   originalPrice: string
   fee: string
   components: Array<{
@@ -32,8 +34,8 @@ export type OrderItemView = {
     size: string | null
     variation: string | null
     qty: number
-    /** Alur slot: jumlah disetujui partner. Null = belum dicek / menunggu verifikasi. */
-    approvedQty?: number | null
+    /** Alur submit bertahap. Null = belum dikirim ke partner. */
+    submitStatus?: SubmitStatus | null
   }>
 }
 
@@ -53,8 +55,6 @@ interface OrderItemListProps {
   onChangeComponent?: (componentId: string, partnerVariantId: string) => Promise<void>
   /** Pesanan sudah dikirim ke partner: isi paket tidak bisa dihapus dari sini. */
   locked?: boolean
-  /** Event ini sudah dicek partner (menampilkan status per barang). */
-  reviewed?: boolean
 }
 
 type ComponentView = OrderItemView['components'][number]
@@ -67,31 +67,24 @@ type MergedLine = {
   /** Id komponen asli, urut dari yang paling lama masuk. */
   ids: Array<string>
   qty: number
-  /** Jumlah disetujui (hanya setelah dicek); null kalau ada yang menunggu verifikasi. */
-  approved: number | null
 }
 
-/** Label hasil pengecekan partner untuk satu baris. */
-function approvalTag(requested: number, approved: number | null) {
-  if (approved === null) return { text: 'Menunggu verifikasi', danger: false }
-  if (approved <= 0) return { text: 'Tidak dapat', danger: true }
-  if (approved < requested) return { text: `Dapat ${approved} dari ${requested}`, danger: true }
-  return null
-}
-
-function ApprovalBadge({ requested, approved }: { requested: number; approved: number | null }) {
-  const tag = approvalTag(requested, approved)
-  if (!tag) return null
+/** Penanda status submit per baris. Tidak ada tampilan kalau belum dikirim. */
+export function SubmitStatusBadge({ status }: { status: SubmitStatus | null | undefined }) {
+  if (!status) return null
+  const label =
+    status === 'pengajuan' ? 'Pengajuan' : status === 'disetujui' ? 'Disetujui' : 'Ditolak'
+  const danger = status === 'disanggah'
   return (
     <span
       className="app-badge flex-shrink-0"
       style={
-        tag.danger
+        danger
           ? { background: 'var(--app-danger-soft, #fdecea)', color: 'var(--app-danger)' }
           : { background: 'var(--app-accent-soft)', color: 'var(--app-accent)' }
       }
     >
-      {tag.text}
+      {label}
     </span>
   )
 }
@@ -100,22 +93,18 @@ function mergeComponents(groupItems: Array<OrderItemView>): Array<MergedLine> {
   const lines = new Map<string, MergedLine>()
   for (const item of groupItems) {
     for (const c of item.components) {
-      const key = `${c.partnerVariantId ?? ''}|${c.productName}|${c.size ?? ''}|${c.variation ?? ''}`
+      // Status submit ikut di kunci: baris pengajuan dan disetujui tidak boleh tergabung.
+      const key = `${c.partnerVariantId ?? ''}|${c.productName}|${c.size ?? ''}|${c.variation ?? ''}|${c.submitStatus ?? ''}`
       const existing = lines.get(key)
       if (existing) {
         existing.ids.push(c.id)
         existing.qty += c.qty
-        existing.approved =
-          existing.approved === null || c.approvedQty == null
-            ? null
-            : existing.approved + c.approvedQty
       } else {
         lines.set(key, {
           key,
           component: c,
           ids: [c.id],
           qty: c.qty,
-          approved: c.approvedQty ?? null,
         })
       }
     }
@@ -146,42 +135,29 @@ export default function OrderItemList({
   onSaveBundlePrice,
   onRemoveComponent,
   locked = false,
-  reviewed = false,
 }: OrderItemListProps) {
   const { singles: rawSingles, bundles } = splitOrderItems(items)
   // Barang satuan yang sama (varian, harga, fee) ditampilkan sebagai satu baris dengan qty.
   const singles = useMemo(() => {
     const map = new Map<
       string,
-      OrderItemView & { mergedQty: number; mergedRequested: number }
+      OrderItemView & { mergedQty: number }
     >()
     for (const item of rawSingles) {
-      const key = `${item.partnerVariantId ?? item.id}|${Number(item.originalPrice)}|${Number(item.fee)}`
+      // Status submit ikut di kunci: barang disanggah tidak boleh tergabung dengan yang masih ditagih.
+      const key = `${item.partnerVariantId ?? item.id}|${Number(item.originalPrice)}|${Number(item.fee)}|${item.submitStatus ?? ''}`
       const existing = map.get(key)
       if (existing) {
         existing.mergedQty += item.qty
-        existing.mergedRequested += item.requestedQty ?? item.qty
       } else {
         map.set(key, {
           ...item,
           mergedQty: item.qty,
-          mergedRequested: item.requestedQty ?? item.qty,
         })
       }
     }
     return [...map.values()]
   }, [rawSingles])
-
-  // Baris paket yang sedang dibuka (menampilkan harga dan tombol hapus).
-  const [expandedLines, setExpandedLines] = useState<Set<string>>(() => new Set())
-  function toggleLine(key: string) {
-    setExpandedLines((prev) => {
-      const next = new Set(prev)
-      if (next.has(key)) next.delete(key)
-      else next.add(key)
-      return next
-    })
-  }
 
   // Paket dikelompokkan per nama aturan, urutan mengikuti kemunculan pertama.
   const groups = useMemo(() => {
@@ -285,9 +261,6 @@ export default function OrderItemList({
                 )}
               </div>
               <span className="flex flex-shrink-0 items-center gap-2 whitespace-nowrap">
-                {reviewed && item.mergedQty < item.mergedRequested && (
-                  <ApprovalBadge requested={item.mergedRequested} approved={item.mergedQty} />
-                )}
                 {item.mergedQty > 1 && (
                   <span
                     className="app-badge"
@@ -327,18 +300,21 @@ export default function OrderItemList({
 
           {groups.map((group) => {
             const first = group.bundles[0]
+            // Harga satu paket = harga jual + fee. Jumlah paket = total pcs grup dibagi pcs per paket.
+            const unitPrice = first
+              ? Math.round(Number(first.originalPrice)) + Math.round(Number(first.fee))
+              : 0
             const pcsPerBundle = first
               ? first.components.reduce((sum, c) => sum + c.qty, 0) || 1
               : 1
-            const perPcs = first
-              ? (Math.round(Number(first.originalPrice)) + Math.round(Number(first.fee))) / pcsPerBundle
-              : 0
+            const totalPcs = group.lines.reduce((sum, line) => sum + line.qty, 0)
+            const bundleCount = Math.round(totalPcs / pcsPerBundle)
             return (
               <div key={group.label} className="flex flex-col gap-2">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-semibold">{group.label}</p>
                   <div className="flex flex-shrink-0 items-center gap-2">
-                    <span className="text-sm font-semibold">{formatIDR(perPcs)}</span>
+                    <span className="text-sm font-semibold">{bundleCount} paket (@{unitPrice.toLocaleString('id-ID')})</span>
                     <button
                       type="button"
                       aria-label="Ubah harga dan fee"
@@ -350,51 +326,63 @@ export default function OrderItemList({
                     </button>
                   </div>
                 </div>
-                {group.lines.map((line) => {
-                  const open = expandedLines.has(line.key)
-                  return (
-                    <div
-                      key={line.key}
-                      className="flex flex-col rounded-xl border"
-                      style={{ borderColor: 'var(--app-border)' }}
-                    >
+                {group.lines.filter((l) => l.component.submitStatus !== 'disanggah').map((line) => (
+                  <div
+                    key={line.key}
+                    className="flex items-center gap-2 rounded-xl border px-3 py-2"
+                    style={{ borderColor: 'var(--app-border)' }}
+                  >
+                    <SubmitStatusBadge status={line.component.submitStatus} />
+                    <div className="min-w-0 flex-1">
+                      <ComponentLine component={line.component} />
+                    </div>
+                    {line.qty > 1 && (
+                      <span
+                        className="app-badge flex-shrink-0"
+                        style={{ background: 'var(--app-accent-soft)', color: 'var(--app-accent)' }}
+                      >
+                        ×{line.qty}
+                      </span>
+                    )}
+                    {!locked && !line.component.submitStatus && (
                       <button
                         type="button"
-                        onClick={() => toggleLine(line.key)}
-                        aria-expanded={open}
-                        className="flex items-center gap-2 px-3 py-2 text-left"
+                        aria-label={`Hapus ${componentDisplayName(line.component)}`}
+                        className="flex-shrink-0 p-1"
+                        style={{ color: 'var(--app-danger)' }}
+                        onClick={() => askRemove(line.component, line.ids[line.ids.length - 1])}
                       >
-                        <ComponentLine component={line.component} />
-                        {reviewed && <ApprovalBadge requested={line.qty} approved={line.approved} />}
-                        {line.qty > 1 && (
-                          <span
-                            className="app-badge flex-shrink-0"
-                            style={{ background: 'var(--app-accent-soft)', color: 'var(--app-accent)' }}
-                          >
-                            ×{line.qty}
-                          </span>
-                        )}
-                        {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        <Trash2 size={16} />
                       </button>
-                      {open && !locked && (
+                    )}
+                  </div>
+                ))}
+                {group.lines.some((l) => l.component.submitStatus === 'disanggah') && (
+                  <div className="mt-1 flex flex-col gap-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--app-text-soft)' }}>
+                      Ditolak
+                    </p>
+                    {group.lines
+                      .filter((l) => l.component.submitStatus === 'disanggah')
+                      .map((line) => (
                         <div
-                          className="flex items-center justify-end border-t px-3 py-2"
+                          key={`rejected-${line.key}`}
+                          className="flex items-center gap-2 rounded-xl border px-3 py-2"
                           style={{ borderColor: 'var(--app-border)' }}
                         >
-                          <button
-                            type="button"
-                            aria-label={`Hapus ${componentDisplayName(line.component)}`}
-                            className="flex-shrink-0 p-1"
-                            style={{ color: 'var(--app-danger)' }}
-                            onClick={() => askRemove(line.component, line.ids[line.ids.length - 1])}
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                          <SubmitStatusBadge status="disanggah" />
+                          <div className="min-w-0 flex-1">
+                            <ComponentLine component={line.component} />
+                          </div>
+                          {line.qty > 1 && (
+                            <span className="app-badge flex-shrink-0" style={{ background: 'var(--app-accent-soft)', color: 'var(--app-accent)' }}>
+                              ×{line.qty}
+                            </span>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  )
-                })}
+                      ))}
+                  </div>
+                )}
               </div>
             )
           })}

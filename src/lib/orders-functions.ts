@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, asc, eq, inArray, isNull } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNotNull, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '../db'
 import {
@@ -28,7 +28,12 @@ import { derivePaymentStatus } from './order-totals'
 import { buildPartnerBundle } from './partner-bundle-build'
 import { lineTotal, partitionLockedItems } from './partner-bundle-lock'
 import { carryCreatedAt } from './item-created-at'
-import { assertOrdersEditable } from './event-slot'
+import {
+  assertNoSubmittedRows,
+  assertQtyEditable,
+  LOCKED_QTY_MESSAGE,
+} from './submit-status'
+import { billableQty } from './order-totals'
 import { regroupAllRulesInOrder } from './partner-paket-queries'
 import type { BundleLine } from './partner-pricing'
 
@@ -75,6 +80,8 @@ async function listActivePaymentMethods(brandId: string) {
 }
 
 const itemInputSchema = z.object({
+  // Id baris yang sudah ada (dari form edit). Null untuk barang baru.
+  id: z.uuid().nullish(),
   name: z.string().min(1, 'Nama barang wajib diisi'),
   // Wajib di event partner (lihat resolveEventItems). Diabaikan di event lain.
   partnerVariantId: z.uuid().nullish(),
@@ -144,7 +151,6 @@ export const createOrder = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     const user = await requireUser()
     const event = await assertEventOwnership(data.eventId, brandIdOf(user))
-    assertOrdersEditable(event)
 
     // Event nonaktif = sudah ditutup, jadi tidak boleh nambah pesanan baru.
     // Pesanan lama tetap bisa diedit/dihapus (lihat updateOrder/deleteOrder).
@@ -401,7 +407,6 @@ export const updateOrder = createServerFn({ method: 'POST' })
     if (!order || order.event.brandId !== brandIdOf(user)) {
       throw new Error('Pesanan tidak ditemukan')
     }
-    assertOrdersEditable(order.event)
 
     // Baris bundle partner terkunci: tidak diubah lewat form ini, tapi tetap
     // masuk ke total tagihan.
@@ -425,15 +430,47 @@ export const updateOrder = createServerFn({ method: 'POST' })
       0,
     )
 
+    // Barang yang sudah dikirim ke partner: qty dan hapus terkunci, harga dan
+    // fee boleh berubah. Barang itu tidak dihapus dan tidak disisipkan ulang.
+    const submittedRows = await db.query.items.findMany({
+      where: and(
+        eq(items.orderId, data.orderId),
+        eq(items.isBundle, false),
+        isNotNull(items.submitStatus),
+      ),
+    })
+    const submittedById = new Map(submittedRows.map((row) => [row.id, row]))
+    const inputIds = new Set(
+      data.items.map((input) => input.id).filter((id): id is string => !!id),
+    )
+    for (const row of submittedRows) {
+      if (!inputIds.has(row.id)) throw new Error(LOCKED_QTY_MESSAGE)
+    }
+    for (const input of data.items) {
+      const row = input.id ? submittedById.get(input.id) : undefined
+      if (row && row.qty !== input.qty) throw new Error(LOCKED_QTY_MESSAGE)
+    }
+    const preservedInputs = data.items.filter(
+      (input) => !!input.id && submittedById.has(input.id),
+    )
+    const newInputs = data.items.filter(
+      (input) => !(input.id && submittedById.has(input.id)),
+    )
+
     const eventItems = await resolveEventItems(
       order.event.calendarEventId,
-      data.items,
+      newInputs,
     )
+    const preservedTotal = preservedInputs.reduce((sum, input) => {
+      const row = submittedById.get(input.id!)!
+      return sum + (input.originalPrice + input.fee) * billableQty(row)
+    }, 0)
     const total =
       eventItems.reduce(
         (sum, item) => sum + (item.originalPrice + item.fee) * item.qty,
         0,
       ) +
+      preservedTotal +
       lockedItems.reduce((sum, row) => sum + lineTotal(row), 0) +
       bundlesTotal
     const requestedPaid =
@@ -460,12 +497,31 @@ export const updateOrder = createServerFn({ method: 'POST' })
 
     // Barang satuan lama dicatat dulu supaya waktu masuknya (FIFO) tetap sama.
     const previousEditable = await db.query.items.findMany({
-      where: and(eq(items.orderId, data.orderId), eq(items.isBundle, false)),
+      where: and(
+        eq(items.orderId, data.orderId),
+        eq(items.isBundle, false),
+        isNull(items.submitStatus),
+      ),
     })
-    // Items aren't individually tracked by the form, so replace the full set.
+    // Barang draft diganti penuh. Barang terkirim tidak disentuh di sini.
     await db
       .delete(items)
-      .where(and(eq(items.orderId, data.orderId), eq(items.isBundle, false)))
+      .where(
+        and(
+          eq(items.orderId, data.orderId),
+          eq(items.isBundle, false),
+          isNull(items.submitStatus),
+        ),
+      )
+    for (const input of preservedInputs) {
+      await db
+        .update(items)
+        .set({
+          originalPrice: input.originalPrice.toFixed(2),
+          fee: input.fee.toFixed(2),
+        })
+        .where(eq(items.id, input.id!))
+    }
     if (eventItems.length > 0) {
       await db.insert(items).values(
         carryCreatedAt(previousEditable, eventItems).map((item) => ({
@@ -535,7 +591,12 @@ export const deleteOrder = createServerFn({ method: 'POST' })
     if (!order || order.event.brandId !== brandIdOf(user)) {
       throw new Error('Pesanan tidak ditemukan')
     }
-    assertOrdersEditable(order.event)
+    assertNoSubmittedRows(
+      await db
+        .select({ submitStatus: items.submitStatus })
+        .from(items)
+        .where(eq(items.orderId, data.orderId)),
+    )
 
     await db.delete(orders).where(eq(orders.id, data.orderId))
   })
@@ -552,7 +613,7 @@ export const deleteItem = createServerFn({ method: 'POST' })
     if (!item || item.order.event.brandId !== brandIdOf(user)) {
       throw new Error('Barang tidak ditemukan')
     }
-    assertOrdersEditable(item.order.event)
+    assertQtyEditable(item)
 
     await db.delete(items).where(eq(items.id, data.itemId))
   })
@@ -721,7 +782,10 @@ export const getOrderInvoice = createServerFn({ method: 'GET' })
         // Kalau true, tagihan ini tidak memecah harga jadi "harga + fee".
         hideFee: order.event.hideFee,
       },
-      items: order.items.map((item) => ({
+      // Barang yang disanggah partner tidak dikirim, jadi tidak tampil di invoice.
+      items: order.items
+        .filter((item) => item.submitStatus !== 'disanggah')
+        .map((item) => ({
         id: item.id,
         name: item.name,
         originalPrice: item.originalPrice,
@@ -748,3 +812,4 @@ export const getOrderInvoice = createServerFn({ method: 'GET' })
       paymentMethods: await listActivePaymentMethods(brandIdOf(user)),
     }
   })
+

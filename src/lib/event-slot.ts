@@ -54,169 +54,39 @@ export function validateSlotWindow(
   return null
 }
 
-export type SubmitCheck = { ok: true } | { ok: false; reason: string }
-
-export function checkCanSubmit(input: {
-  config: SlotConfig | null
-  submittedAt: Date | null
-  /** Jumlah barang dengan qty > 0 di semua pesanan event ini. */
-  itemCount: number
-  now: Date
-}): SubmitCheck {
-  if (!isSlotEnabled(input.config)) {
-    return { ok: false, reason: 'Event ini tidak memakai alur slot.' }
-  }
-  if (input.submittedAt !== null) {
-    return { ok: false, reason: 'Pesanan sudah dikirim ke partner.' }
-  }
-  const phase = slotPhase(input.config as SlotConfig, input.now)
-  if (phase === 'belum_dibuka') {
-    return { ok: false, reason: 'Slot pemesanan belum dibuka oleh partner.' }
-  }
-  if (phase === 'ditutup') {
-    return { ok: false, reason: 'Slot pemesanan sudah ditutup.' }
-  }
-  if (input.itemCount <= 0) {
-    return { ok: false, reason: 'Belum ada barang untuk dikirim ke partner.' }
-  }
-  return { ok: true }
-}
-
-export const ORDERS_LOCKED_MESSAGE =
-  'Pesanan sudah dikirim ke partner dan terkunci, jadi tidak bisa diubah.'
-
-/** Setelah submit, isi pesanan terkunci. Perubahan hanya lewat jalur sanggah. */
-export function isOrderLocked(event: { submittedAt: Date | null }): boolean {
-  return event.submittedAt !== null
-}
-
-export function assertOrdersEditable(event: {
-  submittedAt: Date | null
-}): void {
-  if (isOrderLocked(event)) throw new Error(ORDERS_LOCKED_MESSAGE)
-}
-
-// ---------------------------------------------------------------------------
-// Hasil pengecekan partner
-
 /** Satuan: `qty` menjadi jumlah yang dapat, `requestedQty` menyimpan permintaan asli. */
-export function applySatuanApproval(
-  row: { qty: number; requestedQty: number | null },
-  approvedQty: number,
-): { qty: number; requestedQty: number } {
-  const requested = row.requestedQty ?? row.qty
-  if (!Number.isInteger(approvedQty) || approvedQty < 0) {
-    throw new Error('Jumlah yang dapat harus bilangan bulat, minimal 0.')
-  }
-  if (approvedQty > requested) {
-    throw new Error('Jumlah yang dapat tidak boleh melebihi yang diminta.')
-  }
-  return { qty: approvedQty, requestedQty: requested }
-}
-
-export type Demand = { key: string; qty: number; at: Date }
-
 /**
  * Partner mengecek per varian dan tidak melihat nama pemesan, jadi pcs yang
  * disetujui dibagikan ke pemesan yang masuk lebih dulu (waktu masuk paling
  * lama, pemecah: key). Hasilnya: jumlah disetujui per baris permintaan.
  */
-export function allocateApproval(
-  demands: Array<Demand>,
-  approvedTotal: number,
-): Map<string, number> {
-  const total = demands.reduce((sum, d) => sum + d.qty, 0)
-  if (!Number.isInteger(approvedTotal) || approvedTotal < 0) {
-    throw new Error('Jumlah yang dapat harus bilangan bulat, minimal 0.')
-  }
-  if (approvedTotal > total) {
-    throw new Error('Jumlah yang dapat tidak boleh melebihi yang diminta.')
-  }
-  let left = approvedTotal
-  const result = new Map<string, number>()
-  const ordered = demands.slice().sort((a, b) => {
-    const diff = a.at.getTime() - b.at.getTime()
-    if (diff !== 0) return diff
-    return a.key < b.key ? -1 : a.key > b.key ? 1 : 0
-  })
-  for (const d of ordered) {
-    const take = Math.min(d.qty, left)
-    result.set(d.key, take)
-    left -= take
-  }
-  return result
-}
-
-export function checkComponentApproval(qty: number, approvedQty: number): void {
-  if (!Number.isInteger(approvedQty) || approvedQty < 0) {
-    throw new Error('Jumlah yang disetujui harus bilangan bulat, minimal 0.')
-  }
-  if (approvedQty > qty) {
-    throw new Error('Jumlah yang disetujui tidak boleh melebihi yang diminta.')
-  }
-}
-
-export type ItemApprovalKind = 'dapat' | 'sebagian' | 'tidak_dapat'
-
-export function approvalKind(
-  requested: number,
-  approved: number,
-): ItemApprovalKind {
-  if (approved <= 0) return 'tidak_dapat'
-  return approved >= requested ? 'dapat' : 'sebagian'
-}
-
-// ---------------------------------------------------------------------------
-// Status paket dan status event
-
-export type ComponentState = { qty: number; approvedQty: number | null }
-
 /**
  * - `ok`: semua isi paket disetujui penuh
  * - `sanggah`: ada isi yang tidak/sebagian dapat; jastiper harus memutuskan
  * - `verifikasi`: ada barang pengganti yang menunggu verifikasi partner
  * Sanggah didahulukan karena jastiper yang harus bertindak lebih dulu.
  */
-export type BundleReviewState = 'ok' | 'sanggah' | 'verifikasi'
-
-export function bundleReviewState(
-  components: Array<ComponentState>,
-): BundleReviewState {
-  if (components.some((c) => c.approvedQty !== null && c.approvedQty < c.qty)) {
-    return 'sanggah'
-  }
-  if (components.some((c) => c.approvedQty === null)) return 'verifikasi'
-  return 'ok'
-}
-
 export type SlotStatus =
   | 'belum_dibuka'
   | 'draft'
   | 'ditutup'
   | 'terkirim'
   | 'sanggah'
-  | 'menunggu_verifikasi'
-  | 'menyetujui'
   | 'disetujui'
 
-export const SLOT_STATUS_LABEL: Record<SlotStatus, string> = {
-  belum_dibuka: 'Slot belum dibuka',
-  draft: 'Draft',
-  ditutup: 'Slot ditutup',
-  terkirim: 'Menunggu dicek partner',
-  sanggah: 'Sanggah',
-  menunggu_verifikasi: 'Menunggu verifikasi barang pengganti',
-  menyetujui: 'Jastiper menyetujui pesanan',
-  disetujui: 'Disetujui',
-}
-
-/** Status event jastiper. Null = event tidak memakai alur slot. */
+/**
+ * Status event jastiper dari hitungan baris submit (alur submit bertahap).
+ * Null = event tidak memakai alur slot.
+ * - belum submit: ikut jadwal slot (draft / belum dibuka / ditutup)
+ * - masih ada pengajuan yang menunggu partner: terkirim
+ * - ada barang disanggah dan tidak ada yang menunggu: sanggah (kirim pengganti)
+ * - selain itu: disetujui
+ */
 export function deriveSlotStatus(input: {
   config: SlotConfig | null
   submittedAt: Date | null
-  reviewedAt: Date | null
-  decidedAt: Date | null
-  bundleStates: Array<BundleReviewState>
+  pendingCount: number
+  disanggahCount: number
   now: Date
 }): SlotStatus | null {
   if (!isSlotEnabled(input.config)) return null
@@ -226,10 +96,9 @@ export function deriveSlotStatus(input: {
     if (phase === 'ditutup') return 'ditutup'
     return 'draft'
   }
-  if (input.reviewedAt === null) return 'terkirim'
-  if (input.bundleStates.includes('verifikasi')) return 'menunggu_verifikasi'
-  if (input.bundleStates.includes('sanggah')) return 'sanggah'
-  return input.decidedAt !== null ? 'menyetujui' : 'disetujui'
+  if (input.pendingCount > 0) return 'terkirim'
+  if (input.disanggahCount > 0) return 'sanggah'
+  return 'disetujui'
 }
 
 // ---------------------------------------------------------------------------
@@ -239,76 +108,17 @@ export function deriveSlotStatus(input: {
  * Batas sanggah harus di masa depan. Kalau sudah pernah diisi, hanya boleh
  * diperpanjang, tidak dipersingkat, supaya jastiper tidak dirugikan.
  */
-export function validateSanggahDeadline(
-  deadline: Date,
-  now: Date,
-  existing: Date | null,
-): string | null {
-  if (Number.isNaN(deadline.getTime()))
-    return 'Batas waktu sanggah tidak valid.'
-  if (deadline.getTime() <= now.getTime()) {
-    return 'Batas waktu sanggah harus di masa depan.'
-  }
-  if (existing !== null && deadline.getTime() < existing.getTime()) {
-    return 'Batas waktu sanggah hanya boleh diperpanjang, tidak dipersingkat.'
-  }
-  return null
-}
-
-export function isSanggahExpired(deadline: Date | null, now: Date): boolean {
-  return deadline !== null && deadline.getTime() <= now.getTime()
-}
-
-// ---------------------------------------------------------------------------
-// Penggantian komponen paket
-
-export type ReplacementPlan =
-  { kind: 'swap' } | { kind: 'split'; keepQty: number; newQty: number }
-
 /**
  * Rencana penggantian satu komponen yang bermasalah.
  * - tidak dapat sama sekali (disetujui 0): variannya diganti, qty tetap.
  * - dapat sebagian: komponen lama diperkecil jadi yang dapat, sisanya jadi
  *   komponen baru dengan varian pengganti.
  */
-export function planReplacement(
-  component: ComponentState,
-  sameVariant: boolean,
-): ReplacementPlan {
-  if (component.approvedQty === null) {
-    throw new Error('Barang ini belum dicek partner.')
-  }
-  if (component.approvedQty >= component.qty) {
-    throw new Error('Barang ini tidak bermasalah, jadi tidak perlu diganti.')
-  }
-  if (sameVariant) {
-    throw new Error('Pilih barang pengganti yang berbeda dari barang semula.')
-  }
-  if (component.approvedQty === 0) return { kind: 'swap' }
-  return {
-    kind: 'split',
-    keepQty: component.approvedQty,
-    newQty: component.qty - component.approvedQty,
-  }
-}
-
-/**
- * Pcs yang dikembalikan ke satuan saat jastiper memilih "tidak ganti".
- * `returnQty` = yang dapat (boleh 0, tampil sebagai "tidak dapat"),
- * `requestedQty` = yang semula diminta.
- */
-export function componentsToReturn<T extends ComponentState>(
-  components: Array<T>,
-): Array<T & { returnQty: number; requestedQty: number }> {
-  return components.map((c) => ({
-    ...c,
-    returnQty: c.approvedQty ?? 0,
-    requestedQty: c.qty,
-  }))
-}
-
+/** "2 hari 3 jam", "3 jam 12 mnt", "5 mnt 10 dtk", "30 dtk", atau null kalau sudah lewat. */
 // ---------------------------------------------------------------------------
-// Hitung mundur
+// Waktu WIB untuk input `datetime-local`
+
+const WIB_OFFSET_MS = 7 * 3600 * 1000
 
 /** "2 hari 3 jam", "3 jam 12 mnt", "5 mnt 10 dtk", "30 dtk", atau null kalau sudah lewat. */
 export function formatRemaining(target: Date, now: Date): string | null {
@@ -330,8 +140,6 @@ export function formatRemaining(target: Date, now: Date): string | null {
 
 // ---------------------------------------------------------------------------
 // Waktu WIB untuk input `datetime-local`
-
-const WIB_OFFSET_MS = 7 * 3600 * 1000
 
 /** "2026-11-10T19:30" (jam dinding WIB) -> instant. Null kalau kosong/tidak valid. */
 export function parseWibLocal(value: string): Date | null {
@@ -361,98 +169,11 @@ export function formatWibDateTime(date: Date | string): string {
 // ---------------------------------------------------------------------------
 // Notifikasi perubahan status ke jastiper
 
-export type SlotNotice = { kind: 'status_pesanan'; title: string; body: string }
-
 /**
  * Isi notifikasi untuk jastiper saat status pesanannya berubah karena partner
  * (selesai cek, koreksi, verifikasi pengganti) atau karena batas sanggah lewat.
  * Null = tidak ada yang perlu diberitahukan.
  */
-export function slotStatusNotice(input: {
-  reason: 'review' | 'expired'
-  status: SlotStatus | null
-  previous: SlotStatus | null
-  firstReview: boolean
-  /** Hasil cek berubah (jumlah dapat / pengganti) sejak sebelum disimpan. */
-  resultsChanged: boolean
-  eventName: string
-  sanggahDeadline: Date | null
-  /** Pengganti belum mencukupi dan paketnya langsung difinalkan (sanggah hanya sekali). */
-  finalizedShortage?: boolean
-}): SlotNotice | null {
-  const { status, eventName } = input
-  if (status === null) return null
-
-  if (
-    input.finalizedShortage === true &&
-    (status === 'disetujui' || status === 'menyetujui')
-  ) {
-    return {
-      kind: 'status_pesanan',
-      title: `Pesanan final: ${eventName}`,
-      body: 'Barang pengganti belum mencukupi. Kesempatan mengganti hanya sekali, jadi barang yang tidak dapat tidak masuk tagihan.',
-    }
-  }
-
-  if (input.reason === 'expired') {
-    return {
-      kind: 'status_pesanan',
-      title: `Batas sanggah lewat: ${eventName}`,
-      body: 'Paket yang bermasalah diproses tanpa pengganti. Pesananmu sudah final.',
-    }
-  }
-
-  const changed = status !== input.previous
-  if (!input.firstReview && !changed && !input.resultsChanged) return null
-
-  if (status === 'sanggah') {
-    return {
-      kind: 'status_pesanan',
-      title: `Ada barang kurang di ${eventName}`,
-      body: input.sanggahDeadline
-        ? `Putuskan ganti atau tidak ganti sebelum ${formatWibDateTime(input.sanggahDeadline)}.`
-        : 'Putuskan ganti atau tidak ganti paket yang bermasalah.',
-    }
-  }
-  if ((status === 'disetujui' || status === 'menyetujui') && changed) {
-    return {
-      kind: 'status_pesanan',
-      title: `Pesanan disetujui: ${eventName}`,
-      body: 'Partner sudah selesai mengecek barangmu. Buka pesanan untuk melihat hasil akhirnya.',
-    }
-  }
-  return {
-    kind: 'status_pesanan',
-    title: `Hasil pengecekan diperbarui: ${eventName}`,
-    body: 'Partner memperbarui hasil cek. Buka pesanan untuk melihat jumlah terbaru.',
-  }
-}
-
-/** Pesan WhatsApp partner ke jastiper (tombol "Kabari jastiper"). */
-export function buildKabariMessage(input: {
-  status: SlotStatus | null
-  brandName: string
-  eventName: string
-  totalAmount: number
-  sanggahDeadline: Date | null
-}): string {
-  const rupiah = `Rp${Math.round(input.totalAmount).toLocaleString('id-ID')}`
-  const head = `Halo ${input.brandName}, ini update pesanan kamu di ${input.eventName}.`
-  if (input.status === 'sanggah') {
-    const until = input.sanggahDeadline
-      ? ` sebelum ${formatWibDateTime(input.sanggahDeadline)}`
-      : ''
-    return `${head} Ada barang yang kurang. Mohon putuskan ganti atau tidak ganti di ALAKA${until}.`
-  }
-  if (input.status === 'disetujui' || input.status === 'menyetujui') {
-    return `${head} Pesanan kamu sudah disetujui. Total tagihan ${rupiah}. Terima kasih!`
-  }
-  return `${head} Silakan cek statusnya di ALAKA.`
-}
-
-// ---------------------------------------------------------------------------
-// Badge dan teks status di sisi partner
-
 export type PartnerBadgeTone = 'neutral' | 'info' | 'warn' | 'success'
 
 /** Label badge status pesanan jastiper di Partner Portal. */
@@ -462,11 +183,9 @@ export function partnerStatusBadge(status: SlotStatus | null): {
 } {
   switch (status) {
     case 'terkirim':
-    case 'menunggu_verifikasi':
       return { label: 'Pengajuan', tone: 'info' }
     case 'sanggah':
       return { label: 'Pesanan dikembalikan', tone: 'warn' }
-    case 'menyetujui':
     case 'disetujui':
       return { label: 'Disetujui', tone: 'success' }
     default:
@@ -474,61 +193,11 @@ export function partnerStatusBadge(status: SlotStatus | null): {
   }
 }
 
-/** Judul dan keterangan kartu status di halaman detail jastiper (partner). */
-export function partnerStatusCopy(input: {
-  status: SlotStatus | null
-  hasItems: boolean
-  sanggahCount: number
-}): { title: string; description: string } {
-  switch (input.status) {
-    case 'terkirim':
-      return {
-        title: 'Cek pesanan ini',
-        description: 'Isi jumlah yang dapat di tabel, lalu tekan Selesai dicek.',
-      }
-    case 'menunggu_verifikasi':
-      return {
-        title: 'Cek pengganti',
-        description:
-          'Jastiper sudah mengganti barang yang kurang. Isi jumlah pengganti yang dapat, lalu tekan Selesai dicek. Ini kesempatan terakhir: kalau masih kurang, hasilnya final.',
-      }
-    case 'sanggah':
-      return {
-        title: 'Menunggu jawaban jastiper',
-        description: `${input.sanggahCount > 0 ? `${input.sanggahCount} paket kurang barang. ` : ''}Jastiper memilih ganti atau tidak ganti.`,
-      }
-    case 'menyetujui':
-      return {
-        title: 'Hasil final',
-        description:
-          'Jastiper memilih tidak mengganti. Barang yang tidak dapat tidak masuk tagihan.',
-      }
-    case 'disetujui':
-      return {
-        title: 'Hasil final',
-        description:
-          'Semua barang sudah dicek. Yang tidak dapat tidak masuk tagihan.',
-      }
-    default:
-      return input.hasItems
-        ? {
-            title: 'Menunggu jastiper',
-            description: 'Jastiper belum menekan Submit. Pesanan belum bisa dicek.',
-          }
-        : {
-            title: 'Menunggu jastiper',
-            description:
-              'Jastiper belum memasukkan pesanan. Barang muncul di sini begitu jastiper menambahkannya, bahkan sebelum submit.',
-          }
-  }
-}
-
 export type PartnerStatusFilter =
   | 'semua'
   | 'draft'
   | 'pengajuan'
-  | 'dikembalikan'
-  | 'disetujui'
+  | 'selesai'
 
 export const PARTNER_STATUS_FILTERS: Array<{
   key: PartnerStatusFilter
@@ -537,8 +206,7 @@ export const PARTNER_STATUS_FILTERS: Array<{
   { key: 'semua', label: 'Semua' },
   { key: 'draft', label: 'Draft' },
   { key: 'pengajuan', label: 'Pengajuan' },
-  { key: 'dikembalikan', label: 'Pesanan dikembalikan' },
-  { key: 'disetujui', label: 'Disetujui' },
+  { key: 'selesai', label: 'Selesai dicek' },
 ]
 
 /** Kelompok filter chip daftar jastiper untuk satu status slot. */
@@ -547,44 +215,16 @@ export function partnerStatusFilterKey(
 ): Exclude<PartnerStatusFilter, 'semua'> {
   switch (status) {
     case 'terkirim':
-    case 'menunggu_verifikasi':
       return 'pengajuan'
     case 'sanggah':
-      return 'dikembalikan'
-    case 'menyetujui':
     case 'disetujui':
-      return 'disetujui'
+      return 'selesai'
     default:
       return 'draft'
   }
 }
 
-/** Subjudul halaman detail jastiper di Partner Portal. */
-export function partnerPageSubtitle(status: SlotStatus | null): string {
-  switch (status) {
-    case 'terkirim':
-      return 'Cek pesanan jastiper di event ini'
-    case 'menunggu_verifikasi':
-      return 'Cek pesanan jastiper di event ini · sudah ada pengganti'
-    case 'menyetujui':
-    case 'disetujui':
-      return 'Hasil pesanan jastiper di event ini · hanya baca'
-    default:
-      return 'Detail pesanan jastiper di event ini · hanya baca'
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Penguncian hasil cek dan perubahan slot
-
 /** Hasil cek terkunci setelah dikembalikan ke jastiper atau sudah final. */
-export function reviewLockedReason(status: SlotStatus | null): string | null {
-  if (status === 'sanggah' || status === 'disetujui' || status === 'menyetujui') {
-    return 'Hasil pengecekan sudah dikunci.'
-  }
-  return null
-}
-
 /**
  * Setelah ada jastiper yang mengirim pesanan, urutan antrean tidak boleh
  * berubah: slot tidak bisa dimatikan, waktu buka tidak boleh lebih lambat dari

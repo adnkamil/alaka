@@ -274,6 +274,20 @@
       "when": 1794451232221,
       "tag": "0038_item_component_replaced_from",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1794474598203,
+      "tag": "0039_submit_bertahap",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1794522878860,
+      "tag": "0040_drop_legacy_slot_columns",
+      "breakpoints": true
     }
   ]
 }
