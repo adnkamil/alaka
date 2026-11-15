@@ -11,6 +11,16 @@ export interface OrderItemLike {
   originalPrice: string | number
   fee: string | number
   qty: number
+  /** Alur submit bertahap. 'disanggah' = tidak tersedia dari partner, tidak ditagih. */
+  submitStatus?: string | null
+}
+
+/**
+ * Jumlah yang ikut dihitung uang. Barang yang disanggah partner tetap tampil
+ * sebagai riwayat, tapi qty-nya tidak masuk total maupun invoice.
+ */
+export function billableQty(item: Pick<OrderItemLike, 'qty' | 'submitStatus'>) {
+  return item.submitStatus === 'disanggah' ? 0 : item.qty
 }
 
 /**
@@ -26,7 +36,7 @@ export function unitNetPrice(
 
 /** Total satu baris item: (harga asli + fee) * qty. */
 export function lineTotal(item: OrderItemLike) {
-  return unitNetPrice(item) * item.qty
+  return unitNetPrice(item) * billableQty(item)
 }
 
 /** Ringkasan pesanan: subtotal (harga barang), total fee, dan grand total. */
@@ -35,8 +45,9 @@ export function summarizeItems(items: Array<OrderItemLike>) {
   let totalFee = 0
 
   for (const item of items) {
-    subtotal += Number(item.originalPrice) * item.qty
-    totalFee += Number(item.fee) * item.qty
+    const qty = billableQty(item)
+    subtotal += Number(item.originalPrice) * qty
+    totalFee += Number(item.fee) * qty
   }
 
   return { subtotal, totalFee, total: subtotal + totalFee }
@@ -44,7 +55,7 @@ export function summarizeItems(items: Array<OrderItemLike>) {
 
 /** Jumlah unit barang (sum qty), dipakai buat label "n item". */
 export function totalUnits(items: Array<OrderItemLike>) {
-  return items.reduce((sum, item) => sum + item.qty, 0)
+  return items.reduce((sum, item) => sum + billableQty(item), 0)
 }
 
 /** Status pembayaran pesanan. `dp` = sudah bayar sebagian (uang muka). */

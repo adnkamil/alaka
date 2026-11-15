@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import ConfirmModal from '../../components/ui/ConfirmModal'
 import DpAmountModal from '../../components/ui/DpAmountModal'
 import RupiahInput from '../../components/ui/RupiahInput'
@@ -61,8 +61,6 @@ import { APP_TIME_ZONE, todayIsoDateInAppTimeZone } from '../../lib/timezone'
 import type { OrderItemView } from '../../components/OrderItemList'
 import EventSlotAction from '../../components/EventSlotAction'
 import EventSlotBanner from '../../components/EventSlotBanner'
-import EventSlotPanel from '../../components/EventSlotPanel'
-import { partnerItemName, variantLabel } from '../../lib/partner-item-label'
 import {
   removeBundleComponent,
   updateBundleComponent,
@@ -221,13 +219,17 @@ function summarizeItemQty(
     // Paket dibongkar jadi per barang: setiap komponen dihitung sebagai barang
     // sendiri dengan qty = qty komponen x jumlah paket. Barang satuan tetap satu baris.
     const lines = order.items.flatMap((item) => {
+      // Barang yang ditolak partner tidak dihitung di tab Per Item.
+      if (item.submitStatus === 'disanggah') return []
       if (item.isBundle && item.components.length > 0) {
-        return item.components.map((c) => ({
-          id: item.id,
-          name: componentDisplayName(c),
-          qty: c.qty * item.qty,
-          obtained: item.obtained,
-        }))
+        return item.components
+          .filter((c) => c.submitStatus !== 'disanggah')
+          .map((c) => ({
+            id: item.id,
+            name: componentDisplayName(c),
+            qty: c.qty * item.qty,
+            obtained: item.obtained,
+          }))
       }
       return [{ id: item.id, name: item.name, qty: item.qty, obtained: item.obtained }]
     })
@@ -370,7 +372,6 @@ function EventDetailPage() {
   }
   const [isSavingDpAmount, setIsSavingDpAmount] = useState(false)
   const [showEventMenu, setShowEventMenu] = useState(false)
-  const [showSlotStatus, setShowSlotStatus] = useState(false)
   // Modal ubah nama/tanggal/deskripsi event (dari menu ⋮ atau tap judul).
   const [showEditEvent, setShowEditEvent] = useState(false)
   // Info singkat setelah aksi pesanan: barang digabung, hasil import, atau
@@ -395,8 +396,8 @@ function EventDetailPage() {
   })
   const { data: event } = useSuspenseQuery(query)
   // Alur slot partner: setelah submit, isi pesanan terkunci (server juga menolak).
-  const ordersLocked = event.submittedAt != null
-  const ordersReviewed = event.reviewedAt != null
+  // Alur submit bertahap: kunci per barang (lihat assertQtyEditable), bukan per event.
+  const ordersLocked = false
 
   // Jaga-jaga: URL `?addOrder=true` pada event nonaktif tidak boleh membuka form
   // tambah pesanan (servernya juga sudah menolak `createOrder`-nya) — biar UI
@@ -466,27 +467,6 @@ function EventDetailPage() {
     queryFn: () => getEventPartnerCatalog({ data: { eventId } }),
   })
   const { data: partnerCatalog } = useQuery(partnerCatalogQuery)
-  // Varian yang boleh dipilih untuk mengganti komponen paket, per aturan.
-  const variantOptionsByRule = useMemo(() => {
-    const out: Record<string, Array<{ id: string; label: string }>> = {}
-    if (!partnerCatalog) return out
-    for (const rule of partnerCatalog.rules) {
-      const productIds = new Set(rule.productIds)
-      out[rule.id] = partnerCatalog.variants
-        .filter((v) => productIds.has(v.productId))
-        .map((v) => {
-          const product = partnerCatalog.products.find((p) => p.id === v.productId)
-          return {
-            id: v.id,
-            label: partnerItemName(
-              product?.name ?? '',
-              variantLabel({ size: v.size, variation: v.variation }),
-            ),
-          }
-        })
-    }
-    return out
-  }, [partnerCatalog])
 
   async function refreshEventData() {
     await queryClient.invalidateQueries({ queryKey: ['event', eventId] })
@@ -1153,15 +1133,13 @@ function EventDetailPage() {
         <>
           <EventSlotBanner
             eventId={eventId}
-            onOpenStatus={() => setShowSlotStatus(true)}
-          />
-          <EventSlotPanel
-            eventId={eventId}
-            orders={event.orders}
-            variantOptionsByRule={variantOptionsByRule}
-            onChanged={refreshEventData}
-            open={showSlotStatus}
-            onClose={() => setShowSlotStatus(false)}
+            onOpenStatus={() =>
+              navigate({
+                to: '/events/$eventId/status',
+                search: { tab: undefined },
+                params: { eventId },
+              })
+            }
           />
         </>
       )}
@@ -1614,6 +1592,11 @@ function EventDetailPage() {
                     >
                       <span className="whitespace-nowrap">
                         {order.items.length} item · {formatIDR(orderTotal)}
+                        {order.items.some((item) => item.submitStatus === 'pengajuan') && (
+                          <span className="ml-1 text-[11px]" style={{ color: 'var(--app-text-mute)' }}>
+                            (sementara)
+                          </span>
+                        )}
                       </span>
                       {order.paymentStatus === 'dp' && (
                         <span style={{ color: 'var(--app-danger)' }}>
@@ -1919,6 +1902,7 @@ function EventDetailPage() {
           partnerCatalog={partnerCatalog}
           partnerItems={partnerItems}
           title="Edit Pesanan"
+          onSubmittedPriceSaved={() => refreshEventData()}
           submitLabel="Simpan perubahan"
           initialValue={{
             customerName: editingOrder.customerName,
@@ -1928,11 +1912,13 @@ function EventDetailPage() {
             items: editingOrder.items
               .filter((item) => item.partnerRuleId === null)
               .map((item) => ({
+              id: item.id,
               name: item.name,
               originalPrice: Number(item.originalPrice),
               fee: Number(item.fee),
               qty: item.qty,
               partnerVariantId: item.partnerVariantId,
+              submitStatus: item.submitStatus,
               // Checklist belanja dibawa terus, biar updateOrder yang hapus +
               // insert ulang item nggak me-reset status "sudah didapat".
               obtained: item.obtained,
@@ -1957,6 +1943,7 @@ function EventDetailPage() {
                 size: c.size,
                 variation: c.variation,
                 qty: c.qty,
+                submitStatus: c.submitStatus,
               })),
             }))}
           onSaveLockedBundlePrice={handleSaveBundlePriceInline}

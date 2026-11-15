@@ -498,12 +498,6 @@ export const events = pgTable(
      * kalender (lihat `event-slot-queries.ts`).
      */
     submittedAt: timestamp('submitted_at', { withTimezone: true }),
-    /** Partner selesai mengecek barang. Non-null = fase sanggah dimulai. */
-    reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
-    /** Batas waktu sanggah, diisi partner. Lewat batas = paket bermasalah otomatis "tidak ganti". */
-    sanggahDeadline: timestamp('sanggah_deadline', { withTimezone: true }),
-    /** Terakhir kali jastiper memutuskan "tidak ganti" (manual atau otomatis). Dipakai label status di sisi partner. */
-    decidedAt: timestamp('decided_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -587,13 +581,6 @@ export const items = pgTable('items', {
   }).notNull(),
   fee: decimal({ precision: 12, scale: 2 }).notNull(),
   qty: integer().notNull().default(1),
-  /**
-   * Jumlah yang diminta jastiper sebelum dicek partner (alur slot). Diisi saat
-   * partner mengecek: `qty` lalu menjadi jumlah yang DAPAT (boleh 0 = tidak
-   * dapat), sehingga total, FIFO, dan invoice otomatis memakai yang dapat.
-   * Null = belum pernah dicek / bukan event slot.
-   */
-  requestedQty: integer('requested_qty'),
   /** Submit tempat baris satuan ini diajukan. Null = belum disubmit. */
   submissionId: uuid('submission_id').references(() => eventSubmissions.id, {
     onDelete: 'set null',
@@ -648,22 +635,6 @@ export const itemComponents = pgTable(
     size: varchar(),
     variation: varchar(),
     qty: integer().notNull().default(1),
-    /**
-     * Jumlah yang disetujui partner (alur slot). Null = belum dicek, atau
-     * pengganti yang menunggu verifikasi partner. Kurang dari `qty` = bagian
-     * paket ini bermasalah dan paketnya masuk sanggah.
-     */
-    approvedQty: integer('approved_qty'),
-    /**
-     * Untuk barang pengganti: varian yang digantikan dan labelnya (snapshot,
-     * mis. "Kingu Avery Long · L · Teracotta"). Dipakai halaman cek partner
-     * untuk menampilkan "Sudah diganti" / "Pengganti". Null = bukan pengganti.
-     */
-    replacedVariantId: uuid('replaced_variant_id').references(
-      () => partnerVariants.id,
-      { onDelete: 'set null' },
-    ),
-    replacedLabel: text('replaced_label'),
     /** Submit tempat komponen ini diajukan. Null = belum disubmit. */
     submissionId: uuid('submission_id').references(
       () => eventSubmissions.id,

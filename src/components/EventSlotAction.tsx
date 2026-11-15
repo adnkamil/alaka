@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
-import { useNow } from './EventSlotPanel'
+import { useNow } from '../lib/use-now'
 import { formatRemaining, formatWibDateTime } from '../lib/event-slot'
 import { getEventSlotSummary } from '../lib/event-slot-functions'
 
@@ -21,7 +21,7 @@ export default function EventSlotAction({ eventId }: { eventId: string }) {
 
   const submitted = summary.submittedAt !== null
   const needsAttention =
-    summary.status === 'sanggah' || summary.status === 'menunggu_verifikasi'
+    summary.status === 'sanggah'
   const untilClose = formatRemaining(new Date(summary.closesAt), now)
 
   let caption: string | null = null
@@ -38,7 +38,7 @@ export default function EventSlotAction({ eventId }: { eventId: string }) {
       <button
         type="button"
         onClick={() =>
-          navigate({ to: '/events/$eventId/status', params: { eventId } })
+          navigate({ to: '/events/$eventId/status', params: { eventId }, search: { tab: undefined } })
         }
         className="app-btn-primary relative"
         style={{ padding: '0.65rem 1.3rem', fontSize: 15 }}

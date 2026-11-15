@@ -1,7 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
 import { Info } from 'lucide-react'
-import { useNow } from './EventSlotPanel'
-import { formatRemaining } from '../lib/event-slot'
 import { getEventSlotSummary } from '../lib/event-slot-functions'
 
 type Tone = 'warning' | 'success'
@@ -22,7 +20,6 @@ export default function EventSlotBanner({
   eventId: string
   onOpenStatus: () => void
 }) {
-  const now = useNow()
   const { data: summary } = useQuery({
     queryKey: ['event-slot', eventId],
     queryFn: () => getEventSlotSummary({ data: { eventId } }),
@@ -30,12 +27,7 @@ export default function EventSlotBanner({
   })
   if (!summary) return null
 
-  const sanggahCount = Object.values(summary.bundleStates).filter(
-    (state) => state === 'sanggah',
-  ).length
-  const untilDeadline = summary.sanggahDeadline
-    ? formatRemaining(new Date(summary.sanggahDeadline), now)
-    : null
+  const sanggahCount = summary.disanggahCount
 
   let tone: Tone
   let text: string
@@ -60,13 +52,7 @@ export default function EventSlotBanner({
       break
     case 'sanggah':
       tone = 'warning'
-      text = `${sanggahCount} paket perlu keputusanmu${
-        untilDeadline ? ` (sisa ${untilDeadline})` : ''
-      }. Ketuk untuk memilih ganti atau tidak.`
-      break
-    case 'menunggu_verifikasi':
-      tone = 'warning'
-      text = 'Barang pengganti sedang diverifikasi partner.'
+      text = `${sanggahCount} barang ditolak partner. Kirim pengganti lewat Submit ulang.`
       break
     default:
       tone = 'success'

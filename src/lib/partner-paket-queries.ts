@@ -3,10 +3,8 @@
 // pemesan (pesanan), dengan aturan yang sama.
 import { and, eq, inArray } from 'drizzle-orm'
 import {
-  events,
   itemComponents,
   items,
-  orders,
   partnerEventProducts,
   partnerOptionGroups,
   partnerOptionValues,
@@ -175,6 +173,8 @@ export async function regroupRuleInOrder(
       name: items.name,
       createdAt: items.createdAt,
       partnerVariantId: items.partnerVariantId,
+      submitStatus: items.submitStatus,
+      submissionId: items.submissionId,
     })
     .from(items)
     .where(and(eq(items.orderId, orderId), eq(items.isBundle, false)))
@@ -188,6 +188,11 @@ export async function regroupRuleInOrder(
   // dengan qty 0 ("tidak dapat") tidak boleh ikut FIFO dan tidak boleh terhapus.
   const pool = singleRows.filter((s) => {
     if (s.qty <= 0) return false
+    // Alur submit bertahap: pengajuan menunggu cek partner, disanggah tinggal
+    // sebagai riwayat. Keduanya tidak boleh ikut membentuk paket.
+    if (s.submitStatus === 'pengajuan' || s.submitStatus === 'disanggah') {
+      return false
+    }
     if (!s.partnerVariantId) return false
     const info = infoMap.get(s.partnerVariantId)
     if (info === undefined || !ruleProductIds.has(info.productId)) return false
@@ -195,16 +200,6 @@ export async function regroupRuleInOrder(
     return ruleSizes.size === 0 || (info.size !== null && ruleSizes.has(info.size))
   })
   if (pool.length === 0) return
-
-  // Event slot yang sudah dicek partner: paket baru hanya terbentuk dari pcs
-  // yang sudah disetujui, jadi isinya langsung berstatus disetujui penuh.
-  const orderEvent = await tx
-    .select({ reviewedAt: events.reviewedAt })
-    .from(orders)
-    .innerJoin(events, eq(events.id, orders.eventId))
-    .where(eq(orders.id, orderId))
-    .then((rows) => rows.at(0))
-  const alreadyReviewed = orderEvent?.reviewedAt != null
 
   const singleById = new Map(pool.map((s) => [s.id, s]))
   const plan = formBundles(
@@ -232,6 +227,8 @@ export async function regroupRuleInOrder(
         variation: info.variation,
         qty: part.qty,
         addedAt: single.createdAt,
+        submitStatus: single.submitStatus,
+        submissionId: single.submissionId,
       }
     })
     const [bundleRow] = await tx
@@ -258,7 +255,8 @@ export async function regroupRuleInOrder(
         size: c.size,
         variation: c.variation,
         qty: c.qty,
-        approvedQty: alreadyReviewed ? c.qty : null,
+        submitStatus: c.submitStatus,
+        submissionId: c.submissionId,
         addedAt: c.addedAt,
       })),
     )
@@ -280,7 +278,6 @@ export async function regroupRuleInOrder(
 export async function dissolveBundle(
   tx: OrderTx,
   bundleId: string,
-  options: { useApproved?: boolean } = {},
 ): Promise<void> {
   const bundle = await tx.query.items.findFirst({
     where: eq(items.id, bundleId),
@@ -309,15 +306,13 @@ export async function dissolveBundle(
   )
 
   for (const c of components) {
-    // Alur sanggah ("tidak ganti"): yang kembali jadi satuan hanya pcs yang
-    // dapat. Yang tidak dapat tetap tampil sebagai baris qty 0 (tidak masuk
-    // total, FIFO, maupun invoice) supaya jastiper bisa mengabari pelanggan.
-    const returnQty = options.useApproved ? (c.approvedQty ?? 0) : c.qty
-    const requestedQty = options.useApproved ? c.qty : null
+    const returnQty = c.qty
     const info = c.partnerVariantId ? infoMap.get(c.partnerVariantId) : undefined
     const price = info ? info.price : 0
     // Barang yang sama dan harganya sama digabung jadi satu baris dengan qty lebih besar.
     if (c.partnerVariantId) {
+      // Hanya digabung dengan baris satuan yang status submitnya sama. Baris
+      // draft, pengajuan, dan disetujui tidak boleh tercampur.
       const sameSingles = await tx
         .select()
         .from(items)
@@ -329,17 +324,17 @@ export async function dissolveBundle(
           ),
         )
       const match = sameSingles.find(
-        (row) => Number(row.originalPrice) === price && Number(row.fee) === feePerPcs,
+        (row) =>
+          Number(row.originalPrice) === price &&
+          Number(row.fee) === feePerPcs &&
+          row.submitStatus === c.submitStatus &&
+          row.submissionId === c.submissionId,
       )
       if (match) {
         await tx
           .update(items)
           .set({
             qty: match.qty + returnQty,
-            requestedQty:
-              requestedQty === null
-                ? match.requestedQty
-                : (match.requestedQty ?? match.qty) + requestedQty,
             createdAt: match.createdAt < c.addedAt ? match.createdAt : c.addedAt,
           })
           .where(eq(items.id, match.id))
@@ -354,7 +349,8 @@ export async function dissolveBundle(
       originalPrice: price.toString(),
       fee: feePerPcs.toFixed(2),
       qty: returnQty,
-      requestedQty,
+      submitStatus: c.submitStatus,
+      submissionId: c.submissionId,
       obtained: false,
       isBundle: false,
       partnerVariantId: c.partnerVariantId,

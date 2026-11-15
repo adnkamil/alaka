@@ -37,7 +37,7 @@ export default function PartnerSlotSection({
   })
   // Antrean = yang menunggu dicek partner (pengajuan), lalu yang masih draft.
   const waiting = queue.filter(
-    (row) => row.status === 'terkirim' || row.status === 'menunggu_verifikasi',
+    (row) => row.status === 'terkirim',
   )
   const drafts = queue.filter((row) => row.rank === null)
   const antrean = [...waiting, ...drafts]
@@ -154,6 +154,7 @@ export default function PartnerSlotSection({
             <Link
               key={row.eventId}
               to="/partner/event/jastiper/$id/$brandId"
+              search={{ view: undefined }}
               params={{ id: calendarEventId, brandId: row.brandId }}
               className="flex items-center gap-3 border-t py-2.5 text-[13px] no-underline"
               style={{ borderColor: 'var(--app-border)', color: 'inherit' }}
@@ -168,9 +169,8 @@ export default function PartnerSlotSection({
                 className="shrink-0 text-[11px]"
                 style={{
                   color:
-                    row.status === 'terkirim' ||
-                    row.status === 'menunggu_verifikasi'
-                      ? '#2f5fb3'
+                    row.status === 'terkirim'
+                    ? '#2f5fb3'
                       : 'var(--app-text-soft)',
                 }}
               >

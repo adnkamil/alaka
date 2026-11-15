@@ -42,6 +42,7 @@ import {
 } from '../../../lib/queries'
 import { todayIsoDateInAppTimeZone } from '../../../lib/timezone'
 import PartnerTableToolbar from '../../../components/ui/PartnerTableToolbar'
+import PartnerSubmitReview from '../../../components/PartnerSubmitReview'
 import { useClientPager } from '../../../lib/use-client-pager'
 
 export const Route = createFileRoute('/partner/event/$id')({
@@ -99,22 +100,55 @@ function PartnerEventDetailPage() {
   // Status dan urutan hanya ada untuk event yang memakai slot.
   const slotEnabled = queue.some((q) => q.status !== null)
   const queueByBrand = new Map(queue.map((q) => [q.brandId, q]))
+  // Satu jastiper bisa tampil di dua baris: Disetujui (semua submit yang sudah dicek)
+  // dan Pengajuan (submit yang masih menunggu cek). Baris Pengajuan hanya ada kalau ada.
+  const revenueByBrand = new Map((revenue?.perBrand ?? []).map((b) => [b.brandId, b]))
+  type ListRow = {
+    key: string
+    p: (typeof participants)[number]
+    group: 'disetujui' | 'pengajuan' | 'lain'
+    pcs: number
+    amount: number | null
+    submits: Array<number>
+  }
+  const listRows: Array<ListRow> = participants.flatMap((p) => {
+    if (!slotEnabled) {
+      return [{ key: p.brandId, p, group: 'lain' as const, pcs: p.orderCount, amount: null, submits: [] }]
+    }
+    const rev = revenueByBrand.get(p.brandId)
+    const out: Array<ListRow> = []
+    if (rev && rev.approvedPcs > 0) {
+      out.push({ key: `${p.brandId}-disetujui`, p, group: 'disetujui', pcs: rev.approvedPcs, amount: rev.totalAmount, submits: rev.approvedSubmitNos })
+    }
+    if (rev && rev.pendingBySubmit.length > 0) {
+      for (const b of rev.pendingBySubmit) {
+        out.push({ key: `${p.brandId}-pengajuan-${b.submitNo}`, p, group: 'pengajuan', pcs: b.pcs, amount: b.amount, submits: [b.submitNo] })
+      }
+    } else if (rev && rev.pendingPcs > 0) {
+      out.push({ key: `${p.brandId}-pengajuan`, p, group: 'pengajuan', pcs: rev.pendingPcs, amount: rev.pendingAmount, submits: rev.pendingSubmitNos })
+    }
+    if (out.length === 0) {
+      out.push({ key: p.brandId, p, group: 'lain', pcs: 0, amount: null, submits: [] })
+    }
+    return out
+  })
+  const rowStatus = (vr: ListRow) =>
+    vr.group === 'disetujui' ? 'disetujui' : vr.group === 'pengajuan' ? 'terkirim' : (queueByBrand.get(vr.p.brandId)?.status ?? null)
   const statusCounts: Record<PartnerStatusFilter, number> = {
-    semua: participants.length,
+    semua: listRows.length,
     draft: 0,
     pengajuan: 0,
-    dikembalikan: 0,
-    disetujui: 0,
+    selesai: 0,
   }
-  for (const p of participants) {
-    statusCounts[partnerStatusFilterKey(queueByBrand.get(p.brandId)?.status ?? null)] += 1
+  for (const vr of listRows) {
+    statusCounts[partnerStatusFilterKey(rowStatus(vr))] += 1
   }
-  const filteredParticipants = participants.filter(
-    (row) =>
-      (row.brandName || 'Tanpa nama').toLowerCase().includes(participantSearch.trim().toLowerCase()) &&
+  const filteredParticipants = listRows.filter(
+    (vr) =>
+      (vr.p.brandName || 'Tanpa nama').toLowerCase().includes(participantSearch.trim().toLowerCase()) &&
       (!slotEnabled ||
         statusFilter === 'semua' ||
-        partnerStatusFilterKey(queueByBrand.get(row.brandId)?.status ?? null) === statusFilter),
+        partnerStatusFilterKey(rowStatus(vr)) === statusFilter),
   )
   const participantPager = useClientPager(filteredParticipants)
   const [productSearch, setProductSearch] = useState('')
@@ -352,6 +386,7 @@ function PartnerEventDetailPage() {
 
         {tab === 'jastiper' && (
           <section className="flex flex-col gap-2.5">
+            {slotEnabled && <PartnerSubmitReview calendarEventId={id} />}
             {participants.length === 0 ? (
               <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
                 Belum ada jastiper yang ikut event ini.
@@ -383,11 +418,12 @@ function PartnerEventDetailPage() {
                   Tidak ada jastiper yang cocok dengan pencarian.
                 </p>
               )}
-              {participantPager.paged.map((row) => {
+              {participantPager.paged.map((vr) => {
+                const row = vr.p
                 const name = row.brandName || 'Tanpa nama'
                 return (
                   <div
-                    key={row.brandId}
+                    key={vr.key}
                     className="app-card flex items-center gap-3 p-3"
                   >
                     <span
@@ -411,8 +447,19 @@ function PartnerEventDetailPage() {
                           : ''}
                       </p>
                       {slotEnabled && (
-                        <div className="mt-1">
-                          <PartnerStatusBadge status={queueByBrand.get(row.brandId)?.status ?? null} />
+                        <div className="mt-1 flex flex-wrap items-center gap-2">
+                          <PartnerStatusBadge status={rowStatus(vr)} />
+                          {vr.amount !== null && (
+                            <span className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
+                              {vr.pcs} pcs · {formatRupiah(vr.amount)}
+                              {vr.submits.length > 0 ? ` · Submit ke-${vr.submits.join(', ')}` : ''}
+                            </span>
+                          )}
+                          {vr.group === 'disetujui' && (queueByBrand.get(row.brandId)?.pendingCount ?? 0) > 0 && (
+                            <span className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
+                              jastiper ini masih ada pesanan yang disubmit tapi belum dicek
+                            </span>
+                          )}
                         </div>
                       )}
                     </div>
@@ -583,18 +630,19 @@ function PartnerEventDetailPage() {
                       Tidak ada jastiper yang cocok.
                     </p>
                   )}
-                  {participantPager.paged.map((row) => {
+                  {participantPager.paged.map((vr) => {
+                    const row = vr.p
                     const name = row.brandName || 'Tanpa nama'
-                    const slotRow = queueByBrand.get(row.brandId)
                     return (
                       <div
-                        key={row.brandId}
+                        key={vr.key}
                         className={`grid ${slotEnabled ? PARTICIPANT_COLUMNS_SLOT : PARTICIPANT_COLUMNS} items-center gap-4 border-t px-5 py-3`}
                         style={{ borderColor: 'var(--app-border)' }}
                       >
                         <Link
                           to="/partner/event/jastiper/$id/$brandId"
                           params={{ id, brandId: row.brandId }}
+                          search={vr.group === 'disetujui' ? { view: 'disetujui' as const } : vr.group === 'pengajuan' ? { view: 'pengajuan' as const } : { view: undefined }}
                           className="flex min-w-0 items-center gap-3.5 no-underline"
                           style={{ color: 'inherit' }}
                         >
@@ -612,14 +660,14 @@ function PartnerEventDetailPage() {
                         <span className="pm-num text-[13px] font-medium">
                           {row.waNumber ? formatPhoneNumber(row.waNumber) : '-'}
                         </span>
-                        <span className="text-sm font-bold">{row.orderCount}</span>
+                        <span className="text-sm font-bold">{slotEnabled && vr.amount !== null ? vr.pcs : row.orderCount}</span>
                         {slotEnabled ? (
                           <>
                             <span className="pm-num text-sm font-bold">
-                              {slotRow?.rank != null ? `#${slotRow.rank}` : '–'}
+                              {vr.submits.length > 0 ? vr.submits.map((n) => `#${n}`).join(' ') : '–'}
                             </span>
                             <div>
-                              <PartnerStatusBadge status={slotRow?.status ?? null} />
+                              <PartnerStatusBadge status={rowStatus(vr)} />
                             </div>
                           </>
                         ) : (
