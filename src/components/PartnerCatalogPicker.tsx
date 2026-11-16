@@ -222,6 +222,15 @@ export default function PartnerCatalogPicker({
                 <p className="truncate text-sm font-semibold">{p.name}</p>
                 <p className="text-sm font-semibold" style={{ color: 'var(--app-accent)' }}>{priceLabel(p)}</p>
                 <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>{meta}</p>
+                {p.variants.every((v) => v.stock <= 0) ? (
+                  <span className="mt-1 mr-1 inline-block rounded-md px-2 py-0.5 text-[11px]" style={{ background: '#eee', color: '#555' }}>
+                    Habis
+                  </span>
+                ) : (
+                  <span className="mt-1 mr-1 inline-block text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
+                    Stok {p.variants.reduce((sum, v) => sum + v.stock, 0)}
+                  </span>
+                )}
                 {count > 0 && (
                   <span className="mt-1 inline-block rounded-md px-2 py-0.5 text-[11px]" style={{ background: '#fde2e2', color: PINK }}>
                     Di pesanan ×{count}
@@ -303,6 +312,7 @@ function VariantSheet({
   const available = (kind: 'size' | 'variation', value: string) =>
     product.variants.some(
       (v) =>
+        v.stock > 0 &&
         (kind === 'size' ? v.size === value : v.variation === value) &&
         (kind === 'size' ? matches(v, null, variation) : matches(v, size, null)),
     )
@@ -310,12 +320,16 @@ function VariantSheet({
   const groupsComplete = (sizes.length === 0 || size !== null) && (variations.length === 0 || variation !== null)
   const variant = groupsComplete ? (product.variants.find((v) => matches(v, size, variation)) ?? null) : null
   const alreadyInOrder = variant ? (pickedQty[variant.id] ?? 0) : 0
+  const soldOut = variant !== null && variant.stock <= 0
+  const maxQty = variant ? Math.max(1, variant.stock) : Number.POSITIVE_INFINITY
   const label = [size, variation].filter(Boolean).join(' / ')
 
   const ctaLabel =
     variant === null
       ? 'Pilih variasi dulu'
-      : mode === 'replace'
+      : soldOut
+        ? 'Stok habis'
+        : mode === 'replace'
         ? `Simpan perubahan · ${rupiah(variant.price * qty)}`
         : alreadyInOrder > 0
           ? `Tambah jumlah · ${rupiah(variant.price * qty)}`
@@ -389,6 +403,12 @@ function VariantSheet({
           </p>
         )}
 
+        {variant && (
+          <p className="text-xs" style={{ color: soldOut ? PINK : 'var(--app-text-soft)' }}>
+            {soldOut ? 'Stok habis. Varian ini tidak bisa dipesan.' : `Stok tersedia: ${variant.stock}`}
+          </p>
+        )}
+
         {mode === 'add' && alreadyInOrder > 0 && (
           <p className="rounded-xl p-3 text-xs" style={{ background: '#fde2e2', color: PINK }}>
             Varian ini sudah ada di pesanan (×{alreadyInOrder}). Jumlah akan ditambahkan ke barang yang sama, bukan baris baru.
@@ -402,7 +422,7 @@ function VariantSheet({
               −
             </button>
             <span className="pm-num w-6 text-center font-bold">{qty}</span>
-            <button type="button" aria-label="Tambah jumlah" onClick={() => setQty((q) => q + 1)} className="app-btn-outline !h-8 !w-8 !min-h-0 !p-0">
+            <button type="button" aria-label="Tambah jumlah" onClick={() => setQty((q) => Math.min(maxQty, q + 1))} disabled={qty >= maxQty} className="app-btn-outline !h-8 !w-8 !min-h-0 !p-0">
               +
             </button>
           </div>
@@ -410,9 +430,9 @@ function VariantSheet({
 
         <button
           type="button"
-          disabled={variant === null}
+          disabled={variant === null || soldOut || qty > variant.stock}
           onClick={() => {
-            if (!variant) return
+            if (!variant || soldOut) return
             onPick({
               partnerVariantId: variant.id,
               productName: product.name,

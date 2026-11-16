@@ -25,6 +25,8 @@ export type VariantInfo = {
   productId: string
   productName: string
   price: number
+  /** Stok varian saat dibaca (live, bukan snapshot pesanan). */
+  stock: number
   size: string | null
   variation: string | null
 }
@@ -43,6 +45,7 @@ export async function loadVariantInfo(
       id: partnerVariants.id,
       productId: partnerVariants.partnerProductId,
       price: partnerVariants.price,
+      stockQty: partnerVariants.stockQty,
       productName: partnerProducts.name,
     })
     .from(partnerVariants)
@@ -72,6 +75,7 @@ export async function loadVariantInfo(
       productId: row.productId,
       productName: row.productName,
       price: Number(row.price),
+      stock: row.stockQty,
       size: values.find((v) => v.type === 'ukuran')?.name ?? null,
       variation: values.find((v) => v.type === 'variasi')?.name ?? null,
     })

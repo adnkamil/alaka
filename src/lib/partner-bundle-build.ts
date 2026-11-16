@@ -13,6 +13,8 @@ import {
   partnerVariants,
 } from '../db/schema'
 import { hasPartnerPro } from './partner-entitlement'
+import { partnerItemName, variantLabel } from './partner-item-label'
+import { aggregateStockDemand, findStockShortages, formatStockShortages } from './partner-stock'
 import {
   PricingError,
   buildBundleLine,
@@ -104,6 +106,7 @@ export async function buildPartnerBundle(
       id: partnerVariants.id,
       productId: partnerVariants.partnerProductId,
       isActive: partnerVariants.isActive,
+      stockQty: partnerVariants.stockQty,
       productName: partnerProducts.name,
     })
     .from(partnerVariants)
@@ -150,6 +153,26 @@ export async function buildPartnerBundle(
       qty: input.qty,
     })
   }
+
+  // Cek stok komponen (pengurangan terjadi saat partner menekan "Selesai dicek").
+  const shortages = findStockShortages(
+    aggregateStockDemand(
+      components.map((c) => ({ variantId: c.partnerVariantId, qty: c.qty })),
+    ),
+    new Map(
+      components.map((c) => [
+        c.partnerVariantId,
+        {
+          name: partnerItemName(
+            c.productName,
+            variantLabel({ size: c.size, variation: c.variation }),
+          ),
+          stock: variantById.get(c.partnerVariantId)?.stockQty ?? 0,
+        },
+      ]),
+    ),
+  )
+  if (shortages.length > 0) throw new Error(formatStockShortages(shortages) + '.')
 
   const pricingRule: PricingRule = {
     id: rule.id,

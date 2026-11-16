@@ -10,7 +10,13 @@ import { useClientPager } from '../lib/use-client-pager'
 
 export type PartnerVariantEditorHandle = { save: () => Promise<void> }
 
-type Cell = { on: boolean; price: string }
+type Cell = { on: boolean; price: string; stock: string }
+
+/** Isian stok kosong dianggap 0 (habis). */
+function stockNumber(raw: string): number {
+  const value = Math.floor(Number(raw))
+  return Number.isFinite(value) && value > 0 ? value : 0
+}
 
 function cellKey(size: string | null, variation: string | null) {
   return `${size ?? ''}\u0001${variation ?? ''}`
@@ -36,6 +42,7 @@ export default function PartnerVariantEditor({
 
   const [hasVariants, setHasVariants] = useState(false)
   const [price, setPrice] = useState('')
+  const [stock, setStock] = useState('0')
   const [sizes, setSizes] = useState<Array<string>>([])
   const [variations, setVariations] = useState<Array<string>>([])
   const [cells, setCells] = useState<Record<string, Cell>>({})
@@ -47,12 +54,17 @@ export default function PartnerVariantEditor({
     if (!data) return
     setHasVariants(data.hasVariants)
     setPrice(data.price === null ? '' : String(data.price))
+    setStock(String(data.stock))
     setSizes(data.sizes)
     setVariations(data.variations)
     const next: Record<string, Cell> = {}
     for (const v of data.variants) {
       if (!v.isActive) continue
-      next[cellKey(v.size, v.variation)] = { on: true, price: String(v.price) }
+      next[cellKey(v.size, v.variation)] = {
+        on: true,
+        price: String(v.price),
+        stock: String(v.stock),
+      }
     }
     setCells(next)
   }, [data])
@@ -71,6 +83,8 @@ export default function PartnerVariantEditor({
     (row ?? 'Standar').toLowerCase().includes(rowSearch.trim().toLowerCase()),
   )
   const rowPager = useClientPager(filteredRowLabels)
+  // Tanpa grup ukuran dan variasi, satu-satunya baris diberi label "Standar".
+  const showVariationCol = variations.length > 0 || sizes.length === 0
 
   function addValue(kind: 'size' | 'variation') {
     const raw = kind === 'size' ? newSize : newVariation
@@ -96,21 +110,31 @@ export default function PartnerVariantEditor({
 
   function setCell(size: string | null, variation: string | null, patch: Partial<Cell>) {
     const key = cellKey(size, variation)
-    const current = cells[key] ?? { on: false, price: '' }
+    const current = cells[key] ?? { on: false, price: '', stock: '0' }
     setCells({ ...cells, [key]: { ...current, ...patch } })
   }
 
   async function handleSave() {
     setStatus(null)
     try {
-      const chosen: Array<{ size: string | null; variation: string | null; price: number }> = []
+      const chosen: Array<{
+        size: string | null
+        variation: string | null
+        price: number
+        stock: number
+      }> = []
       if (hasVariants) {
         for (const row of rowLabels) {
           for (const col of colLabels) {
             const cell = cells[cellKey(col, row)]
             if (!cell?.on) continue
             const value = Number(cell.price)
-            chosen.push({ size: col, variation: row, price: Number.isFinite(value) ? value : 0 })
+            chosen.push({
+              size: col,
+              variation: row,
+              price: Number.isFinite(value) ? value : 0,
+              stock: stockNumber(cell.stock),
+            })
           }
         }
       }
@@ -119,6 +143,7 @@ export default function PartnerVariantEditor({
           productId,
           hasVariants,
           price: price === '' ? null : Number(price),
+          stock: stockNumber(stock),
           sizes,
           variations,
           variants: chosen,
@@ -145,7 +170,7 @@ export default function PartnerVariantEditor({
         <div>
           <h2 className="pm-display text-base">Varian</h2>
           <p className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
-            Membutuhkan langganan PRO. Harga tiap kombinasi diisi sendiri.
+            Membutuhkan langganan PRO. Harga dan stok tiap kombinasi diisi sendiri.
           </p>
         </div>
         <button
@@ -173,6 +198,25 @@ export default function PartnerVariantEditor({
             className="app-input pm-num"
             placeholder="0"
           />
+        </label>
+      )}
+
+      {!hasVariants && (
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs font-semibold">Stok</span>
+          <input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            step={1}
+            value={stock}
+            onChange={(e) => setStock(e.target.value)}
+            className="app-input pm-num"
+            placeholder="0"
+          />
+          <span className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
+            Stok 0 tetap tampil di katalog sebagai Habis dan tidak bisa dipesan jastiper.
+          </span>
         </label>
       )}
 
@@ -208,55 +252,74 @@ export default function PartnerVariantEditor({
             pager={rowPager.pager}
           />
           <div className="overflow-x-auto rounded-2xl border" style={{ borderColor: 'var(--app-border)' }}>
-            <table className="w-full text-[13px]">
+            <table className="w-full min-w-[560px] text-[13px]">
               <thead style={{ background: 'var(--app-card-soft, #f7f1e7)' }}>
                 <tr>
-                  <th className="px-3 py-2 text-left text-[11px] font-semibold" style={{ color: 'var(--app-text-soft)' }}>
-                    Variasi
-                  </th>
-                  {colLabels.map((col) => (
-                    <th
-                      key={col ?? '-'}
-                      className="px-3 py-2 text-left text-[11px] font-semibold"
-                      style={{ color: 'var(--app-text-soft)' }}
-                    >
-                      {col ?? 'Standar'}
-                    </th>
-                  ))}
+                  {showVariationCol && <Th>Variasi</Th>}
+                  {sizes.length > 0 && <Th>Ukuran</Th>}
+                  <Th>Harga</Th>
+                  <Th>Stok</Th>
+                  <Th>Dijual</Th>
                 </tr>
               </thead>
               <tbody>
-                {rowPager.paged.map((row) => (
-                  <tr key={row ?? '-'} className="border-t" style={{ borderColor: 'var(--app-border)' }}>
-                    <td className="px-3 py-2 font-bold">{row ?? 'Standar'}</td>
-                    {colLabels.map((col) => {
-                      const cell = cells[cellKey(col, row)] ?? { on: false, price: '' }
-                      return (
-                        <td key={col ?? '-'} className="px-3 py-2">
-                          <div className="flex flex-col gap-1.5">
-                            <label className="flex items-center gap-1.5 text-[12px]">
-                              <input
-                                type="checkbox"
-                                checked={cell.on}
-                                onChange={(e) => setCell(col, row, { on: e.target.checked })}
-                                className="h-4 w-4 accent-[#3f7d58]"
-                                aria-label={`Dijual ${row ?? 'standar'} ${col ?? ''}`}
-                              />
-                              Dijual
-                            </label>
-                            <RupiahInput
-                              disabled={!cell.on}
-                              value={cell.price}
-                              onChange={(v) => setCell(col, row, { price: v })}
-                              placeholder="Harga"
-                              className="app-input pm-num w-[120px] !py-2 disabled:opacity-50"
-                            />
-                          </div>
+                {rowPager.paged.map((row) =>
+                  colLabels.map((col, index) => {
+                    const cell = cells[cellKey(col, row)] ?? { on: false, price: '', stock: '0' }
+                    return (
+                      <tr
+                        key={`${row ?? '-'}|${col ?? '-'}`}
+                        className="border-t"
+                        style={{ borderColor: 'var(--app-border)', opacity: cell.on ? 1 : 0.6 }}
+                      >
+                        {showVariationCol && index === 0 && (
+                          <td
+                            rowSpan={colLabels.length}
+                            className="border-r px-3 py-2 text-center align-middle font-bold"
+                            style={{ borderColor: 'var(--app-border)' }}
+                          >
+                            {row ?? 'Standar'}
+                          </td>
+                        )}
+                        {sizes.length > 0 && (
+                          <td className="px-3 py-2 text-center font-semibold">{col}</td>
+                        )}
+                        <td className="px-3 py-2">
+                          <RupiahInput
+                            disabled={!cell.on}
+                            value={cell.price}
+                            onChange={(v) => setCell(col, row, { price: v })}
+                            placeholder="Harga"
+                            className="app-input pm-num w-[150px] !py-2 disabled:opacity-50"
+                          />
                         </td>
-                      )
-                    })}
-                  </tr>
-                ))}
+                        <td className="px-3 py-2">
+                          <input
+                            type="number"
+                            inputMode="numeric"
+                            min={0}
+                            step={1}
+                            disabled={!cell.on}
+                            value={cell.stock}
+                            onChange={(e) => setCell(col, row, { stock: e.target.value })}
+                            placeholder="0"
+                            aria-label={`Stok ${row ?? 'standar'} ${col ?? ''}`}
+                            className="app-input pm-num w-[110px] !py-2 disabled:opacity-50"
+                          />
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          <input
+                            type="checkbox"
+                            checked={cell.on}
+                            onChange={(e) => setCell(col, row, { on: e.target.checked })}
+                            className="h-4 w-4 accent-[#3f7d58]"
+                            aria-label={`Dijual ${row ?? 'standar'} ${col ?? ''}`}
+                          />
+                        </td>
+                      </tr>
+                    )
+                  }),
+                )}
               </tbody>
             </table>
           </div>
@@ -269,6 +332,17 @@ export default function PartnerVariantEditor({
         </p>
       )}
     </section>
+  )
+}
+
+function Th({ children }: { children: React.ReactNode }) {
+  return (
+    <th
+      className="px-3 py-3 text-center text-[11px] font-semibold"
+      style={{ color: 'var(--app-text-soft)' }}
+    >
+      {children}
+    </th>
   )
 }
 

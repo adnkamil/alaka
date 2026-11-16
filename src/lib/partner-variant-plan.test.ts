@@ -22,14 +22,28 @@ const v = (
 })
 
 describe('validateVariantInput', () => {
+  it('menolak stok negatif atau pecahan', () => {
+    for (const stock of [-1, 1.5]) {
+      assert.throws(
+        () =>
+          validateVariantInput({
+            sizes: ['S'],
+            variations: [],
+            variants: [{ size: 'S', variation: null, price: 1, stock }],
+          }),
+        /Stok varian/,
+      )
+    }
+  })
+
   it('menerima daftar yang valid, termasuk kombinasi yang tidak lengkap', () => {
     assert.doesNotThrow(() =>
       validateVariantInput({
         sizes: ['S', 'M', 'L', 'XL'],
         variations: ['Mocca', 'Cream', 'Black'],
         variants: [
-          { size: 'S', variation: 'Mocca', price: 100000 },
-          { size: 'L', variation: 'Cream', price: 110000 },
+          { size: 'S', variation: 'Mocca', price: 100000, stock: 5 },
+          { size: 'L', variation: 'Cream', price: 110000, stock: 5 },
         ],
       }),
     )
@@ -53,7 +67,7 @@ describe('validateVariantInput', () => {
         validateVariantInput({
           sizes: ['S'],
           variations: [],
-          variants: [{ size: 'XXL', variation: null, price: 1 }],
+          variants: [{ size: 'XXL', variation: null, price: 1, stock: 5 }],
         }),
       /ukuran yang terdaftar/,
     )
@@ -66,8 +80,8 @@ describe('validateVariantInput', () => {
           sizes: ['S'],
           variations: ['A'],
           variants: [
-            { size: 'S', variation: 'A', price: 1 },
-            { size: 'S', variation: 'A', price: 2 },
+            { size: 'S', variation: 'A', price: 1, stock: 5 },
+            { size: 'S', variation: 'A', price: 2, stock: 5 },
           ],
         }),
       /dobel/,
@@ -77,7 +91,7 @@ describe('validateVariantInput', () => {
         validateVariantInput({
           sizes: ['S'],
           variations: [],
-          variants: [{ size: 'S', variation: null, price: -5 }],
+          variants: [{ size: 'S', variation: null, price: -5, stock: 5 }],
         }),
       /tidak valid/,
     )
@@ -89,12 +103,12 @@ describe('planVariantChanges', () => {
     const plan = planVariantChanges(
       [v('a', 'S', 'Mocca')],
       [
-        { size: 'S', variation: 'Mocca', price: 90000 },
-        { size: 'M', variation: 'Mocca', price: 95000 },
+        { size: 'S', variation: 'Mocca', price: 90000, stock: 5 },
+        { size: 'M', variation: 'Mocca', price: 95000, stock: 5 },
       ],
     )
-    assert.deepEqual(plan.update, [{ id: 'a', price: 90000 }])
-    assert.deepEqual(plan.insert, [{ size: 'M', variation: 'Mocca', price: 95000 }])
+    assert.deepEqual(plan.update, [{ id: 'a', price: 90000, stock: 5 }])
+    assert.deepEqual(plan.insert, [{ size: 'M', variation: 'Mocca', price: 95000, stock: 5 }])
     assert.deepEqual(plan.remove, [])
     assert.deepEqual(plan.deactivate, [])
   })
@@ -117,10 +131,10 @@ describe('planVariantChanges', () => {
   it('mengaktifkan lagi varian nonaktif kalau diminta lagi', () => {
     const plan = planVariantChanges(
       [v('a', 'L', 'Black', { isActive: false, hasOrders: true })],
-      [{ size: 'L', variation: 'Black', price: 120000 }],
+      [{ size: 'L', variation: 'Black', price: 120000, stock: 5 }],
     )
     assert.deepEqual(plan.reactivate, ['a'])
-    assert.deepEqual(plan.update, [{ id: 'a', price: 120000 }])
+    assert.deepEqual(plan.update, [{ id: 'a', price: 120000, stock: 5 }])
     assert.deepEqual(plan.deactivate, [])
   })
 })

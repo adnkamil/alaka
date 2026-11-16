@@ -8,6 +8,8 @@ export type VariantInput = {
   /** Nilai variasi, atau null kalau produk tidak punya grup variasi. */
   variation: string | null
   price: number
+  /** Stok varian (bilangan bulat >= 0). */
+  stock: number
 }
 
 export type ExistingVariant = {
@@ -21,7 +23,7 @@ export type ExistingVariant = {
 
 export type VariantPlan = {
   insert: Array<VariantInput>
-  update: Array<{ id: string; price: number }>
+  update: Array<{ id: string; price: number; stock: number }>
   reactivate: Array<string>
   deactivate: Array<string>
   remove: Array<string>
@@ -73,6 +75,9 @@ export function validateVariantInput(input: {
     if (!Number.isFinite(v.price) || v.price < 0) {
       throw new VariantPlanError('Harga varian tidak valid.')
     }
+    if (!Number.isInteger(v.stock) || v.stock < 0) {
+      throw new VariantPlanError('Stok varian harus bilangan bulat, minimal 0.')
+    }
     const key = variantKey(v.size, v.variation)
     if (keys.has(key)) throw new VariantPlanError('Kombinasi varian dobel.')
     keys.add(key)
@@ -108,7 +113,7 @@ export function planVariantChanges(
       plan.insert.push(want)
       continue
     }
-    plan.update.push({ id: match.id, price: want.price })
+    plan.update.push({ id: match.id, price: want.price, stock: want.stock })
     if (!match.isActive) plan.reactivate.push(match.id)
   }
 

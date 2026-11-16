@@ -27,6 +27,10 @@ export type ReviewRow = {
   qty: number
   status: SubmitStatus | null
   bundleId: string | null
+  /** Varian katalog partner (null kalau barang tidak terhubung ke katalog). */
+  partnerVariantId: string | null
+  /** Stok varian saat ini (live), untuk kolom "Stok" di halaman cek. */
+  stock: number | null
 }
 
 export type ReviewBundle = {
@@ -155,6 +159,8 @@ export async function loadSubmissionsForPartner(
       qty: r.qty,
       status: r.status,
       bundleId: null,
+      partnerVariantId: r.partnerVariantId,
+      stock: info?.stock ?? null,
     })
   }
 
@@ -182,6 +188,8 @@ export async function loadSubmissionsForPartner(
       qty: c.qty,
       status: c.status,
       bundleId: c.bundleId,
+      partnerVariantId: c.partnerVariantId,
+      stock: info?.stock ?? null,
     })
   }
 

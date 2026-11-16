@@ -9,6 +9,7 @@ import { partnerItemName, variantLabel } from '../lib/partner-item-label'
 import { getPartnerJastiperDetail } from '../lib/partner-jastiper-detail'
 import { formatRupiah } from '../lib/partner-product-rules'
 import { useClientPager } from '../lib/use-client-pager'
+import { allocateApproved, overStockRowIds } from '../lib/partner-stock-review'
 import {
   getPartnerSubmissions,
   reviewSubmissionBatch,
@@ -82,12 +83,41 @@ export default function PartnerJastiperCheck({
   const [approved, setApproved] = useState<Record<string, number>>({})
   const [error, setError] = useState<string | null>(null)
   const pendingSubs = submissions.filter(hasPending)
+
+  // Isian awal "Dapat" dibatasi stok varian; baris varian yang sama berbagi stok.
+  const defaultDapat = useMemo(() => {
+    const result: Record<string, number> = {}
+    for (const sub of submissions) {
+      Object.assign(
+        result,
+        allocateApproved(allRows(sub).filter((r) => r.status === 'pengajuan')),
+      )
+    }
+    return result
+  }, [submissions])
+  const dapatOf = (r: ReviewRow) => approved[r.id] ?? defaultDapat[r.id] ?? r.qty
+  // Baris yang jumlah "Dapat"-nya (dijumlah per varian) melebihi stok.
+  const { overRows, overSubs } = useMemo(() => {
+    const overRows = new Set<string>()
+    const overSubs = new Set<string>()
+    for (const sub of submissions) {
+      const pending = allRows(sub).filter((r) => r.status === 'pengajuan')
+      const values = Object.fromEntries(
+        pending.map((r) => [r.id, approved[r.id] ?? defaultDapat[r.id] ?? r.qty]),
+      )
+      for (const id of overStockRowIds(pending, values)) {
+        overRows.add(id)
+        overSubs.add(sub.submissionId)
+      }
+    }
+    return { overRows, overSubs }
+  }, [submissions, approved, defaultDapat])
   // Tampilan Disetujui tidak menampilkan tombol cek.
   const showPendingCard = view !== 'disetujui' && pendingSubs.length > 0
 
   const mutation = useMutation({
     mutationFn: (sub: ReviewSubmission) => {
-      const dapat = (r: ReviewRow) => approved[r.id] ?? r.qty
+      const dapat = dapatOf
       return reviewSubmissionBatch({
         data: {
           submissionId: sub.submissionId,
@@ -184,10 +214,10 @@ export default function PartnerJastiperCheck({
           <table className="w-full text-[13px]">
             <thead style={{ background: 'var(--pm-tint)' }}>
               <tr>
-                {['Submit ke', 'Produk', 'Ukuran', 'Variasi', 'Harga partner', 'Diminta', 'Dapat', 'Status'].map((h) => (
+                {['Submit ke', 'Produk', 'Ukuran', 'Variasi', 'Harga partner', 'Stok', 'Diminta', 'Dapat', 'Status'].map((h) => (
                   <th
                     key={h}
-                    className={`px-4 py-3 text-[11px] font-semibold uppercase tracking-wide ${['Harga partner', 'Diminta', 'Dapat'].includes(h) ? 'text-right' : 'text-left'}`}
+                    className={`px-4 py-3 text-[11px] font-semibold uppercase tracking-wide ${['Harga partner', 'Stok', 'Diminta', 'Dapat'].includes(h) ? 'text-right' : 'text-left'}`}
                     style={{ color: 'var(--pm-gold)' }}
                   >
                     {h}
@@ -198,11 +228,14 @@ export default function PartnerJastiperCheck({
             <tbody>
               {pager.paged.map((row) => {
                 const isPendingRow = row.status === 'pengajuan'
-                const dapat = approved[row.id] ?? row.qty
+                const dapat = dapatOf(row)
                 const short = isPendingRow ? row.qty - dapat : 0
+                const maxDapat = row.stock === null ? row.qty : Math.min(row.qty, row.stock)
                 const chip =
                   row.status === 'pengajuan'
-                    ? short <= 0
+                    ? overRows.has(row.id)
+                      ? { label: 'Melebihi stok', tone: 'danger' as const }
+                      : short <= 0
                       ? { label: 'Cukup', tone: 'success' as const }
                       : { label: `Kurang ${short}`, tone: 'danger' as const }
                     : row.status === 'disetujui'
@@ -222,18 +255,21 @@ export default function PartnerJastiperCheck({
                     <td className="px-4 py-3">{row.size ?? '-'}</td>
                     <td className="px-4 py-3">{row.variation ?? '-'}</td>
                     <td className="pm-num px-4 py-3 text-right">{formatRupiah(row.unitPrice)}</td>
+                    <td className="pm-num px-4 py-3 text-right">
+                      {isPendingRow && row.stock !== null ? row.stock : '-'}
+                    </td>
                     <td className="pm-num px-4 py-3 text-right">{row.qty}</td>
                     <td className="px-4 py-3 text-right">
                       {isPendingRow ? (
                         <input
                           type="number"
                           min={0}
-                          max={row.qty}
+                          max={maxDapat}
                           value={dapat}
                           onChange={(e) =>
                             setApproved((prev) => ({
                               ...prev,
-                              [row.id]: Math.min(row.qty, Math.max(0, Number(e.target.value) || 0)),
+                              [row.id]: Math.min(maxDapat, Math.max(0, Math.floor(Number(e.target.value)) || 0)),
                             }))
                           }
                           className="w-16 rounded border px-2 py-1 text-right"
@@ -251,7 +287,7 @@ export default function PartnerJastiperCheck({
               })}
               {pager.paged.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-6 text-center text-[13px]" style={{ color: 'var(--app-text-soft)' }}>
+                  <td colSpan={9} className="px-4 py-6 text-center text-[13px]" style={{ color: 'var(--app-text-soft)' }}>
                     Belum ada barang yang cocok.
                   </td>
                 </tr>
@@ -282,7 +318,7 @@ export default function PartnerJastiperCheck({
                     key={sub.submissionId}
                     type="button"
                     onClick={() => mutation.mutate(sub)}
-                    disabled={mutation.isPending}
+                    disabled={mutation.isPending || overSubs.has(sub.submissionId)}
                     className="w-full rounded-lg px-4 py-2 text-[14px] font-semibold text-white disabled:opacity-50"
                     style={{ background: 'var(--app-accent)' }}
                   >

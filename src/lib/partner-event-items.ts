@@ -17,6 +17,11 @@ import {
 import type { PartnerEventItemCatalog, PartnerItemRule } from './partner-item-label';
 import { partnerPricingRules, partnerRuleProducts, partnerRuleSizes, partnerSubscriptions } from '../db/schema';
 import { hasPartnerPro } from './partner-entitlement';
+import {
+  aggregateStockDemand,
+  findStockShortages,
+  formatStockShortages,
+} from './partner-stock'
 
 /**
  * Katalog produk partner yang dibawa ke satu event (produk aktif + varian aktif).
@@ -51,6 +56,7 @@ export async function loadEventPartnerItemCatalog(
       id: partnerVariants.id,
       productId: partnerVariants.partnerProductId,
       price: partnerVariants.price,
+      stockQty: partnerVariants.stockQty,
     })
     .from(partnerVariants)
     .where(
@@ -184,6 +190,7 @@ export async function loadEventPartnerItemCatalog(
             size: optionsByVariant.get(v.id)?.size ?? null,
             variation: optionsByVariant.get(v.id)?.variation ?? null,
             price: Number(v.price),
+            stock: v.stockQty,
           })),
       }))
       .filter((product) => product.variants.length > 0),
@@ -223,7 +230,7 @@ export async function resolveEventItems(
 
   const variantById = new Map<
     string,
-    { productName: string; label: string; price: number }
+    { productName: string; label: string; price: number; stock: number }
   >()
   for (const product of catalog.products) {
     for (const variant of product.variants) {
@@ -231,9 +238,27 @@ export async function resolveEventItems(
         productName: product.name,
         label: variant.label,
         price: variant.price,
+        stock: variant.stock,
       })
     }
   }
+
+  // Stok hanya dicek di sini (pagar awal); pengurangannya terjadi saat partner
+  // menekan "Selesai dicek". Barang yang sudah disetujui tidak ikut dicek ulang
+  // karena pemanggil hanya mengirim barang baru.
+  const demand = aggregateStockDemand(
+    inputs.map((item) => ({ variantId: item.partnerVariantId, qty: item.qty })),
+  )
+  const shortages = findStockShortages(
+    demand,
+    new Map(
+      [...variantById].map(([id, v]) => [
+        id,
+        { name: partnerItemName(v.productName, v.label), stock: v.stock },
+      ]),
+    ),
+  )
+  if (shortages.length > 0) throw new Error(formatStockShortages(shortages) + '.')
 
   return inputs.map((item) => {
     const variantId = item.partnerVariantId
