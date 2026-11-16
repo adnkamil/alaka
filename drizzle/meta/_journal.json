@@ -295,6 +295,13 @@
       "when": 1794799129096,
       "tag": "0041_partner_variant_stock",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1794818547788,
+      "tag": "0042_partner_variant_stock_backfill_100",
+      "breakpoints": true
     }
   ]
 }
