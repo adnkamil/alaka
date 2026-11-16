@@ -19,6 +19,7 @@ import {
 import type { OrderTx } from './order-status-queries'
 import { recalculateOrderStatus } from './order-status-queries'
 import { partnerItemName, variantLabel } from './partner-item-label'
+import { aggregateStockDemand, deductVariantStock } from './partner-stock'
 import {
   loadVariantInfo,
   regroupAllRulesInOrder,
@@ -192,6 +193,30 @@ export async function reviewSubmission(
   for (const row of pendingComps) {
     if (!compMap.has(row.id)) throw new Error('Ada barang yang belum dicek.')
   }
+
+  // Stok varian berkurang sebesar jumlah yang disetujui, dalam transaksi yang
+  // sama dengan perubahan status. Kalau ada varian yang kurang, seluruh cek
+  // dibatalkan dan partner diminta mengurangi isian "Dapat".
+  const approvedDemand = aggregateStockDemand([
+    ...pendingItems.map((row) => ({
+      variantId: row.partnerVariantId,
+      qty: splitReview(row.qty, itemMap.get(row.id)!).approved,
+    })),
+    ...pendingComps.map((c) => ({
+      variantId: c.partnerVariantId,
+      qty: splitReview(c.qty, compMap.get(c.id)!).approved,
+    })),
+  ])
+  const stockInfo = await loadVariantInfo(tx, [...approvedDemand.keys()])
+  await deductVariantStock(tx, approvedDemand, (variantId) => {
+    const info = stockInfo.get(variantId)
+    return info
+      ? partnerItemName(
+          info.productName,
+          variantLabel({ size: info.size, variation: info.variation }),
+        )
+      : 'Barang'
+  })
 
   const affectedOrders = new Set<string>()
 

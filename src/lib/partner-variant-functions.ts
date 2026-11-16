@@ -18,6 +18,7 @@ const variantInputSchema = z.object({
   size: z.string().nullable(),
   variation: z.string().nullable(),
   price: z.number().nonnegative(),
+  stock: z.number().int().min(0).default(0),
 })
 
 const saveSchema = z.object({
@@ -25,6 +26,8 @@ const saveSchema = z.object({
   hasVariants: z.boolean(),
   /** Harga induk. Wajib kalau `hasVariants` = false. */
   price: z.number().nonnegative().nullable(),
+  /** Stok produk tanpa varian (disimpan di varian Standar). */
+  stock: z.number().int().min(0).default(0),
   sizes: z.array(z.string()).max(50),
   variations: z.array(z.string()).max(200),
   variants: z.array(variantInputSchema).max(2000),
@@ -120,15 +123,20 @@ export const getPartnerProductVariants = createServerFn({ method: 'GET' })
         size: named('ukuran'),
         variation: named('variasi'),
         price: Number(row.price),
+        stock: row.stockQty,
         isActive: row.isActive,
         hasOrders: ordered.has(row.id),
+        isStandard: links.length === 0,
       }
     })
+    // Produk tanpa varian: stoknya ada di varian Standar (tanpa nilai opsi).
+    const standardStock = variants.find((v) => v.isStandard)?.stock ?? 0
 
     return {
       productName: product.name,
       hasVariants: product.hasVariants,
       price: product.price === null ? null : Number(product.price),
+      stock: standardStock,
       sizes: sortedNames('ukuran'),
       variations: sortedNames('variasi'),
       variants,
@@ -185,6 +193,7 @@ export const savePartnerProductVariants = createServerFn({ method: 'POST' })
         await syncDefaultVariant(
           tx as unknown as typeof import('../db').db,
           data.productId,
+          data.stock,
         )
         return { ok: true as const }
       }
@@ -324,6 +333,7 @@ export const savePartnerProductVariants = createServerFn({ method: 'POST' })
         size: v.size ? v.size.trim() : null,
         variation: v.variation ? v.variation.trim() : null,
         price: v.price,
+        stock: v.stock,
       }))
       const plan = planVariantChanges(existing, desired)
 
@@ -331,7 +341,7 @@ export const savePartnerProductVariants = createServerFn({ method: 'POST' })
       for (const u of plan.update) {
         await tx
           .update(partnerVariants)
-          .set({ price: String(u.price), isActive: true })
+          .set({ price: String(u.price), stockQty: u.stock, isActive: true })
           .where(eq(partnerVariants.id, u.id))
       }
       for (const id of plan.deactivate) {
@@ -346,6 +356,7 @@ export const savePartnerProductVariants = createServerFn({ method: 'POST' })
           .values({
             partnerProductId: data.productId,
             price: String(want.price),
+            stockQty: want.stock,
             isActive: true,
           })
           .returning({ id: partnerVariants.id })

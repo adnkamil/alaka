@@ -20,6 +20,8 @@ export type CatalogVariant = {
   size: string | null
   variation: string | null
   price: number
+  /** Stok saat katalog dimuat; 0 = habis. */
+  stock: number
 }
 
 export type PartnerBundleCatalog = {
@@ -446,6 +448,7 @@ function ProductPackSheet({
   const available = (kind: 'size' | 'variation', value: string) =>
     variants.some(
       (v) =>
+        v.stock > 0 &&
         (kind === 'size' ? v.size === value : v.variation === value) &&
         (kind === 'size' ? matches(v, null, variation) : matches(v, size, null)),
     )
@@ -454,7 +457,9 @@ function ProductPackSheet({
   const groupsComplete = (sizes.length === 0 || size !== null) && (variations.length === 0 || variation !== null)
   const variant = groupsComplete ? (variants.find((v) => matches(v, size, variation)) ?? null) : null
   const alreadyPacked = variant ? qtyByVariant[variant.id] ?? 0 : 0
-  const maxPending = Math.max(0, remaining)
+  // Jumlah di paket dibatasi sisa isi paket dan stok varian (dikurangi yang sudah dimasukkan).
+  const stockLeft = variant ? Math.max(0, variant.stock - alreadyPacked) : 0
+  const maxPending = variant ? Math.min(Math.max(0, remaining), stockLeft) : Math.max(0, remaining)
   const canAdd = variant !== null && maxPending > 0
   const chosenQty = Math.min(pending, maxPending)
 
@@ -502,7 +507,8 @@ function ProductPackSheet({
           <div>
             <p className="text-sm">Jumlah di paket</p>
             <p className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
-              Maksimal {maxPending} pcs, sesuai sisa isi paket
+              Maksimal {maxPending} pcs, sesuai sisa isi paket dan stok
+              {variant ? ` (stok ${variant.stock})` : ''}
             </p>
           </div>
           <div className="flex items-center gap-3">

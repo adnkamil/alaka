@@ -176,6 +176,7 @@ export const getEventPartnerCatalog = createServerFn({ method: 'GET' })
             id: partnerVariants.id,
             productId: partnerVariants.partnerProductId,
             price: partnerVariants.price,
+            stockQty: partnerVariants.stockQty,
           })
           .from(partnerVariants)
           .where(
@@ -222,6 +223,7 @@ export const getEventPartnerCatalog = createServerFn({ method: 'GET' })
           size: values.find((x) => x.type === 'ukuran')?.name ?? null,
           variation: values.find((x) => x.type === 'variasi')?.name ?? null,
           price: Number(v.price),
+          stock: v.stockQty,
         }
       }),
     }

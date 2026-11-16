@@ -10,6 +10,7 @@ import type {
   ReviewSubmission,
 } from '../lib/submit-review-queries'
 import { pendingSubmitNotice } from '../lib/submit-status'
+import { allocateApproved, overStockRowIds } from '../lib/partner-stock-review'
 
 /**
  * Cek partner per submit. Setiap baris pengajuan diisi jumlah yang disetujui.
@@ -105,9 +106,11 @@ function SubmissionBlock({
   onDone: () => void
 }) {
   const rows = pendingRows(submission)
+  // Isian awal dibatasi stok varian; baris varian yang sama berbagi stok.
   const [approved, setApproved] = useState<Record<string, number>>(() =>
-    Object.fromEntries(rows.map((r) => [r.id, r.qty])),
+    allocateApproved(rows),
   )
+  const overRows = overStockRowIds(rows, approved)
   const [error, setError] = useState<string | null>(null)
 
   const mutation = useMutation({
@@ -146,6 +149,7 @@ function SubmissionBlock({
             key={row.id}
             row={row}
             value={approved[row.id]}
+            overStock={overRows.has(row.id)}
             editable={row.status === 'pengajuan'}
             onChange={(v) => setApproved((prev) => ({ ...prev, [row.id]: v }))}
           />
@@ -158,7 +162,7 @@ function SubmissionBlock({
           <button
             type="button"
             className="rounded-lg bg-stone-800 px-4 py-2 text-white disabled:opacity-50"
-            disabled={mutation.isPending}
+            disabled={mutation.isPending || overRows.size > 0}
             onClick={() => mutation.mutate()}
           >
             Selesai dicek
@@ -172,11 +176,13 @@ function SubmissionBlock({
 function RowLine({
   row,
   value,
+  overStock,
   editable,
   onChange,
 }: {
   row: ReviewRow
   value: number | undefined
+  overStock: boolean
   editable: boolean
   onChange: (v: number) => void
 }) {
@@ -196,13 +202,21 @@ function RowLine({
       </span>
       <span className="flex items-center gap-2">
         <span className="text-stone-500">{statusLabel}</span>
+        {editable && row.stock !== null && (
+          <span className={overStock ? 'text-red-600' : 'text-stone-500'}>
+            Stok {row.stock}
+          </span>
+        )}
         {editable ? (
           <input
             type="number"
             min={0}
-            max={row.qty}
+            max={row.stock === null ? row.qty : Math.min(row.qty, row.stock)}
             value={value ?? 0}
-            onChange={(e) => onChange(Number(e.target.value))}
+            onChange={(e) => {
+              const cap = row.stock === null ? row.qty : Math.min(row.qty, row.stock)
+              onChange(Math.min(cap, Math.max(0, Math.floor(Number(e.target.value)) || 0)))
+            }}
             className="w-20 rounded border px-2 py-1"
             aria-label={`Jumlah disetujui untuk ${row.label}`}
           />

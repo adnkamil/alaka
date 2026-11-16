@@ -288,6 +288,13 @@
       "when": 1794522878860,
       "tag": "0040_drop_legacy_slot_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1794799129096,
+      "tag": "0041_partner_variant_stock",
+      "breakpoints": true
     }
   ]
 }

@@ -1216,7 +1216,12 @@ export const partnerVariants = pgTable(
     sku: varchar(),
     isActive: boolean('is_active').notNull().default(true),
     trackStock: boolean('track_stock').notNull().default(false),
-    stockQty: integer('stock_qty'),
+    /**
+     * Stok varian; default 0 = habis, tidak boleh negatif. Produk tanpa varian
+     * menyimpan stoknya di varian Standar. Berkurang saat partner menekan
+     * "Selesai dicek" (jumlah yang disetujui).
+     */
+    stockQty: integer('stock_qty').notNull().default(0),
     allowPreorder: boolean('allow_preorder').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
@@ -1225,6 +1230,7 @@ export const partnerVariants = pgTable(
   (table) => [
     index('partner_variants_product_idx').on(table.partnerProductId),
     check('partner_variants_price_nonneg', sql`${table.price} >= 0`),
+    check('partner_variants_stock_nonneg', sql`${table.stockQty} >= 0`),
   ],
 )
 

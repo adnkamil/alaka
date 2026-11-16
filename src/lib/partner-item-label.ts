@@ -8,6 +8,8 @@ export interface PartnerItemVariant {
   size: string | null
   variation: string | null
   price: number
+  /** Stok saat katalog dimuat. 0 = habis, tidak bisa ditambahkan ke pesanan. */
+  stock: number
 }
 
 export interface PartnerItemRule {

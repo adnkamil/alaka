@@ -11,10 +11,13 @@ import {
  * paket dan barang pesanan merujuk ke varian. Fungsi ini memastikan baris itu
  * ada dan harganya sama dengan harga induk. Idempoten: aman dipanggil berulang.
  * Dipanggil dengan db biasa atau transaksi (`executor`).
+ * `stock` mengisi stok varian Standar; kalau tidak diberikan, stok yang sudah
+ * ada tidak diubah (varian baru mulai dari 0).
  */
 export async function syncDefaultVariant(
   executor: typeof DbClient,
   productId: string,
+  stock?: number,
 ): Promise<void> {
   const [product] = await executor
     .select({ hasVariants: partnerProducts.hasVariants, price: partnerProducts.price })
@@ -46,11 +49,16 @@ export async function syncDefaultVariant(
       partnerProductId: productId,
       price: product.price,
       isActive: true,
+      stockQty: stock ?? 0,
     })
     return
   }
   await executor
     .update(partnerVariants)
-    .set({ price: product.price, isActive: true })
+    .set({
+      price: product.price,
+      isActive: true,
+      ...(stock === undefined ? {} : { stockQty: stock }),
+    })
     .where(and(eq(partnerVariants.id, standard.id)))
 }
