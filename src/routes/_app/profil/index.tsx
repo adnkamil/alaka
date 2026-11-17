@@ -6,6 +6,7 @@ import {
 } from '@tanstack/react-query'
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import {
+  Archive,
   ChevronRight,
   Contact,
   Crown,
@@ -346,6 +347,15 @@ function ProfilPage() {
               label="Data Customer"
             />
           </MenuItem>
+          {isOwner && (
+            <MenuItem>
+              <RowLink
+                to="/profil/event-nonaktif"
+                icon={<Archive size={18} />}
+                label="Event Nonaktif"
+              />
+            </MenuItem>
+          )}
           {FEATURES.advancedMenu && (
             <>
               <MenuItem>

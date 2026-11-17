@@ -18,6 +18,7 @@ import { aggregateStockDemand, restoreVariantStock } from './partner-stock'
 import { computePendingRules, type PendingSingle } from './partner-paket-pending'
 import { brandIdOf } from './brand'
 import { getSessionUser } from './auth'
+import { requireBrandPermission } from './brand-permissions'
 
 async function requireUser() {
   const user = await getSessionUser()
@@ -25,9 +26,13 @@ async function requireUser() {
   return user
 }
 
-export const listEvents = createServerFn({ method: 'GET' }).handler(
-  async () => {
+export const listEvents = createServerFn({ method: 'GET' })
+  .validator(z.object({ inactive: z.boolean().optional() }).optional())
+  .handler(async ({ data }) => {
     const user = await requireUser()
+    // Daftar event non-aktif hanya untuk pemilik brand (admin tidak boleh).
+    const onlyInactive = data?.inactive === true
+    if (onlyInactive) requireBrandPermission(user, 'event.inactive')
 
     // Total tagihan per pesanan — dipakai buat hitung sisa tagihan (DP).
     const orderTotals = db
@@ -57,13 +62,17 @@ export const listEvents = createServerFn({ method: 'GET' }).handler(
       .from(events)
       .leftJoin(orders, eq(orders.eventId, events.id))
       .leftJoin(orderTotals, eq(orderTotals.orderId, orders.id))
-      .where(eq(events.brandId, brandIdOf(user)))
+      .where(
+        and(
+          eq(events.brandId, brandIdOf(user)),
+          onlyInactive ? eq(events.isActive, false) : undefined,
+        ),
+      )
       .groupBy(events.id)
       .orderBy(desc(events.eventDate))
 
     return rows
-  },
-)
+  })
 
 const eventInputSchema = z.object({
   name: z.string().min(1, 'Nama event wajib diisi'),

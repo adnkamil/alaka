@@ -14,6 +14,7 @@ const ALL_ACTIONS: Array<BrandAction> = [
   'brand.profile',
   'brand.messageTemplate',
   'operations',
+  'event.inactive',
 ]
 
 test('owner boleh semua aksi', () => {
@@ -31,6 +32,7 @@ test('admin tidak boleh mengelola tim, langganan, rekening, dan profil brand', (
     'subscription.manage',
     'paymentMethod.manage',
     'brand.profile',
+    'event.inactive',
   ] as const) {
     assert.equal(can('admin', action), false, action)
   }
