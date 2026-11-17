@@ -37,6 +37,7 @@ import { Route as AppKalenderIndexRouteImport } from './routes/_app/kalender/ind
 import { Route as AppKalenderEventIdRouteImport } from './routes/_app/kalender/$eventId'
 import { Route as AppPesananNewRouteImport } from './routes/_app/pesanan/new'
 import { Route as AppProfilIndexRouteImport } from './routes/_app/profil/index'
+import { Route as AppProfilEventNonaktifRouteImport } from './routes/_app/profil/event-nonaktif'
 import { Route as AppProfilLanggananRouteImport } from './routes/_app/profil/langganan'
 import { Route as AppProfilPembayaranRouteImport } from './routes/_app/profil/pembayaran'
 import { Route as AppProfilTemplateChatRouteImport } from './routes/_app/profil/template-chat'
@@ -211,6 +212,11 @@ const AppPesananNewRoute = AppPesananNewRouteImport.update({
 const AppProfilIndexRoute = AppProfilIndexRouteImport.update({
   id: '/profil/',
   path: '/profil/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppProfilEventNonaktifRoute = AppProfilEventNonaktifRouteImport.update({
+  id: '/profil/event-nonaktif',
+  path: '/profil/event-nonaktif',
   getParentRoute: () => AppRoute,
 } as any)
 const AppProfilLanggananRoute = AppProfilLanggananRouteImport.update({
@@ -426,6 +432,7 @@ export interface FileRoutesByFullPath {
   '/events/new': typeof AppEventsNewRoute
   '/kalender/$eventId': typeof AppKalenderEventIdRoute
   '/pesanan/new': typeof AppPesananNewRoute
+  '/profil/event-nonaktif': typeof AppProfilEventNonaktifRoute
   '/profil/langganan': typeof AppProfilLanggananRoute
   '/profil/pembayaran': typeof AppProfilPembayaranRoute
   '/profil/template-chat': typeof AppProfilTemplateChatRoute
@@ -489,6 +496,7 @@ export interface FileRoutesByTo {
   '/events/new': typeof AppEventsNewRoute
   '/kalender/$eventId': typeof AppKalenderEventIdRoute
   '/pesanan/new': typeof AppPesananNewRoute
+  '/profil/event-nonaktif': typeof AppProfilEventNonaktifRoute
   '/profil/langganan': typeof AppProfilLanggananRoute
   '/profil/pembayaran': typeof AppProfilPembayaranRoute
   '/profil/template-chat': typeof AppProfilTemplateChatRoute
@@ -556,6 +564,7 @@ export interface FileRoutesById {
   '/_app/events/new': typeof AppEventsNewRoute
   '/_app/kalender/$eventId': typeof AppKalenderEventIdRoute
   '/_app/pesanan/new': typeof AppPesananNewRoute
+  '/_app/profil/event-nonaktif': typeof AppProfilEventNonaktifRoute
   '/_app/profil/langganan': typeof AppProfilLanggananRoute
   '/_app/profil/pembayaran': typeof AppProfilPembayaranRoute
   '/_app/profil/template-chat': typeof AppProfilTemplateChatRoute
@@ -623,6 +632,7 @@ export interface FileRouteTypes {
     | '/events/new'
     | '/kalender/$eventId'
     | '/pesanan/new'
+    | '/profil/event-nonaktif'
     | '/profil/langganan'
     | '/profil/pembayaran'
     | '/profil/template-chat'
@@ -686,6 +696,7 @@ export interface FileRouteTypes {
     | '/events/new'
     | '/kalender/$eventId'
     | '/pesanan/new'
+    | '/profil/event-nonaktif'
     | '/profil/langganan'
     | '/profil/pembayaran'
     | '/profil/template-chat'
@@ -752,6 +763,7 @@ export interface FileRouteTypes {
     | '/_app/events/new'
     | '/_app/kalender/$eventId'
     | '/_app/pesanan/new'
+    | '/_app/profil/event-nonaktif'
     | '/_app/profil/langganan'
     | '/_app/profil/pembayaran'
     | '/_app/profil/template-chat'
@@ -1011,6 +1023,13 @@ declare module '@tanstack/react-router' {
       path: '/profil'
       fullPath: '/profil/'
       preLoaderRoute: typeof AppProfilIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/profil/event-nonaktif': {
+      id: '/_app/profil/event-nonaktif'
+      path: '/profil/event-nonaktif'
+      fullPath: '/profil/event-nonaktif'
+      preLoaderRoute: typeof AppProfilEventNonaktifRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/profil/langganan': {
@@ -1276,6 +1295,7 @@ interface AppRouteChildren {
   AppEventsNewRoute: typeof AppEventsNewRoute
   AppKalenderEventIdRoute: typeof AppKalenderEventIdRoute
   AppPesananNewRoute: typeof AppPesananNewRoute
+  AppProfilEventNonaktifRoute: typeof AppProfilEventNonaktifRoute
   AppProfilLanggananRoute: typeof AppProfilLanggananRoute
   AppProfilPembayaranRoute: typeof AppProfilPembayaranRoute
   AppProfilTemplateChatRoute: typeof AppProfilTemplateChatRoute
@@ -1299,6 +1319,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppEventsNewRoute: AppEventsNewRoute,
   AppKalenderEventIdRoute: AppKalenderEventIdRoute,
   AppPesananNewRoute: AppPesananNewRoute,
+  AppProfilEventNonaktifRoute: AppProfilEventNonaktifRoute,
   AppProfilLanggananRoute: AppProfilLanggananRoute,
   AppProfilPembayaranRoute: AppProfilPembayaranRoute,
   AppProfilTemplateChatRoute: AppProfilTemplateChatRoute,

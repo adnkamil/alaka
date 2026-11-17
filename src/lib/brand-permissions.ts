@@ -24,6 +24,8 @@ export type BrandAction =
   | 'brand.messageTemplate'
   /** Event, order, customer, aturan fee, keuangan — pekerjaan harian. */
   | 'operations'
+  /** Melihat daftar event non-aktif (sudah ditutup) — hanya pemilik. */
+  | 'event.inactive'
 
 const ADMIN_ACTIONS: ReadonlySet<BrandAction> = new Set<BrandAction>([
   'operations',
