@@ -217,7 +217,11 @@ export default function PartnerCatalogPicker({
               className="flex min-h-[64px] w-full items-center gap-3 rounded-xl border p-3 text-left"
               style={{ borderColor: 'var(--app-border)' }}
             >
-              <span className="h-12 w-12 flex-shrink-0 rounded-lg" style={{ background: tintFor(p.name) }} aria-hidden="true" />
+              {p.photoUrl ? (
+                <img src={p.photoUrl} alt="" className="h-12 w-12 flex-shrink-0 rounded-lg object-cover" />
+              ) : (
+                <span className="h-12 w-12 flex-shrink-0 rounded-lg" style={{ background: tintFor(p.name) }} aria-hidden="true" />
+              )}
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold">{p.name}</p>
                 <p className="text-sm font-semibold" style={{ color: 'var(--app-accent)' }}>{priceLabel(p)}</p>
