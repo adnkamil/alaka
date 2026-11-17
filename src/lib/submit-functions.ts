@@ -114,3 +114,29 @@ export const getPartnerSubmissions = createServerFn({ method: 'GET' })
       loadSubmissionsForPartner(tx, data.calendarEventId),
     )
   })
+
+/** Partner membatalkan satu baris yang sudah disetujui. Stok kembali ke katalog. */
+export const cancelSubmittedRowBatch = createServerFn({ method: 'POST' })
+  .validator(
+    z.object({
+      kind: z.enum(['satuan', 'komponen']),
+      id: idSchema,
+      calendarEventId: idSchema,
+    }),
+  )
+  .handler(async ({ data }) => {
+    const partner = await requirePartner()
+    if (!(await partnerOwnsEvent(partner.id, data.calendarEventId))) {
+      throw new Error('Event tidak ditemukan')
+    }
+    const { db } = await import('../db')
+    const { cancelSubmittedRow } = await import('./submit-queries')
+    return db.transaction((tx) =>
+      cancelSubmittedRow(tx, {
+        kind: data.kind,
+        id: data.id,
+        calendarEventId: data.calendarEventId,
+      }),
+    )
+  })
+

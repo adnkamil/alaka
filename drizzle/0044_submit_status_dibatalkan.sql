@@ -1,0 +1,1 @@
+ALTER TYPE "public"."submit_status" ADD VALUE 'dibatalkan';

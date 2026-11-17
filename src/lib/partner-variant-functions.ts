@@ -1,8 +1,9 @@
 import { syncDefaultVariant } from './partner-default-variant'
 import { createServerFn } from '@tanstack/react-start'
-import { and, eq, inArray } from 'drizzle-orm'
+import { and, eq, inArray, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { requirePartner } from './partner-auth'
+import { HEARTBEAT_STALE_MS } from './stock-check-allocate'
 import { getPartnerProduct } from './partner-product-queries'
 import { hasPartnerPro } from './partner-entitlement'
 import {
@@ -336,6 +337,33 @@ export const savePartnerProductVariants = createServerFn({ method: 'POST' })
         stock: v.stock,
       }))
       const plan = planVariantChanges(existing, desired)
+
+      // Stok tidak boleh diubah saat pengecekan otomatis berjalan, karena
+      // angka dari layar bisa menimpa pengurangan yang sedang dilakukan.
+      // Kunci per partner juga dipakai saat pengecekan dimulai.
+      const { calendarEvents, stockCheckRuns } = await import('../db/schema')
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${partner.id}))`)
+      const [activeRun] = await tx
+        .select({ heartbeatAt: stockCheckRuns.heartbeatAt })
+        .from(stockCheckRuns)
+        .innerJoin(
+          calendarEvents,
+          eq(calendarEvents.id, stockCheckRuns.calendarEventId),
+        )
+        .where(
+          and(
+            eq(calendarEvents.partnerId, partner.id),
+            eq(stockCheckRuns.status, 'running'),
+          ),
+        )
+      if (
+        activeRun &&
+        Date.now() - activeRun.heartbeatAt.getTime() < HEARTBEAT_STALE_MS
+      ) {
+        throw new Error(
+          'Pengecekan stok otomatis sedang berjalan. Simpan stok setelah pengecekan selesai atau dihentikan.',
+        )
+      }
 
       // 4. Terapkan rencana.
       for (const u of plan.update) {

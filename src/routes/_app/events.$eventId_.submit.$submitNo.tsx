@@ -8,11 +8,18 @@ export const Route = createFileRoute('/_app/events/$eventId_/submit/$submitNo')(
   component: SubmitDetailPage,
 })
 
-function StatusMark({ status }: { status: 'disetujui' | 'disanggah' | 'pengajuan' | null }) {
+function StatusMark({ status }: { status: 'disetujui' | 'disanggah' | 'pengajuan' | 'dibatalkan' | null }) {
   if (status === 'disetujui') {
     return (
       <span className="flex size-6 items-center justify-center rounded-full" style={{ background: 'var(--app-success-soft)', color: '#15803d' }} aria-label="Disetujui">
         <Check size={14} strokeWidth={3} />
+      </span>
+    )
+  }
+  if (status === 'dibatalkan') {
+    return (
+      <span className="flex size-6 items-center justify-center rounded-full" style={{ background: 'var(--app-danger-soft, #fee2e2)', color: '#b91c1c' }} aria-label="Dibatalkan partner">
+        <X size={14} strokeWidth={3} />
       </span>
     )
   }
@@ -78,7 +85,18 @@ function SubmitDetailPage() {
                   <p className="truncate text-sm">{line.name}</p>
                   <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>{line.qty} pcs</p>
                 </div>
-                <StatusMark status={line.status} />
+                <div className="flex items-center gap-2">
+                  {line.partial && (
+                    <span className="text-xs" style={{ color: '#15803d' }}>Sebagian disetujui</span>
+                  )}
+                  {line.status === 'disanggah' && (
+                    <span className="text-xs" style={{ color: '#b91c1c' }}>Kurang</span>
+                  )}
+                  {line.status === 'dibatalkan' && (
+                    <span className="text-xs" style={{ color: '#b91c1c' }}>Dibatalkan partner</span>
+                  )}
+                  <StatusMark status={line.status} />
+                </div>
               </li>
             ))}
           </ul>

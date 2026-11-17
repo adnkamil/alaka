@@ -248,13 +248,24 @@ async function loadJastiperEventDetail(
         })
       }
     } else if (
-      item.partnerVariantId &&
-      variantMeta.has(item.partnerVariantId) &&
+      // Barang katalog harus punya varian yang dikenal. Barang tanpa varian
+      // hanya dihitung kalau sudah disubmit, supaya pengajuan tidak hilang dari
+      // daftar partner. Harganya 0 karena partner tidak punya harga untuk barang itu.
+      (item.partnerVariantId
+        ? variantMeta.has(item.partnerVariantId)
+        : item.submitStatus !== null) &&
       // Disanggah tidak tersedia: tidak dihitung. Draft tidak dihitung kalau event sudah disubmit.
       item.submitStatus !== 'disanggah' &&
       !(slotFlow && item.submitStatus === null)
     ) {
-      const meta = variantMeta.get(item.partnerVariantId)!
+      const meta = (item.partnerVariantId
+        ? variantMeta.get(item.partnerVariantId)
+        : undefined) ?? {
+        productName: item.name,
+        size: null,
+        variation: null,
+        price: 0,
+      }
       if (item.submitStatus === 'pengajuan') {
         // Menunggu cek partner: belum dihitung sebagai pendapatan, hanya ditampilkan.
         pendingAmount += item.qty * meta.price

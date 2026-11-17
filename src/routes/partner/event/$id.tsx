@@ -386,7 +386,7 @@ function PartnerEventDetailPage() {
 
         {tab === 'jastiper' && (
           <section className="flex flex-col gap-2.5">
-            {slotEnabled && <PartnerSubmitReview calendarEventId={id} />}
+            <PartnerSubmitReview calendarEventId={id} />
             {participants.length === 0 ? (
               <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
                 Belum ada jastiper yang ikut event ini.

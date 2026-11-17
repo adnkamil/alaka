@@ -19,7 +19,11 @@ import {
 import type { OrderTx } from './order-status-queries'
 import { recalculateOrderStatus } from './order-status-queries'
 import { partnerItemName, variantLabel } from './partner-item-label'
-import { aggregateStockDemand, deductVariantStock } from './partner-stock'
+import {
+  aggregateStockDemand,
+  deductVariantStock,
+  restoreVariantStock,
+} from './partner-stock'
 import {
   loadVariantInfo,
   regroupAllRulesInOrder,
@@ -160,10 +164,15 @@ export async function reviewSubmission(
   },
 ): Promise<{ affectedOrderIds: Array<string> }> {
   const { submissionId, itemDecisions, componentDecisions } = input
-  const submission = await tx.query.eventSubmissions.findFirst({
-    where: eq(eventSubmissions.id, submissionId),
-  })
+  // Kunci baris submit dulu supaya cek manual dan pengecekan otomatis untuk
+  // submit yang sama berjalan berurutan, dan tidak mengurangi stok dua kali.
+  const [submission] = await tx
+    .select()
+    .from(eventSubmissions)
+    .where(eq(eventSubmissions.id, submissionId))
+    .for('update')
   if (!submission) throw new Error('Submit tidak ditemukan.')
+  if (submission.stockCheckedAt) throw new Error('Submit ini sudah dicek.')
   const eventId = submission.eventId
 
   const pendingItems = await tx
@@ -437,5 +446,114 @@ export async function reviewSubmission(
     })
   }
 
+  // Tandai submit sudah dicek (centang di card). Dilakukan dalam transaksi yang
+  // sama dengan pengurangan stok.
+  await tx
+    .update(eventSubmissions)
+    .set({ stockCheckedAt: new Date() })
+    .where(eq(eventSubmissions.id, submissionId))
+
   return { affectedOrderIds: [...affectedOrders] }
 }
+
+/**
+ * Partner membatalkan satu baris yang sudah disetujui, misalnya salah varian
+ * atau jastiper minta lewat WA. Stok dikembalikan ke katalog dan baris menjadi
+ * dibatalkan. Jastiper bisa submit lagi untuk barang itu kalau stok sudah ada.
+ */
+export async function cancelSubmittedRow(
+  tx: OrderTx,
+  input: { kind: 'satuan' | 'komponen'; id: string; calendarEventId: string },
+): Promise<void> {
+  let row: {
+    submissionId: string | null
+    qty: number
+    status: SubmitStatus | null
+    variantId: string | null
+    orderId: string
+  } | undefined
+
+  if (input.kind === 'satuan') {
+    const [r] = await tx
+      .select({
+        submissionId: items.submissionId,
+        qty: items.qty,
+        status: items.submitStatus,
+        variantId: items.partnerVariantId,
+        orderId: items.orderId,
+      })
+      .from(items)
+      .where(eq(items.id, input.id))
+      .for('update')
+    row = r
+  } else {
+    const [r] = await tx
+      .select({
+        submissionId: itemComponents.submissionId,
+        qty: itemComponents.qty,
+        status: itemComponents.submitStatus,
+        variantId: itemComponents.partnerVariantId,
+        orderId: items.orderId,
+      })
+      .from(itemComponents)
+      .innerJoin(items, eq(items.id, itemComponents.itemId))
+      .where(eq(itemComponents.id, input.id))
+      .for('update')
+    row = r
+  }
+
+  if (!row || !row.submissionId) throw new Error('Barang tidak ditemukan.')
+  if (row.status !== 'disetujui') {
+    throw new Error('Hanya barang yang sudah disetujui yang bisa dibatalkan.')
+  }
+
+  const [submission] = await tx
+    .select({ eventId: eventSubmissions.eventId })
+    .from(eventSubmissions)
+    .innerJoin(events, eq(events.id, eventSubmissions.eventId))
+    .where(
+      and(
+        eq(eventSubmissions.id, row.submissionId),
+        eq(events.calendarEventId, input.calendarEventId),
+      ),
+    )
+  if (!submission) throw new Error('Event tidak ditemukan.')
+
+  await restoreVariantStock(
+    tx,
+    aggregateStockDemand([{ variantId: row.variantId, qty: row.qty }]),
+  )
+
+  if (input.kind === 'satuan') {
+    await tx
+      .update(items)
+      .set({ submitStatus: 'dibatalkan' })
+      .where(eq(items.id, input.id))
+    await logStatus(tx, {
+      eventId: submission.eventId,
+      itemId: input.id,
+      submissionId: row.submissionId,
+      from: 'disetujui',
+      to: 'dibatalkan',
+      qty: row.qty,
+      note: 'dibatalkan partner',
+    })
+  } else {
+    await tx
+      .update(itemComponents)
+      .set({ submitStatus: 'dibatalkan' })
+      .where(eq(itemComponents.id, input.id))
+    await logStatus(tx, {
+      eventId: submission.eventId,
+      componentId: input.id,
+      submissionId: row.submissionId,
+      from: 'disetujui',
+      to: 'dibatalkan',
+      qty: row.qty,
+      note: 'dibatalkan partner',
+    })
+  }
+
+  await recalculateOrderStatus(tx, row.orderId)
+}
+

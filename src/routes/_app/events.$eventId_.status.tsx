@@ -32,7 +32,8 @@ function EventStatusPage() {
   const { data: summary, isLoading } = useQuery({
     queryKey: ['event-slot', eventId],
     queryFn: () => getEventSlotSummary({ data: { eventId } }),
-    refetchInterval: 30_000,
+    refetchInterval: (q) =>
+      (q.state.data?.pendingCount ?? 0) > 0 ? 5_000 : 30_000,
   })
   const [confirm, setConfirm] = useState(false)
   const { tab: initialTab } = Route.useSearch()

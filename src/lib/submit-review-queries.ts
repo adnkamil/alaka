@@ -43,6 +43,8 @@ export type ReviewSubmission = {
   submissionId: string
   submitNo: number
   submittedAt: Date
+  /** Sudah dicek stoknya (centang). False = menunggu. */
+  checked: boolean
   satuan: Array<ReviewRow>
   paket: Array<ReviewBundle>
 }
@@ -134,6 +136,7 @@ export async function loadSubmissionsForPartner(
       submissionId: s.id,
       submitNo: s.submitNo,
       submittedAt: s.submittedAt,
+      checked: s.stockCheckedAt !== null,
       satuan: [],
       paket: [],
     })

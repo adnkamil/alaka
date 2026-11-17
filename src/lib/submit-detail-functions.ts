@@ -59,7 +59,7 @@ export const getSubmitDetail = createServerFn({ method: 'GET' })
       .innerJoin(orders, eq(orders.id, items.orderId))
       .where(eq(itemComponents.submissionId, sub.id))
 
-    type Line = { key: string; name: string; qty: number; status: 'disetujui' | 'disanggah' | 'pengajuan' | null }
+    type Line = { key: string; name: string; qty: number; status: 'disetujui' | 'disanggah' | 'pengajuan' | 'dibatalkan' | null }
     const customers = new Map<string, { customerName: string; lines: Array<Line> }>()
     const add = (orderId: string, customerName: string, line: Line) => {
       const cur = customers.get(orderId) ?? { customerName, lines: [] }
@@ -89,6 +89,15 @@ export const getSubmitDetail = createServerFn({ method: 'GET' })
       submittedAt: sub.submittedAt.toISOString(),
       customers: [...customers.values()]
         .sort((a, b) => a.customerName.localeCompare(b.customerName))
-        .map((c) => ({ customerName: c.customerName, lines: c.lines })),
+        .map((c) => ({
+          customerName: c.customerName,
+          // Disetujui sebagian: ada baris disetujui dan baris kurang untuk produk yang sama.
+          lines: c.lines.map((l) => ({
+            ...l,
+            partial:
+              l.status === 'disetujui' &&
+              c.lines.some((o) => o.status === 'disanggah' && o.name === l.name),
+          })),
+        })),
     }
   })

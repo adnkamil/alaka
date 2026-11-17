@@ -10,7 +10,7 @@
 //   tidak dihitung ke total maupun tagihan.
 // - Tidak ada batas waktu sanggah dan tidak ada batasan jumlah submit ulang.
 
-export type SubmitStatus = 'pengajuan' | 'disetujui' | 'disanggah'
+export type SubmitStatus = 'pengajuan' | 'disetujui' | 'disanggah' | 'dibatalkan'
 
 export type SubmitLine = {
   qty: number
