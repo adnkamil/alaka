@@ -24,6 +24,8 @@ export interface PartnerItemRule {
 export interface PartnerItemProduct {
   id: string
   name: string
+  /** URL foto produk, null kalau belum ada foto. */
+  photoUrl?: string | null
   /** Semua aturan paket yang memuat produk ini (kosong kalau tidak ada / bukan PRO). */
   rules?: Array<PartnerItemRule>
   variants: Array<PartnerItemVariant>

@@ -17,6 +17,7 @@ import {
 import type { PartnerEventItemCatalog, PartnerItemRule } from './partner-item-label';
 import { partnerPricingRules, partnerRuleProducts, partnerRuleSizes, partnerSubscriptions } from '../db/schema';
 import { hasPartnerPro } from './partner-entitlement';
+import { partnerProductPhotoUrl } from './partner-product-rules';
 import {
   aggregateStockDemand,
   findStockShortages,
@@ -39,7 +40,11 @@ export async function loadEventPartnerItemCatalog(
   if (!calendarEvent?.partnerId) return { isPartnerEvent: false, products: [] }
 
   const productRows = await db
-    .select({ id: partnerProducts.id, name: partnerProducts.name })
+    .select({
+      id: partnerProducts.id,
+      name: partnerProducts.name,
+      photoUpdatedAt: partnerProducts.photoUpdatedAt,
+    })
     .from(partnerEventProducts)
     .innerJoin(partnerProducts, eq(partnerProducts.id, partnerEventProducts.productId))
     .where(
@@ -179,6 +184,7 @@ export async function loadEventPartnerItemCatalog(
       .map((product) => ({
         id: product.id,
         name: product.name,
+        photoUrl: partnerProductPhotoUrl(product.id, product.photoUpdatedAt),
         rules: rulesByProduct.get(product.id) ?? [],
         variants: variantRows
           .filter((v) => v.productId === product.id)

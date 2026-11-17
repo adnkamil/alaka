@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { db } from '../db'
 import {
   events,
+  itemComponents,
   items,
   orders,
   partnerPricingRules,
@@ -13,6 +14,7 @@ import {
 } from '../db/schema'
 import { inArray } from 'drizzle-orm'
 import { hasPartnerPro } from './partner-entitlement'
+import { aggregateStockDemand, restoreVariantStock } from './partner-stock'
 import { computePendingRules, type PendingSingle } from './partner-paket-pending'
 import { brandIdOf } from './brand'
 import { getSessionUser } from './auth'
@@ -108,9 +110,49 @@ export const deleteEvent = createServerFn({ method: 'POST' })
   .validator(z.object({ id: z.uuid() }))
   .handler(async ({ data }) => {
     const user = await requireUser()
-    await db
-      .delete(events)
-      .where(and(eq(events.id, data.id), eq(events.brandId, brandIdOf(user))))
+    await db.transaction(async (tx) => {
+      const owned = await tx.query.events.findFirst({
+        where: and(eq(events.id, data.id), eq(events.brandId, brandIdOf(user))),
+        columns: { id: true },
+      })
+      if (!owned) return
+
+      // Barang yang sudah disetujui partner sudah memotong stok. Karena
+      // pesanannya ikut terhapus, stoknya dikembalikan di transaksi yang sama.
+      const approvedSingles = await tx
+        .select({ variantId: items.partnerVariantId, qty: items.qty })
+        .from(items)
+        .innerJoin(orders, eq(orders.id, items.orderId))
+        .where(
+          and(
+            eq(orders.eventId, data.id),
+            eq(items.isBundle, false),
+            eq(items.submitStatus, 'disetujui'),
+          ),
+        )
+      const approvedComponents = await tx
+        .select({
+          variantId: itemComponents.partnerVariantId,
+          qty: itemComponents.qty,
+        })
+        .from(itemComponents)
+        .innerJoin(items, eq(items.id, itemComponents.itemId))
+        .innerJoin(orders, eq(orders.id, items.orderId))
+        .where(
+          and(
+            eq(orders.eventId, data.id),
+            eq(itemComponents.submitStatus, 'disetujui'),
+          ),
+        )
+      await restoreVariantStock(
+        tx,
+        aggregateStockDemand([...approvedSingles, ...approvedComponents]),
+      )
+
+      await tx
+        .delete(events)
+        .where(and(eq(events.id, data.id), eq(events.brandId, brandIdOf(user))))
+    })
   })
 
 /**

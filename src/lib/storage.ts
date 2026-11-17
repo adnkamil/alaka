@@ -1,4 +1,11 @@
 import { getStore } from '@netlify/blobs'
+import {
+  DeleteObjectCommand,
+  GetObjectCommand,
+  NoSuchKey,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3'
 import { detectAvatarContentType } from './avatar-validation'
 import { detectPaymentProofContentType } from './payment-proof'
 import type { AvatarContentType } from './avatar-validation'
@@ -169,16 +176,45 @@ export async function deleteCalendarBanner(eventId: string): Promise<void> {
 //
 // Publik seperti avatar/banner (cuma gambar produk, id berupa UUID acak),
 // key = id baris `partner_products`. Format sama dengan avatar (WebP/JPEG).
+//
+// Disimpan di Cloudflare R2 (S3-compatible). Bucket dibuat privat; file hanya
+// disajikan lewat route `/api/partner-product-photo/$id`, jadi URL dan header
+// cache tetap sama dengan sebelumnya.
 
-const PARTNER_PRODUCT_PHOTO_STORE = 'partner-product-photos'
+const PARTNER_PRODUCT_PHOTO_PREFIX = 'partner-product-photos/'
 
-function partnerProductPhotoStore() {
-  // Opsi sama dengan `avatarStore()` (consistency strong, region us-east-2).
-  return getStore({
-    name: PARTNER_PRODUCT_PHOTO_STORE,
-    consistency: 'strong',
-    region: 'us-east-2',
-  })
+let r2Client: S3Client | null = null
+
+function r2Config() {
+  const endpoint = process.env.R2_ENDPOINT
+  const accessKeyId = process.env.R2_ACCESS_KEY_ID
+  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY
+  const bucket = process.env.R2_BUCKET
+  if (!endpoint || !accessKeyId || !secretAccessKey || !bucket) {
+    throw new Error(
+      'Konfigurasi R2 belum lengkap (R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET).',
+    )
+  }
+  return { endpoint, accessKeyId, secretAccessKey, bucket }
+}
+
+function r2() {
+  if (!r2Client) {
+    const cfg = r2Config()
+    r2Client = new S3Client({
+      region: 'auto',
+      endpoint: cfg.endpoint,
+      credentials: {
+        accessKeyId: cfg.accessKeyId,
+        secretAccessKey: cfg.secretAccessKey,
+      },
+    })
+  }
+  return r2Client
+}
+
+function partnerProductPhotoKey(productId: string): string {
+  return `${PARTNER_PRODUCT_PHOTO_PREFIX}${productId}`
 }
 
 export async function putPartnerProductPhoto(
@@ -186,32 +222,54 @@ export async function putPartnerProductPhoto(
   bytes: Uint8Array,
   contentType: AvatarContentType,
 ): Promise<void> {
-  const body = new Blob([new Uint8Array(bytes)], { type: contentType })
-  await partnerProductPhotoStore().set(productId, body, {
-    metadata: { contentType },
-  })
+  await r2().send(
+    new PutObjectCommand({
+      Bucket: r2Config().bucket,
+      Key: partnerProductPhotoKey(productId),
+      Body: bytes,
+      ContentType: contentType,
+    }),
+  )
 }
 
 export async function getPartnerProductPhoto(
   productId: string,
 ): Promise<{ data: ArrayBuffer; contentType: AvatarContentType } | null> {
-  const result = await partnerProductPhotoStore().getWithMetadata(productId, {
-    type: 'blob',
-  })
-  if (!result) return null
+  let res
+  try {
+    res = await r2().send(
+      new GetObjectCommand({
+        Bucket: r2Config().bucket,
+        Key: partnerProductPhotoKey(productId),
+      }),
+    )
+  } catch (err) {
+    if (err instanceof NoSuchKey) return null
+    throw err
+  }
+  if (!res.Body) return null
 
-  const data = await result.data.arrayBuffer()
+  const bytes = await res.Body.transformToByteArray()
   // Tipe dikenali dari isi file, bukan dari metadata.
-  const contentType = detectAvatarContentType(new Uint8Array(data))
+  const contentType = detectAvatarContentType(bytes)
   if (!contentType) return null
 
+  const data = bytes.buffer.slice(
+    bytes.byteOffset,
+    bytes.byteOffset + bytes.byteLength,
+  ) as ArrayBuffer
   return { data, contentType }
 }
 
 export async function deletePartnerProductPhoto(
   productId: string,
 ): Promise<void> {
-  await partnerProductPhotoStore().delete(productId)
+  await r2().send(
+    new DeleteObjectCommand({
+      Bucket: r2Config().bucket,
+      Key: partnerProductPhotoKey(productId),
+    }),
+  )
 }
 
 // --- Katalog PDF partner (LEGACY) ---------------------------------------

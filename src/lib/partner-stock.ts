@@ -60,6 +60,31 @@ export class StockShortageError extends Error {
 }
 
 /**
+ * Kembalikan stok varian dalam transaksi `tx` (kebalikan `deductVariantStock`).
+ * Dipakai saat barang yang sudah disetujui partner ikut hilang, misalnya event
+ * dihapus. Baris dikunci dalam urutan id yang sama dengan pengurangan.
+ */
+export async function restoreVariantStock(
+  tx: OrderTx,
+  demand: Map<string, number>,
+): Promise<void> {
+  const ids = [...demand.keys()].sort()
+  if (ids.length === 0) return
+  await tx
+    .select({ id: partnerVariants.id })
+    .from(partnerVariants)
+    .where(inArray(partnerVariants.id, ids))
+    .orderBy(partnerVariants.id)
+    .for('update')
+  for (const id of ids) {
+    await tx
+      .update(partnerVariants)
+      .set({ stockQty: sql`${partnerVariants.stockQty} + ${demand.get(id)!}` })
+      .where(inArray(partnerVariants.id, [id]))
+  }
+}
+
+/**
  * Kurangi stok varian dalam transaksi `tx`. Baris varian dikunci
  * (FOR UPDATE) dalam urutan id supaya dua transaksi tidak saling menunggu.
  * Kalau ada yang kurang, tidak ada stok yang berubah dan error dilempar.
