@@ -27,10 +27,13 @@ import { allocateApproved, overStockRowIds } from '../lib/partner-stock-review'
 export default function PartnerSubmitReview({
   calendarEventId,
   brandId,
+  barOnly = false,
 }: {
   calendarEventId: string
   /** Kalau diisi, hanya tampilkan submit dari jastiper ini. */
   brandId?: string
+  /** Hanya tampilkan tombol cek otomatis dan statusnya (daftar submit ada di tempat lain). */
+  barOnly?: boolean
 }) {
   const queryClient = useQueryClient()
   const submissionsKey = ['partner-submissions', calendarEventId]
@@ -96,8 +99,8 @@ export default function PartnerSubmitReview({
     }
   }
 
-  if (query.isLoading) return <p>Memuat pengajuan…</p>
-  if (query.isError) return <p>Gagal memuat pengajuan.</p>
+  if (!barOnly && query.isLoading) return <p>Memuat pengajuan…</p>
+  if (!barOnly && query.isError) return <p>Gagal memuat pengajuan.</p>
   const brands = (query.data ?? []).filter(
     (b) => brandId === undefined || b.brandId === brandId,
   )
@@ -107,6 +110,89 @@ export default function PartnerSubmitReview({
   const progress = stock?.run
     ? `${stock.run.processed} dari ${stock.run.total} pengajuan`
     : ''
+
+  if (barOnly) {
+    const processed = stock?.run?.processed ?? 0
+    const total = stock?.run?.total ?? 0
+    const percent = busy
+      ? total > 0
+        ? Math.round((processed / total) * 100)
+        : 0
+      : stock?.run?.status === 'done' && pending === 0
+        ? 100
+        : 0
+    const label = busy
+      ? `Sedang mengecek ${processed} dari ${total} pengajuan`
+      : pending > 0
+        ? `${pending} pengajuan belum dicek`
+        : 'Semua pengajuan sudah dicek'
+    return (
+      <div
+        className="flex flex-wrap items-center gap-5 rounded-2xl border p-5"
+        style={{ background: 'var(--app-card)', borderColor: 'var(--app-border)' }}
+      >
+        <div className="min-w-[220px] flex-1 space-y-3">
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="text-sm font-semibold">{label}</p>
+            {busy && total > 0 && (
+              <p className="text-xs tabular-nums" style={{ color: 'var(--app-text-soft)' }}>
+                {percent}%
+              </p>
+            )}
+          </div>
+          <div
+            className="h-2 w-full overflow-hidden rounded-full"
+            style={{ background: 'var(--app-border)' }}
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={percent}
+          >
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{ width: `${percent}%`, background: 'var(--app-accent)' }}
+            />
+          </div>
+          {paused && !busy && (
+            <p className="text-xs" style={{ color: '#b45309' }}>
+              Berhenti di tengah. Lanjutkan untuk mengecek sisanya.
+            </p>
+          )}
+          {!busy && stock?.run?.status === 'done' && pending > 0 && (
+            <p className="text-xs" style={{ color: '#b45309' }}>
+              Ada {pending} pengajuan baru setelah pengecekan terakhir.
+            </p>
+          )}
+          {stockError && (
+            <p className="text-xs" style={{ color: 'var(--app-danger)' }}>
+              {stockError}
+            </p>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {busy && (
+            <button
+              type="button"
+              className="app-btn-outline"
+              style={{ minHeight: 44 }}
+              onClick={stopAutoCheck}
+            >
+              Hentikan
+            </button>
+          )}
+          <button
+            type="button"
+            disabled={busy || pending === 0}
+            onClick={runAutoCheck}
+            className="rounded-xl px-6 font-semibold text-white disabled:opacity-50"
+            style={{ minHeight: 44, background: 'var(--app-accent)' }}
+          >
+            {paused ? 'Lanjutkan cek otomatis' : 'Cek stok otomatis'}
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -151,22 +237,23 @@ export default function PartnerSubmitReview({
         {stockError && <p className="text-sm text-red-600">{stockError}</p>}
       </div>
 
-      {brands.length === 0 ? (
-        <p>Belum ada pengajuan dari jastiper.</p>
-      ) : (
-        brands.map((brand) => (
-          <BrandBlock
-            key={brand.eventId}
-            brand={brand}
-            calendarEventId={calendarEventId}
-            processingId={processingId}
-            onDone={() => {
-              refreshSubmissions()
-              queryClient.invalidateQueries({ queryKey: stockKey })
-            }}
-          />
-        ))
-      )}
+      {!barOnly &&
+        (brands.length === 0 ? (
+          <p>Belum ada pengajuan dari jastiper.</p>
+        ) : (
+          brands.map((brand) => (
+            <BrandBlock
+              key={brand.eventId}
+              brand={brand}
+              calendarEventId={calendarEventId}
+              processingId={processingId}
+              onDone={() => {
+                refreshSubmissions()
+                queryClient.invalidateQueries({ queryKey: stockKey })
+              }}
+            />
+          ))
+        ))}
     </div>
   )
 }

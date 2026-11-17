@@ -587,6 +587,7 @@ function PartnerEventDetailPage() {
           </aside>
 
           <div className="flex min-w-0 flex-col gap-4">
+            <PartnerSubmitReview calendarEventId={id} barOnly />
             {participants.length === 0 ? (
               <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
                 Belum ada jastiper yang ikut event ini.
