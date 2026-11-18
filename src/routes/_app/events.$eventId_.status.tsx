@@ -3,9 +3,13 @@ import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Check, Clock, Lock, Send } from 'lucide-react'
 import ConfirmModal from '../../components/ui/ConfirmModal'
+import EventInvoicesSection, {
+  useEventInvoices,
+} from '../../components/EventInvoicesSection'
 import { useNow } from '../../lib/use-now'
 import { formatRemaining, formatWibDateTime } from '../../lib/event-slot'
 import { getEventSlotSummary } from '../../lib/event-slot-functions'
+import { formatInvoiceNumber } from '../../lib/invoice-rules'
 import { submitOrdersBatch } from '../../lib/submit-functions'
 
 export const Route = createFileRoute('/_app/events/$eventId_/status')({
@@ -35,6 +39,13 @@ function EventStatusPage() {
     refetchInterval: (q) =>
       (q.state.data?.pendingCount ?? 0) > 0 ? 10_000 : 30_000,
   })
+  const { data: invoices = [] } = useEventInvoices(eventId)
+  // Submit -> tagihan aktif (bukan yang dibatalkan), untuk chip di tiap kartu.
+  const invoiceBySubmitNo = new Map<number, number>()
+  for (const inv of invoices) {
+    if (inv.status === 'dibatalkan') continue
+    for (const no of inv.submitNos) invoiceBySubmitNo.set(no, inv.number)
+  }
   const [confirm, setConfirm] = useState(false)
   const { tab: initialTab } = Route.useSearch()
   const [tab, setTab] = useState<'status' | 'riwayat'>(initialTab === 'riwayat' ? 'riwayat' : 'status')
@@ -283,13 +294,14 @@ function EventStatusPage() {
                 : { color: 'var(--app-text-soft)' }
             }
           >
-            {t === 'status' ? 'Status' : 'Riwayat submit'}
+            {t === 'status' ? 'Status' : 'Submit & tagihan'}
           </button>
         ))}
       </div>
 
       {tab === 'riwayat' && (
         <div className="flex flex-col gap-3">
+          <EventInvoicesSection eventId={eventId} />
           {summary.submissions.length === 0 && (
             <section className="app-card p-4 text-sm" style={{ color: 'var(--app-text-soft)' }}>
               Belum ada submit.
@@ -326,6 +338,13 @@ function EventStatusPage() {
                   {h.pending > 0 ? 'Menunggu' : 'Sudah dicek'}
                 </span>
               </div>
+              {h.pending === 0 && (
+                <p className="mt-2 text-[11px] font-semibold" style={{ color: 'var(--app-text-soft)' }}>
+                  {invoiceBySubmitNo.has(h.submitNo)
+                    ? `Ditagih ${formatInvoiceNumber(invoiceBySubmitNo.get(h.submitNo)!)}`
+                    : 'Belum ditagih'}
+                </p>
+              )}
               <div
                 className="mt-4 grid grid-cols-4 overflow-hidden rounded-xl border text-center"
                 style={{ borderColor: 'var(--app-border)' }}

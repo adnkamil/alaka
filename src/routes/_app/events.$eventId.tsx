@@ -59,7 +59,7 @@ import { listFeeRules } from '../../lib/fee-rules-functions'
 import { getOrderSuggestions } from '../../lib/order-suggestions-functions'
 import { APP_TIME_ZONE, todayIsoDateInAppTimeZone } from '../../lib/timezone'
 import type { OrderItemView } from '../../components/OrderItemList'
-import EventInvoicesSection from '../../components/EventInvoicesSection'
+import { useEventInvoices } from '../../components/EventInvoicesSection'
 import EventSlotAction from '../../components/EventSlotAction'
 import EventSlotBanner from '../../components/EventSlotBanner'
 import {
@@ -496,6 +496,10 @@ function EventDetailPage() {
     queryFn: () => getEventRuleNotices({ data: { eventId } }),
   })
   const { data: ruleNotices = [] } = useQuery(ruleNoticesQuery)
+  const { data: eventInvoices = [] } = useEventInvoices(eventId)
+  const unpaidInvoiceCount = eventInvoices.filter(
+    (i) => i.status === 'ditagih' || i.status === 'menunggu_review',
+  ).length
   async function handleDismissRuleNotice(noticeId: string) {
     await dismissRuleNotice({ data: { noticeId } })
     await queryClient.invalidateQueries({ queryKey: ['rule-notices', eventId] })
@@ -1142,7 +1146,23 @@ function EventDetailPage() {
               })
             }
           />
-          <EventInvoicesSection eventId={eventId} />
+          {unpaidInvoiceCount > 0 && (
+            <button
+              type="button"
+              onClick={() =>
+                navigate({
+                  to: '/events/$eventId/status',
+                  search: { tab: 'riwayat' },
+                  params: { eventId },
+                })
+              }
+              className="mb-4 flex w-full items-center justify-between rounded-xl px-3.5 py-3 text-left text-[13px] font-semibold"
+              style={{ background: 'var(--app-warning-soft)', color: '#b45309' }}
+            >
+              <span>{unpaidInvoiceCount} tagihan partner belum dibayar</span>
+              <span>Lihat →</span>
+            </button>
+          )}
         </>
       )}
 

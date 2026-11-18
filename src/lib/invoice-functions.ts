@@ -34,6 +34,9 @@ export type InvoiceSummary = {
   paymentRejectReason: string | null
 }
 
+/** Ringkasan tagihan di daftar event, lengkap dengan nomor submit yang ditagih. */
+export type EventInvoiceSummary = InvoiceSummary & { submitNos: Array<number> }
+
 /** Rekening tujuan pembayaran milik partner penagih. */
 export type PartnerBankInfo = {
   bankName: string
@@ -223,12 +226,14 @@ export const getJastiperInvoice = createServerFn({ method: 'GET' })
 /** Daftar tagihan untuk satu event belanja jastiper (terbaru dulu). */
 export const listEventInvoices = createServerFn({ method: 'GET' })
   .validator(z.object({ eventId: idSchema }))
-  .handler(async ({ data }): Promise<Array<InvoiceSummary>> => {
+  .handler(async ({ data }): Promise<Array<EventInvoiceSummary>> => {
     const user = await getSessionUser()
     if (!user) throw new Error('Belum login')
     const { db } = await import('../db')
-    const { and, desc, eq } = await import('drizzle-orm')
-    const { invoices } = await import('../db/schema')
+    const { and, desc, eq, inArray } = await import('drizzle-orm')
+    const { eventSubmissions, invoices, invoiceSubmissions } = await import(
+      '../db/schema'
+    )
     const rows = await db
       .select()
       .from(invoices)
@@ -239,7 +244,30 @@ export const listEventInvoices = createServerFn({ method: 'GET' })
         ),
       )
       .orderBy(desc(invoices.sentAt))
+    const links =
+      rows.length === 0
+        ? []
+        : await db
+            .select({
+              invoiceId: invoiceSubmissions.invoiceId,
+              submitNo: eventSubmissions.submitNo,
+            })
+            .from(invoiceSubmissions)
+            .innerJoin(
+              eventSubmissions,
+              eq(eventSubmissions.id, invoiceSubmissions.submissionId),
+            )
+            .where(
+              inArray(
+                invoiceSubmissions.invoiceId,
+                rows.map((r) => r.id),
+              ),
+            )
     return rows.map((r) => ({
+      submitNos: links
+        .filter((l) => l.invoiceId === r.id)
+        .map((l) => l.submitNo)
+        .sort((a, b) => a - b),
       id: r.id,
       number: r.number,
       status: r.status,

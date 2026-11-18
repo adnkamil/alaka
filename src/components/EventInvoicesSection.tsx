@@ -11,16 +11,26 @@ import { formatRupiah } from '../lib/partner-product-rules'
  * Tagihan dari partner untuk event belanja ini (hanya baca). Tidak tampil
  * kalau belum ada tagihan.
  */
-export default function EventInvoicesSection({ eventId }: { eventId: string }) {
-  const { data: invoices = [] } = useQuery({
+export function useEventInvoices(eventId: string) {
+  return useQuery({
     queryKey: ['event-invoices', eventId],
     queryFn: () => listEventInvoices({ data: { eventId } }),
     refetchInterval: 30_000,
   })
+}
+
+/** "Submit 1 + 2" / "Submit 1, 2, 3". */
+export function submitNosLabel(nos: Array<number>): string {
+  if (nos.length === 0) return ''
+  return `Submit ${nos.join(nos.length === 2 ? ' + ' : ', ')}`
+}
+
+export default function EventInvoicesSection({ eventId }: { eventId: string }) {
+  const { data: invoices = [] } = useEventInvoices(eventId)
   const [openId, setOpenId] = useState<string | null>(null)
   if (invoices.length === 0) return null
   return (
-    <section className="mb-4">
+    <section id="tagihan-partner" className="mb-4 scroll-mt-4">
       <h2 className="mb-2 text-sm font-bold">Tagihan dari partner</h2>
       <div className="app-card divide-y overflow-hidden" style={{ borderColor: 'var(--app-border)' }}>
         {invoices.map((inv) => (
@@ -34,7 +44,7 @@ export default function EventInvoicesSection({ eventId }: { eventId: string }) {
             <div className="min-w-0">
               <p className="pm-num text-sm font-semibold">{formatInvoiceNumber(inv.number)}</p>
               <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
-                {formatWibDateTime(inv.sentAt)} · {inv.totalPcs} pcs
+                {submitNosLabel(inv.submitNos)} · {formatWibDateTime(inv.sentAt)} · {inv.totalPcs} pcs
               </p>
             </div>
             <div className="flex flex-col items-end gap-1">

@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Info } from 'lucide-react'
+import { Info, X } from 'lucide-react'
 import { getEventSlotSummary } from '../lib/event-slot-functions'
 
 type Tone = 'warning' | 'success'
@@ -11,7 +12,8 @@ const TONE: Record<Tone, { background: string; color: string }> = {
 
 /**
  * Banner status slot di bawah judul event. Setelah submit banner bisa diketuk
- * untuk membuka sheet status.
+ * untuk membuka sheet status. Bisa ditutup (X); penutupan diingat per status,
+ * jadi banner muncul lagi hanya kalau statusnya berubah.
  */
 export default function EventSlotBanner({
   eventId,
@@ -20,6 +22,9 @@ export default function EventSlotBanner({
   eventId: string
   onOpenStatus: () => void
 }) {
+  const [dismissedKey, setDismissedKey] = useState<string | null>(() =>
+    readDismissed(eventId),
+  )
   const { data: summary } = useQuery({
     queryKey: ['event-slot', eventId],
     queryFn: () => getEventSlotSummary({ data: { eventId } }),
@@ -28,6 +33,8 @@ export default function EventSlotBanner({
   if (!summary) return null
 
   const sanggahCount = summary.disanggahCount
+  const stateKey = `${summary.status}:${sanggahCount}`
+  if (dismissedKey === stateKey) return null
 
   let tone: Tone
   let text: string
@@ -61,17 +68,50 @@ export default function EventSlotBanner({
   }
 
   const interactive = summary.submittedAt !== null
-  const Wrapper = interactive ? 'button' : 'div'
+  const Body = interactive ? 'button' : 'div'
   return (
-    <Wrapper
-      {...(interactive
-        ? { type: 'button' as const, onClick: onOpenStatus }
-        : {})}
-      className="mb-4 flex w-full items-start gap-2.5 rounded-xl px-3.5 py-3 text-left text-[13px] leading-snug"
+    <div
+      className="mb-4 flex w-full items-start gap-1 rounded-xl py-3 pl-3.5 pr-2 text-[13px] leading-snug"
       style={TONE[tone]}
     >
-      <Info size={16} className="mt-0.5 flex-shrink-0" />
-      <span>{text}</span>
-    </Wrapper>
+      <Body
+        {...(interactive
+          ? { type: 'button' as const, onClick: onOpenStatus }
+          : {})}
+        className="flex min-w-0 flex-1 items-start gap-2.5 text-left"
+      >
+        <Info size={16} className="mt-0.5 flex-shrink-0" />
+        <span>{text}</span>
+      </Body>
+      <button
+        type="button"
+        aria-label="Tutup info"
+        onClick={() => {
+          writeDismissed(eventId, stateKey)
+          setDismissedKey(stateKey)
+        }}
+        className="flex-shrink-0 rounded-full p-1 opacity-70 hover:opacity-100"
+      >
+        <X size={16} />
+      </button>
+    </div>
   )
+}
+
+const storageKey = (eventId: string) => `slot-banner-dismissed:${eventId}`
+
+function readDismissed(eventId: string): string | null {
+  try {
+    return localStorage.getItem(storageKey(eventId))
+  } catch {
+    return null
+  }
+}
+
+function writeDismissed(eventId: string, value: string) {
+  try {
+    localStorage.setItem(storageKey(eventId), value)
+  } catch {
+    // Penyimpanan diblokir: banner tetap tertutup selama halaman terbuka.
+  }
 }
