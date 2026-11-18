@@ -18,6 +18,7 @@ import {
 } from './submit-status'
 import type { OrderTx } from './order-status-queries'
 import { recalculateOrderStatus } from './order-status-queries'
+import { chunk } from './chunk'
 import { partnerItemName, variantLabel } from './partner-item-label'
 import {
   aggregateStockDemand,
@@ -65,6 +66,18 @@ async function logStatus(
   })
 }
 
+type StatusLogRow = typeof itemStatusLogs.$inferInsert
+
+/** Ukuran potongan untuk update/insert massal, jauh di bawah batas parameter Postgres. */
+const BATCH_SIZE = 500
+
+/** Tulis banyak log status sekaligus (satu perintah per potongan, bukan per baris). */
+async function logStatusBatch(tx: OrderTx, rows: Array<StatusLogRow>) {
+  for (const part of chunk(rows, BATCH_SIZE)) {
+    await tx.insert(itemStatusLogs).values(part)
+  }
+}
+
 /**
  * Jastiper menekan Submit. Semua baris draft (belum disubmit) di event ini
  * menjadi pengajuan dengan nomor submit berikutnya, lalu terkunci qty-nya.
@@ -107,34 +120,56 @@ export async function submitEventOrders(
     .values({ eventId, submitNo, submittedAt: now })
     .returning({ id: eventSubmissions.id })
 
-  for (const row of sendable) {
+  // Update dan log ditulis massal. Semuanya tetap dalam transaksi `tx` yang
+  // sama, jadi kalau berhenti di tengah, tidak ada yang tersimpan setengah jadi.
+  for (const part of chunk(sendable, BATCH_SIZE)) {
     await tx
       .update(items)
       .set({ submitStatus: 'pengajuan', submissionId: submission.id })
-      .where(eq(items.id, row.id))
-    await logStatus(tx, {
-      eventId,
-      itemId: row.id,
-      submissionId: submission.id,
-      from: null,
-      to: 'pengajuan',
-      qty: row.qty,
-    })
+      .where(
+        inArray(
+          items.id,
+          part.map((r) => r.id),
+        ),
+      )
   }
-  for (const row of draftComps) {
+  for (const part of chunk(draftComps, BATCH_SIZE)) {
     await tx
       .update(itemComponents)
       .set({ submitStatus: 'pengajuan', submissionId: submission.id })
-      .where(eq(itemComponents.id, row.id))
-    await logStatus(tx, {
-      eventId,
-      componentId: row.id,
-      submissionId: submission.id,
-      from: null,
-      to: 'pengajuan',
-      qty: row.qty,
-    })
+      .where(
+        inArray(
+          itemComponents.id,
+          part.map((r) => r.id),
+        ),
+      )
   }
+  await logStatusBatch(tx, [
+    ...sendable.map(
+      (row): StatusLogRow => ({
+        eventId,
+        itemId: row.id,
+        componentId: null,
+        submissionId: submission.id,
+        fromStatus: null,
+        toStatus: 'pengajuan',
+        qty: row.qty,
+        note: null,
+      }),
+    ),
+    ...draftComps.map(
+      (row): StatusLogRow => ({
+        eventId,
+        itemId: null,
+        componentId: row.id,
+        submissionId: submission.id,
+        fromStatus: null,
+        toStatus: 'pengajuan',
+        qty: row.qty,
+        note: null,
+      }),
+    ),
+  ])
 
   // Penanda lama tetap terisi supaya daftar event partner tetap bisa
   // mengurutkan antrean. Kunci per baris yang dipakai alur baru.

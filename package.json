@@ -16,6 +16,7 @@
     "db:migrate:neon-stg": "node --env-file=.env.neon.stg.local node_modules/drizzle-kit/bin.cjs migrate",
     "db:push": "drizzle-kit push",
     "db:pull": "drizzle-kit pull",
+    "perf:submit:stg": "node --env-file=.env.neon.stg.local node_modules/tsx/dist/cli.mjs scripts/simulate-submit-load.ts",
     "db:studio": "drizzle-kit studio",
     "db:studio:neon": "node --env-file=.env.neon.local node_modules/drizzle-kit/bin.cjs studio",
     "db:baseline": "tsx scripts/drizzle-baseline.ts",
