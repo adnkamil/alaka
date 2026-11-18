@@ -42,6 +42,9 @@ export default function PartnerSubmitReview({
   const query = useQuery({
     queryKey: submissionsKey,
     queryFn: () => getPartnerSubmissions({ data: { calendarEventId } }),
+    // Mode bar tidak menampilkan daftar submit, jadi tidak perlu memuat semua
+    // baris submit (bisa belasan ribu baris untuk event ramai).
+    enabled: !barOnly,
   })
   const stockQuery = useQuery({
     queryKey: stockKey,
