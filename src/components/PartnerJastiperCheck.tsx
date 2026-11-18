@@ -40,8 +40,10 @@ export default function PartnerJastiperCheck({
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const subs = useQuery({
-    queryKey: ['partner-submissions', calendarEventId],
-    queryFn: () => getPartnerSubmissions({ data: { calendarEventId } }),
+    // brandId ikut ke server supaya hanya data jastiper ini yang dibaca.
+    queryKey: ['partner-submissions', calendarEventId, brandId],
+    queryFn: () =>
+      getPartnerSubmissions({ data: { calendarEventId, brandId } }),
   })
   const detail = useQuery({
     queryKey: ['partner-jastiper-detail', calendarEventId, brandId],

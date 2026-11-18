@@ -19,7 +19,12 @@ import {
 import { hasPartnerPro } from './partner-entitlement'
 import { formBundles } from './partner-bundle-fifo'
 import { partnerItemName, variantLabel } from './partner-item-label'
-import { recalculateOrderStatus, type OrderTx } from './order-status-queries'
+import {
+  recalculateOrderStatus,
+  recalculateOrderStatuses,
+  type OrderTx,
+} from './order-status-queries'
+import { chunk } from './chunk'
 
 export type VariantInfo = {
   productId: string
@@ -386,6 +391,78 @@ export async function isProductInEvent(
  * hitung ulang total pesanan. Dipanggil setelah barang satuan ditulis (tambah atau
  * ubah pesanan).
  */
+/**
+ * Versi massal `regroupAllRulesInOrder` untuk banyak pesanan sekaligus. Barang
+ * satuan, info varian, dan aturan dibaca sekali untuk semua pesanan; FIFO
+ * (`regroupRuleInOrder`) hanya dijalankan untuk pesanan yang punya produk dalam
+ * suatu aturan. Total pesanan dihitung ulang massal di akhir.
+ */
+export async function regroupAllRulesInOrders(
+  tx: OrderTx,
+  orderIds: ReadonlyArray<string>,
+): Promise<void> {
+  const uniqueOrderIds = [...new Set(orderIds)]
+  if (uniqueOrderIds.length === 0) return
+
+  const singles: Array<{ orderId: string; partnerVariantId: string | null }> = []
+  for (const ids of chunk(uniqueOrderIds, 500)) {
+    singles.push(
+      ...(await tx
+        .select({
+          orderId: items.orderId,
+          partnerVariantId: items.partnerVariantId,
+        })
+        .from(items)
+        .where(and(inArray(items.orderId, ids), eq(items.isBundle, false)))),
+    )
+  }
+  const variantIds = singles
+    .map((s) => s.partnerVariantId)
+    .filter((id): id is string => id !== null)
+
+  if (variantIds.length > 0) {
+    const infoMap = await loadVariantInfo(tx, variantIds)
+    const productIds = [...new Set([...infoMap.values()].map((i) => i.productId))]
+    if (productIds.length > 0) {
+      const ruleRows = await tx
+        .select({
+          ruleId: partnerRuleProducts.ruleId,
+          productId: partnerRuleProducts.partnerProductId,
+        })
+        .from(partnerRuleProducts)
+        .where(inArray(partnerRuleProducts.partnerProductId, productIds))
+      if (ruleRows.length > 0) {
+        const rulesByProduct = new Map<string, Set<string>>()
+        for (const r of ruleRows) {
+          const set = rulesByProduct.get(r.productId) ?? new Set<string>()
+          set.add(r.ruleId)
+          rulesByProduct.set(r.productId, set)
+        }
+        const productsByOrder = new Map<string, Set<string>>()
+        for (const s of singles) {
+          const info = s.partnerVariantId ? infoMap.get(s.partnerVariantId) : undefined
+          if (!info) continue
+          const set = productsByOrder.get(s.orderId) ?? new Set<string>()
+          set.add(info.productId)
+          productsByOrder.set(s.orderId, set)
+        }
+        for (const orderId of uniqueOrderIds) {
+          const ruleIds = new Set<string>()
+          for (const productId of productsByOrder.get(orderId) ?? []) {
+            for (const ruleId of rulesByProduct.get(productId) ?? []) {
+              ruleIds.add(ruleId)
+            }
+          }
+          for (const ruleId of ruleIds) {
+            await regroupRuleInOrder(tx, orderId, ruleId)
+          }
+        }
+      }
+    }
+  }
+  await recalculateOrderStatuses(tx, uniqueOrderIds)
+}
+
 export async function regroupAllRulesInOrder(tx: OrderTx, orderId: string): Promise<void> {
   const singles = await tx
     .select({ partnerVariantId: items.partnerVariantId })

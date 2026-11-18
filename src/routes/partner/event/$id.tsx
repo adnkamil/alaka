@@ -386,7 +386,7 @@ function PartnerEventDetailPage() {
 
         {tab === 'jastiper' && (
           <section className="flex flex-col gap-2.5">
-            {slotEnabled && <PartnerSubmitReview calendarEventId={id} />}
+            <PartnerSubmitReview calendarEventId={id} barOnly />
             {participants.length === 0 ? (
               <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
                 Belum ada jastiper yang ikut event ini.
@@ -426,6 +426,13 @@ function PartnerEventDetailPage() {
                     key={vr.key}
                     className="app-card flex items-center gap-3 p-3"
                   >
+                    <Link
+                      to="/partner/event/jastiper/$id/$brandId"
+                      params={{ id, brandId: row.brandId }}
+                      search={vr.group === 'disetujui' ? { view: 'disetujui' as const } : vr.group === 'pengajuan' ? { view: 'pengajuan' as const } : { view: undefined }}
+                      className="flex min-w-0 flex-1 items-center gap-3 no-underline"
+                      style={{ color: 'inherit' }}
+                    >
                     <span
                       className="pm-display flex size-10 shrink-0 items-center justify-center rounded-full text-sm"
                       style={{
@@ -463,6 +470,7 @@ function PartnerEventDetailPage() {
                         </div>
                       )}
                     </div>
+                    </Link>
                     {row.waNumber ? (
                       <a
                         href={`tel:${row.waNumber}`}
@@ -587,6 +595,7 @@ function PartnerEventDetailPage() {
           </aside>
 
           <div className="flex min-w-0 flex-col gap-4">
+            <PartnerSubmitReview calendarEventId={id} barOnly />
             {participants.length === 0 ? (
               <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
                 Belum ada jastiper yang ikut event ini.

@@ -1,5 +1,6 @@
 import { relations, sql } from 'drizzle-orm'
 import {
+  bigint,
   boolean,
   check,
   date,
@@ -38,6 +39,7 @@ export const submitStatusEnum = pgEnum('submit_status', [
   'pengajuan',
   'disetujui',
   'disanggah',
+  'dibatalkan',
 ])
 
 export const paymentMethodTypeEnum = pgEnum('payment_method_type', [
@@ -556,13 +558,69 @@ export const eventSubmissions = pgTable(
     submittedAt: timestamp('submitted_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
+    /**
+     * Urutan antrean global, dipakai pengecekan stok otomatis. Diberikan oleh
+     * database saat submit masuk, jadi tidak bergantung pada jam server.
+     */
+    queueSeq: bigint('queue_seq', { mode: 'number' })
+      .notNull()
+      .generatedAlwaysAsIdentity(),
+    /** Null = belum dicek (menunggu). Terisi saat pengecekan selesai (centang). */
+    stockCheckedAt: timestamp('stock_checked_at', { withTimezone: true }),
   },
   (table) => [
     uniqueIndex('event_submissions_event_no_unique').on(
       table.eventId,
       table.submitNo,
     ),
+    uniqueIndex('event_submissions_queue_seq_unique').on(table.queueSeq),
     check('event_submissions_no_pos', sql`${table.submitNo} > 0`),
+  ],
+)
+
+/**
+ * Satu kali tombol "cek stok otomatis" ditekan untuk satu event. Menyimpan
+ * posisi pengecekan supaya bisa dilanjutkan kalau proses berhenti di tengah.
+ * Hanya boleh ada satu run "running" per event (lihat index partial di bawah).
+ */
+export const stockCheckRuns = pgTable(
+  'stock_check_runs',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    /** Event kalender partner. Satu tombol mengecek semua submit di dalamnya. */
+    calendarEventId: uuid('calendar_event_id')
+      .notNull()
+      .references(() => calendarEvents.id, { onDelete: 'cascade' }),
+    status: varchar().notNull().default('running'),
+    /** Batas atas antrean saat tombol ditekan. Submit baru tidak ikut. */
+    upperSeq: bigint('upper_seq', { mode: 'number' }).notNull(),
+    /** Nomor antrean terakhir yang sudah selesai diproses. */
+    lastSeq: bigint('last_seq', { mode: 'number' }).notNull().default(0),
+    totalCount: integer('total_count').notNull().default(0),
+    processedCount: integer('processed_count').notNull().default(0),
+    /** Submit yang sedang dicek saat ini, untuk spinner. */
+    currentSubmissionId: uuid('current_submission_id').references(
+      () => eventSubmissions.id,
+      { onDelete: 'set null' },
+    ),
+    /** Diperbarui proses selama berjalan. Kalau lama diam, proses dianggap mati. */
+    heartbeatAt: timestamp('heartbeat_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    startedAt: timestamp('started_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    finishedAt: timestamp('finished_at', { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex('stock_check_runs_one_running')
+      .on(table.calendarEventId)
+      .where(sql`${table.status} = 'running'`),
+    check(
+      'stock_check_runs_status_valid',
+      sql`${table.status} in ('running', 'paused', 'done', 'failed')`,
+    ),
+    check('stock_check_runs_seq_nonneg', sql`${table.lastSeq} >= 0`),
   ],
 )
 

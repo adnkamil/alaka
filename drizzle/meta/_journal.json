@@ -302,6 +302,20 @@
       "when": 1794818547788,
       "tag": "0042_partner_variant_stock_backfill_100",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1794904365681,
+      "tag": "0043_submit_stock_check_queue",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1794905834362,
+      "tag": "0044_submit_status_dibatalkan",
+      "breakpoints": true
     }
   ]
 }

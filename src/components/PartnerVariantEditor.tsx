@@ -5,6 +5,7 @@ import {
   getPartnerProductVariants,
   savePartnerProductVariants,
 } from '../lib/partner-variant-functions'
+import { getAutoStockCheckActive } from '../lib/stock-check-functions'
 import PartnerTableToolbar from './ui/PartnerTableToolbar'
 import { useClientPager } from '../lib/use-client-pager'
 
@@ -39,6 +40,14 @@ export default function PartnerVariantEditor({
     queryKey,
     queryFn: () => getPartnerProductVariants({ data: { productId } }),
   })
+
+  // Stok dikunci selama pengecekan stok otomatis berjalan.
+  const { data: stockActive } = useQuery({
+    queryKey: ['auto-stock-check-active'],
+    queryFn: () => getAutoStockCheckActive(),
+    refetchInterval: 5_000,
+  })
+  const stockLocked = stockActive?.active === true
 
   const [hasVariants, setHasVariants] = useState(false)
   const [price, setPrice] = useState('')
@@ -166,6 +175,12 @@ export default function PartnerVariantEditor({
 
   return (
     <section className="app-card flex flex-col gap-4 p-4 lg:p-5">
+      {stockLocked && (
+        <p className="text-xs font-semibold text-amber-700">
+          Pengecekan stok otomatis sedang berjalan. Varian dan stok dikunci sampai selesai.
+        </p>
+      )}
+      <fieldset disabled={stockLocked} className="contents">
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="pm-display text-base">Varian</h2>
@@ -331,6 +346,7 @@ export default function PartnerVariantEditor({
           {status.text}
         </p>
       )}
+      </fieldset>
     </section>
   )
 }

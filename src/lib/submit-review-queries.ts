@@ -43,6 +43,8 @@ export type ReviewSubmission = {
   submissionId: string
   submitNo: number
   submittedAt: Date
+  /** Sudah dicek stoknya (centang). False = menunggu. */
+  checked: boolean
   satuan: Array<ReviewRow>
   paket: Array<ReviewBundle>
 }
@@ -53,15 +55,27 @@ export type ReviewBrand = {
   submissions: Array<ReviewSubmission>
 }
 
-/** Semua submit dari satu event kalender partner, dikelompokkan per jastiper. */
+/**
+ * Semua submit dari satu event kalender partner, dikelompokkan per jastiper.
+ * Kalau `brandId` diisi, hanya jastiper itu yang dibaca dari database (bukan
+ * seluruh event lalu disaring di klien).
+ */
 export async function loadSubmissionsForPartner(
   tx: OrderTx,
   calendarEventId: string,
+  brandId?: string,
 ): Promise<Array<ReviewBrand>> {
   const eventRows = await tx
     .select({ id: events.id, brandId: events.brandId })
     .from(events)
-    .where(eq(events.calendarEventId, calendarEventId))
+    .where(
+      brandId === undefined
+        ? eq(events.calendarEventId, calendarEventId)
+        : and(
+            eq(events.calendarEventId, calendarEventId),
+            eq(events.brandId, brandId),
+          ),
+    )
   if (eventRows.length === 0) return []
   const eventIds = eventRows.map((e) => e.id)
 
@@ -134,6 +148,7 @@ export async function loadSubmissionsForPartner(
       submissionId: s.id,
       submitNo: s.submitNo,
       submittedAt: s.submittedAt,
+      checked: s.stockCheckedAt !== null,
       satuan: [],
       paket: [],
     })

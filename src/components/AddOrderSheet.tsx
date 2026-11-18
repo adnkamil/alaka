@@ -39,7 +39,7 @@ interface ItemDraft {
   id?: string
   name: string
   /** Status submit bertahap, hanya untuk tampilan. */
-  submitStatus?: 'pengajuan' | 'disetujui' | 'disanggah' | null
+  submitStatus?: 'pengajuan' | 'disetujui' | 'disanggah' | 'dibatalkan' | null
   /**
    * Mode bundling: satu harga & fee untuk beberapa barang sekaligus (mis. paket
    * "100/3 item"). Waktu aktif, `bundleNames` yang dipakai dan `name` diabaikan.
@@ -74,7 +74,7 @@ export interface AddOrderSheetItemValue {
   /** Id baris di database. Dipakai untuk ubah harga barang yang sudah terkirim. */
   id?: string
   /** Alur submit bertahap. Null/undefined = belum dikirim ke partner. */
-  submitStatus?: 'pengajuan' | 'disetujui' | 'disanggah' | null
+  submitStatus?: 'pengajuan' | 'disetujui' | 'disanggah' | 'dibatalkan' | null
 }
 
 interface CustomerOption {
@@ -131,7 +131,7 @@ interface AddOrderSheetProps {
       size: string | null
       variation: string | null
       qty: number
-      submitStatus?: 'pengajuan' | 'disetujui' | 'disanggah' | null
+      submitStatus?: 'pengajuan' | 'disetujui' | 'disanggah' | 'dibatalkan' | null
     }>
   }>
   onEditLockedBundle?: (itemId: string) => void
