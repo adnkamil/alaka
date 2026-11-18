@@ -250,7 +250,7 @@ export async function loadSubmitBilling(
         b.lines.push({
           submissionId,
           kind: 'paket',
-          label: `${bundleName}: ${own.map(labelOf).join(' + ')}`,
+          label: `${bundleName}: ${own.map((c) => (c.qty > 1 ? `${c.qty}× ${labelOf(c)}` : labelOf(c))).join(' + ')}`,
           qty: bundle.qty,
           unitPrice: Math.round((amount / bundle.qty) * 100) / 100,
           amount,

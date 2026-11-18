@@ -1,6 +1,5 @@
-import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import InvoiceDetailModal from './InvoiceDetailModal'
+import { Link } from '@tanstack/react-router'
 import InvoiceStatusBadge from './InvoiceStatusBadge'
 import { formatWibDateTime } from '../lib/event-slot'
 import { listEventInvoices } from '../lib/invoice-functions'
@@ -27,19 +26,18 @@ export function submitNosLabel(nos: Array<number>): string {
 
 export default function EventInvoicesSection({ eventId }: { eventId: string }) {
   const { data: invoices = [] } = useEventInvoices(eventId)
-  const [openId, setOpenId] = useState<string | null>(null)
   if (invoices.length === 0) return null
   return (
     <section id="tagihan-partner" className="mb-4 scroll-mt-4">
       <h2 className="mb-2 text-sm font-bold">Tagihan dari partner</h2>
       <div className="app-card divide-y overflow-hidden" style={{ borderColor: 'var(--app-border)' }}>
         {invoices.map((inv) => (
-          <button
+          <Link
             key={inv.id}
-            type="button"
-            onClick={() => setOpenId(inv.id)}
-            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
-            style={{ borderColor: 'var(--app-border)' }}
+            to="/tagihan-partner/$invoiceId"
+            params={{ invoiceId: inv.id }}
+            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left no-underline"
+            style={{ borderColor: 'var(--app-border)', color: 'inherit' }}
           >
             <div className="min-w-0">
               <p className="pm-num text-sm font-semibold">{formatInvoiceNumber(inv.number)}</p>
@@ -51,16 +49,9 @@ export default function EventInvoicesSection({ eventId }: { eventId: string }) {
               <span className="pm-num text-sm font-bold">{formatRupiah(inv.totalAmount)}</span>
               <InvoiceStatusBadge status={inv.status} />
             </div>
-          </button>
+          </Link>
         ))}
       </div>
-      {openId && (
-        <InvoiceDetailModal
-          invoiceId={openId}
-          mode="jastiper"
-          onClose={() => setOpenId(null)}
-        />
-      )}
     </section>
   )
 }
