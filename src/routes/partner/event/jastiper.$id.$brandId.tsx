@@ -6,8 +6,9 @@ import { getPartnerJastiperDetail } from '../../../lib/partner-jastiper-detail'
 
 export const Route = createFileRoute('/partner/event/jastiper/$id/$brandId')({
   validateSearch: (search: Record<string, unknown>) => {
-    const v = search.view
-    return { view: v === 'disetujui' || v === 'pengajuan' ? v : undefined }
+    const n = Number(search.submit)
+    // Nomor submit untuk disorot. Selain angka bulat positif diabaikan.
+    return { submit: Number.isInteger(n) && n > 0 ? n : undefined }
   },
   component: PartnerJastiperDetailPage,
 })
@@ -15,7 +16,7 @@ export const Route = createFileRoute('/partner/event/jastiper/$id/$brandId')({
 /** Detail jastiper di event partner: cek pesanan per submit. Pemesan dan harga jual tidak ditampilkan. */
 function PartnerJastiperDetailPage() {
   const { id, brandId } = Route.useParams()
-  const { view } = Route.useSearch()
+  const { submit } = Route.useSearch()
   const detail = useQuery({
     queryKey: ['partner-jastiper-detail', id, brandId],
     queryFn: () => getPartnerJastiperDetail({ data: { calendarEventId: id, brandId } }),
@@ -49,7 +50,7 @@ function PartnerJastiperDetailPage() {
           Kembali ke event
         </Link>
       </header>
-      <PartnerJastiperCheck calendarEventId={id} brandId={brandId} view={view as 'pengajuan' | 'disetujui' | undefined} />
+      <PartnerJastiperCheck calendarEventId={id} brandId={brandId} submit={submit} />
     </main>
   )
 }

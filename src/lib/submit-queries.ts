@@ -20,6 +20,7 @@ import {
 import type { OrderTx } from './order-status-queries'
 import { recalculateOrderStatus } from './order-status-queries'
 import { chunk } from './chunk'
+import { INVOICED_MESSAGE, isSubmissionInvoiced } from './invoice-queries'
 import { partnerItemName, variantLabel } from './partner-item-label'
 import {
   aggregateStockDemand,
@@ -698,6 +699,10 @@ export async function cancelSubmittedRow(
   if (!row || !row.submissionId) throw new Error('Barang tidak ditemukan.')
   if (row.status !== 'disetujui') {
     throw new Error('Hanya barang yang sudah disetujui yang bisa dibatalkan.')
+  }
+  // Barang dari submit yang sudah ditagih terkunci sampai tagihannya dibatalkan.
+  if (await isSubmissionInvoiced(tx, row.submissionId)) {
+    throw new Error(INVOICED_MESSAGE)
   }
 
   const [submission] = await tx

@@ -1,9 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from '@tanstack/react-router'
+import { Search } from 'lucide-react'
 import Pagination from './ui/Pagination'
-import PartnerTableToolbar from './ui/PartnerTableToolbar'
 import PartnerRowChip from './PartnerRowChip'
+import SubmitStatusBadge from './SubmitStatusBadge'
+import { formatWibDateTime } from '../lib/event-slot'
+import { getPartnerSubmitList } from '../lib/partner-submit-list'
 import { buildWhatsAppLink, formatPhoneNumber } from '../lib/format'
 import { partnerItemName, variantLabel } from '../lib/partner-item-label'
 import { getPartnerJastiperDetail } from '../lib/partner-jastiper-detail'
@@ -14,31 +16,29 @@ import {
   getPartnerSubmissions,
   reviewSubmissionBatch,
 } from '../lib/submit-functions'
+import type { PartnerSubmitRow } from '../lib/partner-submit-list'
 import type {
   ReviewBrand,
   ReviewRow,
   ReviewSubmission,
 } from '../lib/submit-review-queries'
 
-type CheckRow = ReviewRow & { submitNo: number; submissionId: string }
-
 /**
- * Cek pesanan satu jastiper di event partner. Semua submit ditampilkan dalam
- * satu tabel (kolom "Submit ke"). Isi "Dapat" untuk barang pengajuan, lalu
- * tekan Selesai dicek per submit. Pemesan dan harga jual tidak ditampilkan.
+ * Cek pesanan satu jastiper di event partner: ringkasan gabungan di atas, lalu
+ * satu blok per submit. Isi "Dapat" untuk barang pengajuan, lalu tekan Selesai
+ * dicek per submit. Pemesan dan harga jual tidak ditampilkan.
  */
 export default function PartnerJastiperCheck({
   calendarEventId,
   brandId,
-  view,
+  submit,
 }: {
   calendarEventId: string
   brandId: string
-  /** 'pengajuan' = hanya barang yang menunggu cek; 'disetujui' = hanya barang yang disetujui. */
-  view?: 'pengajuan' | 'disetujui'
+  /** Nomor submit yang dibuka di tab saat halaman dibuka. Kosong = tab Semua. */
+  submit?: number
 }) {
   const queryClient = useQueryClient()
-  const navigate = useNavigate()
   const subs = useQuery({
     // brandId ikut ke server supaya hanya data jastiper ini yang dibaca.
     queryKey: ['partner-submissions', calendarEventId, brandId],
@@ -51,36 +51,22 @@ export default function PartnerJastiperCheck({
       getPartnerJastiperDetail({ data: { calendarEventId, brandId } }),
   })
 
+  const submitList = useQuery({
+    queryKey: ['partner-submit-list', calendarEventId, brandId],
+    queryFn: () =>
+      getPartnerSubmitList({ data: { calendarEventId, brandId } }),
+  })
+
   const brand: ReviewBrand | undefined = (subs.data ?? []).find(
     (b) => b.brandId === brandId,
   )
-  const submissions = brand?.submissions ?? []
-  const allCheckRows = useMemo<Array<CheckRow>>(
+  const submissions = useMemo(
     () =>
-      submissions.flatMap((sub) =>
-        allRows(sub).map((r) => ({
-          ...r,
-          submitNo: sub.submitNo,
-          submissionId: sub.submissionId,
-        })),
-      ),
-    [submissions],
+      [...(brand?.submissions ?? [])].sort((a, b) => a.submitNo - b.submitNo),
+    [brand],
   )
-  const rows = useMemo(
-    () =>
-      view === 'pengajuan'
-        ? allCheckRows.filter((r) => r.status === 'pengajuan')
-        : view === 'disetujui'
-          ? allCheckRows.filter((r) => r.status === 'disetujui' || r.status === 'disanggah')
-          : allCheckRows,
-    [allCheckRows, view],
-  )
-
   const [search, setSearch] = useState('')
-  const filtered = rows.filter((r) =>
-    r.productName.toLowerCase().includes(search.trim().toLowerCase()),
-  )
-  const pager = useClientPager(filtered)
+  const searchKey = search.trim().toLowerCase()
 
   const [approved, setApproved] = useState<Record<string, number>>({})
   const [error, setError] = useState<string | null>(null)
@@ -114,8 +100,24 @@ export default function PartnerJastiperCheck({
     }
     return { overRows, overSubs }
   }, [submissions, approved, defaultDapat])
-  // Tampilan Disetujui tidak menampilkan tombol cek.
-  const showPendingCard = view !== 'disetujui' && pendingSubs.length > 0
+  const rowsBySubmission = new Map(
+    (submitList.data?.rows ?? []).map((r) => [r.submissionId, r]),
+  )
+  const summary = summarize(submitList.data?.rows ?? [])
+
+  // Tab submit: "Semua" atau satu submit. Awalnya mengikuti parameter `submit`.
+  const [tab, setTab] = useState<number | 'semua'>(submit ?? 'semua')
+  useEffect(() => {
+    setTab(submit ?? 'semua')
+  }, [submit])
+  const activeTab =
+    tab !== 'semua' && submissions.some((x) => x.submitNo === tab)
+      ? tab
+      : 'semua'
+  const shownSubmissions =
+    activeTab === 'semua'
+      ? submissions
+      : submissions.filter((x) => x.submitNo === activeTab)
 
   const mutation = useMutation({
     mutationFn: (sub: ReviewSubmission) => {
@@ -139,12 +141,14 @@ export default function PartnerJastiperCheck({
       setApproved({})
       queryClient.invalidateQueries({ queryKey: ['partner-submissions', calendarEventId] })
       queryClient.invalidateQueries({ queryKey: ['partner-jastiper-detail', calendarEventId, brandId] })
+      queryClient.invalidateQueries({ queryKey: ['partner-submit-list', calendarEventId] })
+      queryClient.invalidateQueries({ queryKey: ['partner-event-revenue', calendarEventId] })
     },
     onError: (err) => setError(err instanceof Error ? err.message : 'Gagal menyimpan'),
   })
 
   const d = detail.data
-  const hasRejected = rows.some((r) => r.status === 'disanggah')
+  const hasRejected = summary.pcs.rejected > 0
   const waLink = d?.waNumber
     ? buildWhatsAppLink(
         d.waNumber,
@@ -152,7 +156,7 @@ export default function PartnerJastiperCheck({
       )
     : null
 
-  if (subs.isLoading || detail.isLoading) return <p className="text-sm">Memuat…</p>
+  if (subs.isLoading || detail.isLoading || submitList.isLoading) return <p className="text-sm">Memuat…</p>
 
   const contactCard = d && (
     <section className="app-card p-4 text-[13px]">
@@ -201,113 +205,65 @@ export default function PartnerJastiperCheck({
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
       <div className="flex min-w-0 flex-col gap-3">
-        <PartnerTableToolbar
-          search={search}
-          onSearchChange={(value) => {
-            setSearch(value)
-            pager.resetPage()
-          }}
-          placeholder="Cari nama produk"
-          label="Cari nama produk"
-          pager={pager.pager}
-        />
+        <SummaryCard summary={summary} />
 
-        <div className="app-card overflow-x-auto p-0">
-          <table className="w-full text-[13px]">
-            <thead style={{ background: 'var(--pm-tint)' }}>
-              <tr>
-                {['Submit ke', 'Produk', 'Ukuran', 'Variasi', 'Harga partner', 'Stok', 'Diminta', 'Dapat', 'Status'].map((h) => (
-                  <th
-                    key={h}
-                    className={`px-4 py-3 text-[11px] font-semibold uppercase tracking-wide ${['Harga partner', 'Stok', 'Diminta', 'Dapat'].includes(h) ? 'text-right' : 'text-left'}`}
-                    style={{ color: 'var(--pm-gold)' }}
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {pager.paged.map((row) => {
-                const isPendingRow = row.status === 'pengajuan'
-                const dapat = dapatOf(row)
-                const short = isPendingRow ? row.qty - dapat : 0
-                const maxDapat = row.stock === null ? row.qty : Math.min(row.qty, row.stock)
-                const chip =
-                  row.status === 'pengajuan'
-                    ? overRows.has(row.id)
-                      ? { label: 'Melebihi stok', tone: 'danger' as const }
-                      : short <= 0
-                      ? { label: 'Cukup', tone: 'success' as const }
-                      : { label: `Kurang ${short}`, tone: 'danger' as const }
-                    : row.status === 'disetujui'
-                      ? { label: 'Disetujui', tone: 'success' as const }
-                      : row.status === 'disanggah'
-                        ? { label: 'Ditolak', tone: 'danger' as const }
-                        : { label: 'Belum disubmit', tone: 'neutral' as const }
-                return (
-                  <tr key={row.id} className="border-t" style={{ borderColor: 'var(--app-border)' }}>
-                    <td className="pm-num px-4 py-3">{row.submitNo}</td>
-                    <td className="px-4 py-3 font-bold">
-                      {partnerItemName(row.productName, variantLabel({ size: row.size, variation: row.variation }))}
-                      {row.kind === 'komponen' && (
-                        <span className="ml-1 text-[11px] font-normal" style={{ color: 'var(--app-text-soft)' }}>(paket)</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">{row.size ?? '-'}</td>
-                    <td className="px-4 py-3">{row.variation ?? '-'}</td>
-                    <td className="pm-num px-4 py-3 text-right">{formatRupiah(row.unitPrice)}</td>
-                    <td className="pm-num px-4 py-3 text-right">
-                      {isPendingRow && row.stock !== null ? row.stock : '-'}
-                    </td>
-                    <td className="pm-num px-4 py-3 text-right">{row.qty}</td>
-                    <td className="px-4 py-3 text-right">
-                      {isPendingRow ? (
-                        <input
-                          type="number"
-                          min={0}
-                          max={maxDapat}
-                          value={dapat}
-                          onChange={(e) =>
-                            setApproved((prev) => ({
-                              ...prev,
-                              [row.id]: Math.min(maxDapat, Math.max(0, Math.floor(Number(e.target.value)) || 0)),
-                            }))
-                          }
-                          className="w-16 rounded border px-2 py-1 text-right"
-                          aria-label={`Jumlah dapat untuk ${row.productName}`}
-                        />
-                      ) : (
-                        <span className="pm-num">{row.status === 'disetujui' ? row.qty : 0}</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <PartnerRowChip label={chip.label} tone={chip.tone} />
-                    </td>
-                  </tr>
-                )
-              })}
-              {pager.paged.length === 0 && (
-                <tr>
-                  <td colSpan={9} className="px-4 py-6 text-center text-[13px]" style={{ color: 'var(--app-text-soft)' }}>
-                    Belum ada barang yang cocok.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <div className="relative w-full max-w-[336px]">
+          <Search
+            size={17}
+            className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2"
+            style={{ color: 'var(--app-text-soft)' }}
+          />
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Cari nama produk"
+            aria-label="Cari nama produk"
+            className="app-input pl-10"
+            style={{ height: 42, borderRadius: 12 }}
+          />
         </div>
-        <Pagination {...pager.pager} className="justify-end" />
 
+        <div className="flex flex-wrap gap-2" role="tablist" aria-label="Pilih submit">
+          {([{ key: 'semua' as const, label: 'Semua' }, ...submissions.map((x) => ({ key: x.submitNo, label: `Submit ${x.submitNo}` }))]).map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === t.key}
+              onClick={() => setTab(t.key)}
+              className={`pm-chip ${activeTab === t.key ? 'pm-chip--active' : ''}`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {shownSubmissions.map((sub) => (
+          <SubmitBlock
+            key={sub.submissionId}
+            sub={sub}
+            info={rowsBySubmission.get(sub.submissionId)}
+            searchKey={searchKey}
+            dapatOf={dapatOf}
+            overRows={overRows}
+            onChangeDapat={(row, max, value) =>
+              setApproved((prev) => ({
+                ...prev,
+                [row.id]: Math.min(max, Math.max(0, Math.floor(value) || 0)),
+              }))
+            }
+          />
+        ))}
       </div>
 
       <div className="flex flex-col gap-3">
         <section className="app-card p-4">
           <PartnerRowChip
-            label={showPendingCard ? 'Pengajuan' : 'Disetujui'}
-            tone={showPendingCard ? 'info' : 'success'}
+            label={pendingSubs.length > 0 ? 'Pengajuan' : 'Disetujui'}
+            tone={pendingSubs.length > 0 ? 'info' : 'success'}
           />
-          {showPendingCard ? (
+          {pendingSubs.length > 0 ? (
             <>
               <h3 className="mt-2 text-[16px] font-semibold">Cek pesanan ini</h3>
               <p className="mt-1 text-[13px]" style={{ color: 'var(--app-text-soft)' }}>
@@ -338,39 +294,9 @@ export default function PartnerJastiperCheck({
               <p className="mt-2 text-[12px]" style={{ color: hasRejected ? '#b42318' : '#2f6b3f' }}>
                 {hasRejected ? 'Ada barang yang ditolak' : '✓ Semua barang sudah cukup'}
               </p>
-              {pendingSubs.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    navigate({
-                      to: '/partner/event/jastiper/$id/$brandId',
-                      params: { id: calendarEventId, brandId },
-                      search: { view: 'pengajuan' },
-                    })
-                  }
-                  className="mt-3 w-full rounded-lg border px-4 py-2 text-[13px] font-semibold"
-                >
-                  Masih ada barang dalam pengajuan
-                </button>
-              )}
             </>
           )}
         </section>
-
-        {d && (
-          <section className="app-card p-4 text-[13px]">
-            <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--pm-gold)' }}>
-              Ringkasan
-            </p>
-            <p className="mt-2" style={{ color: 'var(--app-text-soft)' }}>Total tagihan</p>
-            <p className="text-[20px] font-bold">{formatRupiah(d.totalAmount)}</p>
-            <div className="mt-3 grid gap-1.5">
-              <Row label="Total pcs" value={`${d.totalPcs} pcs`} />
-              <Row label="Paket terjual" value={`${d.paketCount} paket · ${d.paketPcs} pcs`} />
-              <Row label="Barang satuan" value={`${d.satuanPcs} pcs`} />
-            </div>
-          </section>
-        )}
 
         {contactCard}
       </div>
@@ -378,12 +304,190 @@ export default function PartnerJastiperCheck({
   )
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+type Summary = {
+  submitCount: number
+  pcs: PartnerSubmitRow['pcs']
+  approvedAmount: number
+  pendingAmount: number
+}
+
+function summarize(rows: Array<PartnerSubmitRow>): Summary {
+  const pcs = { total: 0, approved: 0, rejected: 0, cancelled: 0, pending: 0 }
+  let approvedAmount = 0
+  let pendingAmount = 0
+  for (const r of rows) {
+    pcs.total += r.pcs.total
+    pcs.approved += r.pcs.approved
+    pcs.rejected += r.pcs.rejected
+    pcs.cancelled += r.pcs.cancelled
+    pcs.pending += r.pcs.pending
+    approvedAmount += r.approvedAmount
+    pendingAmount += r.pendingAmount
+  }
+  return { submitCount: rows.length, pcs, approvedAmount, pendingAmount }
+}
+
+/** Ringkasan gabungan seluruh submit jastiper ini. */
+function SummaryCard({ summary }: { summary: Summary }) {
+  const stats = [
+    { label: 'Submit', value: String(summary.submitCount) },
+    { label: 'Dapat', value: `${summary.pcs.approved} pcs` },
+    { label: 'Ditolak', value: `${summary.pcs.rejected} pcs` },
+    { label: 'Dibatalkan', value: `${summary.pcs.cancelled} pcs` },
+    { label: 'Menunggu dicek', value: `${summary.pcs.pending} pcs` },
+  ]
   return (
-    <div className="flex justify-between gap-3">
-      <span style={{ color: 'var(--app-text-soft)' }}>{label}</span>
-      <span className="font-semibold">{value}</span>
-    </div>
+    <section className="app-card p-4 text-[13px]">
+      <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--pm-gold)' }}>
+        Ringkasan
+      </p>
+      <div className="mt-2 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+        <div>
+          <p style={{ color: 'var(--app-text-soft)' }}>Total tagihan</p>
+          <p className="pm-num text-[20px] font-bold">{formatRupiah(summary.approvedAmount)}</p>
+        </div>
+        <div>
+          <p style={{ color: 'var(--app-text-soft)' }}>Menunggu cek</p>
+          <p className="pm-num text-[20px] font-bold">{formatRupiah(summary.pendingAmount)}</p>
+        </div>
+      </div>
+      <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1.5 sm:grid-cols-5">
+        {stats.map((st) => (
+          <div key={st.label}>
+            <dt className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>{st.label}</dt>
+            <dd className="pm-num font-semibold">{st.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  )
+}
+
+/** Satu submit: judul (nomor, waktu, status, hasil) dan tabel barangnya. */
+function SubmitBlock({
+  sub,
+  info,
+  searchKey,
+  dapatOf,
+  overRows,
+  onChangeDapat,
+}: {
+  sub: ReviewSubmission
+  info: PartnerSubmitRow | undefined
+  searchKey: string
+  dapatOf: (r: ReviewRow) => number
+  overRows: Set<string>
+  onChangeDapat: (row: ReviewRow, max: number, value: number) => void
+}) {
+  const rows = allRows(sub).filter((r) =>
+    r.productName.toLowerCase().includes(searchKey),
+  )
+  const pager = useClientPager(rows)
+  return (
+    <section className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-1">
+        <h2 className="text-[15px] font-bold">Submit ke-{sub.submitNo}</h2>
+        <span className="text-[12px]" style={{ color: 'var(--app-text-soft)' }}>
+          {formatWibDateTime(sub.submittedAt)}
+        </span>
+        <SubmitStatusBadge
+          checked={sub.checked}
+          state={info?.invoiceState}
+          invoiceNumber={info?.invoice?.number}
+        />
+        {info && (
+          <span className="text-[12px]" style={{ color: 'var(--app-text-soft)' }}>
+            {sub.checked
+              ? `${info.pcs.approved} dapat`
+              : `${info.pcs.pending} pcs menunggu`}
+            {info.pcs.rejected > 0 && ` · ${info.pcs.rejected} ditolak`}
+            {info.pcs.cancelled > 0 && ` · ${info.pcs.cancelled} dibatalkan`}
+          </span>
+        )}
+      </div>
+      <div className="app-card overflow-x-auto p-0">
+        <table className="w-full text-[13px]">
+          <thead style={{ background: 'var(--pm-tint)' }}>
+            <tr>
+              {['Produk', 'Ukuran', 'Variasi', 'Harga partner', 'Stok', 'Diminta', 'Dapat', 'Status'].map((h) => (
+                <th
+                  key={h}
+                  className={`px-4 py-3 text-[11px] font-semibold uppercase tracking-wide ${['Harga partner', 'Stok', 'Diminta', 'Dapat'].includes(h) ? 'text-right' : 'text-left'}`}
+                  style={{ color: 'var(--pm-gold)' }}
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {pager.paged.map((row) => {
+              const isPendingRow = row.status === 'pengajuan'
+              const dapat = dapatOf(row)
+              const short = isPendingRow ? row.qty - dapat : 0
+              const maxDapat = row.stock === null ? row.qty : Math.min(row.qty, row.stock)
+              const chip =
+                row.status === 'pengajuan'
+                  ? overRows.has(row.id)
+                    ? { label: 'Melebihi stok', tone: 'danger' as const }
+                    : short <= 0
+                    ? { label: 'Cukup', tone: 'success' as const }
+                    : { label: `Kurang ${short}`, tone: 'danger' as const }
+                  : row.status === 'disetujui'
+                    ? { label: 'Disetujui', tone: 'success' as const }
+                    : row.status === 'disanggah'
+                      ? { label: 'Ditolak', tone: 'danger' as const }
+                      : row.status === 'dibatalkan'
+                        ? { label: 'Dibatalkan', tone: 'neutral' as const }
+                        : { label: 'Belum disubmit', tone: 'neutral' as const }
+              return (
+                <tr key={row.id} className="border-t" style={{ borderColor: 'var(--app-border)' }}>
+                  <td className="px-4 py-3 font-bold">
+                    {partnerItemName(row.productName, variantLabel({ size: row.size, variation: row.variation }))}
+                    {row.kind === 'komponen' && (
+                      <span className="ml-1 text-[11px] font-normal" style={{ color: 'var(--app-text-soft)' }}>(paket)</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">{row.size ?? '-'}</td>
+                  <td className="px-4 py-3">{row.variation ?? '-'}</td>
+                  <td className="pm-num px-4 py-3 text-right">{formatRupiah(row.unitPrice)}</td>
+                  <td className="pm-num px-4 py-3 text-right">
+                    {isPendingRow && row.stock !== null ? row.stock : '-'}
+                  </td>
+                  <td className="pm-num px-4 py-3 text-right">{row.qty}</td>
+                  <td className="px-4 py-3 text-right">
+                    {isPendingRow ? (
+                      <input
+                        type="number"
+                        min={0}
+                        max={maxDapat}
+                        value={dapat}
+                        onChange={(e) => onChangeDapat(row, maxDapat, Number(e.target.value))}
+                        className="w-16 rounded border px-2 py-1 text-right"
+                        aria-label={`Jumlah dapat untuk ${row.productName}`}
+                      />
+                    ) : (
+                      <span className="pm-num">{row.status === 'disetujui' ? row.qty : 0}</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <PartnerRowChip label={chip.label} tone={chip.tone} />
+                  </td>
+                </tr>
+              )
+            })}
+            {pager.paged.length === 0 && (
+              <tr>
+                <td colSpan={8} className="px-4 py-6 text-center text-[13px]" style={{ color: 'var(--app-text-soft)' }}>
+                  Belum ada barang yang cocok.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      <Pagination {...pager.pager} className="justify-end" />
+    </section>
   )
 }
 

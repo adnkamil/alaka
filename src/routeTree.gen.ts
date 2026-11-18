@@ -47,6 +47,7 @@ import { Route as AdminEventEventIdRouteImport } from './routes/admin/event/$eve
 import { Route as AdminEventNewRouteImport } from './routes/admin/event/new'
 import { Route as ApiAvatarBrandIdRouteImport } from './routes/api/avatar/$brandId'
 import { Route as ApiEventBannerEventIdRouteImport } from './routes/api/event-banner/$eventId'
+import { Route as ApiInvoiceProofIdRouteImport } from './routes/api/invoice-proof/$id'
 import { Route as ApiPartnerLogoPartnerIdRouteImport } from './routes/api/partner-logo/$partnerId'
 import { Route as ApiPartnerProductPhotoIdRouteImport } from './routes/api/partner-product-photo/$id'
 import { Route as ApiPartnerSubscriptionProofIdRouteImport } from './routes/api/partner-subscription-proof/$id'
@@ -264,6 +265,11 @@ const ApiEventBannerEventIdRoute = ApiEventBannerEventIdRouteImport.update({
   path: '/api/event-banner/$eventId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiInvoiceProofIdRoute = ApiInvoiceProofIdRouteImport.update({
+  id: '/api/invoice-proof/$id',
+  path: '/api/invoice-proof/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPartnerLogoPartnerIdRoute = ApiPartnerLogoPartnerIdRouteImport.update({
   id: '/api/partner-logo/$partnerId',
   path: '/api/partner-logo/$partnerId',
@@ -441,6 +447,7 @@ export interface FileRoutesByFullPath {
   '/admin/event/new': typeof AdminEventNewRoute
   '/api/avatar/$brandId': typeof ApiAvatarBrandIdRoute
   '/api/event-banner/$eventId': typeof ApiEventBannerEventIdRoute
+  '/api/invoice-proof/$id': typeof ApiInvoiceProofIdRoute
   '/api/partner-logo/$partnerId': typeof ApiPartnerLogoPartnerIdRoute
   '/api/partner-product-photo/$id': typeof ApiPartnerProductPhotoIdRoute
   '/api/partner-subscription-proof/$id': typeof ApiPartnerSubscriptionProofIdRoute
@@ -505,6 +512,7 @@ export interface FileRoutesByTo {
   '/admin/event/new': typeof AdminEventNewRoute
   '/api/avatar/$brandId': typeof ApiAvatarBrandIdRoute
   '/api/event-banner/$eventId': typeof ApiEventBannerEventIdRoute
+  '/api/invoice-proof/$id': typeof ApiInvoiceProofIdRoute
   '/api/partner-logo/$partnerId': typeof ApiPartnerLogoPartnerIdRoute
   '/api/partner-product-photo/$id': typeof ApiPartnerProductPhotoIdRoute
   '/api/partner-subscription-proof/$id': typeof ApiPartnerSubscriptionProofIdRoute
@@ -573,6 +581,7 @@ export interface FileRoutesById {
   '/admin/event/new': typeof AdminEventNewRoute
   '/api/avatar/$brandId': typeof ApiAvatarBrandIdRoute
   '/api/event-banner/$eventId': typeof ApiEventBannerEventIdRoute
+  '/api/invoice-proof/$id': typeof ApiInvoiceProofIdRoute
   '/api/partner-logo/$partnerId': typeof ApiPartnerLogoPartnerIdRoute
   '/api/partner-product-photo/$id': typeof ApiPartnerProductPhotoIdRoute
   '/api/partner-subscription-proof/$id': typeof ApiPartnerSubscriptionProofIdRoute
@@ -641,6 +650,7 @@ export interface FileRouteTypes {
     | '/admin/event/new'
     | '/api/avatar/$brandId'
     | '/api/event-banner/$eventId'
+    | '/api/invoice-proof/$id'
     | '/api/partner-logo/$partnerId'
     | '/api/partner-product-photo/$id'
     | '/api/partner-subscription-proof/$id'
@@ -705,6 +715,7 @@ export interface FileRouteTypes {
     | '/admin/event/new'
     | '/api/avatar/$brandId'
     | '/api/event-banner/$eventId'
+    | '/api/invoice-proof/$id'
     | '/api/partner-logo/$partnerId'
     | '/api/partner-product-photo/$id'
     | '/api/partner-subscription-proof/$id'
@@ -772,6 +783,7 @@ export interface FileRouteTypes {
     | '/admin/event/new'
     | '/api/avatar/$brandId'
     | '/api/event-banner/$eventId'
+    | '/api/invoice-proof/$id'
     | '/api/partner-logo/$partnerId'
     | '/api/partner-product-photo/$id'
     | '/api/partner-subscription-proof/$id'
@@ -818,6 +830,7 @@ export interface RootRouteChildren {
   VerifikasiEmailTokenRoute: typeof VerifikasiEmailTokenRoute
   ApiAvatarBrandIdRoute: typeof ApiAvatarBrandIdRoute
   ApiEventBannerEventIdRoute: typeof ApiEventBannerEventIdRoute
+  ApiInvoiceProofIdRoute: typeof ApiInvoiceProofIdRoute
   ApiPartnerLogoPartnerIdRoute: typeof ApiPartnerLogoPartnerIdRoute
   ApiPartnerProductPhotoIdRoute: typeof ApiPartnerProductPhotoIdRoute
   ApiPartnerSubscriptionProofIdRoute: typeof ApiPartnerSubscriptionProofIdRoute
@@ -1093,6 +1106,13 @@ declare module '@tanstack/react-router' {
       path: '/api/event-banner/$eventId'
       fullPath: '/api/event-banner/$eventId'
       preLoaderRoute: typeof ApiEventBannerEventIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/invoice-proof/$id': {
+      id: '/api/invoice-proof/$id'
+      path: '/api/invoice-proof/$id'
+      fullPath: '/api/invoice-proof/$id'
+      preLoaderRoute: typeof ApiInvoiceProofIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/partner-logo/$partnerId': {
@@ -1416,6 +1436,7 @@ const rootRouteChildren: RootRouteChildren = {
   VerifikasiEmailTokenRoute: VerifikasiEmailTokenRoute,
   ApiAvatarBrandIdRoute: ApiAvatarBrandIdRoute,
   ApiEventBannerEventIdRoute: ApiEventBannerEventIdRoute,
+  ApiInvoiceProofIdRoute: ApiInvoiceProofIdRoute,
   ApiPartnerLogoPartnerIdRoute: ApiPartnerLogoPartnerIdRoute,
   ApiPartnerProductPhotoIdRoute: ApiPartnerProductPhotoIdRoute,
   ApiPartnerSubscriptionProofIdRoute: ApiPartnerSubscriptionProofIdRoute,

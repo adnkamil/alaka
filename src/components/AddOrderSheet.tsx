@@ -392,7 +392,14 @@ export default function AddOrderSheet({
       items.map((item, index) => ({
         key: String(index),
         name: item.name,
-        partnerVariantId: item.bundle ? null : item.partnerVariantId,
+        // Barang yang sudah dikirim (pengajuan) atau disanggah tidak ikut membentuk
+        // paket, sama dengan aturan server (`regroupRuleInOrder`).
+        partnerVariantId:
+          item.bundle ||
+          item.submitStatus === 'pengajuan' ||
+          item.submitStatus === 'disanggah'
+            ? null
+            : item.partnerVariantId,
         qty: item.qty,
       })),
       {

@@ -125,6 +125,45 @@ export async function deletePaymentProof(
   await paymentProofStore().delete(subscriptionId)
 }
 
+// --- Bukti bayar tagihan partner ----------------------------------------
+//
+// PRIVAT, sama seperti bukti transfer langganan: hanya partner pemilik tagihan
+// dan jastiper yang ditagih yang boleh melihat (lihat route
+// `/api/invoice-proof/$id`). Store yang sama, key diberi awalan `invoice-`
+// supaya tidak bertabrakan dengan id langganan.
+
+const invoiceProofKey = (invoiceId: string) => `invoice-${invoiceId}`
+
+export async function putInvoiceProof(
+  invoiceId: string,
+  bytes: Uint8Array,
+  contentType: PaymentProofContentType,
+): Promise<void> {
+  const body = new Blob([new Uint8Array(bytes)], { type: contentType })
+  await paymentProofStore().set(invoiceProofKey(invoiceId), body, {
+    metadata: { contentType },
+  })
+}
+
+export async function getInvoiceProof(
+  invoiceId: string,
+): Promise<{ data: ArrayBuffer; contentType: PaymentProofContentType } | null> {
+  const result = await paymentProofStore().getWithMetadata(
+    invoiceProofKey(invoiceId),
+    { type: 'blob' },
+  )
+  if (!result) return null
+  const data = await result.data.arrayBuffer()
+  // Tipe dikenali dari isi file, bukan dari metadata.
+  const contentType = detectPaymentProofContentType(new Uint8Array(data))
+  if (!contentType) return null
+  return { data, contentType }
+}
+
+export async function deleteInvoiceProof(invoiceId: string): Promise<void> {
+  await paymentProofStore().delete(invoiceProofKey(invoiceId))
+}
+
 // --- Banner event kalender ----------------------------------------------
 //
 // Sama dengan avatar: publik (cuma gambar banner, id event berupa UUID acak),

@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { db } from '../db'
 import {
   events,
+  invoices,
   itemComponents,
   items,
   orders,
@@ -125,6 +126,18 @@ export const deleteEvent = createServerFn({ method: 'POST' })
         columns: { id: true },
       })
       if (!owned) return
+
+      // Event yang sudah pernah ditagih partner tidak boleh hilang diam-diam.
+      const billed = await tx
+        .select({ id: invoices.id })
+        .from(invoices)
+        .where(eq(invoices.eventId, data.id))
+        .limit(1)
+      if (billed.length > 0) {
+        throw new Error(
+          'Event ini sudah punya tagihan dari partner, jadi tidak bisa dihapus.',
+        )
+      }
 
       // Barang yang sudah disetujui partner sudah memotong stok. Karena
       // pesanannya ikut terhapus, stoknya dikembalikan di transaksi yang sama.
@@ -290,6 +303,11 @@ export const getEventDetail = createServerFn({ method: 'GET' })
           const rule = ruleId ? ruleById.get(ruleId) : undefined
           if (!rule || !rule.isActive || !proPartners.has(rule.partnerId)) continue
           groupLabelByItem.set(item.id, rule.name)
+          // Pengajuan menunggu cek partner dan disanggah tinggal riwayat: keduanya
+          // tidak membentuk paket, jadi tidak dihitung sebagai "N pcs lagi".
+          if (item.submitStatus === 'pengajuan' || item.submitStatus === 'disanggah') {
+            continue
+          }
           singles.push({
             itemId: item.id,
             qty: item.qty,

@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Megaphone,
+  ReceiptText,
 } from 'lucide-react'
 import { unreadNotificationsQuery } from '../../components/NotificationBell'
 import {
@@ -122,7 +123,12 @@ function NotifikasiPage() {
 
       <div className="flex flex-col gap-3">
         {items.map((item) => {
-          const Icon = item.kind === 'event_baru' ? CalendarDays : Megaphone
+          const Icon =
+            item.kind === 'event_baru'
+              ? CalendarDays
+              : item.kind === 'tagihan'
+                ? ReceiptText
+                : Megaphone
           const unread = unreadIds.has(item.id)
           const clickable = hasAction(item)
           const content = (

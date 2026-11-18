@@ -59,6 +59,7 @@ import { listFeeRules } from '../../lib/fee-rules-functions'
 import { getOrderSuggestions } from '../../lib/order-suggestions-functions'
 import { APP_TIME_ZONE, todayIsoDateInAppTimeZone } from '../../lib/timezone'
 import type { OrderItemView } from '../../components/OrderItemList'
+import EventInvoicesSection from '../../components/EventInvoicesSection'
 import EventSlotAction from '../../components/EventSlotAction'
 import EventSlotBanner from '../../components/EventSlotBanner'
 import {
@@ -1141,6 +1142,7 @@ function EventDetailPage() {
               })
             }
           />
+          <EventInvoicesSection eventId={eventId} />
         </>
       )}
 

@@ -10,13 +10,17 @@ import {
   Pencil,
   Phone,
 } from 'lucide-react'
+import SubmitStatusBadge from '../../../components/SubmitStatusBadge'
+import InvoiceDetailModal from '../../../components/InvoiceDetailModal'
+import { createInvoice } from '../../../lib/invoice-functions'
+import { hasBankAccount } from '../../../lib/invoice-rules'
+import type { PartnerSubmitRow } from '../../../lib/partner-submit-list'
 import PartnerSlotSection from '../../../components/PartnerSlotSection'
-import PartnerStatusBadge from '../../../components/PartnerStatusBadge'
 import PartnerRevenueCard from '../../../components/PartnerRevenueCard'
-import PartnerStatusChips from '../../../components/PartnerStatusChips'
 import Pagination from '../../../components/ui/Pagination'
-import { partnerStatusFilterKey } from '../../../lib/event-slot'
+import { formatWibDateTime } from '../../../lib/event-slot'
 import type { PartnerStatusFilter } from '../../../lib/event-slot'
+import { getPartnerSubmitList } from '../../../lib/partner-submit-list'
 import { getPartnerSlotQueue } from '../../../lib/partner-slot-functions'
 import PartnerEventStatusBadge from '../../../components/PartnerEventStatusBadge'
 import ConfirmModal from '../../../components/ui/ConfirmModal'
@@ -38,6 +42,7 @@ import {
 import {
   partnerEventParticipantsQuery,
   partnerEventProductsQuery,
+  currentPartnerQuery,
   partnerEventQuery,
 } from '../../../lib/queries'
 import { todayIsoDateInAppTimeZone } from '../../../lib/timezone'
@@ -60,9 +65,12 @@ export const Route = createFileRoute('/partner/event/$id')({
 type Tab = 'info' | 'produk' | 'jastiper'
 
 const PARTICIPANT_COLUMNS = 'grid-cols-[minmax(0,1fr)_150px_170px_90px_130px]'
-/** Dengan kolom Urutan dan Status (event memakai slot). */
+/** Dengan kolom Urutan, Submit ke, Ditolak, dan Status (event memakai slot). */
 const PARTICIPANT_COLUMNS_SLOT =
-  'grid-cols-[minmax(0,1fr)_120px_160px_90px_80px_190px]'
+  'grid-cols-[minmax(0,1fr)_150px_80px_90px_70px_110px_190px]'
+/** Sama, dengan kolom checkbox di depan (tab Siap ditagih). */
+const PARTICIPANT_COLUMNS_SLOT_SELECT =
+  'grid-cols-[28px_minmax(0,1fr)_150px_80px_90px_70px_110px_190px]'
 
 /** Inisial dari nama brand, mis. "Mici Shop" → "MS". */
 function initialsOf(name: string) {
@@ -70,6 +78,130 @@ function initialsOf(name: string) {
   if (words.length === 0) return '?'
   if (words.length === 1) return words[0].slice(0, 2).toUpperCase()
   return (words[0][0] + words[1][0]).toUpperCase()
+}
+
+type SubmitFilter = 'semua' | 'menunggu' | 'siap' | 'ditagih' | 'review'
+
+const SUBMIT_FILTERS: Array<{ key: SubmitFilter; label: string }> = [
+  { key: 'semua', label: 'Semua' },
+  { key: 'menunggu', label: 'Menunggu dicek' },
+  { key: 'siap', label: 'Siap ditagih' },
+  { key: 'ditagih', label: 'Sudah ditagih' },
+  { key: 'review', label: 'Review pembayaran' },
+]
+
+/** Filter submit → filter status halaman Rekap Orderan. */
+const SUBMIT_FILTER_REKAP: Record<SubmitFilter, PartnerStatusFilter> = {
+  semua: 'semua',
+  menunggu: 'pengajuan',
+  siap: 'selesai',
+  ditagih: 'selesai',
+  review: 'selesai',
+}
+
+/** Submit milik filter ini? "Semua" memuat semuanya, termasuk yang tanpa tagihan. */
+function matchesFilter(row: PartnerSubmitRow, filter: SubmitFilter) {
+  switch (filter) {
+    case 'semua':
+      return true
+    case 'menunggu':
+      return row.invoiceState === 'menunggu_dicek'
+    case 'siap':
+      return row.invoiceState === 'siap_ditagih'
+    case 'ditagih':
+      return row.invoiceState === 'sudah_ditagih'
+    case 'review':
+      return row.invoice?.status === 'menunggu_review'
+  }
+}
+
+/** Badge status; kalau sudah ditagih, bisa diklik untuk membuka rincian tagihan. */
+function RowStatus({
+  row,
+  onOpenInvoice,
+}: {
+  row: PartnerSubmitRow
+  onOpenInvoice: (invoiceId: string) => void
+}) {
+  const badge = (
+    <SubmitStatusBadge
+      checked={row.checked}
+      state={row.invoiceState}
+      invoiceNumber={row.invoice?.number}
+      invoiceStatus={row.invoice?.status}
+    />
+  )
+  const invoice = row.invoice
+  if (!invoice) return badge
+  return (
+    <button
+      type="button"
+      title="Lihat tagihan"
+      onClick={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        onOpenInvoice(invoice.id)
+      }}
+    >
+      {badge}
+    </button>
+  )
+}
+
+function SubmitFilterChips({
+  counts,
+  active,
+  onChange,
+}: {
+  counts: Record<SubmitFilter, number>
+  active: SubmitFilter
+  onChange: (next: SubmitFilter) => void
+}) {
+  return (
+    <div className="flex flex-wrap gap-2" role="tablist" aria-label="Filter submit">
+      {SUBMIT_FILTERS.map((f) => (
+        <button
+          key={f.key}
+          type="button"
+          role="tab"
+          aria-selected={active === f.key}
+          onClick={() => onChange(f.key)}
+          className={`pm-chip ${active === f.key ? 'pm-chip--active' : ''}`}
+        >
+          {f.label} {counts[f.key]}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/** "N jastiper belum submit", bisa dibuka untuk melihat namanya. */
+function NotSubmittedNote({
+  list,
+}: {
+  list: Array<{ brandId: string; brandName: string }>
+}) {
+  const [open, setOpen] = useState(false)
+  if (list.length === 0) return null
+  return (
+    <div className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="font-semibold underline"
+      >
+        {list.length} jastiper belum submit
+      </button>
+      {open && (
+        <ul className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
+          {list.map((b) => (
+            <li key={b.brandId}>{b.brandName}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
 }
 
 function PartnerEventDetailPage() {
@@ -91,7 +223,7 @@ function PartnerEventDetailPage() {
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [participantSearch, setParticipantSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<PartnerStatusFilter>('semua')
+  const [submitFilter, setSubmitFilter] = useState<SubmitFilter>('semua')
   const { data: queue = [] } = useQuery({
     queryKey: ['partner-slot-queue', id],
     queryFn: () => getPartnerSlotQueue({ data: { calendarEventId: id } }),
@@ -99,58 +231,93 @@ function PartnerEventDetailPage() {
   })
   // Status dan urutan hanya ada untuk event yang memakai slot.
   const slotEnabled = queue.some((q) => q.status !== null)
-  const queueByBrand = new Map(queue.map((q) => [q.brandId, q]))
-  // Satu jastiper bisa tampil di dua baris: Disetujui (semua submit yang sudah dicek)
-  // dan Pengajuan (submit yang masih menunggu cek). Baris Pengajuan hanya ada kalau ada.
-  const revenueByBrand = new Map((revenue?.perBrand ?? []).map((b) => [b.brandId, b]))
-  type ListRow = {
-    key: string
-    p: (typeof participants)[number]
-    group: 'disetujui' | 'pengajuan' | 'lain'
-    pcs: number
-    amount: number | null
-    submits: Array<number>
-  }
-  const listRows: Array<ListRow> = participants.flatMap((p) => {
-    if (!slotEnabled) {
-      return [{ key: p.brandId, p, group: 'lain' as const, pcs: p.orderCount, amount: null, submits: [] }]
-    }
-    const rev = revenueByBrand.get(p.brandId)
-    const out: Array<ListRow> = []
-    if (rev && rev.approvedPcs > 0) {
-      out.push({ key: `${p.brandId}-disetujui`, p, group: 'disetujui', pcs: rev.approvedPcs, amount: rev.totalAmount, submits: rev.approvedSubmitNos })
-    }
-    if (rev && rev.pendingBySubmit.length > 0) {
-      for (const b of rev.pendingBySubmit) {
-        out.push({ key: `${p.brandId}-pengajuan-${b.submitNo}`, p, group: 'pengajuan', pcs: b.pcs, amount: b.amount, submits: [b.submitNo] })
-      }
-    } else if (rev && rev.pendingPcs > 0) {
-      out.push({ key: `${p.brandId}-pengajuan`, p, group: 'pengajuan', pcs: rev.pendingPcs, amount: rev.pendingAmount, submits: rev.pendingSubmitNos })
-    }
-    if (out.length === 0) {
-      out.push({ key: p.brandId, p, group: 'lain', pcs: 0, amount: null, submits: [] })
-    }
-    return out
+  const { data: submitList } = useQuery({
+    queryKey: ['partner-submit-list', id],
+    queryFn: () => getPartnerSubmitList({ data: { calendarEventId: id } }),
+    refetchInterval: 15_000,
   })
-  const rowStatus = (vr: ListRow) =>
-    vr.group === 'disetujui' ? 'disetujui' : vr.group === 'pengajuan' ? 'terkirim' : (queueByBrand.get(vr.p.brandId)?.status ?? null)
-  const statusCounts: Record<PartnerStatusFilter, number> = {
-    semua: listRows.length,
-    draft: 0,
-    pengajuan: 0,
-    selesai: 0,
+  const submitRows = submitList?.rows ?? []
+  const notSubmitted = submitList?.notSubmitted ?? []
+  const submitCounts: Record<SubmitFilter, number> = {
+    semua: submitRows.length,
+    menunggu: submitRows.filter((r) => matchesFilter(r, 'menunggu')).length,
+    siap: submitRows.filter((r) => matchesFilter(r, 'siap')).length,
+    ditagih: submitRows.filter((r) => matchesFilter(r, 'ditagih')).length,
+    review: submitRows.filter((r) => matchesFilter(r, 'review')).length,
   }
-  for (const vr of listRows) {
-    statusCounts[partnerStatusFilterKey(rowStatus(vr))] += 1
-  }
-  const filteredParticipants = listRows.filter(
-    (vr) =>
-      (vr.p.brandName || 'Tanpa nama').toLowerCase().includes(participantSearch.trim().toLowerCase()) &&
-      (!slotEnabled ||
-        statusFilter === 'semua' ||
-        partnerStatusFilterKey(rowStatus(vr)) === statusFilter),
+  const searchKey = participantSearch.trim().toLowerCase()
+  const filteredSubmits = submitRows.filter(
+    (r) =>
+      r.brandName.toLowerCase().includes(searchKey) &&
+      matchesFilter(r, submitFilter),
+  )
+  const submitPager = useClientPager(filteredSubmits)
+  // Event tanpa slot tetap satu baris per jastiper.
+  const filteredParticipants = participants.filter((p) =>
+    (p.brandName || 'Tanpa nama').toLowerCase().includes(searchKey),
   )
   const participantPager = useClientPager(filteredParticipants)
+  // Pilihan submit untuk satu tagihan (tab Siap ditagih). Satu tagihan = satu jastiper.
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [openInvoiceId, setOpenInvoiceId] = useState<string | null>(null)
+  const [confirmSend, setConfirmSend] = useState(false)
+  const [sending, setSending] = useState(false)
+  const { data: me } = useQuery(currentPartnerQuery)
+  // Tanpa rekening, jastiper tidak tahu ke mana harus bayar: tagihan belum bisa dikirim.
+  const bankMissing = me ? !hasBankAccount(me) : false
+  const selectMode = slotEnabled && submitFilter === 'siap'
+  const selectedRows = submitRows.filter(
+    (r) => selected.has(r.submissionId) && r.invoiceState === 'siap_ditagih',
+  )
+  const selectedBrandId = selectedRows.at(0)?.brandId ?? null
+  const selectedTotals = {
+    pcs: selectedRows.reduce((n, r) => n + r.pcs.approved, 0),
+    amount: selectedRows.reduce((n, r) => n + r.approvedAmount, 0),
+  }
+  const toggleSelected = (submissionId: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(submissionId)) next.delete(submissionId)
+      else next.add(submissionId)
+      return next
+    })
+  const selectAllOfBrand = (brandId: string) =>
+    setSelected(
+      new Set(
+        submitRows
+          .filter((r) => r.brandId === brandId && r.invoiceState === 'siap_ditagih')
+          .map((r) => r.submissionId),
+      ),
+    )
+  async function handleSendInvoice() {
+    setSending(true)
+    try {
+      await createInvoice({
+        data: {
+          calendarEventId: id,
+          submissionIds: selectedRows.map((r) => r.submissionId),
+        },
+      })
+      await refreshInvoiceData()
+      setSelected(new Set())
+      setNotice('Tagihan terkirim ke jastiper')
+    } catch (err) {
+      setNotice(getErrorMessage(err, 'Gagal mengirim tagihan'))
+    } finally {
+      setSending(false)
+      setConfirmSend(false)
+    }
+  }
+  function refreshInvoiceData() {
+    return Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['partner-submit-list', id] }),
+      queryClient.invalidateQueries({ queryKey: ['partner-event-revenue', id] }),
+      queryClient.invalidateQueries({ queryKey: ['partner-jastiper-detail', id] }),
+    ])
+  }
+  const rekapStatus: PartnerStatusFilter = slotEnabled
+    ? SUBMIT_FILTER_REKAP[submitFilter]
+    : 'semua'
   const [productSearch, setProductSearch] = useState('')
   const filteredProducts = products.filter((product) =>
     product.name.toLowerCase().includes(productSearch.trim().toLowerCase()),
@@ -183,6 +350,53 @@ function PartnerEventDetailPage() {
     }
   }
 
+  // Bar aksi tempel di bawah saat ada submit yang dipilih untuk ditagih.
+  const invoiceBar = selectMode && selectedRows.length > 0 && (
+    <div
+      className="sticky bottom-4 z-20 flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-3 shadow-lg"
+      style={{ background: 'var(--app-card)', borderColor: 'var(--app-border)' }}
+    >
+      <p className="text-sm">
+        <span className="font-bold">{selectedRows[0].brandName}</span>
+        <span className="pm-num" style={{ color: 'var(--app-text-soft)' }}>
+          {' · '}
+          {selectedRows.length} submit · {selectedTotals.pcs} pcs ·{' '}
+        </span>
+        <span className="pm-num font-bold">{formatRupiah(selectedTotals.amount)}</span>
+      </p>
+      {bankMissing && (
+        <p className="w-full text-xs" style={{ color: 'var(--app-danger)' }}>
+          Isi rekening pembayaran di{' '}
+          <Link to="/partner/profil" className="font-semibold underline">
+            halaman Profil
+          </Link>{' '}
+          dulu sebelum menagih jastiper.
+        </p>
+      )}
+      <div className="flex flex-wrap gap-2">
+        {selectedBrandId && (
+          <button
+            type="button"
+            onClick={() => selectAllOfBrand(selectedBrandId)}
+            className="app-btn-outline"
+            style={{ minHeight: 40, fontSize: 13 }}
+          >
+            Pilih semua submit jastiper ini
+          </button>
+        )}
+        <button
+          type="button"
+          disabled={bankMissing}
+          onClick={() => setConfirmSend(true)}
+          className="app-btn-primary disabled:opacity-50"
+          style={{ minHeight: 40, fontSize: 13 }}
+        >
+          Kirim tagihan
+        </button>
+      </div>
+    </div>
+  )
+
   return (
     <>
       <main className="flex flex-col gap-4 px-5 pt-4 lg:hidden">
@@ -204,7 +418,7 @@ function PartnerEventDetailPage() {
         <Link
           to="/partner/event/rekap/$id"
           params={{ id }}
-          search={{ status: slotEnabled ? statusFilter : 'semua' }}
+          search={{ status: rekapStatus }}
           className="app-btn-outline self-start no-underline"
           style={{ minHeight: 40, fontSize: 13 }}
         >
@@ -393,100 +607,129 @@ function PartnerEventDetailPage() {
               </p>
             ) : (
               <>
-              {slotEnabled && (
-                <PartnerStatusChips
-                  counts={statusCounts}
-                  active={statusFilter}
-                  onChange={(next) => {
-                    setStatusFilter(next)
+                {slotEnabled && (
+                  <SubmitFilterChips
+                    counts={submitCounts}
+                    active={submitFilter}
+                    onChange={(next) => {
+                      setSubmitFilter(next)
+                      setSelected(new Set())
+                      submitPager.resetPage()
+                    }}
+                  />
+                )}
+                <PartnerTableToolbar
+                  search={participantSearch}
+                  onSearchChange={(value) => {
+                    setParticipantSearch(value)
                     participantPager.resetPage()
+                    submitPager.resetPage()
                   }}
+                  placeholder="Cari nama jastiper"
+                  label="Cari nama jastiper"
+                  pager={slotEnabled ? submitPager.pager : participantPager.pager}
                 />
-              )}
-              <PartnerTableToolbar
-                search={participantSearch}
-                onSearchChange={(value) => {
-                  setParticipantSearch(value)
-                  participantPager.resetPage()
-                }}
-                placeholder="Cari nama jastiper"
-                label="Cari nama jastiper"
-                pager={participantPager.pager}
-              />
-              {participantPager.paged.length === 0 && (
-                <p className="py-4 text-center text-sm" style={{ color: 'var(--app-text-soft)' }}>
-                  Tidak ada jastiper yang cocok dengan pencarian.
-                </p>
-              )}
-              {participantPager.paged.map((vr) => {
-                const row = vr.p
-                const name = row.brandName || 'Tanpa nama'
-                return (
-                  <div
-                    key={vr.key}
-                    className="app-card flex items-center gap-3 p-3"
-                  >
-                    <Link
-                      to="/partner/event/jastiper/$id/$brandId"
-                      params={{ id, brandId: row.brandId }}
-                      search={vr.group === 'disetujui' ? { view: 'disetujui' as const } : vr.group === 'pengajuan' ? { view: 'pengajuan' as const } : { view: undefined }}
-                      className="flex min-w-0 flex-1 items-center gap-3 no-underline"
-                      style={{ color: 'inherit' }}
-                    >
-                    <span
-                      className="pm-display flex size-10 shrink-0 items-center justify-center rounded-full text-sm"
-                      style={{
-                        background: 'var(--app-accent-soft)',
-                        color: '#9c463b',
-                      }}
-                    >
-                      {initialsOf(row.brandName ?? '')}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold">{name}</p>
-                      <p
-                        className="truncate text-xs"
-                        style={{ color: 'var(--app-text-soft)' }}
+                {(slotEnabled ? submitPager : participantPager).paged.length === 0 && (
+                  <p className="py-4 text-center text-sm" style={{ color: 'var(--app-text-soft)' }}>
+                    {slotEnabled && submitRows.length === 0 && searchKey === ''
+                      ? 'Belum ada jastiper yang submit.'
+                      : 'Tidak ada jastiper yang cocok.'}
+                  </p>
+                )}
+                {slotEnabled
+                  ? submitPager.paged.map((row) => (
+                      <div
+                        key={row.submissionId}
+                        className="app-card flex items-center gap-3 p-3"
                       >
-                        Ikut {formatDate(row.joinedAt)}
-                        {row.waNumber
-                          ? ` · ${formatPhoneNumber(row.waNumber)}`
-                          : ''}
-                      </p>
-                      {slotEnabled && (
-                        <div className="mt-1 flex flex-wrap items-center gap-2">
-                          <PartnerStatusBadge status={rowStatus(vr)} />
-                          {vr.amount !== null && (
-                            <span className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
-                              {vr.pcs} pcs · {formatRupiah(vr.amount)}
-                              {vr.submits.length > 0 ? ` · Submit ke-${vr.submits.join(', ')}` : ''}
+                        {selectMode && (
+                          <input
+                            type="checkbox"
+                            className="size-5 shrink-0"
+                            checked={selected.has(row.submissionId)}
+                            disabled={selectedBrandId !== null && row.brandId !== selectedBrandId}
+                            title={selectedBrandId !== null && row.brandId !== selectedBrandId ? 'Satu tagihan untuk satu jastiper' : undefined}
+                            onChange={() => toggleSelected(row.submissionId)}
+                            aria-label={`Pilih Submit ke-${row.submitNo} ${row.brandName}`}
+                          />
+                        )}
+                        <Link
+                          to="/partner/event/jastiper/$id/$brandId"
+                          params={{ id, brandId: row.brandId }}
+                          search={{ submit: row.submitNo }}
+                          className="flex min-w-0 flex-1 items-center gap-3 no-underline"
+                          style={{ color: 'inherit' }}
+                        >
+                          <span
+                            className="pm-display flex size-10 shrink-0 items-center justify-center rounded-full text-sm"
+                            style={{ background: 'var(--app-accent-soft)', color: '#9c463b' }}
+                          >
+                            {initialsOf(row.brandName)}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold">{row.brandName}</p>
+                            <p className="truncate text-xs" style={{ color: 'var(--app-text-soft)' }}>
+                              Submit {formatWibDateTime(row.submittedAt)}
+                            </p>
+                            <div className="mt-1 flex flex-wrap items-center gap-2">
+                              <RowStatus row={row} onOpenInvoice={setOpenInvoiceId} />
+                              {row.checked && row.pcs.rejected > 0 && (
+                                <span
+                                  className="app-badge"
+                                  title="Barang ditolak partner (stok kurang atau habis)."
+                                  style={{ background: 'var(--app-danger-soft, #fdecea)', color: 'var(--app-danger)' }}
+                                >
+                                  {row.pcs.rejected} pcs ditolak
+                                </span>
+                              )}
+                            </div>
+                            <p className="mt-1 text-xs" style={{ color: 'var(--app-text-soft)' }}>
+                              Urutan #{row.queueRank} · Submit ke-{row.submitNo} · {row.pcs.total} pcs
+                            </p>
+                          </div>
+                        </Link>
+                      </div>
+                    ))
+                  : participantPager.paged.map((row) => {
+                      const name = row.brandName || 'Tanpa nama'
+                      return (
+                        <div key={row.brandId} className="app-card flex items-center gap-3 p-3">
+                          <Link
+                            to="/partner/event/jastiper/$id/$brandId"
+                            params={{ id, brandId: row.brandId }}
+                            search={{ submit: undefined }}
+                            className="flex min-w-0 flex-1 items-center gap-3 no-underline"
+                            style={{ color: 'inherit' }}
+                          >
+                            <span
+                              className="pm-display flex size-10 shrink-0 items-center justify-center rounded-full text-sm"
+                              style={{ background: 'var(--app-accent-soft)', color: '#9c463b' }}
+                            >
+                              {initialsOf(row.brandName ?? '')}
                             </span>
-                          )}
-                          {vr.group === 'disetujui' && (queueByBrand.get(row.brandId)?.pendingCount ?? 0) > 0 && (
-                            <span className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
-                              jastiper ini masih ada pesanan yang disubmit tapi belum dicek
-                            </span>
-                          )}
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-semibold">{name}</p>
+                              <p className="truncate text-xs" style={{ color: 'var(--app-text-soft)' }}>
+                                Ikut {formatDate(row.joinedAt)}
+                                {row.waNumber ? ` · ${formatPhoneNumber(row.waNumber)}` : ''}
+                              </p>
+                            </div>
+                          </Link>
+                          {row.waNumber ? (
+                            <a
+                              href={`tel:${row.waNumber}`}
+                              aria-label={`Telepon ${name}`}
+                              className="flex size-9 shrink-0 items-center justify-center rounded-full no-underline"
+                              style={{ background: 'var(--app-success-soft)', color: 'var(--app-success)' }}
+                            >
+                              <Phone size={16} />
+                            </a>
+                          ) : null}
                         </div>
-                      )}
-                    </div>
-                    </Link>
-                    {row.waNumber ? (
-                      <a
-                        href={`tel:${row.waNumber}`}
-                        aria-label={`Telepon ${name}`}
-                        className="flex size-9 shrink-0 items-center justify-center rounded-full no-underline"
-                        style={{
-                          background: 'var(--app-success-soft)',
-                          color: 'var(--app-success)',
-                        }}
-                      >
-                        <Phone size={16} />
-                      </a>
-                    ) : null}
-                  </div>
-                )
-              })}
+                      )
+                    })}
+                {slotEnabled && <NotSubmittedNote list={notSubmitted} />}
+                {invoiceBar}
               </>
             )}
           </section>
@@ -524,7 +767,7 @@ function PartnerEventDetailPage() {
             <Link
               to="/partner/event/rekap/$id"
               params={{ id }}
-              search={{ status: slotEnabled ? statusFilter : 'semua' }}
+              search={{ status: rekapStatus }}
               className="app-btn-outline w-full no-underline"
               style={{ minHeight: 44, fontSize: 14 }}
             >
@@ -603,12 +846,13 @@ function PartnerEventDetailPage() {
             ) : (
               <>
                 {slotEnabled && (
-                  <PartnerStatusChips
-                    counts={statusCounts}
-                    active={statusFilter}
+                  <SubmitFilterChips
+                    counts={submitCounts}
+                    active={submitFilter}
                     onChange={(next) => {
-                      setStatusFilter(next)
-                      participantPager.resetPage()
+                      setSubmitFilter(next)
+                      setSelected(new Set())
+                      submitPager.resetPage()
                     }}
                   />
                 )}
@@ -617,89 +861,154 @@ function PartnerEventDetailPage() {
                   onSearchChange={(value) => {
                     setParticipantSearch(value)
                     participantPager.resetPage()
+                    submitPager.resetPage()
                   }}
                   placeholder="Cari nama jastiper"
                   label="Cari nama jastiper"
-                  pager={participantPager.pager}
+                  pager={slotEnabled ? submitPager.pager : participantPager.pager}
                 />
                 <div className="app-card overflow-hidden">
                   <div
-                    className={`grid ${slotEnabled ? PARTICIPANT_COLUMNS_SLOT : PARTICIPANT_COLUMNS} items-center gap-4 px-5 py-3.5 text-[11px] font-bold uppercase tracking-wide`}
+                    className={`grid ${slotEnabled ? (selectMode ? PARTICIPANT_COLUMNS_SLOT_SELECT : PARTICIPANT_COLUMNS_SLOT) : PARTICIPANT_COLUMNS} items-center gap-4 px-5 py-3.5 text-[11px] font-bold uppercase tracking-wide`}
                     style={{ background: 'var(--pm-tint)', color: 'var(--pm-gold)' }}
                   >
+                    {selectMode && <span aria-hidden="true" />}
                     <span>Jastiper</span>
-                    <span>{slotEnabled ? 'Tanggal' : 'Tanggal ikut'}</span>
-                    <span>No. WhatsApp</span>
-                    <span>Pesanan</span>
-                    {slotEnabled && <span>Urutan</span>}
-                    {slotEnabled ? <span>Status</span> : <span>Aksi</span>}
+                    <span>{slotEnabled ? 'Waktu submit' : 'Tanggal ikut'}</span>
+                    {slotEnabled ? (
+                      <>
+                        <span>Urutan</span>
+                        <span>Submit ke</span>
+                        <span>Pcs</span>
+                        <span>Pcs ditolak</span>
+                        <span>Status</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>No. WhatsApp</span>
+                        <span>Pesanan</span>
+                        <span>Aksi</span>
+                      </>
+                    )}
                   </div>
-                  {participantPager.paged.length === 0 && (
+                  {(slotEnabled ? submitPager : participantPager).paged.length === 0 && (
                     <p className="border-t px-5 py-6 text-center text-sm" style={{ borderColor: 'var(--app-border)', color: 'var(--app-text-soft)' }}>
-                      Tidak ada jastiper yang cocok.
+                      {slotEnabled && submitRows.length === 0 && searchKey === ''
+                        ? 'Belum ada jastiper yang submit.'
+                        : 'Tidak ada jastiper yang cocok.'}
                     </p>
                   )}
-                  {participantPager.paged.map((vr) => {
-                    const row = vr.p
-                    const name = row.brandName || 'Tanpa nama'
-                    return (
-                      <div
-                        key={vr.key}
-                        className={`grid ${slotEnabled ? PARTICIPANT_COLUMNS_SLOT : PARTICIPANT_COLUMNS} items-center gap-4 border-t px-5 py-3`}
-                        style={{ borderColor: 'var(--app-border)' }}
-                      >
-                        <Link
-                          to="/partner/event/jastiper/$id/$brandId"
-                          params={{ id, brandId: row.brandId }}
-                          search={vr.group === 'disetujui' ? { view: 'disetujui' as const } : vr.group === 'pengajuan' ? { view: 'pengajuan' as const } : { view: undefined }}
-                          className="flex min-w-0 items-center gap-3.5 no-underline"
-                          style={{ color: 'inherit' }}
+                  {slotEnabled
+                    ? submitPager.paged.map((row) => (
+                        <div
+                          key={row.submissionId}
+                          className={`grid ${selectMode ? PARTICIPANT_COLUMNS_SLOT_SELECT : PARTICIPANT_COLUMNS_SLOT} items-center gap-4 border-t px-5 py-3`}
+                          style={{ borderColor: 'var(--app-border)' }}
                         >
-                          <span
-                            className="pm-display flex size-11 shrink-0 items-center justify-center rounded-full text-sm"
-                            style={{ background: 'var(--app-accent-soft)', color: '#9c463b' }}
+                          {selectMode && (
+                            <input
+                              type="checkbox"
+                              className="size-4"
+                              checked={selected.has(row.submissionId)}
+                              disabled={selectedBrandId !== null && row.brandId !== selectedBrandId}
+                              title={selectedBrandId !== null && row.brandId !== selectedBrandId ? 'Satu tagihan untuk satu jastiper' : undefined}
+                              onChange={() => toggleSelected(row.submissionId)}
+                              aria-label={`Pilih Submit ke-${row.submitNo} ${row.brandName}`}
+                            />
+                          )}
+                          <Link
+                            to="/partner/event/jastiper/$id/$brandId"
+                            params={{ id, brandId: row.brandId }}
+                            search={{ submit: row.submitNo }}
+                            className="flex min-w-0 items-center gap-3.5 no-underline"
+                            style={{ color: 'inherit' }}
                           >
-                            {initialsOf(row.brandName ?? '')}
-                          </span>
-                          <p className="truncate text-sm font-bold">{name}</p>
-                        </Link>
-                        <span className="text-[13px]" style={{ color: 'var(--app-text-soft)' }}>
-                          {formatDate(row.joinedAt)}
-                        </span>
-                        <span className="pm-num text-[13px] font-medium">
-                          {row.waNumber ? formatPhoneNumber(row.waNumber) : '-'}
-                        </span>
-                        <span className="text-sm font-bold">{slotEnabled && vr.amount !== null ? vr.pcs : row.orderCount}</span>
-                        {slotEnabled ? (
-                          <>
-                            <span className="pm-num text-sm font-bold">
-                              {vr.submits.length > 0 ? vr.submits.map((n) => `#${n}`).join(' ') : '–'}
+                            <span
+                              className="pm-display flex size-11 shrink-0 items-center justify-center rounded-full text-sm"
+                              style={{ background: 'var(--app-accent-soft)', color: '#9c463b' }}
+                            >
+                              {initialsOf(row.brandName)}
                             </span>
-                            <div>
-                              <PartnerStatusBadge status={rowStatus(vr)} />
-                            </div>
-                          </>
-                        ) : (
+                            <p className="truncate text-sm font-bold">{row.brandName}</p>
+                          </Link>
+                          <span className="text-[13px]" style={{ color: 'var(--app-text-soft)' }}>
+                            {formatWibDateTime(row.submittedAt)}
+                          </span>
+                          <span className="pm-num text-sm font-bold">#{row.queueRank}</span>
+                          <span className="pm-num text-sm font-bold">#{row.submitNo}</span>
+                          <span className="pm-num text-sm font-bold">{row.pcs.total}</span>
                           <div>
-                            {row.waNumber ? (
-                              <a
-                                href={buildWhatsAppLink(row.waNumber, '')}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="app-btn-outline gap-2 no-underline"
-                                style={{ minHeight: 38, fontSize: 13 }}
+                            {row.checked && row.pcs.rejected > 0 ? (
+                              <span
+                                className="app-badge"
+                                title="Barang ditolak partner (stok kurang atau habis)."
+                                style={{ background: 'var(--app-danger-soft, #fdecea)', color: 'var(--app-danger)' }}
                               >
-                                <Phone size={15} />
-                                Hubungi
-                              </a>
-                            ) : null}
+                                {row.pcs.rejected} pcs
+                              </span>
+                            ) : (
+                              <span className="text-sm" style={{ color: 'var(--app-text-soft)' }}>–</span>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    )
-                  })}
+                          <div>
+                            <RowStatus row={row} onOpenInvoice={setOpenInvoiceId} />
+                          </div>
+                        </div>
+                      ))
+                    : participantPager.paged.map((row) => {
+                        const name = row.brandName || 'Tanpa nama'
+                        return (
+                          <div
+                            key={row.brandId}
+                            className={`grid ${PARTICIPANT_COLUMNS} items-center gap-4 border-t px-5 py-3`}
+                            style={{ borderColor: 'var(--app-border)' }}
+                          >
+                            <Link
+                              to="/partner/event/jastiper/$id/$brandId"
+                              params={{ id, brandId: row.brandId }}
+                              search={{ submit: undefined }}
+                              className="flex min-w-0 items-center gap-3.5 no-underline"
+                              style={{ color: 'inherit' }}
+                            >
+                              <span
+                                className="pm-display flex size-11 shrink-0 items-center justify-center rounded-full text-sm"
+                                style={{ background: 'var(--app-accent-soft)', color: '#9c463b' }}
+                              >
+                                {initialsOf(row.brandName ?? '')}
+                              </span>
+                              <p className="truncate text-sm font-bold">{name}</p>
+                            </Link>
+                            <span className="text-[13px]" style={{ color: 'var(--app-text-soft)' }}>
+                              {formatDate(row.joinedAt)}
+                            </span>
+                            <span className="pm-num text-[13px] font-medium">
+                              {row.waNumber ? formatPhoneNumber(row.waNumber) : '-'}
+                            </span>
+                            <span className="text-sm font-bold">{row.orderCount}</span>
+                            <div>
+                              {row.waNumber ? (
+                                <a
+                                  href={buildWhatsAppLink(row.waNumber, '')}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="app-btn-outline gap-2 no-underline"
+                                  style={{ minHeight: 38, fontSize: 13 }}
+                                >
+                                  <Phone size={15} />
+                                  Hubungi
+                                </a>
+                              ) : null}
+                            </div>
+                          </div>
+                        )
+                      })}
                 </div>
-                <Pagination {...participantPager.pager} className="justify-end" />
+                <Pagination
+                  {...(slotEnabled ? submitPager.pager : participantPager.pager)}
+                  className="justify-end"
+                />
+                {slotEnabled && <NotSubmittedNote list={notSubmitted} />}
+                {invoiceBar}
               </>
             )}
           </div>
@@ -715,6 +1024,25 @@ function PartnerEventDetailPage() {
         onOk={() => handleSetEnded(true)}
         onCancel={() => setConfirmEnd(false)}
       />
+      <ConfirmModal
+        open={confirmSend}
+        danger={false}
+        title={`Kirim tagihan ke ${selectedRows.at(0)?.brandName ?? 'jastiper'}?`}
+        content={`${selectedRows.length} submit · ${selectedTotals.pcs} pcs · ${formatRupiah(selectedTotals.amount)}. Jastiper akan menerima notifikasi. Barang di submit ini tidak bisa dibatalkan selama tagihan aktif.`}
+        okText="Kirim tagihan"
+        loadingText="Mengirim..."
+        loading={sending}
+        onOk={handleSendInvoice}
+        onCancel={() => setConfirmSend(false)}
+      />
+      {openInvoiceId && (
+        <InvoiceDetailModal
+          invoiceId={openInvoiceId}
+          mode="partner"
+          onClose={() => setOpenInvoiceId(null)}
+          onChanged={() => void refreshInvoiceData()}
+        />
+      )}
       {notice && <Toast message={notice} onClose={() => setNotice(null)} />}
     </>
   )

@@ -675,6 +675,8 @@ export const items = pgTable('items', {
     'items_submit_pair',
     sql`(${table.submitStatus} is null) = (${table.submissionId} is null)`,
   ),
+  // Daftar submit, tagihan, dan riwayat membaca barang per submit.
+  index('items_submission_idx').on(table.submissionId),
 ])
 
 // Isi sebuah bundle, satu baris per barang. Total pcs = items.qty * qty di sini.
@@ -709,6 +711,7 @@ export const itemComponents = pgTable(
   (table) => [
     index('item_components_item_idx').on(table.itemId),
     index('item_components_variant_idx').on(table.partnerVariantId),
+    index('item_components_submission_idx').on(table.submissionId),
     check('item_components_qty_pos', sql`${table.qty} > 0`),
     check(
       'item_components_submit_pair',
@@ -1064,6 +1067,13 @@ export const partners = pgTable(
     passwordHash: varchar('password_hash'),
     /** Nomor WhatsApp partner (format lokal). Opsional. */
     waNumber: varchar('wa_number'),
+    /**
+     * Rekening tujuan pembayaran tagihan jastiper. Ketiganya terisi bersama
+     * atau kosong bersama (dijaga aturan profil). Null = belum diisi.
+     */
+    bankName: varchar('bank_name'),
+    bankAccountNumber: varchar('bank_account_number'),
+    bankAccountName: varchar('bank_account_name'),
     /** Kapan undangan diterima & kata sandi dibuat. Null = masih "Diundang". */
     activatedAt: timestamp('activated_at', { withTimezone: true }),
     /**
@@ -1473,4 +1483,118 @@ export const notificationReads = pgTable(
     readAt: timestamp('read_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [primaryKey({ columns: [table.userId, table.notificationId] })],
+)
+
+/**
+ * Status tagihan partner ke jastiper.
+ * ditagih -> menunggu_review (jastiper klaim bayar + bukti) -> lunas (partner
+ * konfirmasi). Partner bisa menolak bukti: kembali ke ditagih. Dibatalkan hanya
+ * dari ditagih.
+ */
+export const invoiceStatusEnum = pgEnum('invoice_status', [
+  'ditagih',
+  'dibatalkan',
+  'menunggu_review',
+  'lunas',
+])
+
+/**
+ * Tagihan partner untuk satu jastiper di satu event partner. Satu tagihan
+ * berisi satu atau lebih submit utuh. `onDelete: 'restrict'` disengaja: event
+ * atau submit yang sudah ditagih tidak boleh hilang diam-diam.
+ */
+export const invoices = pgTable(
+  'invoices',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    /** Nomor urut global, ditampilkan sebagai "INV-000123". */
+    number: bigint('number', { mode: 'number' })
+      .notNull()
+      .generatedAlwaysAsIdentity(),
+    calendarEventId: uuid('calendar_event_id')
+      .notNull()
+      .references(() => calendarEvents.id, { onDelete: 'restrict' }),
+    partnerId: uuid('partner_id')
+      .notNull()
+      .references(() => partners.id, { onDelete: 'restrict' }),
+    /** Event belanja jastiper. */
+    eventId: uuid('event_id')
+      .notNull()
+      .references(() => events.id, { onDelete: 'restrict' }),
+    brandId: uuid('brand_id')
+      .notNull()
+      .references(() => brands.id, { onDelete: 'restrict' }),
+    status: invoiceStatusEnum().notNull().default('ditagih'),
+    totalAmount: decimal('total_amount', { precision: 14, scale: 2 }).notNull(),
+    totalPcs: integer('total_pcs').notNull(),
+    sentAt: timestamp('sent_at', { withTimezone: true }).notNull().defaultNow(),
+    cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
+    cancelReason: text('cancel_reason'),
+    /** Jastiper menekan "Sudah bayar" (bersama bukti). */
+    paidClaimedAt: timestamp('paid_claimed_at', { withTimezone: true }),
+    /** Partner menandai lunas. */
+    paidConfirmedAt: timestamp('paid_confirmed_at', { withTimezone: true }),
+    /** Bukti bayar ada di Blobs (key `invoice-<id>`). */
+    paymentProofStored: boolean('payment_proof_stored').notNull().default(false),
+    /** Alasan partner menolak bukti terakhir; dikosongkan saat jastiper klaim lagi. */
+    paymentRejectReason: text('payment_reject_reason'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('invoices_number_unique').on(table.number),
+    index('invoices_calendar_event_idx').on(table.calendarEventId),
+    index('invoices_brand_event_idx').on(table.brandId, table.eventId),
+  ],
+)
+
+/** Submit yang masuk satu tagihan. */
+export const invoiceSubmissions = pgTable(
+  'invoice_submissions',
+  {
+    invoiceId: uuid('invoice_id')
+      .notNull()
+      .references(() => invoices.id, { onDelete: 'cascade' }),
+    submissionId: uuid('submission_id')
+      .notNull()
+      .references(() => eventSubmissions.id, { onDelete: 'restrict' }),
+    amount: decimal({ precision: 14, scale: 2 }).notNull(),
+    pcs: integer().notNull(),
+    /** Terisi saat tagihan dibatalkan: submit bebas ditagih lagi. */
+    releasedAt: timestamp('released_at', { withTimezone: true }),
+  },
+  (table) => [
+    primaryKey({ columns: [table.invoiceId, table.submissionId] }),
+    // Satu submit hanya boleh ada di satu tagihan aktif.
+    uniqueIndex('invoice_submissions_active_unique')
+      .on(table.submissionId)
+      .where(sql`released_at is null`),
+  ],
+)
+
+/**
+ * Snapshot baris tagihan. Harga katalog live bisa berubah, tagihan tidak boleh
+ * ikut berubah.
+ */
+export const invoiceLines = pgTable(
+  'invoice_lines',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    invoiceId: uuid('invoice_id')
+      .notNull()
+      .references(() => invoices.id, { onDelete: 'cascade' }),
+    submissionId: uuid('submission_id').notNull(),
+    /** 'satuan' | 'paket' */
+    kind: varchar().notNull(),
+    /** Nama produk (ukuran / variasi), atau nama paket beserta isinya. */
+    label: text().notNull(),
+    qty: integer().notNull(),
+    unitPrice: decimal('unit_price', { precision: 14, scale: 2 }).notNull(),
+    amount: decimal({ precision: 14, scale: 2 }).notNull(),
+  },
+  (table) => [index('invoice_lines_invoice_idx').on(table.invoiceId)],
 )

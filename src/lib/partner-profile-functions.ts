@@ -13,7 +13,10 @@ import {
 } from './partner-profile-queries'
 import { partnerLogoUrl } from './partner-logo-rules'
 import { deletePartnerLogo, putPartnerLogo } from './storage'
-import { normalizePartnerProfile } from './partner-profile-rules'
+import {
+  normalizePartnerBankAccount,
+  normalizePartnerProfile,
+} from './partner-profile-rules'
 import { PARTNER_PASSWORD_MIN_LENGTH } from './partner-rules'
 
 /**
@@ -25,15 +28,26 @@ import { PARTNER_PASSWORD_MIN_LENGTH } from './partner-rules'
 
 export const updateOwnPartnerProfile = createServerFn({ method: 'POST' })
   .validator(
-    z.object({ name: z.string().max(500), waNumber: z.string().max(50) }),
+    z.object({
+      name: z.string().max(500),
+      waNumber: z.string().max(50),
+      bankName: z.string().max(200).default(''),
+      bankAccountNumber: z.string().max(100).default(''),
+      bankAccountName: z.string().max(500).default(''),
+    }),
   )
   .handler(async ({ data }) => {
     const partner = await requirePartner()
     // Validasi ulang di server: client tidak dipercaya.
     const result = normalizePartnerProfile(data)
     if (!result.ok) throw new Error(result.error)
+    const bank = normalizePartnerBankAccount(data)
+    if (!bank.ok) throw new Error(bank.error)
 
-    const updated = await updatePartnerProfile(partner.id, result.value)
+    const updated = await updatePartnerProfile(partner.id, {
+      ...result.value,
+      ...bank.value,
+    })
     return {
       id: updated.id,
       name: updated.name,

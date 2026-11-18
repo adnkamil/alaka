@@ -1,6 +1,7 @@
 // Operasi paket partner di dalam transaksi. Menerima `tx` dari pemanggil dan
 // tidak mengimpor db. Aturan: barang satuan membentuk paket lewat FIFO per
 // pemesan (pesanan), dengan aturan yang sama.
+import { invoicedSubmissionIds } from './invoice-queries'
 import { and, eq, inArray } from 'drizzle-orm'
 import {
   itemComponents,
@@ -216,10 +217,22 @@ export async function regroupRuleInOrder(
     .filter((id): id is string => id !== null)
   const infoMap = await loadVariantInfo(tx, variantIds)
 
+  // Satuan dari submit yang sudah ditagih tidak boleh membentuk paket baru:
+  // harga submit itu sudah dikirim ke jastiper dan tidak boleh berubah.
+  const invoicedSubmissions = await invoicedSubmissionIds(
+    tx,
+    [...new Set(singleRows.map((s) => s.submissionId))].filter(
+      (id): id is string => id !== null,
+    ),
+  )
+
   // Alur slot: setelah partner mengecek, `qty` = jumlah yang dapat. Baris
   // dengan qty 0 ("tidak dapat") tidak boleh ikut FIFO dan tidak boleh terhapus.
   const pool = singleRows.filter((s) => {
     if (s.qty <= 0) return false
+    if (s.submissionId !== null && invoicedSubmissions.has(s.submissionId)) {
+      return false
+    }
     // Alur submit bertahap: pengajuan menunggu cek partner, disanggah tinggal
     // sebagai riwayat. Keduanya tidak boleh ikut membentuk paket.
     if (s.submitStatus === 'pengajuan' || s.submitStatus === 'disanggah') {

@@ -12,7 +12,13 @@ import { calendarEvents, partnerSessions, partners } from '../db/schema'
  */
 export async function updatePartnerProfile(
   partnerId: string,
-  value: { name: string; waNumber: string | null },
+  value: {
+    name: string
+    waNumber: string | null
+    bankName: string | null
+    bankAccountNumber: string | null
+    bankAccountName: string | null
+  },
 ) {
   return db.transaction(async (tx) => {
     const current = await tx
@@ -28,6 +34,9 @@ export async function updatePartnerProfile(
       .set({
         name: value.name,
         waNumber: value.waNumber,
+        bankName: value.bankName,
+        bankAccountNumber: value.bankAccountNumber,
+        bankAccountName: value.bankAccountName,
         updatedAt: new Date(),
       })
       .where(eq(partners.id, partnerId))
