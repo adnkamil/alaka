@@ -33,7 +33,7 @@ function EventStatusPage() {
     queryKey: ['event-slot', eventId],
     queryFn: () => getEventSlotSummary({ data: { eventId } }),
     refetchInterval: (q) =>
-      (q.state.data?.pendingCount ?? 0) > 0 ? 5_000 : 30_000,
+      (q.state.data?.pendingCount ?? 0) > 0 ? 10_000 : 30_000,
   })
   const [confirm, setConfirm] = useState(false)
   const { tab: initialTab } = Route.useSearch()
@@ -53,6 +53,9 @@ function EventStatusPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Gagal mengirim')
       setConfirm(false)
+      // Submit yang timeout bisa saja sudah tersimpan di server. Muat ulang
+      // status supaya halaman menampilkan keadaan sebenarnya.
+      await queryClient.invalidateQueries({ queryKey: ['event-slot', eventId] })
     } finally {
       setBusy(false)
     }

@@ -36,12 +36,13 @@ export default function PartnerSubmitReview({
   barOnly?: boolean
 }) {
   const queryClient = useQueryClient()
-  const submissionsKey = ['partner-submissions', calendarEventId]
+  const submissionsKey = ['partner-submissions', calendarEventId, brandId]
   const stockKey = ['auto-stock-check', calendarEventId]
 
   const query = useQuery({
     queryKey: submissionsKey,
-    queryFn: () => getPartnerSubmissions({ data: { calendarEventId } }),
+    queryFn: () =>
+      getPartnerSubmissions({ data: { calendarEventId, brandId } }),
     // Mode bar tidak menampilkan daftar submit, jadi tidak perlu memuat semua
     // baris submit (bisa belasan ribu baris untuk event ramai).
     enabled: !barOnly,

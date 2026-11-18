@@ -101,7 +101,9 @@ export const reviewSubmissionBatch = createServerFn({ method: 'POST' })
 
 /** Partner membuka daftar submit satu event kalender miliknya. */
 export const getPartnerSubmissions = createServerFn({ method: 'GET' })
-  .validator(z.object({ calendarEventId: idSchema }))
+  .validator(
+    z.object({ calendarEventId: idSchema, brandId: idSchema.optional() }),
+  )
   .handler(async ({ data }) => {
     const partner = await requirePartner()
     if (!(await partnerOwnsEvent(partner.id, data.calendarEventId))) {
@@ -111,7 +113,7 @@ export const getPartnerSubmissions = createServerFn({ method: 'GET' })
     const { loadSubmissionsForPartner } =
       await import('./submit-review-queries')
     return db.transaction((tx) =>
-      loadSubmissionsForPartner(tx, data.calendarEventId),
+      loadSubmissionsForPartner(tx, data.calendarEventId, data.brandId),
     )
   })
 

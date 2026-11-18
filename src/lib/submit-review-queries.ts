@@ -55,15 +55,27 @@ export type ReviewBrand = {
   submissions: Array<ReviewSubmission>
 }
 
-/** Semua submit dari satu event kalender partner, dikelompokkan per jastiper. */
+/**
+ * Semua submit dari satu event kalender partner, dikelompokkan per jastiper.
+ * Kalau `brandId` diisi, hanya jastiper itu yang dibaca dari database (bukan
+ * seluruh event lalu disaring di klien).
+ */
 export async function loadSubmissionsForPartner(
   tx: OrderTx,
   calendarEventId: string,
+  brandId?: string,
 ): Promise<Array<ReviewBrand>> {
   const eventRows = await tx
     .select({ id: events.id, brandId: events.brandId })
     .from(events)
-    .where(eq(events.calendarEventId, calendarEventId))
+    .where(
+      brandId === undefined
+        ? eq(events.calendarEventId, calendarEventId)
+        : and(
+            eq(events.calendarEventId, calendarEventId),
+            eq(events.brandId, brandId),
+          ),
+    )
   if (eventRows.length === 0) return []
   const eventIds = eventRows.map((e) => e.id)
 
