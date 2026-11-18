@@ -316,6 +316,13 @@
       "when": 1794905834362,
       "tag": "0044_submit_status_dibatalkan",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1794982437331,
+      "tag": "0045_partner_rule_product_sizes",
+      "breakpoints": true
     }
   ]
 }

@@ -11,10 +11,32 @@ export type PricingRule = {
   /** Produk induk yang masuk aturan ini. */
   productIds: Array<string>
   /**
-   * Nama ukuran yang tercakup (mis. ["S", "M", "L"]). Kosong atau tidak ada =
-   * semua ukuran.
+   * Ukuran yang ikut aturan, per produk (mis. { produkA: ["S", "M", "L"] }).
+   * Ukuran dipilih eksplisit saat produk ditambahkan ke aturan; ukuran baru
+   * yang ditambah ke produk tidak otomatis ikut. Produk tanpa ukuran tidak
+   * punya entri.
    */
-  sizes?: Array<string>
+  productSizes?: RuleProductSizes
+}
+
+/** Ukuran yang ikut aturan per produk: productId -> nama ukuran. */
+export type RuleProductSizes = Record<string, Array<string>>
+
+/**
+ * Apakah varian (produk + ukuran) tercakup aturan. Varian berukuran hanya ikut
+ * kalau ukurannya dipilih untuk produk itu di aturan. Varian tanpa ukuran ikut
+ * kalau produknya ada di aturan dan aturan tidak memilih ukuran apa pun untuk
+ * produk itu (produk memang tidak punya ukuran).
+ */
+export function ruleCoversVariant(
+  rule: { productIds: Array<string>; productSizes?: RuleProductSizes },
+  productId: string,
+  size: string | null,
+): boolean {
+  if (!rule.productIds.includes(productId)) return false
+  const allowed = rule.productSizes?.[productId] ?? []
+  if (size === null) return allowed.length === 0
+  return allowed.includes(size)
 }
 
 export type BundleComponent = {
@@ -60,32 +82,34 @@ export type RuleScope = {
   id: string
   name?: string
   productIds: Array<string>
-  sizes?: Array<string>
+  productSizes?: RuleProductSizes
 }
 
 function sizesOverlap(a: Array<string> | undefined, b: Array<string> | undefined): boolean {
   const left = a ?? []
   const right = b ?? []
-  // Kosong = semua ukuran, jadi pasti tumpang tindih dengan aturan mana pun.
-  if (left.length === 0 || right.length === 0) return true
+  // Produk tanpa ukuran di dua aturan = sama-sama mencakup varian tanpa ukuran.
+  if (left.length === 0 && right.length === 0) return true
   const set = new Set(left)
   return right.some((size) => set.has(size))
 }
 
 /**
- * Satu produk boleh masuk beberapa aturan asal rentang ukurannya tidak tumpang
- * tindih. Melempar error kalau ada produk yang punya ukuran sama di dua aturan.
+ * Satu produk boleh masuk beberapa aturan asal ukurannya tidak tumpang tindih.
+ * Melempar error kalau ada produk yang punya ukuran sama di dua aturan.
  */
 export function assertRuleScopesNoOverlap(rules: Array<RuleScope>): void {
   for (let i = 0; i < rules.length; i++) {
     for (let k = i + 1; k < rules.length; k++) {
       const a = rules[i]
       const b = rules[k]
-      const shared = a.productIds.find((id) => b.productIds.includes(id))
-      if (shared && sizesOverlap(a.sizes, b.sizes)) {
-        throw new PricingError(
-          `Produk ${shared} sudah punya aturan dengan ukuran yang sama.`,
-        )
+      for (const shared of a.productIds) {
+        if (!b.productIds.includes(shared)) continue
+        if (sizesOverlap(a.productSizes?.[shared], b.productSizes?.[shared])) {
+          throw new PricingError(
+            `Produk ${shared} sudah punya aturan dengan ukuran yang sama.`,
+          )
+        }
       }
     }
   }
@@ -120,8 +144,7 @@ export function buildBundleLine(
     if (!Number.isInteger(component.qty) || component.qty < 1) {
       throw new PricingError(`Qty ${component.productName} tidak valid.`)
     }
-    const sizes = rule.sizes ?? []
-    if (sizes.length > 0 && (component.size === null || !sizes.includes(component.size))) {
+    if (!ruleCoversVariant(rule, component.partnerProductId, component.size)) {
       throw new PricingError(
         `${component.productName}${component.size ? ` ukuran ${component.size}` : ''} tidak termasuk dalam aturan "${rule.name}".`,
       )

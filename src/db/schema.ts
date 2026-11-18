@@ -5,6 +5,7 @@ import {
   check,
   date,
   decimal,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -1371,19 +1372,32 @@ export const partnerRuleProducts = pgTable(
   (table) => [primaryKey({ columns: [table.ruleId, table.partnerProductId] })],
 )
 
-// Rentang ukuran tiap aturan paket, dicocokkan dengan nama nilai ukuran pada
-// varian (mis. "S", "XL"). Tanpa baris = aturan berlaku untuk semua ukuran.
-// Satu produk boleh masuk beberapa aturan selama rentang ukurannya tidak
-// tumpang tindih (dicek di server).
-export const partnerRuleSizes = pgTable(
-  'partner_rule_sizes',
+// Ukuran yang ikut aturan paket, per produk di aturan, dicocokkan dengan nama
+// nilai ukuran pada varian produk itu (mis. "S", "XL", "40"). Dipilih eksplisit
+// saat produk ditambahkan ke aturan: ukuran baru yang ditambah partner ke produk
+// tidak otomatis ikut. Produk tanpa ukuran tidak punya baris di sini. Satu
+// produk boleh masuk beberapa aturan selama ukurannya tidak tumpang tindih
+// (dicek di server). Baris ikut terhapus saat produk dikeluarkan dari aturan.
+export const partnerRuleProductSizes = pgTable(
+  'partner_rule_product_sizes',
   {
-    ruleId: uuid('rule_id')
-      .notNull()
-      .references(() => partnerPricingRules.id, { onDelete: 'cascade' }),
+    ruleId: uuid('rule_id').notNull(),
+    partnerProductId: uuid('partner_product_id').notNull(),
     sizeName: varchar('size_name').notNull(),
   },
-  (table) => [primaryKey({ columns: [table.ruleId, table.sizeName] })],
+  (table) => [
+    primaryKey({
+      columns: [table.ruleId, table.partnerProductId, table.sizeName],
+    }),
+    foreignKey({
+      name: 'partner_rule_product_sizes_rule_product_fk',
+      columns: [table.ruleId, table.partnerProductId],
+      foreignColumns: [
+        partnerRuleProducts.ruleId,
+        partnerRuleProducts.partnerProductId,
+      ],
+    }).onDelete('cascade'),
+  ],
 )
 
 // Token atur ulang kata sandi PARTNER. Pola sama dengan `password_reset_tokens`

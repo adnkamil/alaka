@@ -11,13 +11,15 @@ import {
   partnerPricingRules,
   partnerProducts,
   partnerRuleProducts,
-  partnerRuleSizes,
+  partnerRuleProductSizes,
   partnerSubscriptions,
   partnerVariantValues,
   partnerVariants,
 } from '../db/schema'
 import { hasPartnerPro } from './partner-entitlement'
 import { formBundles } from './partner-bundle-fifo'
+import { ruleCoversVariant } from './partner-pricing'
+import { productSizesForRule } from './partner-rule-sizes'
 import { partnerItemName, variantLabel } from './partner-item-label'
 import {
   recalculateOrderStatus,
@@ -101,9 +103,9 @@ export function variantItemName(info: {
 }
 
 /**
- * Aturan paket untuk satu barang: aturan yang memuat produknya dan rentang
- * ukurannya mencakup ukuran barang itu. Satu produk bisa punya beberapa aturan
- * dengan rentang ukuran yang berbeda.
+ * Aturan paket untuk satu barang: aturan yang memuat produknya dan ukuran
+ * barang itu termasuk ukuran yang dipilih untuk produk tersebut di aturan.
+ * Satu produk bisa punya beberapa aturan dengan ukuran yang berbeda.
  */
 export async function findRuleForVariant(
   tx: OrderTx,
@@ -116,12 +118,20 @@ export async function findRuleForVariant(
     .where(eq(partnerRuleProducts.partnerProductId, productId))
   for (const link of links) {
     const sizeRows = await tx
-      .select({ name: partnerRuleSizes.sizeName })
-      .from(partnerRuleSizes)
-      .where(eq(partnerRuleSizes.ruleId, link.ruleId))
+      .select({ name: partnerRuleProductSizes.sizeName })
+      .from(partnerRuleProductSizes)
+      .where(
+        and(
+          eq(partnerRuleProductSizes.ruleId, link.ruleId),
+          eq(partnerRuleProductSizes.partnerProductId, productId),
+        ),
+      )
     if (
-      sizeRows.length === 0 ||
-      (size !== null && sizeRows.some((z) => z.name === size))
+      ruleCoversVariant(
+        { productIds: [productId], productSizes: { [productId]: sizeRows.map((z) => z.name) } },
+        productId,
+        size,
+      )
     ) {
       return { id: link.ruleId }
     }
@@ -170,10 +180,23 @@ export async function regroupRuleInOrder(
   const ruleProductIds = new Set(ruleProductRows.map((r) => r.productId))
   if (ruleProductIds.size === 0) return
   const ruleSizeRows = await tx
-    .select({ name: partnerRuleSizes.sizeName })
-    .from(partnerRuleSizes)
-    .where(eq(partnerRuleSizes.ruleId, ruleId))
-  const ruleSizes = new Set(ruleSizeRows.map((z) => z.name))
+    .select({
+      productId: partnerRuleProductSizes.partnerProductId,
+      name: partnerRuleProductSizes.sizeName,
+    })
+    .from(partnerRuleProductSizes)
+    .where(eq(partnerRuleProductSizes.ruleId, ruleId))
+  const ruleScope = {
+    productIds: [...ruleProductIds],
+    productSizes: productSizesForRule(
+      ruleSizeRows.map((z) => ({
+        ruleId,
+        partnerProductId: z.productId,
+        sizeName: z.name,
+      })),
+      ruleId,
+    ),
+  }
 
   const singleRows = await tx
     .select({
@@ -204,9 +227,9 @@ export async function regroupRuleInOrder(
     }
     if (!s.partnerVariantId) return false
     const info = infoMap.get(s.partnerVariantId)
-    if (info === undefined || !ruleProductIds.has(info.productId)) return false
-    // Dengan rentang ukuran, hanya ukuran di dalam rentang yang masuk paket.
-    return ruleSizes.size === 0 || (info.size !== null && ruleSizes.has(info.size))
+    if (info === undefined) return false
+    // Hanya ukuran yang dipilih untuk produknya di aturan yang masuk paket.
+    return ruleCoversVariant(ruleScope, info.productId, info.size)
   })
   if (pool.length === 0) return
 

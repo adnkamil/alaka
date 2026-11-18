@@ -3,6 +3,16 @@ import { X } from 'lucide-react'
 import PartnerTableToolbar from './ui/PartnerTableToolbar'
 import RupiahInput from './ui/RupiahInput'
 import { DEFAULT_PAGE_SIZE, pageCount } from '../lib/pagination'
+import {
+  bulkToggleSize,
+  canAddProduct,
+  freeSizes,
+  productsMissingSizes,
+  sizesUsedByOtherRules,
+  toggleSize
+  
+} from '../lib/partner-rule-form-sizes'
+import type {FormOtherRule} from '../lib/partner-rule-form-sizes';
 
 export type RuleFormValue = {
   name: string
@@ -10,25 +20,60 @@ export type RuleFormValue = {
   bundlePrice: string
   isActive: boolean
   productIds: Array<string>
-  /** Rentang ukuran aturan. Kosong = semua ukuran. */
-  sizes: Array<string>
+  /** Ukuran yang ikut aturan, per produk. Produk tanpa ukuran tidak punya entri. */
+  productSizes: Record<string, Array<string>>
 }
 
-/** Pilihan ukuran yang ditampilkan. Kosong berarti semua ukuran. */
 /** Lebar kolom tabel produk di modal, mengikuti tabel katalog partner. */
 const PICKER_COLUMNS = 'grid-cols-[28px_minmax(0,1fr)_130px]'
-/** Kolom daftar produk terpilih di halaman aturan: produk, status, aksi. */
-const LIST_COLUMNS = 'grid-cols-[minmax(0,1fr)_130px_56px]'
+/** Kolom daftar produk terpilih di halaman aturan: produk, ukuran, status, aksi. */
+const LIST_COLUMNS = 'grid-cols-[minmax(0,1.1fr)_minmax(0,1.6fr)_100px_48px]'
 
 /** id form aturan, dipakai tombol Simpan di header halaman lewat atribut `form`. */
 export const FORM_ID = 'partner-rule-form'
 
-export const RULE_SIZE_OPTIONS = ['Newborn', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL']
+export type RuleFormProduct = {
+  id: string
+  name: string
+  isActive: boolean
+  /** Ukuran milik produk ini (huruf, nomor sepatu, dll). Kosong = produk tanpa ukuran. */
+  sizes: Array<string>
+}
 
-export type RuleFormProduct = { id: string; name: string; isActive: boolean }
+/** Aturan paket milik partner, untuk mengecek ukuran yang sudah dipakai aturan lain. */
+export type RuleFormOtherRule = FormOtherRule
 
-/** Aturan paket lain milik partner, untuk mengecek produk yang bisa ditambahkan. */
-export type RuleFormOtherRule = { id: string; productIds: Array<string>; sizes: Array<string> }
+function SizeChip({
+  label,
+  on,
+  disabled = false,
+  title,
+  onClick,
+}: {
+  label: string
+  on: boolean
+  disabled?: boolean
+  title?: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      disabled={disabled}
+      title={title}
+      onClick={onClick}
+      className="rounded-full border px-2.5 py-0.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-40"
+      style={{
+        background: on ? '#7a4a2a' : 'transparent',
+        color: on ? '#fff' : 'var(--app-text)',
+        borderColor: 'var(--app-border)',
+      }}
+    >
+      {label}
+    </button>
+  )
+}
 
 interface PartnerRuleFormProps {
   title: string
@@ -41,6 +86,44 @@ interface PartnerRuleFormProps {
   error: string | null
   onSubmit: (value: RuleFormValue) => void
   onCancel: () => void
+}
+
+/** Chip ukuran satu produk: ukuran yang dipakai aturan lain dinonaktifkan. */
+function ProductSizeChips({
+  product,
+  selected,
+  used,
+  onToggle,
+}: {
+  product: RuleFormProduct
+  selected: Array<string>
+  used: Map<string, string>
+  onToggle: (size: string) => void
+}) {
+  if (product.sizes.length === 0) {
+    return (
+      <span className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
+        Tanpa ukuran
+      </span>
+    )
+  }
+  return (
+    <span className="flex flex-wrap gap-1.5">
+      {product.sizes.map((size) => {
+        const owner = used.get(size)
+        return (
+          <SizeChip
+            key={size}
+            label={size}
+            on={selected.includes(size)}
+            disabled={owner !== undefined}
+            title={owner ? `Dipakai ${owner}` : undefined}
+            onClick={() => onToggle(size)}
+          />
+        )
+      })}
+    </span>
+  )
 }
 
 /**
@@ -65,24 +148,18 @@ export default function PartnerRuleForm({
   const [pickerPage, setPickerPage] = useState(1)
   const [pickerPageSize, setPickerPageSize] = useState<number>(DEFAULT_PAGE_SIZE)
 
+  const [localError, setLocalError] = useState<string | null>(null)
+
   const selected = products.filter((p) => value.productIds.includes(p.id))
   const visibleSelected = selected.filter((p) =>
     p.name.toLowerCase().includes(search.trim().toLowerCase()),
   )
 
-  // Produk boleh ditambahkan kalau belum punya aturan, atau aturan lainnya
-  // rentang ukurannya tidak tumpang tindih dengan rentang aturan ini.
-  // Sizes kosong = semua ukuran (selalu bentrok dengan aturan lain pada produk yang sama).
-  function eligible(productId: string): boolean {
-    return allRules.every((r) => {
-      if (r.id === ruleId || !r.productIds.includes(productId)) return true
-      if (r.sizes.length === 0 || value.sizes.length === 0) return false
-      return !r.sizes.some((size) => value.sizes.includes(size))
-    })
-  }
-
-  // Daftar di modal: produk yang bisa masuk aturan ini (termasuk yang sudah dicentang).
-  const pickable = products.filter((p) => eligible(p.id))
+  // Daftar di modal: produk yang masih punya ukuran bebas (belum dipakai aturan
+  // lain), ditambah yang sudah dicentang di aturan ini supaya tetap bisa diubah.
+  const pickable = products.filter(
+    (p) => value.productIds.includes(p.id) || canAddProduct(p, allRules, ruleId),
+  )
   const pickerVisible = pickable.filter((p) =>
     p.name.toLowerCase().includes(pickerSearch.trim().toLowerCase()),
   )
@@ -99,35 +176,54 @@ export default function PartnerRuleForm({
   const allPickerChecked =
     pickerPaged.length > 0 && pickerPaged.every((p) => value.productIds.includes(p.id))
 
-  function togglePicker(id: string) {
+  // Ukuran untuk "terapkan ke semua produk terpilih": gabungan ukuran produk yang dicentang.
+  const bulkSizes = [...new Set(selected.flatMap((p) => p.sizes))]
+
+  function addProducts(ids: Array<string>) {
+    setLocalError(null)
     setValue((v) => ({
       ...v,
-      productIds: v.productIds.includes(id)
-        ? v.productIds.filter((p) => p !== id)
-        : [...v.productIds, id],
+      productIds: [...new Set([...v.productIds, ...ids])],
     }))
+  }
+
+  function removeProducts(ids: Array<string>) {
+    setLocalError(null)
+    setValue((v) => {
+      const productSizes = { ...v.productSizes }
+      for (const id of ids) delete productSizes[id]
+      return { ...v, productIds: v.productIds.filter((p) => !ids.includes(p)), productSizes }
+    })
+  }
+
+  function togglePicker(id: string) {
+    if (value.productIds.includes(id)) removeProducts([id])
+    else addProducts([id])
   }
 
   function toggleAllPicker() {
     const visibleIds = pickerPaged.map((p) => p.id)
-    setValue((v) => ({
-      ...v,
-      productIds: allPickerChecked
-        ? v.productIds.filter((id) => !visibleIds.includes(id))
-        : [...new Set([...v.productIds, ...visibleIds])],
-    }))
+    if (allPickerChecked) removeProducts(visibleIds)
+    else addProducts(visibleIds)
   }
 
   function removeProduct(id: string) {
-    setValue((v) => ({ ...v, productIds: v.productIds.filter((p) => p !== id) }))
+    removeProducts([id])
   }
 
-  function toggleSize(size: string) {
+  function toggleProductSize(productId: string, size: string) {
+    setLocalError(null)
     setValue((v) => ({
       ...v,
-      sizes: v.sizes.includes(size)
-        ? v.sizes.filter((s) => s !== size)
-        : [...v.sizes, size],
+      productSizes: { ...v.productSizes, [productId]: toggleSize(v.productSizes[productId], size) },
+    }))
+  }
+
+  function toggleBulkSize(size: string) {
+    setLocalError(null)
+    setValue((v) => ({
+      ...v,
+      productSizes: bulkToggleSize(v.productSizes, selected, allRules, ruleId, size),
     }))
   }
 
@@ -138,6 +234,16 @@ export default function PartnerRuleForm({
       onSubmit={(e) => {
         e.preventDefault()
         if (value.productIds.length === 0) return
+        const missing = productsMissingSizes(selected, value.productSizes)
+        if (missing.length > 0) {
+          setLocalError(
+            `Pilih minimal satu ukuran untuk ${missing
+              .slice(0, 3)
+              .map((p) => p.name)
+              .join(', ')}${missing.length > 3 ? ` dan ${missing.length - 3} produk lain` : ''}.`,
+          )
+          return
+        }
         onSubmit(value)
       }}
     >
@@ -178,38 +284,6 @@ export default function PartnerRuleForm({
           </label>
         </div>
 
-        <div className="flex flex-col gap-2 rounded-2xl border p-3.5" style={{ borderColor: 'var(--app-border)' }}>
-          <div className="flex flex-col gap-0.5">
-            <span className="text-sm font-bold">Rentang ukuran</span>
-            <span className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
-              {value.sizes.length === 0
-                ? 'Kosong berarti semua ukuran. Paket hanya boleh berisi ukuran dari rentang ini.'
-                : `${value.sizes.join(', ')} · paket hanya boleh berisi ukuran ini.`}
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {RULE_SIZE_OPTIONS.map((size) => {
-              const on = value.sizes.includes(size)
-              return (
-                <button
-                  key={size}
-                  type="button"
-                  aria-pressed={on}
-                  onClick={() => toggleSize(size)}
-                  className="rounded-full border px-3 py-1 text-xs font-semibold"
-                  style={{
-                    background: on ? '#7a4a2a' : 'transparent',
-                    color: on ? '#fff' : 'var(--app-text)',
-                    borderColor: 'var(--app-border)',
-                  }}
-                >
-                  {size}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
         <div
           className="flex items-center justify-between gap-3 rounded-2xl border p-3.5"
           style={{ borderColor: 'var(--app-border)' }}
@@ -237,9 +311,9 @@ export default function PartnerRuleForm({
         </div>
       </section>
 
-      {error && (
+      {(localError ?? error) && (
         <p role="alert" className="text-sm" style={{ color: '#b42318' }}>
-          {error}
+          {localError ?? error}
         </p>
       )}
       </div>
@@ -302,6 +376,7 @@ export default function PartnerRuleForm({
               style={{ background: 'var(--pm-tint)', color: 'var(--pm-gold)' }}
             >
               <span>Produk</span>
+              <span>Ukuran</span>
               <span>Status katalog</span>
               <span>Aksi</span>
             </div>
@@ -312,6 +387,12 @@ export default function PartnerRuleForm({
                 style={{ borderColor: 'var(--app-border)' }}
               >
                 <span className="truncate text-sm font-bold">{p.name}</span>
+                <ProductSizeChips
+                  product={p}
+                  selected={value.productSizes[p.id] ?? []}
+                  used={sizesUsedByOtherRules(allRules, ruleId, p.id)}
+                  onToggle={(size) => toggleProductSize(p.id, size)}
+                />
                 <span>
                   <span className="app-badge">{p.isActive ? 'Aktif' : 'Nonaktif'}</span>
                 </span>
@@ -348,7 +429,7 @@ export default function PartnerRuleForm({
               <div>
                 <h3 className="pm-display text-base">Tambah produk</h3>
                 <p className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
-                  Hanya produk yang belum punya aturan, atau rentang ukurannya tidak bentrok dengan aturan ini.
+                  Pilih produk, lalu pilih ukuran yang ikut aturan ini. Ukuran yang sudah dipakai aturan lain tidak bisa dipilih lagi.
                 </p>
               </div>
               <button type="button" onClick={() => setPickerOpen(false)} aria-label="Tutup" className="p-1">
@@ -374,6 +455,30 @@ export default function PartnerRuleForm({
                 },
               }}
             />
+
+            {bulkSizes.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
+                  Terapkan ukuran ke semua produk terpilih yang punya ukuran itu:
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {bulkSizes.map((size) => {
+                    const targets = selected.filter(
+                      (p) => p.sizes.includes(size) && freeSizes(p, allRules, ruleId).includes(size),
+                    )
+                    return (
+                      <SizeChip
+                        key={size}
+                        label={size}
+                        on={targets.length > 0 && targets.every((p) => (value.productSizes[p.id] ?? []).includes(size))}
+                        disabled={targets.length === 0}
+                        onClick={() => toggleBulkSize(size)}
+                      />
+                    )
+                  })}
+                </div>
+              </div>
+            )}
 
             {pickable.length === 0 ? (
               <p className="py-6 text-center text-sm" style={{ color: 'var(--app-text-soft)' }}>
@@ -414,7 +519,17 @@ export default function PartnerRuleForm({
                         aria-label={`Pilih ${p.name}`}
                         className="h-4 w-4 accent-[#3f7d58]"
                       />
-                      <span className="truncate text-sm font-bold">{p.name}</span>
+                      <span className="flex min-w-0 flex-col gap-2">
+                        <span className="truncate text-sm font-bold">{p.name}</span>
+                        {checked && (
+                          <ProductSizeChips
+                            product={p}
+                            selected={value.productSizes[p.id] ?? []}
+                            used={sizesUsedByOtherRules(allRules, ruleId, p.id)}
+                            onToggle={(size) => toggleProductSize(p.id, size)}
+                          />
+                        )}
+                      </span>
                       <span>
                         <span className="app-badge">{p.isActive ? 'Aktif' : 'Nonaktif'}</span>
                       </span>

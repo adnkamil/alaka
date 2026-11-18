@@ -5,6 +5,7 @@ import type {
   PartnerItemProduct,
   PartnerItemVariant,
 } from '../lib/partner-item-label'
+import { ruleCoversVariant } from '../lib/partner-pricing'
 
 export interface CatalogPick {
   partnerVariantId: string
@@ -363,7 +364,11 @@ function VariantSheet({
                 const inRule =
                   size === null && sizes.length > 0
                     ? null
-                    : rule.sizes.length === 0 || (size !== null && rule.sizes.includes(size))
+                    : ruleCoversVariant(
+                        { productIds: [product.id], productSizes: rule.productSizes },
+                        product.id,
+                        size,
+                      )
                 return (
                   <Chip
                     key={rule.id}

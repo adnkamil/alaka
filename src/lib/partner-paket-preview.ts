@@ -2,6 +2,8 @@
 // di form, sebelum disimpan. Memakai logika FIFO yang sama dengan server. Murni,
 // tanpa db, sehingga aman dipakai di browser.
 import { formBundles } from './partner-bundle-fifo'
+import { ruleCoversVariant  } from './partner-pricing'
+import type {RuleProductSizes} from './partner-pricing';
 
 export type PreviewDraft = {
   key: string
@@ -17,8 +19,8 @@ export type PreviewCatalog = {
     minQty: number
     bundlePrice: number
     productIds: Array<string>
-    /** Kosong atau tidak ada = semua ukuran. */
-    sizes?: Array<string>
+    /** Ukuran yang ikut aturan, per produk. */
+    productSizes?: RuleProductSizes
   }>
   variants: Array<{ id: string; productId: string; size?: string | null }>
 }
@@ -42,15 +44,12 @@ export function previewPartnerBundles(
 ): { bundles: Array<PreviewBundle>; pending: Array<PreviewPending> } {
   const variantById = new Map(catalog.variants.map((v) => [v.id, v]))
   // Aturan yang cocok untuk satu barang: produknya ada di aturan dan ukurannya
-  // masuk rentang aturan (kosong = semua ukuran).
+  // termasuk ukuran yang dipilih untuk produk itu di aturan.
   const ruleFor = (variantId: string) => {
     const variant = variantById.get(variantId)
     if (!variant) return undefined
-    return catalog.rules.find(
-      (rule) =>
-        rule.productIds.includes(variant.productId) &&
-        (!rule.sizes?.length ||
-          (variant.size != null && rule.sizes.includes(variant.size))),
+    return catalog.rules.find((rule) =>
+      ruleCoversVariant(rule, variant.productId, variant.size ?? null),
     )
   }
 

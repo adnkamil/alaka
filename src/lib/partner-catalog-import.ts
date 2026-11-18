@@ -1,6 +1,7 @@
 // Rencana impor katalog partner dari berkas JSON. Murni (tanpa db) supaya bisa
 // diuji. Script scripts/import-partner-catalog.ts yang menulis ke database.
-import { assertRuleScopesNoOverlap, PricingError } from './partner-pricing'
+import { assertRuleScopesNoOverlap, PricingError  } from './partner-pricing'
+import type {RuleScope} from './partner-pricing';
 import { formatRuleLabel } from './partner-rule-label'
 
 export type RawSatuan = { sizes: Array<string>; price: number | null; derived?: boolean }
@@ -126,11 +127,20 @@ export function planCatalogImport(raw: RawCatalog): ImportPlan {
   }
 
   // Rentang ukuran aturan per produk tidak boleh tumpang tindih.
-  const perProduct = new Map<string, Array<{ id: string; name: string; productIds: Array<string>; sizes: Array<string> }>>()
+  const perProduct = new Map<string, Array<RuleScope>>()
   for (const [i, rule] of rules.entries()) {
     for (const name of rule.productNames) {
       const list = perProduct.get(name) ?? []
-      list.push({ id: `rule${i}`, name: rule.name, productIds: [name], sizes: rule.sizes })
+      const productSizes = products.find((p) => p.name === name)?.sizes ?? []
+      const chosen = rule.sizes.length
+        ? productSizes.filter((s) => rule.sizes.includes(s))
+        : productSizes
+      list.push({
+        id: `rule${i}`,
+        name: rule.name,
+        productIds: [name],
+        productSizes: { [name]: chosen },
+      })
       perProduct.set(name, list)
     }
   }

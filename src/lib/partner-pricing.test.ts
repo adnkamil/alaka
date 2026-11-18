@@ -18,6 +18,11 @@ const rule: PricingRule = {
   minQty: 3,
   bundlePrice: 100000,
   productIds: ['p-longsleeve', 'p-pants', 'p-dress'],
+  productSizes: {
+    'p-longsleeve': ['L'],
+    'p-pants': ['L'],
+    'p-dress': ['L'],
+  },
 }
 
 const comp = (
@@ -40,11 +45,20 @@ const threeItems = [
 ]
 
 describe('assertRuleScopesNoOverlap', () => {
-  it('boleh satu produk di dua aturan kalau rentang ukurannya beda', () => {
+  it('boleh satu produk di dua aturan kalau ukurannya beda', () => {
     assert.doesNotThrow(() =>
       assertRuleScopesNoOverlap([
-        { id: 'a', productIds: ['p1'], sizes: ['S', 'M', 'L'] },
-        { id: 'b', productIds: ['p1'], sizes: ['XL', 'XXL', 'XXXL'] },
+        { id: 'a', productIds: ['p1'], productSizes: { p1: ['S', 'M', 'L'] } },
+        { id: 'b', productIds: ['p1'], productSizes: { p1: ['XL', 'XXL', 'XXXL'] } },
+      ]),
+    )
+  })
+
+  it('ukuran dibandingkan per produk, bukan antar produk', () => {
+    assert.doesNotThrow(() =>
+      assertRuleScopesNoOverlap([
+        { id: 'a', productIds: ['p1', 'p2'], productSizes: { p1: ['S'], p2: ['XL'] } },
+        { id: 'b', productIds: ['p1', 'p2'], productSizes: { p1: ['XL'], p2: ['S'] } },
       ]),
     )
   })
@@ -53,21 +67,30 @@ describe('assertRuleScopesNoOverlap', () => {
     assert.throws(
       () =>
         assertRuleScopesNoOverlap([
-          { id: 'a', productIds: ['p1'], sizes: ['S', 'M'] },
-          { id: 'b', productIds: ['p1'], sizes: ['M', 'L'] },
+          { id: 'a', productIds: ['p1'], productSizes: { p1: ['S', 'M'] } },
+          { id: 'b', productIds: ['p1'], productSizes: { p1: ['M', 'L'] } },
         ]),
       PricingError,
     )
   })
 
-  it('aturan tanpa ukuran (semua ukuran) bentrok dengan aturan produk yang sama', () => {
+  it('produk tanpa ukuran di dua aturan bentrok', () => {
     assert.throws(
       () =>
         assertRuleScopesNoOverlap([
           { id: 'a', productIds: ['p1'] },
-          { id: 'b', productIds: ['p1'], sizes: ['S'] },
+          { id: 'b', productIds: ['p1'] },
         ]),
       PricingError,
+    )
+  })
+
+  it('produk tanpa ukuran tidak bentrok dengan aturan yang memilih ukuran produk itu', () => {
+    assert.doesNotThrow(() =>
+      assertRuleScopesNoOverlap([
+        { id: 'a', productIds: ['p1'] },
+        { id: 'b', productIds: ['p1'], productSizes: { p1: ['S'] } },
+      ]),
     )
   })
 
@@ -209,14 +232,14 @@ describe('keuntungan dan tagihan', () => {
   })
 })
 
-describe('buildBundleLine dengan rentang ukuran', () => {
+describe('buildBundleLine dengan ukuran per produk', () => {
   const rule = {
     id: 'r1',
     name: 'Get 2 S–L',
     minQty: 2,
     bundlePrice: 100000,
     productIds: ['p1'],
-    sizes: ['S', 'M', 'L'],
+    productSizes: { p1: ['S', 'M', 'L'] },
   }
   const comp = (size: string | null) => ({
     partnerProductId: 'p1',
@@ -228,23 +251,60 @@ describe('buildBundleLine dengan rentang ukuran', () => {
   })
   const input = { sellPrice: 120000, fee: 0, bundleCount: 1 }
 
-  it('menerima paket yang semua ukurannya ada di rentang aturan', () => {
+  it('menerima paket yang semua ukurannya dipilih untuk produk di aturan', () => {
     assert.doesNotThrow(() =>
       buildBundleLine(rule, [comp('S'), comp('L')], input),
     )
   })
 
-  it('menolak L + XL karena XL di luar rentang aturan', () => {
+  it('menolak L + XL karena XL tidak dipilih untuk produk di aturan', () => {
     assert.throws(
       () => buildBundleLine(rule, [comp('L'), comp('XL')], input),
       PricingError,
     )
   })
 
-  it('menolak komponen tanpa ukuran kalau aturan membatasi ukuran', () => {
+  it('menolak komponen tanpa ukuran kalau aturan memilih ukuran untuk produk itu', () => {
     assert.throws(
       () => buildBundleLine(rule, [comp(null), comp('S')], input),
       PricingError,
     )
+  })
+})
+
+describe('buildBundleLine dengan ukuran berbeda per produk', () => {
+  const rule = {
+    id: 'r2',
+    name: '110K / 2pcs',
+    minQty: 2,
+    bundlePrice: 110000,
+    productIds: ['shirt', 'shoe'],
+    productSizes: { shirt: ['XL', 'XXL'], shoe: ['40', '41'] },
+  }
+  const c = (productId: string, size: string | null) => ({
+    partnerProductId: productId,
+    partnerVariantId: `${productId}-${size}`,
+    productName: productId,
+    size,
+    variation: null,
+    qty: 1,
+  })
+  const input = { sellPrice: 150000, fee: 0, bundleCount: 1 }
+
+  it('menerima ukuran huruf dan nomor sepatu sesuai produknya', () => {
+    assert.doesNotThrow(() => buildBundleLine(rule, [c('shirt', 'XL'), c('shoe', '40')], input))
+  })
+
+  it('menolak ukuran milik produk lain', () => {
+    assert.throws(() => buildBundleLine(rule, [c('shirt', '40'), c('shoe', '41')], input), PricingError)
+  })
+
+  it('ukuran yang tidak dipilih ditolak walau produknya ada di aturan', () => {
+    assert.throws(() => buildBundleLine(rule, [c('shirt', 'XXXL'), c('shoe', '40')], input), PricingError)
+  })
+
+  it('produk tanpa ukuran boleh masuk tanpa ukuran', () => {
+    const r = { ...rule, productIds: ['bag', 'shirt'], productSizes: { shirt: ['XL'] } }
+    assert.doesNotThrow(() => buildBundleLine(r, [c('bag', null), c('shirt', 'XL')], input))
   })
 })

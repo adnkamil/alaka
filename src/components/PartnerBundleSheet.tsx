@@ -8,8 +8,8 @@ export type CatalogRule = {
   minQty: number
   bundlePrice: number
   productIds: Array<string>
-  /** Kosong atau tidak ada = semua ukuran. */
-  sizes?: Array<string>
+  /** Ukuran yang ikut aturan, per produk. */
+  productSizes?: Record<string, Array<string>>
 }
 
 export type CatalogProduct = { id: string; name: string }

@@ -12,7 +12,9 @@ function rulesOf(rules: Array<{ id: string; productIds: Array<string> }>, produc
 
 /**
  * Kartu "Paket" di halaman produk. Satu produk bisa masuk beberapa aturan
- * (mis. S–L dan XL–XXL dengan harga paket berbeda). Centang aturan yang dipakai.
+ * (mis. S–L dan XL–XXL dengan harga paket berbeda). Dari sini produk hanya bisa
+ * dikeluarkan dari aturan; memasukkan produk ke aturan dilakukan di halaman
+ * Paket, karena ukuran yang ikut aturan dipilih di sana.
  */
 export default function PartnerProductRuleCard({
   productId,
@@ -27,6 +29,7 @@ export default function PartnerProductRuleCard({
     queryFn: () => listPartnerRules(),
   })
   const currentIds = rulesOf(rules, productId)
+  const memberRules = rules.filter((r) => currentIds.includes(r.id))
   const currentKey = currentIds.slice().sort().join(',')
   const [selected, setSelected] = useState<Array<string>>([])
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null)
@@ -68,18 +71,18 @@ export default function PartnerProductRuleCard({
       <div>
         <h2 className="pm-display text-base">Paket</h2>
         <p className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
-          Produk ini bisa masuk lebih dari satu aturan paket, selama rentang ukurannya tidak sama.
-          Bisa diubah dari halaman ini atau dari halaman Paket.
+          Produk ini bisa masuk lebih dari satu aturan paket, selama ukurannya tidak sama.
+          Untuk menambahkan produk ke aturan atau mengubah ukurannya, buka halaman Paket.
         </p>
       </div>
       <div className="flex flex-col gap-2">
         <span className="text-xs font-semibold">Aturan paket</span>
-        {rules.length === 0 && (
+        {memberRules.length === 0 && (
           <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
-            Belum ada aturan paket.
+            Produk ini belum masuk aturan paket mana pun.
           </p>
         )}
-        {rules.map((r) => {
+        {memberRules.map((r) => {
           const on = selected.includes(r.id)
           return (
             <label
@@ -96,7 +99,10 @@ export default function PartnerProductRuleCard({
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-semibold">{r.name}</span>
                 <span className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
-                  {r.name}
+                  {(r.productSizes[productId] ?? []).length > 0
+                    ? `Ukuran: ${r.productSizes[productId].join(', ')}`
+                    : 'Tanpa ukuran'}
+                  {on ? '' : ' · akan dikeluarkan dari aturan ini'}
                 </span>
               </span>
             </label>

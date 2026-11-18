@@ -4,7 +4,11 @@ import { ArrowLeft } from 'lucide-react'
 import { useState } from 'react'
 import PartnerRuleForm, { FORM_ID, type RuleFormValue } from '../../../components/PartnerRuleForm'
 import { fetchPartnerProducts } from '../../../lib/partner-product-functions'
-import { listPartnerRules, savePartnerRule } from '../../../lib/partner-rule-functions'
+import {
+  listPartnerProductSizes,
+  listPartnerRules,
+  savePartnerRule,
+} from '../../../lib/partner-rule-functions'
 import { selectableProducts } from '../../../lib/partner-rule-availability'
 
 export const Route = createFileRoute('/partner/paket/$id')({
@@ -25,6 +29,17 @@ function EditPartnerRulePage() {
     queryFn: () => fetchPartnerProducts(),
   })
 
+  const { data: productSizes = {} } = useQuery({
+    queryKey: ['partner-product-sizes'],
+    queryFn: () => listPartnerProductSizes(),
+  })
+  const formProducts = selectableProducts(products).map((p) => ({
+    id: p.id,
+    name: p.name,
+    isActive: p.isActive,
+    sizes: productSizes[p.id] ?? [],
+  }))
+
   const rule = rules.find((r) => r.id === id)
 
   async function handleSubmit(value: RuleFormValue) {
@@ -39,7 +54,7 @@ function EditPartnerRulePage() {
           bundlePrice: Number(value.bundlePrice),
           isActive: value.isActive,
           productIds: value.productIds,
-          sizes: value.sizes,
+          productSizes: value.productSizes,
         },
       })
       await queryClient.invalidateQueries({ queryKey: RULES_KEY })
@@ -89,9 +104,9 @@ function EditPartnerRulePage() {
             bundlePrice: String(rule.bundlePrice),
             isActive: rule.isActive,
             productIds: rule.productIds,
-            sizes: rule.sizes,
+            productSizes: rule.productSizes,
           }}
-          products={selectableProducts(products)}
+          products={formProducts}
           allRules={rules}
           ruleId={rule.id}
           saving={saving}

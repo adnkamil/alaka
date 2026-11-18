@@ -24,7 +24,7 @@ async function main() {
 
   const { eq, inArray } = await import('drizzle-orm')
   const { db } = await import('../src/db')
-  const { partners, partnerPricingRules, partnerRuleSizes } = await import(
+  const { partners, partnerPricingRules, partnerRuleProductSizes } = await import(
     '../src/db/schema'
   )
 
@@ -50,14 +50,20 @@ async function main() {
 
   const sizeRows = rules.length
     ? await db
-        .select({ ruleId: partnerRuleSizes.ruleId, sizeName: partnerRuleSizes.sizeName })
-        .from(partnerRuleSizes)
-        .where(inArray(partnerRuleSizes.ruleId, rules.map((r) => r.id)))
+        .select({
+          ruleId: partnerRuleProductSizes.ruleId,
+          sizeName: partnerRuleProductSizes.sizeName,
+        })
+        .from(partnerRuleProductSizes)
+        .where(inArray(partnerRuleProductSizes.ruleId, rules.map((r) => r.id)))
     : []
 
   const changes = rules
     .map((rule) => {
-      const sizes = sizeRows.filter((z) => z.ruleId === rule.id).map((z) => z.sizeName)
+      // Ukuran kini per produk; label memakai gabungan ukuran semua produk di aturan.
+      const sizes = [
+        ...new Set(sizeRows.filter((z) => z.ruleId === rule.id).map((z) => z.sizeName)),
+      ]
       const label = formatRuleLabel({
         minQty: rule.minQty,
         bundlePrice: Number(rule.bundlePrice),

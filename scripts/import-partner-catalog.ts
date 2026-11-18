@@ -56,7 +56,7 @@ async function main() {
     partnerVariantValues,
     partnerPricingRules,
     partnerRuleProducts,
-    partnerRuleSizes,
+    partnerRuleProductSizes,
   } = await import('../src/db/schema')
 
   const partner = await db.query.partners.findFirst({
@@ -177,11 +177,17 @@ async function main() {
       await tx
         .insert(partnerRuleProducts)
         .values(productIds.map((partnerProductId) => ({ ruleId: r.id, partnerProductId })))
-      if (rule.sizes.length) {
-        await tx
-          .insert(partnerRuleSizes)
-          .values(rule.sizes.map((sizeName) => ({ ruleId: r.id, sizeName })))
-      }
+      // Ukuran dipilih per produk: irisan rentang aturan dengan ukuran produk
+      // (aturan tanpa rentang = semua ukuran produk saat ini).
+      const sizeRows = rule.productNames.flatMap((name) => {
+        const productSizes = plan.products.find((p) => p.name === name)?.sizes ?? []
+        const chosen = rule.sizes.length
+          ? productSizes.filter((s) => rule.sizes.includes(s))
+          : productSizes
+        const partnerProductId = productIdByName.get(name)!
+        return chosen.map((sizeName) => ({ ruleId: r.id, partnerProductId, sizeName }))
+      })
+      if (sizeRows.length) await tx.insert(partnerRuleProductSizes).values(sizeRows)
       for (const productId of productIds) {
         await syncDefaultVariant(executor, productId)
       }
