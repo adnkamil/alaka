@@ -117,6 +117,82 @@ export const getPartnerSubmissions = createServerFn({ method: 'GET' })
     )
   })
 
+const holeRefSchema = z.object({
+  kind: z.enum(['satuan', 'komponen']),
+  id: idSchema,
+})
+
+/**
+ * Jastiper mengirim pengganti untuk barang yang disanggah. Pengganti dibuat
+ * sebagai submit baru yang tertaut ke submit asalnya, dan didahulukan di
+ * antrean cek. Tetap boleh walau slot sudah ditutup, karena ini koreksi atas
+ * submit yang sudah masuk, bukan pesanan baru.
+ */
+export const sendReplacementsBatch = createServerFn({ method: 'POST' })
+  .validator(
+    z.object({
+      eventId: idSchema,
+      replacements: z
+        .array(
+          z.object({
+            hole: holeRefSchema,
+            partnerVariantId: idSchema,
+            qty: z.number().int().min(1),
+          }),
+        )
+        .min(1)
+        .max(200),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const { db } = await import('../db')
+    const { lockBrandEvent, sendReplacementsTx } = await import(
+      './submit-replacement-queries'
+    )
+    const user = await getSessionUser()
+    if (!user) throw new Error('Belum login')
+
+    return db.transaction(async (tx) => {
+      const event = await lockBrandEvent(tx, data.eventId, brandIdOf(user))
+      if (!event.calendarEventId) {
+        throw new Error('Event ini tidak terhubung ke event partner.')
+      }
+      return sendReplacementsTx(tx, {
+        eventId: event.id,
+        calendarEventId: event.calendarEventId,
+        requests: data.replacements,
+        now: new Date(),
+      })
+    })
+  })
+
+/** Jastiper memutuskan barang yang disanggah tidak diganti. */
+export const waiveReplacementsBatch = createServerFn({ method: 'POST' })
+  .validator(
+    z.object({
+      eventId: idSchema,
+      holes: z.array(holeRefSchema).min(1).max(200),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const { db } = await import('../db')
+    const { lockBrandEvent, waiveHolesTx } = await import(
+      './submit-replacement-queries'
+    )
+    const user = await getSessionUser()
+    if (!user) throw new Error('Belum login')
+
+    return db.transaction(async (tx) => {
+      const event = await lockBrandEvent(tx, data.eventId, brandIdOf(user))
+      await waiveHolesTx(tx, {
+        eventId: event.id,
+        holes: data.holes,
+        by: 'jastiper',
+        now: new Date(),
+      })
+    })
+  })
+
 /** Partner membatalkan satu baris yang sudah disetujui. Stok kembali ke katalog. */
 export const cancelSubmittedRowBatch = createServerFn({ method: 'POST' })
   .validator(

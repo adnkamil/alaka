@@ -35,6 +35,39 @@ describe('submitInvoiceState', () => {
       'sudah_ditagih',
     )
   })
+  it('isi paket ditolak dan belum diputuskan: menunggu keputusan', () => {
+    assert.equal(
+      submitInvoiceState({
+        checked: true,
+        hasActiveInvoice: false,
+        approvedAmount: 1000,
+        awaitingDecision: true,
+      }),
+      'menunggu_keputusan',
+    )
+  })
+  it('belum dicek lebih dulu daripada menunggu keputusan', () => {
+    assert.equal(
+      submitInvoiceState({
+        checked: false,
+        hasActiveInvoice: false,
+        approvedAmount: 1000,
+        awaitingDecision: true,
+      }),
+      'menunggu_dicek',
+    )
+  })
+  it('sudah ditagih lebih dulu daripada menunggu keputusan', () => {
+    assert.equal(
+      submitInvoiceState({
+        checked: true,
+        hasActiveInvoice: true,
+        approvedAmount: 1000,
+        awaitingDecision: true,
+      }),
+      'sudah_ditagih',
+    )
+  })
 })
 
 const cand = (
@@ -45,19 +78,27 @@ const cand = (
 ): InvoiceCandidate => ({ id, submitNo, brandId, state })
 
 describe('validateInvoiceSelection', () => {
+  it('menunggu keputusan: ditolak dengan petunjuk tagih apa adanya', () => {
+    const msg = validateInvoiceSelection({
+      requestedIds: ['a'],
+      candidates: [cand('a', 3, 'x', 'menunggu_keputusan')],
+    })!
+    assert.match(msg, /Submit ke-3/)
+    assert.match(msg, /menunggu keputusan jastiper/)
+    assert.match(msg, /Tagih apa adanya/)
+  })
   it('pilihan valid: lolos', () => {
     assert.equal(
       validateInvoiceSelection({
         requestedIds: ['a', 'b'],
         candidates: [cand('a', 1, 'x'), cand('b', 2, 'x')],
-        crossBundles: [],
       }),
       null,
     )
   })
   it('kosong: ditolak', () => {
     assert.match(
-      validateInvoiceSelection({ requestedIds: [], candidates: [], crossBundles: [] })!,
+      validateInvoiceSelection({ requestedIds: [], candidates: [] })!,
       /minimal satu/,
     )
   })
@@ -66,7 +107,6 @@ describe('validateInvoiceSelection', () => {
       validateInvoiceSelection({
         requestedIds: ['z'],
         candidates: [cand('a', 1, 'x')],
-        crossBundles: [],
       })!,
       /tidak ditemukan/,
     )
@@ -76,7 +116,6 @@ describe('validateInvoiceSelection', () => {
       validateInvoiceSelection({
         requestedIds: ['a', 'b'],
         candidates: [cand('a', 1, 'x'), cand('b', 1, 'y')],
-        crossBundles: [],
       })!,
       /satu jastiper/,
     )
@@ -86,7 +125,6 @@ describe('validateInvoiceSelection', () => {
       validateInvoiceSelection({
         requestedIds: ['a'],
         candidates: [cand('a', 3, 'x', 'menunggu_dicek')],
-        crossBundles: [],
       })!,
       /Submit ke-3 belum dicek/,
     )
@@ -96,7 +134,6 @@ describe('validateInvoiceSelection', () => {
       validateInvoiceSelection({
         requestedIds: ['a'],
         candidates: [cand('a', 2, 'x', 'sudah_ditagih')],
-        crossBundles: [],
       })!,
       /tagihan aktif/,
     )
@@ -106,62 +143,15 @@ describe('validateInvoiceSelection', () => {
       validateInvoiceSelection({
         requestedIds: ['a'],
         candidates: [cand('a', 2, 'x', 'tanpa_tagihan')],
-        crossBundles: [],
       })!,
       /tidak punya barang/,
     )
   })
-  it('paket lintas submit, sebagian dipilih: ditolak dengan nomor submit lain', () => {
-    const crossBundles = [
-      {
-        bundleName: 'Beli 3',
-        submissions: [
-          { id: 'a', submitNo: 1 },
-          { id: 'b', submitNo: 2 },
-        ],
-      },
-    ]
+  it('isi paket pesanan tersebar di beberapa submit: tetap boleh ditagih sebagian', () => {
     assert.equal(
       validateInvoiceSelection({
         requestedIds: ['a'],
         candidates: [cand('a', 1, 'x'), cand('b', 2, 'x')],
-        crossBundles,
-      }),
-      'Paket Beli 3 juga berisi barang dari Submit ke-2. Tagih bersama submit itu.',
-    )
-  })
-  it('paket lintas submit, semuanya dipilih: lolos', () => {
-    assert.equal(
-      validateInvoiceSelection({
-        requestedIds: ['a', 'b'],
-        candidates: [cand('a', 1, 'x'), cand('b', 2, 'x')],
-        crossBundles: [
-          {
-            bundleName: 'Beli 3',
-            submissions: [
-              { id: 'a', submitNo: 1 },
-              { id: 'b', submitNo: 2 },
-            ],
-          },
-        ],
-      }),
-      null,
-    )
-  })
-  it('paket lintas submit yang tidak menyentuh pilihan: lolos', () => {
-    assert.equal(
-      validateInvoiceSelection({
-        requestedIds: ['c'],
-        candidates: [cand('c', 3, 'x')],
-        crossBundles: [
-          {
-            bundleName: 'Beli 3',
-            submissions: [
-              { id: 'a', submitNo: 1 },
-              { id: 'b', submitNo: 2 },
-            ],
-          },
-        ],
       }),
       null,
     )

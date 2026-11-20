@@ -858,6 +858,9 @@ function EventDetailPage() {
       // Detail event-nya sudah tidak ada di server — buang cache-nya biar
       // tombol back tidak memicu refetch ke data yang sudah dihapus.
       queryClient.removeQueries({ queryKey: ['event', eventId] })
+    } catch (err) {
+      // Mis. event sudah punya tagihan partner: tampilkan alasannya, jangan diam.
+      setMergeNotice(err instanceof Error ? err.message : 'Gagal menghapus event')
     } finally {
       setIsDeletingEvent(false)
       setShowDeleteEvent(false)
@@ -1117,6 +1120,13 @@ function EventDetailPage() {
                   type="button"
                   onClick={() => {
                     setShowEventMenu(false)
+                    // Event bertagihan tidak bisa dihapus: beri tahu sebelum konfirmasi.
+                    if (eventInvoices.length > 0) {
+                      setMergeNotice(
+                        'Event ini sudah punya tagihan dari partner, jadi tidak bisa dihapus.',
+                      )
+                      return
+                    }
                     setShowDeleteEvent(true)
                   }}
                   className="flex w-full items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold"

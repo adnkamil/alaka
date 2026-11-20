@@ -7,6 +7,7 @@ import {
   PAYMENT_PROOF_MAX_DATA_URL_LENGTH,
   parsePaymentProofDataUrl,
 } from './payment-proof'
+import type { InvoicePreviewResult } from './invoice-queries'
 import type { InvoiceStatus } from './invoice-rules'
 import { partnerOwnsEvent } from './partner-event-queries'
 
@@ -68,6 +69,8 @@ export const createInvoice = createServerFn({ method: 'POST' })
     z.object({
       calendarEventId: idSchema,
       submissionIds: z.array(idSchema).min(1).max(200),
+      /** "Tagih apa adanya": isi paket yang ditolak dan belum diputuskan tidak diganti. */
+      waiveBlocking: z.boolean().optional(),
     }),
   )
   .handler(async ({ data }) => {
@@ -82,6 +85,36 @@ export const createInvoice = createServerFn({ method: 'POST' })
         partnerId: partner.id,
         calendarEventId: data.calendarEventId,
         submissionIds: data.submissionIds,
+        waiveBlocking: data.waiveBlocking,
+      }),
+    )
+  })
+
+/**
+ * Pratinjau tagihan untuk submit yang dipilih: total setelah barang satuan dari
+ * pesanan berbeda digabung jadi paket. Tidak menulis apa pun.
+ */
+export const previewInvoice = createServerFn({ method: 'POST' })
+  .validator(
+    z.object({
+      calendarEventId: idSchema,
+      submissionIds: z.array(idSchema).min(1).max(200),
+      waiveBlocking: z.boolean().optional(),
+    }),
+  )
+  .handler(async ({ data }): Promise<InvoicePreviewResult> => {
+    const partner = await requirePartner()
+    if (!(await partnerOwnsEvent(partner.id, data.calendarEventId))) {
+      throw new Error('Event tidak ditemukan')
+    }
+    const { db } = await import('../db')
+    const { previewInvoiceTx } = await import('./invoice-queries')
+    return db.transaction((tx) =>
+      previewInvoiceTx(tx, {
+        partnerId: partner.id,
+        calendarEventId: data.calendarEventId,
+        submissionIds: data.submissionIds,
+        waiveBlocking: data.waiveBlocking,
       }),
     )
   })

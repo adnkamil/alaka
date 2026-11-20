@@ -2,6 +2,7 @@
 
 export type SubmitInvoiceState =
   | 'menunggu_dicek'
+  | 'menunggu_keputusan'
   | 'siap_ditagih'
   | 'sudah_ditagih'
   | 'tanpa_tagihan'
@@ -9,7 +10,8 @@ export type SubmitInvoiceState =
 /**
  * Posisi satu submit di alur tagihan.
  * - Sudah ada di tagihan aktif: sudah ditagih.
- * - Belum dicek partner: menunggu dicek.
+ * - Belum dicek partner, atau dibuka lagi karena ada pengganti: menunggu dicek.
+ * - Ada isi paket yang ditolak dan belum diputuskan jastiper: menunggu keputusan.
  * - Sudah dicek dan ada nominal: siap ditagih.
  * - Sudah dicek tapi nominal 0 (semua ditolak / dibatalkan): tanpa tagihan.
  */
@@ -17,9 +19,12 @@ export function submitInvoiceState(input: {
   checked: boolean
   hasActiveInvoice: boolean
   approvedAmount: number
+  /** Ada lubang dari isi paket yang menahan tagihan. */
+  awaitingDecision?: boolean
 }): SubmitInvoiceState {
   if (input.hasActiveInvoice) return 'sudah_ditagih'
   if (!input.checked) return 'menunggu_dicek'
+  if (input.awaitingDecision) return 'menunggu_keputusan'
   return input.approvedAmount > 0 ? 'siap_ditagih' : 'tanpa_tagihan'
 }
 
@@ -52,13 +57,8 @@ export function validateInvoiceSelection(input: {
   requestedIds: Array<string>
   /** Submit yang ditemukan di event ini (bisa lebih sedikit dari yang diminta). */
   candidates: Array<InvoiceCandidate>
-  /** Paket yang isinya berasal dari lebih dari satu submit. */
-  crossBundles: Array<{
-    bundleName: string
-    submissions: Array<{ id: string; submitNo: number }>
-  }>
 }): string | null {
-  const { requestedIds, candidates, crossBundles } = input
+  const { requestedIds, candidates } = input
   if (requestedIds.length === 0) return 'Pilih minimal satu submit.'
   const byId = new Map(candidates.map((c) => [c.id, c]))
   const picked: Array<InvoiceCandidate> = []
@@ -75,6 +75,8 @@ export function validateInvoiceSelection(input: {
     switch (c.state) {
       case 'menunggu_dicek':
         return `Submit ke-${c.submitNo} belum dicek, jadi belum bisa ditagih.`
+      case 'menunggu_keputusan':
+        return `Submit ke-${c.submitNo} masih menunggu keputusan jastiper untuk isi paket yang ditolak (diganti atau tidak). Pilih "Tagih apa adanya" kalau barang itu tidak jadi diganti.`
       case 'sudah_ditagih':
         return `Submit ke-${c.submitNo} sudah ada di tagihan aktif.`
       case 'tanpa_tagihan':
@@ -84,17 +86,6 @@ export function validateInvoiceSelection(input: {
     }
   }
 
-  // Harga paket hanya benar kalau semua isinya ditagih bersama.
-  const pickedIds = new Set(picked.map((c) => c.id))
-  for (const bundle of crossBundles) {
-    const inPick = bundle.submissions.some((s) => pickedIds.has(s.id))
-    const missing = bundle.submissions
-      .filter((s) => !pickedIds.has(s.id))
-      .sort((a, b) => a.submitNo - b.submitNo)
-    if (inPick && missing.length > 0) {
-      return `Paket ${bundle.bundleName} juga berisi barang dari Submit ke-${missing[0].submitNo}. Tagih bersama submit itu.`
-    }
-  }
   return null
 }
 

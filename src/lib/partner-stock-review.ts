@@ -50,3 +50,58 @@ export function overStockRowIds(
   }
   return over
 }
+
+/**
+ * Bagikan satu jumlah "Dapat" ke baris-barisnya, urut FIFO: baris pertama
+ * diisi penuh dulu, sisanya ke baris berikutnya. Aturan yang sama dengan
+ * `allocateApproved`, jadi hasil isian manual dan otomatis konsisten.
+ */
+export function splitApproved(
+  rows: Array<{ id: string; qty: number }>,
+  total: number,
+): Record<string, number> {
+  let left = Math.max(0, Math.floor(total) || 0)
+  const result: Record<string, number> = {}
+  for (const row of rows) {
+    const take = Math.min(row.qty, left)
+    result[row.id] = take
+    left -= take
+  }
+  return result
+}
+
+export type DisplayEntry<T> =
+  | { kind: 'row'; row: T }
+  | { kind: 'group'; key: string; rows: Array<T> }
+
+/**
+ * Susun baris untuk tabel: baris dengan kunci yang sama digabung jadi satu
+ * entri `group` di posisi kemunculan pertamanya. Baris tanpa kunci (null),
+ * atau satu-satunya dengan kuncinya, tetap baris biasa.
+ */
+export function buildDisplayEntries<T>(
+  rows: Array<T>,
+  keyOf: (row: T) => string | null,
+): Array<DisplayEntry<T>> {
+  const byKey = new Map<string, Array<T>>()
+  for (const row of rows) {
+    const key = keyOf(row)
+    if (key === null) continue
+    const list = byKey.get(key) ?? []
+    list.push(row)
+    byKey.set(key, list)
+  }
+  const entries: Array<DisplayEntry<T>> = []
+  const emitted = new Set<string>()
+  for (const row of rows) {
+    const key = keyOf(row)
+    const group = key === null ? undefined : byKey.get(key)
+    if (key === null || !group || group.length < 2) {
+      entries.push({ kind: 'row', row })
+    } else if (!emitted.has(key)) {
+      emitted.add(key)
+      entries.push({ kind: 'group', key, rows: group })
+    }
+  }
+  return entries
+}

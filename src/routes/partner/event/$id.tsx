@@ -1,5 +1,10 @@
 import { useState } from 'react'
-import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import {
+  keepPreviousData,
+  useQuery,
+  useQueryClient,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import {
   ArrowLeft,
@@ -12,7 +17,7 @@ import {
 } from 'lucide-react'
 import SubmitStatusBadge from '../../../components/SubmitStatusBadge'
 import InvoiceDetailModal from '../../../components/InvoiceDetailModal'
-import { createInvoice } from '../../../lib/invoice-functions'
+import { createInvoice, previewInvoice } from '../../../lib/invoice-functions'
 import { hasBankAccount } from '../../../lib/invoice-rules'
 import type { PartnerSubmitRow } from '../../../lib/partner-submit-list'
 import PartnerSlotSection from '../../../components/PartnerSlotSection'
@@ -99,6 +104,28 @@ const SUBMIT_FILTER_REKAP: Record<SubmitFilter, PartnerStatusFilter> = {
   review: 'selesai',
 }
 
+/** Bisa dipilih untuk ditagih: siap, atau menunggu keputusan (ditagih apa adanya). */
+function isBillable(row: PartnerSubmitRow) {
+  return (
+    row.invoiceState === 'siap_ditagih' ||
+    row.invoiceState === 'menunggu_keputusan'
+  )
+}
+
+/** Penanda submit yang dibuka lagi karena ada barang pengganti: didahulukan di antrean cek. */
+function ReplacementTag({ row }: { row: PartnerSubmitRow }) {
+  if (!row.reopened) return null
+  return (
+    <span
+      className="app-badge"
+      title="Jastiper mengganti barang yang ditolak. Hanya barang penggantinya yang perlu dicek, dan submit ini dicek lebih dulu dari antrean biasa."
+      style={{ background: 'var(--app-accent-soft)', color: '#9c463b' }}
+    >
+      Ada barang pengganti
+    </span>
+  )
+}
+
 /** Submit milik filter ini? "Semua" memuat semuanya, termasuk yang tanpa tagihan. */
 function matchesFilter(row: PartnerSubmitRow, filter: SubmitFilter) {
   switch (filter) {
@@ -107,12 +134,102 @@ function matchesFilter(row: PartnerSubmitRow, filter: SubmitFilter) {
     case 'menunggu':
       return row.invoiceState === 'menunggu_dicek'
     case 'siap':
-      return row.invoiceState === 'siap_ditagih'
+      // Berkas yang menunggu keputusan jastiper ikut tampil di sini supaya
+      // partner bisa memilih "tagih apa adanya".
+      return (
+        row.invoiceState === 'siap_ditagih' ||
+        row.invoiceState === 'menunggu_keputusan'
+      )
     case 'ditagih':
       return row.invoiceState === 'sudah_ditagih'
     case 'review':
       return row.invoice?.status === 'menunggu_review'
   }
+}
+
+/**
+ * Rincian tagihan dipisah jadi Paket (satu harga per paket, isinya hanya label)
+ * dan Satuan (jumlah × harga, dengan alasan kenapa tidak jadi paket).
+ */
+function InvoicePreviewTable({
+  preview,
+}: {
+  preview: Extract<Awaited<ReturnType<typeof previewInvoice>>, { ok: true }>
+}) {
+  const paket = preview.lines.filter((l) => l.kind === 'paket')
+  const satuan = preview.lines.filter((l) => l.kind === 'satuan')
+  const sectionHead = (title: string) => (
+    <tr>
+      <th
+        colSpan={4}
+        className="pt-3 pb-1 text-left text-[11px] font-bold uppercase tracking-wide"
+        style={{ color: 'var(--app-text-soft)' }}
+      >
+        {title}
+      </th>
+    </tr>
+  )
+  return (
+    <table className="mt-2 w-full">
+      <thead style={{ color: 'var(--app-text-soft)' }}>
+        <tr>
+          <th className="py-1 text-left font-semibold">Barang</th>
+          <th className="py-1 text-right font-semibold">Jumlah</th>
+          <th className="py-1 text-right font-semibold">Harga</th>
+          <th className="py-1 text-right font-semibold">Subtotal</th>
+        </tr>
+      </thead>
+      <tbody>
+        {paket.length > 0 && sectionHead('Paket')}
+        {paket.map((l) => (
+          <tr
+            key={`paket-${l.label}-${l.unitPrice}`}
+            className="border-t"
+            style={{ borderColor: 'var(--app-border)' }}
+          >
+            <td className="py-1.5">{l.label}</td>
+            <td className="pm-num py-1.5 text-right">{l.qty}</td>
+            <td className="pm-num py-1.5 text-right">{formatRupiah(l.unitPrice)}</td>
+            <td className="pm-num py-1.5 text-right font-semibold">{formatRupiah(l.amount)}</td>
+          </tr>
+        ))}
+        {satuan.length > 0 && sectionHead('Satuan')}
+        {satuan.map((l) => (
+          <tr
+            key={`satuan-${l.label}-${l.unitPrice}-${l.note ?? ''}`}
+            className="border-t align-top"
+            style={{ borderColor: 'var(--app-border)' }}
+          >
+            <td className="py-1.5">
+              {l.label}
+              {l.note && (
+                <span className="block" style={{ color: 'var(--app-text-soft)' }}>
+                  {l.note}
+                </span>
+              )}
+            </td>
+            <td className="pm-num py-1.5 text-right">{l.qty}</td>
+            <td className="pm-num py-1.5 text-right">{formatRupiah(l.unitPrice)}</td>
+            <td className="pm-num py-1.5 text-right font-semibold">{formatRupiah(l.amount)}</td>
+          </tr>
+        ))}
+      </tbody>
+      <tfoot>
+        {preview.saving > 0 && (
+          <tr className="border-t" style={{ borderColor: 'var(--app-border)' }}>
+            <td colSpan={3} className="py-1.5 text-right" style={{ color: 'var(--app-text-soft)' }}>
+              Hemat paket
+            </td>
+            <td className="pm-num py-1.5 text-right">{formatRupiah(preview.saving)}</td>
+          </tr>
+        )}
+        <tr className="border-t" style={{ borderColor: 'var(--app-border)' }}>
+          <td colSpan={3} className="py-1.5 text-right font-semibold">Total</td>
+          <td className="pm-num py-1.5 text-right font-bold">{formatRupiah(preview.totalAmount)}</td>
+        </tr>
+      </tfoot>
+    </table>
+  )
 }
 
 /** Badge status; kalau sudah ditagih, bisa diklik untuk membuka rincian tagihan. */
@@ -267,13 +384,33 @@ function PartnerEventDetailPage() {
   const bankMissing = me ? !hasBankAccount(me) : false
   const selectMode = slotEnabled && submitFilter === 'siap'
   const selectedRows = submitRows.filter(
-    (r) => selected.has(r.submissionId) && r.invoiceState === 'siap_ditagih',
+    (r) => selected.has(r.submissionId) && isBillable(r),
   )
+  // Berkas yang masih menunggu keputusan jastiper ikut ditagih apa adanya:
+  // barang yang ditolak dianggap tidak diganti.
+  const awaitingRows = selectedRows.filter(
+    (r) => r.invoiceState === 'menunggu_keputusan',
+  )
+  const waiveBlocking = awaitingRows.length > 0
   const selectedBrandId = selectedRows.at(0)?.brandId ?? null
   const selectedTotals = {
     pcs: selectedRows.reduce((n, r) => n + r.pcs.approved, 0),
     amount: selectedRows.reduce((n, r) => n + r.approvedAmount, 0),
   }
+  // Total final dihitung server: barang satuan dari pesanan berbeda bisa digabung jadi paket.
+  const selectedIds = selectedRows.map((r) => r.submissionId).sort()
+  const { data: preview } = useQuery({
+    queryKey: ['invoice-preview', id, selectedIds, waiveBlocking],
+    queryFn: () =>
+      previewInvoice({
+        data: { calendarEventId: id, submissionIds: selectedIds, waiveBlocking },
+      }),
+    enabled: selectedIds.length > 0,
+    placeholderData: keepPreviousData,
+  })
+  const previewOk = preview?.ok ? preview : null
+  const previewError = preview && !preview.ok ? preview.error : null
+  const finalAmount = previewOk?.totalAmount ?? selectedTotals.amount
   const toggleSelected = (submissionId: string) =>
     setSelected((prev) => {
       const next = new Set(prev)
@@ -285,7 +422,7 @@ function PartnerEventDetailPage() {
     setSelected(
       new Set(
         submitRows
-          .filter((r) => r.brandId === brandId && r.invoiceState === 'siap_ditagih')
+          .filter((r) => r.brandId === brandId && isBillable(r))
           .map((r) => r.submissionId),
       ),
     )
@@ -296,6 +433,7 @@ function PartnerEventDetailPage() {
         data: {
           calendarEventId: id,
           submissionIds: selectedRows.map((r) => r.submissionId),
+          waiveBlocking,
         },
       })
       await refreshInvoiceData()
@@ -311,6 +449,7 @@ function PartnerEventDetailPage() {
   function refreshInvoiceData() {
     return Promise.all([
       queryClient.invalidateQueries({ queryKey: ['partner-submit-list', id] }),
+      queryClient.invalidateQueries({ queryKey: ['invoice-preview', id] }),
       queryClient.invalidateQueries({ queryKey: ['partner-event-revenue', id] }),
       queryClient.invalidateQueries({ queryKey: ['partner-jastiper-detail', id] }),
     ])
@@ -362,8 +501,48 @@ function PartnerEventDetailPage() {
           {' · '}
           {selectedRows.length} submit · {selectedTotals.pcs} pcs ·{' '}
         </span>
-        <span className="pm-num font-bold">{formatRupiah(selectedTotals.amount)}</span>
+        {previewOk && previewOk.saving > 0 && (
+          <span
+            className="pm-num"
+            style={{ color: 'var(--app-text-soft)' }}
+            title="Total kalau semua pcs ditagih harga satuan"
+          >
+            <span className="line-through">{formatRupiah(previewOk.rawAmount)}</span>{' '}
+            <span className="text-[11px]">harga satuan</span>{' '}
+          </span>
+        )}
+        <span className="pm-num font-bold">{formatRupiah(finalAmount)}</span>
       </p>
+      {previewOk && previewOk.bundleCount > 0 && (
+        <p className="w-full text-xs" style={{ color: 'var(--app-text-soft)' }}>
+          {previewOk.bundleCount} paket menurut aturan paket, dihitung dari semua pcs
+          jastiper di tagihan ini
+          {previewOk.saving > 0 && <>, hemat {formatRupiah(previewOk.saving)}</>}.
+        </p>
+      )}
+      {previewOk && previewOk.lines.length > 0 && (
+        <details className="w-full text-xs">
+          <summary className="cursor-pointer font-semibold">
+            Rincian tagihan ({previewOk.lines.length} baris)
+          </summary>
+          <InvoicePreviewTable preview={previewOk} />
+        </details>
+      )}
+      {previewError && (
+        <p className="w-full text-xs" style={{ color: 'var(--app-danger)' }}>
+          {previewError}
+        </p>
+      )}
+      {waiveBlocking && (
+        <p
+          className="w-full rounded-lg p-2 text-xs"
+          style={{ background: '#fdecd0', color: '#8a5208' }}
+        >
+          Submit ke-{awaitingRows.map((r) => r.submitNo).join(', ')} masih menunggu
+          keputusan jastiper untuk isi paket yang ditolak. Kalau tagihan dikirim,
+          barang itu dianggap tidak diganti (tagih apa adanya).
+        </p>
+      )}
       {bankMissing && (
         <p className="w-full text-xs" style={{ color: 'var(--app-danger)' }}>
           Isi rekening pembayaran di{' '}
@@ -386,7 +565,7 @@ function PartnerEventDetailPage() {
         )}
         <button
           type="button"
-          disabled={bankMissing}
+          disabled={bankMissing || previewError !== null}
           onClick={() => setConfirmSend(true)}
           className="app-btn-primary disabled:opacity-50"
           style={{ minHeight: 40, fontSize: 13 }}
@@ -672,6 +851,7 @@ function PartnerEventDetailPage() {
                               Submit {formatWibDateTime(row.submittedAt)}
                             </p>
                             <div className="mt-1 flex flex-wrap items-center gap-2">
+                              <ReplacementTag row={row} />
                               <RowStatus row={row} onOpenInvoice={setOpenInvoiceId} />
                               {row.checked && row.pcs.rejected > 0 && (
                                 <span
@@ -929,7 +1109,10 @@ function PartnerEventDetailPage() {
                             >
                               {initialsOf(row.brandName)}
                             </span>
-                            <p className="truncate text-sm font-bold">{row.brandName}</p>
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-bold">{row.brandName}</p>
+                              <ReplacementTag row={row} />
+                            </div>
                           </Link>
                           <span className="text-[13px]" style={{ color: 'var(--app-text-soft)' }}>
                             {formatWibDateTime(row.submittedAt)}
@@ -1028,7 +1211,7 @@ function PartnerEventDetailPage() {
         open={confirmSend}
         danger={false}
         title={`Kirim tagihan ke ${selectedRows.at(0)?.brandName ?? 'jastiper'}?`}
-        content={`${selectedRows.length} submit · ${selectedTotals.pcs} pcs · ${formatRupiah(selectedTotals.amount)}. Jastiper akan menerima notifikasi. Barang di submit ini tidak bisa dibatalkan selama tagihan aktif.`}
+        content={`${selectedRows.length} submit · ${selectedTotals.pcs} pcs · ${formatRupiah(finalAmount)}${previewOk && previewOk.bundleCount > 0 ? ` (termasuk ${previewOk.bundleCount} paket${previewOk.saving > 0 ? `, hemat ${formatRupiah(previewOk.saving)}` : ''})` : ''}. Jastiper akan menerima notifikasi. Barang di submit ini tidak bisa dibatalkan selama tagihan aktif.${waiveBlocking ? ` Submit ke-${awaitingRows.map((r) => r.submitNo).join(', ')} masih menunggu keputusan jastiper untuk isi paket yang ditolak. Dengan mengirim tagihan ini, barang itu dianggap tidak diganti dan jastiper tidak bisa mengirim penggantinya lagi.` : ''}`}
         okText="Kirim tagihan"
         loadingText="Mengirim..."
         loading={sending}

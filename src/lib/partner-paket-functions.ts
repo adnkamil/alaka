@@ -116,7 +116,11 @@ export const addPartnerItem = createServerFn({ method: 'POST' })
         )
       const match = sameSingles.find(
         (row) =>
-          Number(row.originalPrice) === data.originalPrice && Number(row.fee) === data.fee,
+          // Hanya digabung dengan draft. Baris yang sudah disubmit terkunci
+          // qty-nya, dan menambah qty di sana melewati pengecekan partner.
+          row.submitStatus === null &&
+          Number(row.originalPrice) === data.originalPrice &&
+          Number(row.fee) === data.fee,
       )
       if (match) {
         await tx

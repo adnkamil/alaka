@@ -33,7 +33,7 @@ import {
 } from './partner-paket-queries'
 
 /** Fee per pcs paket, sama dengan perhitungan saat paket dibongkar. */
-function feePerPcsOf(bundle: {
+export function feePerPcsOf(bundle: {
   fee: string
   ruleMinQty: number | null
   components: Array<{ qty: number }>
@@ -460,6 +460,8 @@ export async function reviewSubmission(
           submitStatus: 'disetujui',
           submissionId,
           createdAt: c.addedAt,
+          replacesItemId: c.replacesItemId,
+          replacesComponentId: c.replacesComponentId,
         })
         logs.push({
           eventId,
@@ -632,7 +634,7 @@ export async function reviewSubmission(
         ? `Submit ke-${submission.submitNo}: ada barang yang ditolak`
         : `Submit ke-${submission.submitNo}: semua barang disetujui`,
       body: anyRejected
-        ? 'Barang yang ditolak tidak masuk total. Kirim pengganti lewat Submit ulang.'
+        ? 'Barang yang ditolak tidak masuk total. Pilih ganti atau tidak diganti. Isi paket yang ditolak perlu diputuskan sebelum partner bisa menagih.'
         : 'Semua barang di pengajuan ini disetujui partner.',
       target: 'event',
       eventId,
@@ -644,7 +646,7 @@ export async function reviewSubmission(
   // sama dengan pengurangan stok.
   await tx
     .update(eventSubmissions)
-    .set({ stockCheckedAt: new Date() })
+    .set({ stockCheckedAt: new Date(), reopenedAt: null })
     .where(eq(eventSubmissions.id, submissionId))
 
   return { affectedOrderIds: [...affectedOrders] }

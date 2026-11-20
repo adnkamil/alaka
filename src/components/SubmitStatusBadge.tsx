@@ -27,6 +27,8 @@ export default function SubmitStatusBadge({
     switch (state) {
       case 'menunggu_dicek':
         return { label: 'Menunggu dicek', tone: 'info' as const }
+      case 'menunggu_keputusan':
+        return { label: 'Menunggu keputusan jastiper', tone: 'warn' as const }
       case 'siap_ditagih':
         return { label: 'Siap ditagih', tone: 'success' as const }
       case 'sudah_ditagih': {

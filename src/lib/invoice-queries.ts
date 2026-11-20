@@ -11,6 +11,9 @@ import {
   partners,
 } from '../db/schema'
 import { chunk } from './chunk'
+import { poolInvoiceBilling } from './invoice-pooling-queries'
+import { analyzeSubmits } from './submit-replacement-groups'
+import { waiveHolesTx } from './submit-replacement-queries'
 import {
   BANK_REQUIRED_MESSAGE,
   formatInvoiceNumber,
@@ -60,6 +63,32 @@ export async function loadActiveInvoiceBySubmission(
   return result
 }
 
+/**
+ * Nominal tiap submit di tagihan aktifnya (jumlah baris snapshot). Angka ini
+ * tetap walau harga atau aturan paket berubah setelah tagihan dibuat.
+ */
+export async function loadInvoicedAmountBySubmission(
+  tx: OrderTx,
+  active: Map<string, { id: string }>,
+): Promise<Map<string, number>> {
+  const result = new Map<string, number>()
+  const invoiceIds = [...new Set([...active.values()].map((v) => v.id))]
+  if (invoiceIds.length === 0) return result
+  const rows = await tx
+    .select({
+      invoiceId: invoiceLines.invoiceId,
+      submissionId: invoiceLines.submissionId,
+      amount: invoiceLines.amount,
+    })
+    .from(invoiceLines)
+    .where(inArray(invoiceLines.invoiceId, invoiceIds))
+  for (const r of rows) {
+    if (active.get(r.submissionId)?.id !== r.invoiceId) continue
+    result.set(r.submissionId, (result.get(r.submissionId) ?? 0) + Number(r.amount))
+  }
+  return result
+}
+
 /** True kalau submit ada di tagihan aktif. Barangnya tidak boleh berubah. */
 export async function isSubmissionInvoiced(
   tx: OrderTx,
@@ -87,6 +116,196 @@ export async function invoicedSubmissionIds(
 }
 
 /**
+ * Muat, validasi, dan hitung satu tagihan: pilihan submit dicek, semua pcs
+ * disetujui dijadikan paket menurut aturan partner, lalu total dihitung.
+ * Dipakai pembuatan tagihan dan pratinjaunya supaya angkanya sama. Melempar
+ * Error kalau pilihan tidak valid.
+ */
+async function planInvoice(
+  tx: OrderTx,
+  input: {
+    partnerId: string
+    calendarEventId: string
+    submissionIds: Array<string>
+    /** "Tagih apa adanya": isi paket yang ditolak dan belum diputuskan dianggap tidak diganti. */
+    waiveBlocking?: boolean
+  },
+  lock: boolean,
+) {
+  const requestedIds = [...new Set(input.submissionIds)]
+  // Saat membuat tagihan, submit dikunci supaya dua tagihan bersamaan tidak
+  // memakai submit yang sama. Pratinjau tidak mengunci apa pun.
+  const subsQuery = tx
+    .select({
+      id: eventSubmissions.id,
+      submitNo: eventSubmissions.submitNo,
+      checkedAt: eventSubmissions.stockCheckedAt,
+      eventId: events.id,
+      brandId: events.brandId,
+    })
+    .from(eventSubmissions)
+    .innerJoin(events, eq(events.id, eventSubmissions.eventId))
+    .where(
+      and(
+        inArray(eventSubmissions.id, requestedIds),
+        eq(events.calendarEventId, input.calendarEventId),
+      ),
+    )
+  const subs = requestedIds.length
+    ? lock
+      ? await subsQuery.for('update', { of: eventSubmissions })
+      : await subsQuery
+    : []
+
+  const foundIds = subs.map((s) => s.id)
+  const active = await loadActiveInvoiceBySubmission(tx, foundIds)
+  const { bySubmission, poolable } = await loadSubmitBilling(tx, foundIds)
+  // Submit yang dibuka lagi karena ada pengganti belum dicek, dan isi paket
+  // yang ditolak belum diputuskan jastiper, sama-sama menahan tagihan.
+  const { groups, holes } = await analyzeSubmits(
+    tx,
+    subs.map((s) => ({ id: s.id, checked: s.checkedAt !== null })),
+  )
+
+  const error = validateInvoiceSelection({
+    requestedIds,
+    candidates: subs.map((s) => ({
+      id: s.id,
+      submitNo: s.submitNo,
+      brandId: s.brandId,
+      state: submitInvoiceState({
+        checked: groups.get(s.id)?.state !== 'menunggu_dicek',
+        hasActiveInvoice: active.has(s.id),
+        approvedAmount: bySubmission.get(s.id)?.approvedAmount ?? 0,
+        awaitingDecision:
+          groups.get(s.id)?.state === 'menunggu_keputusan' &&
+          !input.waiveBlocking,
+      }),
+    })),
+  })
+  if (error) throw new Error(error)
+
+  // Partner menghitung per jastiper: pcs disetujui di satu submit dijadikan
+  // paket menurut aturan partner, tanpa melihat bentuk pesanan customer.
+  // Submit lain tidak ikut, jadi nominal satu submit tidak berubah karena
+  // submit lain ikut atau tidak ikut ditagih.
+  const { bySubmission: billing, bundleCount } = await poolInvoiceBilling(tx, {
+    partnerId: input.partnerId,
+    bySubmission,
+    poolable,
+    groupOf: (id) => id,
+  })
+
+  const totalAmount = subs.reduce(
+    (s, x) => s + (billing.get(x.id)?.approvedAmount ?? 0),
+    0,
+  )
+  const totalPcs = subs.reduce((s, x) => s + (billing.get(x.id)?.approved ?? 0), 0)
+  const rawAmount = subs.reduce(
+    (s, x) => s + (bySubmission.get(x.id)?.approvedAmount ?? 0),
+    0,
+  )
+
+  // Isi paket yang ditolak dan belum diputuskan. Hanya ada kalau
+  // `waiveBlocking` (kalau tidak, validasi di atas sudah menolak).
+  const selected = new Set(foundIds)
+  const blockingHoles = holes
+    .filter((h) => h.blocking && selected.has(h.submissionId))
+    .map((h) => ({ kind: h.kind, id: h.id }))
+
+  return {
+    subs,
+    billing,
+    totalAmount,
+    totalPcs,
+    rawAmount,
+    bundleCount,
+    blockingHoles,
+  }
+}
+
+
+export type InvoicePreviewLine = {
+  kind: 'satuan' | 'paket'
+  label: string
+  qty: number
+  unitPrice: number
+  amount: number
+  /** Alasan baris satuan tidak jadi paket (mis. "Kurang 1 pcs lagi untuk ..."). */
+  note?: string
+}
+
+/** Jumlahkan baris dengan jenis, nama, dan harga yang sama. */
+function mergePreviewLines(
+  lines: Array<InvoicePreviewLine>,
+): Array<InvoicePreviewLine> {
+  const merged = new Map<string, InvoicePreviewLine>()
+  for (const l of lines) {
+    const key = `${l.kind}\u0000${l.label}\u0000${l.unitPrice}\u0000${l.note ?? ''}`
+    const cur = merged.get(key)
+    if (cur) {
+      cur.qty += l.qty
+      cur.amount += l.amount
+    } else {
+      merged.set(key, { ...l })
+    }
+  }
+  return [...merged.values()].sort(
+    (a, b) => Number(a.kind === 'paket') - Number(b.kind === 'paket'),
+  )
+}
+
+export type InvoicePreviewResult =
+  | {
+      ok: true
+      submitCount: number
+      totalPcs: number
+      /** Total kalau semua pcs ditagih satuan. */
+      rawAmount: number
+      /** Total tagihan setelah pcs dijadikan paket. */
+      totalAmount: number
+      /** Selisih `rawAmount` dan `totalAmount`. */
+      saving: number
+      /** Jumlah paket di tagihan. */
+      bundleCount: number
+      /** Rincian tagihan: baris yang sama dari semua submit dijumlahkan. */
+      lines: Array<InvoicePreviewLine>
+    }
+  | { ok: false; error: string }
+
+/** Hitung tagihan tanpa membuatnya. Tidak mengunci dan tidak menulis. */
+export async function previewInvoiceTx(
+  tx: OrderTx,
+  input: {
+    partnerId: string
+    calendarEventId: string
+    submissionIds: Array<string>
+    waiveBlocking?: boolean
+  },
+): Promise<InvoicePreviewResult> {
+  try {
+    const plan = await planInvoice(tx, input, false)
+    return {
+      ok: true,
+      submitCount: plan.subs.length,
+      totalPcs: plan.totalPcs,
+      rawAmount: plan.rawAmount,
+      totalAmount: plan.totalAmount,
+      saving: plan.rawAmount - plan.totalAmount,
+      bundleCount: plan.bundleCount,
+      lines: mergePreviewLines(
+        plan.subs.flatMap((x) => plan.billing.get(x.id)?.lines ?? []),
+      ),
+    }
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'Tagihan tidak valid.',
+    }
+  }
+}
+
+/**
  * Buat satu tagihan dari beberapa submit utuh milik satu jastiper. Semua
  * aturan dicek di sini, dalam transaksi pemanggil.
  */
@@ -96,6 +315,8 @@ export async function createInvoiceTx(
     partnerId: string
     calendarEventId: string
     submissionIds: Array<string>
+    /** "Tagih apa adanya": isi paket yang ditolak dan belum diputuskan tidak diganti. */
+    waiveBlocking?: boolean
   },
 ): Promise<{ invoiceId: string; number: number }> {
   // Tanpa rekening, jastiper tidak tahu ke mana harus bayar.
@@ -112,57 +333,18 @@ export async function createInvoiceTx(
     throw new Error(BANK_REQUIRED_MESSAGE)
   }
 
-  const requestedIds = [...new Set(input.submissionIds)]
-  // Kunci submit supaya dua tagihan bersamaan tidak memakai submit yang sama.
-  const subs = requestedIds.length
-    ? await tx
-        .select({
-          id: eventSubmissions.id,
-          submitNo: eventSubmissions.submitNo,
-          checkedAt: eventSubmissions.stockCheckedAt,
-          eventId: events.id,
-          brandId: events.brandId,
-        })
-        .from(eventSubmissions)
-        .innerJoin(events, eq(events.id, eventSubmissions.eventId))
-        .where(
-          and(
-            inArray(eventSubmissions.id, requestedIds),
-            eq(events.calendarEventId, input.calendarEventId),
-          ),
-        )
-        .for('update', { of: eventSubmissions })
-    : []
-
-  const foundIds = subs.map((s) => s.id)
-  const active = await loadActiveInvoiceBySubmission(tx, foundIds)
-  const { bySubmission, crossBundles } = await loadSubmitBilling(tx, foundIds)
-
-  const error = validateInvoiceSelection({
-    requestedIds,
-    candidates: subs.map((s) => ({
-      id: s.id,
-      submitNo: s.submitNo,
-      brandId: s.brandId,
-      state: submitInvoiceState({
-        checked: s.checkedAt !== null,
-        hasActiveInvoice: active.has(s.id),
-        approvedAmount: bySubmission.get(s.id)?.approvedAmount ?? 0,
-      }),
-    })),
-    crossBundles,
-  })
-  if (error) throw new Error(error)
-
+  const { subs, billing, totalAmount, totalPcs, blockingHoles } =
+    await planInvoice(tx, input, true)
   const first = subs[0]
-  const totalAmount = subs.reduce(
-    (s, x) => s + (bySubmission.get(x.id)?.approvedAmount ?? 0),
-    0,
-  )
-  const totalPcs = subs.reduce(
-    (s, x) => s + (bySubmission.get(x.id)?.approved ?? 0),
-    0,
-  )
+
+  // Barang yang ditolak dan belum diputuskan dicatat tidak diganti, supaya
+  // jastiper tidak bisa mengirim pengganti untuk tagihan yang sudah terbit.
+  await waiveHolesTx(tx, {
+    eventId: first.eventId,
+    holes: blockingHoles,
+    by: 'partner',
+    now: new Date(),
+  })
 
   const [invoice] = await tx
     .insert(invoices)
@@ -180,11 +362,11 @@ export async function createInvoiceTx(
     subs.map((s) => ({
       invoiceId: invoice.id,
       submissionId: s.id,
-      amount: (bySubmission.get(s.id)?.approvedAmount ?? 0).toFixed(2),
-      pcs: bySubmission.get(s.id)?.approved ?? 0,
+      amount: (billing.get(s.id)?.approvedAmount ?? 0).toFixed(2),
+      pcs: billing.get(s.id)?.approved ?? 0,
     })),
   )
-  const lines = subs.flatMap((s) => bySubmission.get(s.id)?.lines ?? [])
+  const lines = subs.flatMap((s) => billing.get(s.id)?.lines ?? [])
   for (const part of chunk(lines, 500)) {
     await tx.insert(invoiceLines).values(
       part.map((l) => ({

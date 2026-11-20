@@ -208,6 +208,8 @@ export async function regroupRuleInOrder(
       partnerVariantId: items.partnerVariantId,
       submitStatus: items.submitStatus,
       submissionId: items.submissionId,
+      replacesItemId: items.replacesItemId,
+      replacesComponentId: items.replacesComponentId,
     })
     .from(items)
     .where(and(eq(items.orderId, orderId), eq(items.isBundle, false)))
@@ -274,6 +276,9 @@ export async function regroupRuleInOrder(
         addedAt: single.createdAt,
         submitStatus: single.submitStatus,
         submissionId: single.submissionId,
+        // Tautan pengganti ikut pindah, supaya lubang yang digantikan tetap tertutup.
+        replacesItemId: single.replacesItemId,
+        replacesComponentId: single.replacesComponentId,
       }
     })
     const [bundleRow] = await tx
@@ -303,6 +308,8 @@ export async function regroupRuleInOrder(
         submitStatus: c.submitStatus,
         submissionId: c.submissionId,
         addedAt: c.addedAt,
+        replacesItemId: c.replacesItemId,
+        replacesComponentId: c.replacesComponentId,
       })),
     )
   }
@@ -357,7 +364,8 @@ export async function dissolveBundle(
     // Barang yang sama dan harganya sama digabung jadi satu baris dengan qty lebih besar.
     if (c.partnerVariantId) {
       // Hanya digabung dengan baris satuan yang status submitnya sama. Baris
-      // draft, pengajuan, dan disetujui tidak boleh tercampur.
+      // draft, pengajuan, dan disetujui tidak boleh tercampur. Tautan pengganti
+      // juga harus sama, supaya lubang yang digantikan tidak tertukar.
       const sameSingles = await tx
         .select()
         .from(items)
@@ -373,7 +381,9 @@ export async function dissolveBundle(
           Number(row.originalPrice) === price &&
           Number(row.fee) === feePerPcs &&
           row.submitStatus === c.submitStatus &&
-          row.submissionId === c.submissionId,
+          row.submissionId === c.submissionId &&
+          row.replacesItemId === c.replacesItemId &&
+          row.replacesComponentId === c.replacesComponentId,
       )
       if (match) {
         await tx
@@ -396,6 +406,9 @@ export async function dissolveBundle(
       qty: returnQty,
       submitStatus: c.submitStatus,
       submissionId: c.submissionId,
+      replacesItemId: c.replacesItemId,
+      replacesComponentId: c.replacesComponentId,
+      replacementWaivedAt: c.replacementWaivedAt,
       obtained: false,
       isBundle: false,
       partnerVariantId: c.partnerVariantId,

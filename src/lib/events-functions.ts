@@ -171,6 +171,10 @@ export const deleteEvent = createServerFn({ method: 'POST' })
         aggregateStockDemand([...approvedSingles, ...approvedComponents]),
       )
 
+      // Pesanan dihapus lebih dulu (barang dan isi paketnya ikut). Kalau event
+      // langsung dihapus, submit ikut terhapus dan mengosongkan `submission_id`
+      // isi paket yang masih berstatus, melanggar `item_components_submit_pair`.
+      await tx.delete(orders).where(eq(orders.eventId, data.id))
       await tx
         .delete(events)
         .where(and(eq(events.id, data.id), eq(events.brandId, brandIdOf(user))))

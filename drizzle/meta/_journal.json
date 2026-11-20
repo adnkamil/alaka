@@ -351,6 +351,34 @@
       "when": 1795008431687,
       "tag": "0049_regular_lady_vermin",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1795085067864,
+      "tag": "0050_plain_psynapse",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1795103097226,
+      "tag": "0051_military_next_avengers",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1795103115065,
+      "tag": "0052_pindahkan_pengganti_ke_submit_asal",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1795103126888,
+      "tag": "0053_free_kree",
+      "breakpoints": true
     }
   ]
 }

@@ -18,6 +18,7 @@ import {
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core'
+import type { AnyPgColumn } from 'drizzle-orm/pg-core'
 import {
   PRO_DURATION_DAYS,
   PRO_PLAN_CODE,
@@ -545,7 +546,8 @@ export const orders = pgTable('orders', {
 
 /**
  * Satu kali jastiper menekan "Submit" untuk sebuah event. Submit pertama =
- * submit_no 1. Submit ulang (pengganti barang yang disanggah) = 2, 3, dst.
+ * submit_no 1, berikutnya 2, 3, dst. Pengganti barang yang disanggah tidak
+ * membuat submit baru: barangnya masuk ke submit yang sama (lihat `reopened_at`).
  * Dipakai untuk kolom "submit ke" di halaman detil event partner.
  */
 export const eventSubmissions = pgTable(
@@ -568,6 +570,13 @@ export const eventSubmissions = pgTable(
       .generatedAlwaysAsIdentity(),
     /** Null = belum dicek (menunggu). Terisi saat pengecekan selesai (centang). */
     stockCheckedAt: timestamp('stock_checked_at', { withTimezone: true }),
+    /**
+     * Terisi saat jastiper mengirim pengganti untuk barang yang disanggah di
+     * submit ini: pengganti masuk ke submit yang sama, `stock_checked_at`
+     * dikosongkan (kembali menunggu dicek), dan submit didahulukan di antrean.
+     * Dikosongkan lagi saat partner selesai mengecek.
+     */
+    reopenedAt: timestamp('reopened_at', { withTimezone: true }),
   },
   (table) => [
     uniqueIndex('event_submissions_event_no_unique').on(
@@ -667,6 +676,24 @@ export const items = pgTable('items', {
   // Snapshot aturan paket, supaya paket tetap bisa ditampilkan setelah aturan dihapus.
   ruleName: varchar('rule_name'),
   ruleMinQty: integer('rule_min_qty'),
+  /**
+   * Alur pengganti: baris disanggah yang digantikan barang ini. Satu dari dua
+   * kolom terisi: barang satuan disanggah, atau komponen paket disanggah.
+   * Pengganti selalu dikirim sebagai barang satuan; tautannya ikut pindah saat
+   * barang dipaketkan (FIFO) atau paketnya dibongkar.
+   */
+  replacesItemId: uuid('replaces_item_id'),
+  replacesComponentId: uuid('replaces_component_id').references(
+    (): AnyPgColumn => itemComponents.id,
+    { onDelete: 'set null' },
+  ),
+  /**
+   * Untuk baris disanggah: jastiper (atau partner lewat "tagih apa adanya")
+   * memutuskan barang ini tidak diganti.
+   */
+  replacementWaivedAt: timestamp('replacement_waived_at', {
+    withTimezone: true,
+  }),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -677,6 +704,13 @@ export const items = pgTable('items', {
   ),
   // Daftar submit, tagihan, dan riwayat membaca barang per submit.
   index('items_submission_idx').on(table.submissionId),
+  foreignKey({
+    columns: [table.replacesItemId],
+    foreignColumns: [table.id],
+    name: 'items_replaces_fk',
+  }).onDelete('set null'),
+  index('items_replaces_idx').on(table.replacesItemId),
+  index('items_replaces_component_idx').on(table.replacesComponentId),
 ])
 
 // Isi sebuah bundle, satu baris per barang. Total pcs = items.qty * qty di sini.
@@ -707,11 +741,35 @@ export const itemComponents = pgTable(
     addedAt: timestamp('added_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
+    /**
+     * Tautan pengganti, sama dengan kolom bernama sama di `items`. Pengganti
+     * selalu dikirim sebagai barang satuan; setelah disetujui, barang itu bisa
+     * dipaketkan (FIFO) atau dibongkar lagi, dan tautannya ikut pindah.
+     */
+    replacesItemId: uuid('replaces_item_id').references(
+      (): AnyPgColumn => items.id,
+      { onDelete: 'set null' },
+    ),
+    replacesComponentId: uuid('replaces_component_id'),
+    /**
+     * Untuk komponen disanggah: diputuskan tidak diganti (oleh jastiper, atau
+     * partner lewat "tagih apa adanya"). Pcs lain di paket ditagih apa adanya.
+     */
+    replacementWaivedAt: timestamp('replacement_waived_at', {
+      withTimezone: true,
+    }),
   },
   (table) => [
     index('item_components_item_idx').on(table.itemId),
     index('item_components_variant_idx').on(table.partnerVariantId),
     index('item_components_submission_idx').on(table.submissionId),
+    foreignKey({
+      columns: [table.replacesComponentId],
+      foreignColumns: [table.id],
+      name: 'item_components_replaces_fk',
+    }).onDelete('set null'),
+    index('item_components_replaces_idx').on(table.replacesComponentId),
+    index('item_components_replaces_item_idx').on(table.replacesItemId),
     check('item_components_qty_pos', sql`${table.qty} > 0`),
     check(
       'item_components_submit_pair',
