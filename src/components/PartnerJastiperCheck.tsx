@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Link } from '@tanstack/react-router'
 import { ChevronDown, Search } from 'lucide-react'
 import Pagination from './ui/Pagination'
 import PartnerRowChip from './PartnerRowChip'
@@ -10,6 +11,9 @@ import { buildWhatsAppLink, formatPhoneNumber } from '../lib/format'
 import { getPartnerJastiperDetail } from '../lib/partner-jastiper-detail'
 import { formatRupiah } from '../lib/partner-product-rules'
 import { useClientPager } from '../lib/use-client-pager'
+import SortHeader, { ariaSortOf } from './ui/SortHeader'
+import { sortRows } from '../lib/table-sort'
+import { useTableSort } from '../lib/use-table-sort'
 import { mergeReviewedRows } from '../lib/partner-review-merge'
 import { allocateApproved, overStockRowIds, buildDisplayEntries, splitApproved } from '../lib/partner-stock-review'
 import {
@@ -419,7 +423,20 @@ function SubmitBlock({
           : null,
       )
   const rowPager = useClientPager(entries)
-  const mergedPager = useClientPager(merged ?? [])
+  const mergedSort = useTableSort<MergedSortKey>()
+  const mergedPager = useClientPager(
+    sortRows(merged ?? [], mergedSort.sort, {
+      productName: (m) => m.productName,
+      variation: (m) => m.variation,
+      size: (m) => m.size,
+      total: (m) => m.total,
+      priceType: (m) => m.priceType,
+      stock: (m) => m.stock,
+      requested: (m) => m.requested,
+      approved: (m) => m.approved,
+      status: (m) => MERGED_CHIP[m.status].label,
+    }),
+  )
   const pager = merged ? mergedPager : rowPager
   // Barang ditolak -> nama penggantinya, untuk keterangan di baris yang ditolak.
   const replacedBy = new Map(
@@ -437,11 +454,27 @@ function SubmitBlock({
         <span className="text-[12px]" style={{ color: 'var(--app-text-soft)' }}>
           {formatWibDateTime(sub.submittedAt)}
         </span>
-        <SubmitStatusBadge
-          checked={sub.checked}
-          state={info?.invoiceState}
-          invoiceNumber={info?.invoice?.number}
-        />
+        {info?.invoice ? (
+          <Link
+            to="/partner/tagihan/$invoiceId"
+            params={{ invoiceId: info.invoice.id }}
+            className="no-underline"
+            title="Buka tagihan"
+          >
+            <SubmitStatusBadge
+              checked={sub.checked}
+              state={info.invoiceState}
+              invoiceNumber={info.invoice.number}
+              invoiceStatus={info.invoice.status}
+            />
+          </Link>
+        ) : (
+          <SubmitStatusBadge
+            checked={sub.checked}
+            state={info?.invoiceState}
+            invoiceNumber={info?.invoice?.number}
+          />
+        )}
         {info && (
           <span className="text-[12px]" style={{ color: 'var(--app-text-soft)' }}>
             {sub.checked
@@ -457,14 +490,25 @@ function SubmitBlock({
         <table className="w-full text-[13px]">
           <thead style={{ background: 'var(--pm-tint)' }}>
             <tr>
-              {['Produk', 'Variasi', 'Ukuran', 'Total harga', 'Tipe harga', 'Stok', 'Diminta', 'Dapat', 'Status'].map((h) => (
+              {MERGED_COLUMNS.map(([h, key]) => (
                 <th
                   key={h}
-                  title={h === 'Stok' ? 'Stok varian saat ini di katalog' : undefined}
+                  aria-sort={merged ? ariaSortOf(mergedSort.sort, key) : undefined}
                   className={`px-4 py-3 text-[11px] font-semibold uppercase tracking-wide ${['Total harga', 'Stok', 'Diminta', 'Dapat'].includes(h) ? 'text-right' : 'text-left'}`}
                   style={{ color: 'var(--pm-gold)' }}
                 >
-                  {h}
+                  {/* Sebelum dicek, baris digabung/berpasangan dan bisa diisi, jadi urutannya dikunci. */}
+                  <SortHeader
+                    label={h}
+                    sortKey={merged ? key : undefined}
+                    sort={mergedSort.sort}
+                    onSort={(k) => {
+                      mergedSort.toggle(k)
+                      mergedPager.resetPage()
+                    }}
+                    align={['Total harga', 'Stok', 'Diminta', 'Dapat'].includes(h) ? 'right' : 'left'}
+                    title={h === 'Stok' ? 'Stok varian saat ini di katalog' : undefined}
+                  />
                 </th>
               ))}
             </tr>
@@ -793,6 +837,29 @@ function ReplacementChain({
     </>
   )
 }
+
+type MergedSortKey =
+  | 'productName'
+  | 'variation'
+  | 'size'
+  | 'total'
+  | 'priceType'
+  | 'stock'
+  | 'requested'
+  | 'approved'
+  | 'status'
+
+const MERGED_COLUMNS: ReadonlyArray<readonly [string, MergedSortKey]> = [
+  ['Produk', 'productName'],
+  ['Variasi', 'variation'],
+  ['Ukuran', 'size'],
+  ['Total harga', 'total'],
+  ['Tipe harga', 'priceType'],
+  ['Stok', 'stock'],
+  ['Diminta', 'requested'],
+  ['Dapat', 'approved'],
+  ['Status', 'status'],
+]
 
 const MERGED_CHIP = {
   disetujui: { label: 'Disetujui', tone: 'success' },

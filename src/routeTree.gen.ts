@@ -62,6 +62,8 @@ import { Route as PartnerKatalogBaruRouteImport } from './routes/partner/katalog
 import { Route as PartnerPaketIndexRouteImport } from './routes/partner/paket/index'
 import { Route as PartnerPaketIdRouteImport } from './routes/partner/paket/$id'
 import { Route as PartnerPaketBaruRouteImport } from './routes/partner/paket/baru'
+import { Route as PartnerTagihanIndexRouteImport } from './routes/partner/tagihan/index'
+import { Route as PartnerTagihanInvoiceIdRouteImport } from './routes/partner/tagihan/$invoiceId'
 import { Route as TagihanEventIdOrderIdRouteImport } from './routes/tagihan.$eventId.$orderId'
 import { Route as AppEventsEventIdStatusRouteImport } from './routes/_app/events.$eventId_.status'
 import { Route as AppInvoiceEventIdOrderIdRouteImport } from './routes/_app/invoice.$eventId.$orderId'
@@ -344,6 +346,16 @@ const PartnerPaketBaruRoute = PartnerPaketBaruRouteImport.update({
   path: '/paket/baru',
   getParentRoute: () => PartnerRoute,
 } as any)
+const PartnerTagihanIndexRoute = PartnerTagihanIndexRouteImport.update({
+  id: '/tagihan/',
+  path: '/tagihan/',
+  getParentRoute: () => PartnerRoute,
+} as any)
+const PartnerTagihanInvoiceIdRoute = PartnerTagihanInvoiceIdRouteImport.update({
+  id: '/tagihan/$invoiceId',
+  path: '/tagihan/$invoiceId',
+  getParentRoute: () => PartnerRoute,
+} as any)
 const TagihanEventIdOrderIdRoute = TagihanEventIdOrderIdRouteImport.update({
   id: '/tagihan/$eventId/$orderId',
   path: '/tagihan/$eventId/$orderId',
@@ -466,6 +478,7 @@ export interface FileRoutesByFullPath {
   '/partner/katalog/baru': typeof PartnerKatalogBaruRoute
   '/partner/paket/$id': typeof PartnerPaketIdRoute
   '/partner/paket/baru': typeof PartnerPaketBaruRoute
+  '/partner/tagihan/$invoiceId': typeof PartnerTagihanInvoiceIdRoute
   '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
   '/kalender/': typeof AppKalenderIndexRoute
   '/profil/': typeof AppProfilIndexRoute
@@ -473,6 +486,7 @@ export interface FileRoutesByFullPath {
   '/partner/event/': typeof PartnerEventIndexRoute
   '/partner/katalog/': typeof PartnerKatalogIndexRoute
   '/partner/paket/': typeof PartnerPaketIndexRoute
+  '/partner/tagihan/': typeof PartnerTagihanIndexRoute
   '/events/$eventId/status': typeof AppEventsEventIdStatusRoute
   '/invoice/$eventId/$orderId': typeof AppInvoiceEventIdOrderIdRoute
   '/profil/fee-rules/$feeRuleId': typeof AppProfilFeeRulesFeeRuleIdRoute
@@ -532,6 +546,7 @@ export interface FileRoutesByTo {
   '/partner/katalog/baru': typeof PartnerKatalogBaruRoute
   '/partner/paket/$id': typeof PartnerPaketIdRoute
   '/partner/paket/baru': typeof PartnerPaketBaruRoute
+  '/partner/tagihan/$invoiceId': typeof PartnerTagihanInvoiceIdRoute
   '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
   '/kalender': typeof AppKalenderIndexRoute
   '/profil': typeof AppProfilIndexRoute
@@ -539,6 +554,7 @@ export interface FileRoutesByTo {
   '/partner/event': typeof PartnerEventIndexRoute
   '/partner/katalog': typeof PartnerKatalogIndexRoute
   '/partner/paket': typeof PartnerPaketIndexRoute
+  '/partner/tagihan': typeof PartnerTagihanIndexRoute
   '/events/$eventId/status': typeof AppEventsEventIdStatusRoute
   '/invoice/$eventId/$orderId': typeof AppInvoiceEventIdOrderIdRoute
   '/profil/fee-rules/$feeRuleId': typeof AppProfilFeeRulesFeeRuleIdRoute
@@ -602,6 +618,7 @@ export interface FileRoutesById {
   '/partner/katalog/baru': typeof PartnerKatalogBaruRoute
   '/partner/paket/$id': typeof PartnerPaketIdRoute
   '/partner/paket/baru': typeof PartnerPaketBaruRoute
+  '/partner/tagihan/$invoiceId': typeof PartnerTagihanInvoiceIdRoute
   '/tagihan/$eventId/$orderId': typeof TagihanEventIdOrderIdRoute
   '/_app/kalender/': typeof AppKalenderIndexRoute
   '/_app/profil/': typeof AppProfilIndexRoute
@@ -609,6 +626,7 @@ export interface FileRoutesById {
   '/partner/event/': typeof PartnerEventIndexRoute
   '/partner/katalog/': typeof PartnerKatalogIndexRoute
   '/partner/paket/': typeof PartnerPaketIndexRoute
+  '/partner/tagihan/': typeof PartnerTagihanIndexRoute
   '/_app/events/$eventId_/status': typeof AppEventsEventIdStatusRoute
   '/_app/invoice/$eventId/$orderId': typeof AppInvoiceEventIdOrderIdRoute
   '/_app/profil/fee-rules/$feeRuleId': typeof AppProfilFeeRulesFeeRuleIdRoute
@@ -672,6 +690,7 @@ export interface FileRouteTypes {
     | '/partner/katalog/baru'
     | '/partner/paket/$id'
     | '/partner/paket/baru'
+    | '/partner/tagihan/$invoiceId'
     | '/tagihan/$eventId/$orderId'
     | '/kalender/'
     | '/profil/'
@@ -679,6 +698,7 @@ export interface FileRouteTypes {
     | '/partner/event/'
     | '/partner/katalog/'
     | '/partner/paket/'
+    | '/partner/tagihan/'
     | '/events/$eventId/status'
     | '/invoice/$eventId/$orderId'
     | '/profil/fee-rules/$feeRuleId'
@@ -738,6 +758,7 @@ export interface FileRouteTypes {
     | '/partner/katalog/baru'
     | '/partner/paket/$id'
     | '/partner/paket/baru'
+    | '/partner/tagihan/$invoiceId'
     | '/tagihan/$eventId/$orderId'
     | '/kalender'
     | '/profil'
@@ -745,6 +766,7 @@ export interface FileRouteTypes {
     | '/partner/event'
     | '/partner/katalog'
     | '/partner/paket'
+    | '/partner/tagihan'
     | '/events/$eventId/status'
     | '/invoice/$eventId/$orderId'
     | '/profil/fee-rules/$feeRuleId'
@@ -807,6 +829,7 @@ export interface FileRouteTypes {
     | '/partner/katalog/baru'
     | '/partner/paket/$id'
     | '/partner/paket/baru'
+    | '/partner/tagihan/$invoiceId'
     | '/tagihan/$eventId/$orderId'
     | '/_app/kalender/'
     | '/_app/profil/'
@@ -814,6 +837,7 @@ export interface FileRouteTypes {
     | '/partner/event/'
     | '/partner/katalog/'
     | '/partner/paket/'
+    | '/partner/tagihan/'
     | '/_app/events/$eventId_/status'
     | '/_app/invoice/$eventId/$orderId'
     | '/_app/profil/fee-rules/$feeRuleId'
@@ -1226,6 +1250,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PartnerPaketBaruRouteImport
       parentRoute: typeof PartnerRoute
     }
+    '/partner/tagihan/': {
+      id: '/partner/tagihan/'
+      path: '/tagihan'
+      fullPath: '/partner/tagihan/'
+      preLoaderRoute: typeof PartnerTagihanIndexRouteImport
+      parentRoute: typeof PartnerRoute
+    }
+    '/partner/tagihan/$invoiceId': {
+      id: '/partner/tagihan/$invoiceId'
+      path: '/tagihan/$invoiceId'
+      fullPath: '/partner/tagihan/$invoiceId'
+      preLoaderRoute: typeof PartnerTagihanInvoiceIdRouteImport
+      parentRoute: typeof PartnerRoute
+    }
     '/tagihan/$eventId/$orderId': {
       id: '/tagihan/$eventId/$orderId'
       path: '/tagihan/$eventId/$orderId'
@@ -1414,9 +1452,11 @@ interface PartnerRouteChildren {
   PartnerKatalogBaruRoute: typeof PartnerKatalogBaruRoute
   PartnerPaketIdRoute: typeof PartnerPaketIdRoute
   PartnerPaketBaruRoute: typeof PartnerPaketBaruRoute
+  PartnerTagihanInvoiceIdRoute: typeof PartnerTagihanInvoiceIdRoute
   PartnerEventIndexRoute: typeof PartnerEventIndexRoute
   PartnerKatalogIndexRoute: typeof PartnerKatalogIndexRoute
   PartnerPaketIndexRoute: typeof PartnerPaketIndexRoute
+  PartnerTagihanIndexRoute: typeof PartnerTagihanIndexRoute
   PartnerEventProdukIdRoute: typeof PartnerEventProdukIdRoute
   PartnerEventRekapIdRoute: typeof PartnerEventRekapIdRoute
   PartnerEventUbahIdRoute: typeof PartnerEventUbahIdRoute
@@ -1432,9 +1472,11 @@ const PartnerRouteChildren: PartnerRouteChildren = {
   PartnerKatalogBaruRoute: PartnerKatalogBaruRoute,
   PartnerPaketIdRoute: PartnerPaketIdRoute,
   PartnerPaketBaruRoute: PartnerPaketBaruRoute,
+  PartnerTagihanInvoiceIdRoute: PartnerTagihanInvoiceIdRoute,
   PartnerEventIndexRoute: PartnerEventIndexRoute,
   PartnerKatalogIndexRoute: PartnerKatalogIndexRoute,
   PartnerPaketIndexRoute: PartnerPaketIndexRoute,
+  PartnerTagihanIndexRoute: PartnerTagihanIndexRoute,
   PartnerEventProdukIdRoute: PartnerEventProdukIdRoute,
   PartnerEventRekapIdRoute: PartnerEventRekapIdRoute,
   PartnerEventUbahIdRoute: PartnerEventUbahIdRoute,

@@ -54,6 +54,9 @@ import { todayIsoDateInAppTimeZone } from '../../../lib/timezone'
 import PartnerTableToolbar from '../../../components/ui/PartnerTableToolbar'
 import PartnerSubmitReview from '../../../components/PartnerSubmitReview'
 import { useClientPager } from '../../../lib/use-client-pager'
+import SortHeader, { ariaSortOf } from '../../../components/ui/SortHeader'
+import { sortRows } from '../../../lib/table-sort'
+import { useTableSort } from '../../../lib/use-table-sort'
 
 export const Route = createFileRoute('/partner/event/$id')({
   loader: ({ context, params }) =>
@@ -64,18 +67,35 @@ export const Route = createFileRoute('/partner/event/$id')({
       ),
       context.queryClient.ensureQueryData(partnerEventProductsQuery(params.id)),
     ]),
+  // Tautan dari menu Tagihan: ?tab=jastiper&filter=siap membuka tab "Siap ditagih".
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { tab?: Tab; filter?: SubmitFilter } => ({
+    tab: TABS.find((t) => t === search.tab),
+    filter: SUBMIT_FILTERS.find((f) => f.key === search.filter)?.key,
+  }),
   component: PartnerEventDetailPage,
 })
 
-type Tab = 'info' | 'produk' | 'jastiper'
+type SubmitSortKey =
+  | 'brandName'
+  | 'submittedAt'
+  | 'queueRank'
+  | 'submitNo'
+  | 'pcsTotal'
+  | 'pcsRejected'
+type ParticipantSortKey = 'brandName' | 'joinedAt' | 'waNumber' | 'orderCount'
 
-const PARTICIPANT_COLUMNS = 'grid-cols-[minmax(0,1fr)_150px_170px_90px_130px]'
+const TABS = ['info', 'produk', 'jastiper'] as const
+type Tab = (typeof TABS)[number]
+
+const PARTICIPANT_COLUMNS = 'min-w-[860px] grid-cols-[minmax(0,1fr)_150px_170px_90px_130px]'
 /** Dengan kolom Urutan, Submit ke, Ditolak, dan Status (event memakai slot). */
 const PARTICIPANT_COLUMNS_SLOT =
-  'grid-cols-[minmax(0,1fr)_150px_80px_90px_70px_110px_190px]'
+  'min-w-[1040px] grid-cols-[minmax(0,1fr)_150px_80px_90px_70px_110px_190px]'
 /** Sama, dengan kolom checkbox di depan (tab Siap ditagih). */
 const PARTICIPANT_COLUMNS_SLOT_SELECT =
-  'grid-cols-[28px_minmax(0,1fr)_150px_80px_90px_70px_110px_190px]'
+  'min-w-[1090px] grid-cols-[28px_minmax(0,1fr)_150px_80px_90px_70px_110px_190px]'
 
 /** Inisial dari nama brand, mis. "Mici Shop" → "MS". */
 function initialsOf(name: string) {
@@ -335,12 +355,13 @@ function PartnerEventDetailPage() {
     // Hampir realtime: server serverless tidak mendukung koneksi persisten.
     refetchInterval: 15_000,
   })
-  const [tab, setTab] = useState<Tab>('jastiper')
+  const search = Route.useSearch()
+  const [tab, setTab] = useState<Tab>(search.tab ?? 'jastiper')
   const [confirmEnd, setConfirmEnd] = useState(false)
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [participantSearch, setParticipantSearch] = useState('')
-  const [submitFilter, setSubmitFilter] = useState<SubmitFilter>('semua')
+  const [submitFilter, setSubmitFilter] = useState<SubmitFilter>(search.filter ?? 'semua')
   const { data: queue = [] } = useQuery({
     queryKey: ['partner-slot-queue', id],
     queryFn: () => getPartnerSlotQueue({ data: { calendarEventId: id } }),
@@ -368,12 +389,31 @@ function PartnerEventDetailPage() {
       r.brandName.toLowerCase().includes(searchKey) &&
       matchesFilter(r, submitFilter),
   )
-  const submitPager = useClientPager(filteredSubmits)
+  const submitSort = useTableSort<SubmitSortKey>()
+  const submitPager = useClientPager(
+    sortRows(filteredSubmits, submitSort.sort, {
+      brandName: (r) => r.brandName,
+      submittedAt: (r) => r.submittedAt,
+      queueRank: (r) => r.queueRank,
+      submitNo: (r) => r.submitNo,
+      pcsTotal: (r) => r.pcs.total,
+      // Tampilan "–" untuk berkas belum dicek, jadi dianggap kosong.
+      pcsRejected: (r) => (r.checked ? r.pcs.rejected : null),
+    }),
+  )
   // Event tanpa slot tetap satu baris per jastiper.
   const filteredParticipants = participants.filter((p) =>
     (p.brandName || 'Tanpa nama').toLowerCase().includes(searchKey),
   )
-  const participantPager = useClientPager(filteredParticipants)
+  const participantSort = useTableSort<ParticipantSortKey>()
+  const participantPager = useClientPager(
+    sortRows(filteredParticipants, participantSort.sort, {
+      brandName: (p) => p.brandName || 'Tanpa nama',
+      joinedAt: (p) => p.joinedAt,
+      waNumber: (p) => p.waNumber,
+      orderCount: (p) => p.orderCount,
+    }),
+  )
   // Pilihan submit untuk satu tagihan (tab Siap ditagih). Satu tagihan = satu jastiper.
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [openInvoiceId, setOpenInvoiceId] = useState<string | null>(null)
@@ -452,6 +492,7 @@ function PartnerEventDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['invoice-preview', id] }),
       queryClient.invalidateQueries({ queryKey: ['partner-event-revenue', id] }),
       queryClient.invalidateQueries({ queryKey: ['partner-jastiper-detail', id] }),
+      queryClient.invalidateQueries({ queryKey: ['partner-invoices'] }),
     ])
   }
   const rekapStatus: PartnerStatusFilter = slotEnabled
@@ -1047,26 +1088,60 @@ function PartnerEventDetailPage() {
                   label="Cari nama jastiper"
                   pager={slotEnabled ? submitPager.pager : participantPager.pager}
                 />
-                <div className="app-card overflow-hidden">
+                <div className="app-card overflow-x-auto">
                   <div
                     className={`grid ${slotEnabled ? (selectMode ? PARTICIPANT_COLUMNS_SLOT_SELECT : PARTICIPANT_COLUMNS_SLOT) : PARTICIPANT_COLUMNS} items-center gap-4 px-5 py-3.5 text-[11px] font-bold uppercase tracking-wide`}
                     style={{ background: 'var(--pm-tint)', color: 'var(--pm-gold)' }}
                   >
                     {selectMode && <span aria-hidden="true" />}
-                    <span>Jastiper</span>
-                    <span>{slotEnabled ? 'Waktu submit' : 'Tanggal ikut'}</span>
                     {slotEnabled ? (
                       <>
-                        <span>Urutan</span>
-                        <span>Submit ke</span>
-                        <span>Pcs</span>
-                        <span>Pcs ditolak</span>
+                        {(
+                          [
+                            ['Jastiper', 'brandName'],
+                            ['Waktu submit', 'submittedAt'],
+                            ['Urutan', 'queueRank'],
+                            ['Submit ke', 'submitNo'],
+                            ['Pcs', 'pcsTotal'],
+                            ['Pcs ditolak', 'pcsRejected'],
+                          ] as const
+                        ).map(([label, key]) => (
+                          <div key={key} role="columnheader" aria-sort={ariaSortOf(submitSort.sort, key)}>
+                            <SortHeader
+                              label={label}
+                              sortKey={key}
+                              sort={submitSort.sort}
+                              onSort={(k) => {
+                                submitSort.toggle(k)
+                                submitPager.resetPage()
+                              }}
+                            />
+                          </div>
+                        ))}
                         <span>Status</span>
                       </>
                     ) : (
                       <>
-                        <span>No. WhatsApp</span>
-                        <span>Pesanan</span>
+                        {(
+                          [
+                            ['Jastiper', 'brandName'],
+                            ['Tanggal ikut', 'joinedAt'],
+                            ['No. WhatsApp', 'waNumber'],
+                            ['Pesanan', 'orderCount'],
+                          ] as const
+                        ).map(([label, key]) => (
+                          <div key={key} role="columnheader" aria-sort={ariaSortOf(participantSort.sort, key)}>
+                            <SortHeader
+                              label={label}
+                              sortKey={key}
+                              sort={participantSort.sort}
+                              onSort={(k) => {
+                                participantSort.toggle(k)
+                                participantPager.resetPage()
+                              }}
+                            />
+                          </div>
+                        ))}
                         <span>Aksi</span>
                       </>
                     )}

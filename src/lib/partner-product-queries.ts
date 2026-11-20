@@ -1,9 +1,10 @@
-import { and, desc, eq, ilike, or, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, ilike, or, sql } from 'drizzle-orm'
 import { db } from '../db'
 import { partnerProducts } from '../db/schema'
 import { clampPage, pageOffset } from './pagination'
 import { escapeLike } from './partner-list-filters'
 import type { Paged } from './pagination'
+import type { SortState } from './table-sort'
 import type { PartnerProductTab } from './partner-list-filters'
 
 /**
@@ -60,6 +61,25 @@ export async function listPartnerProducts(
   return rows.map((r) => ({ ...toRow(r.product), eventCount: r.eventCount }))
 }
 
+/** Kolom tabel Katalog yang boleh diurutkan. */
+export const PRODUCT_SORT_KEYS = ['name', 'price', 'eventCount', 'isActive'] as const
+export type ProductSortKey = (typeof PRODUCT_SORT_KEYS)[number]
+
+const PRODUCT_SORT_COLUMNS = {
+  name: sql`lower(${partnerProducts.name})`,
+  price: sql`${partnerProducts.price}`,
+  eventCount: sql`(select count(*)::int from partner_event_products pep where pep.product_id = "partner_products"."id")`,
+  isActive: sql`${partnerProducts.isActive}`,
+} as const
+
+/** Urutan sort pilihan pengguna, lalu urutan bawaan sebagai pemutus seri. */
+function productOrder(sort: SortState<ProductSortKey> | undefined) {
+  const fallback = [desc(partnerProducts.createdAt), desc(partnerProducts.id)]
+  if (!sort) return fallback
+  const column = PRODUCT_SORT_COLUMNS[sort.key]
+  return [sort.dir === 'asc' ? asc(column) : desc(column), ...fallback]
+}
+
 export type PartnerProductPage = Paged<PartnerProductListRow> & {
   /** Jumlah per tab, TIDAK terpengaruh kata kunci pencarian. */
   counts: Record<PartnerProductTab, number>
@@ -78,6 +98,7 @@ export async function listPartnerProductsPage(
     search: string
     page: number
     pageSize: number
+    sort?: SortState<ProductSortKey>
   },
 ): Promise<PartnerProductPage> {
   const owned = eq(partnerProducts.partnerId, partnerId)
@@ -125,7 +146,7 @@ export async function listPartnerProductsPage(
     })
     .from(partnerProducts)
     .where(where)
-    .orderBy(desc(partnerProducts.createdAt), desc(partnerProducts.id))
+    .orderBy(...productOrder(input.sort))
     .limit(input.pageSize)
     .offset(pageOffset(page, input.pageSize))
 

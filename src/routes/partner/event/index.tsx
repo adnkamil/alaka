@@ -12,6 +12,10 @@ import {
 import PartnerEventStatusBadge from '../../../components/PartnerEventStatusBadge'
 import Pagination from '../../../components/ui/Pagination'
 import PartnerTableToolbar from '../../../components/ui/PartnerTableToolbar'
+import SortHeader, { ariaSortOf } from '../../../components/ui/SortHeader'
+import { useTableSort } from '../../../lib/use-table-sort'
+import type { EventSortKey } from '../../../lib/partner-event-queries'
+import type { SortState } from '../../../lib/table-sort'
 import { useDebouncedValue } from '../../../lib/use-debounced-value'
 import { formatDateRange } from '../../../lib/calendar'
 import { DEFAULT_PAGE_SIZE } from '../../../lib/pagination'
@@ -50,9 +54,16 @@ function PartnerEventListPage() {
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebouncedValue(search.trim())
   const today = todayIsoDateInAppTimeZone()
+  const { sort, toggle } = useTableSort<EventSortKey>()
 
   const { data } = useQuery({
-    ...partnerEventsPageQuery({ tab, page, pageSize, search: debouncedSearch }),
+    ...partnerEventsPageQuery({
+      tab,
+      page,
+      pageSize,
+      search: debouncedSearch,
+      sort,
+    }),
     // Tabel tetap tampil (data lama) selama halaman berikutnya ditarik.
     placeholderData: keepPreviousData,
   })
@@ -72,6 +83,10 @@ function PartnerEventListPage() {
 
   function changeTab(next: Tab) {
     setTab(next)
+    setPage(1)
+  }
+  function onSort(key: EventSortKey) {
+    toggle(key)
     setPage(1)
   }
   function onSearchChange(value: string) {
@@ -216,13 +231,15 @@ function PartnerEventListPage() {
         search={search}
         onSearchChange={onSearchChange}
         searching={debouncedSearch !== ''}
+        sort={sort}
+        onSort={onSort}
       />
     </>
   )
 }
 
 const COLUMNS =
-  'grid-cols-[minmax(0,1.5fr)_170px_minmax(0,1fr)_90px_110px_110px]'
+  'min-w-[980px] grid-cols-[minmax(0,1.5fr)_170px_minmax(0,1fr)_90px_110px_110px]'
 
 type EventWithStatus = {
   event: PartnerEventRow
@@ -239,6 +256,8 @@ function EventsDesktop({
   search,
   onSearchChange,
   searching,
+  sort,
+  onSort,
 }: {
   visible: Array<EventWithStatus>
   counts: Record<Tab, number>
@@ -248,6 +267,8 @@ function EventsDesktop({
   search: string
   onSearchChange: (value: string) => void
   searching: boolean
+  sort: SortState<EventSortKey>
+  onSort: (key: EventSortKey) => void
 }) {
   return (
     <main className="pm-wide hidden flex-col gap-5 lg:flex">
@@ -315,16 +336,24 @@ function EventsDesktop({
             label="Cari nama event"
             pager={pager}
           />
-          <div className="app-card overflow-hidden">
+          <div className="app-card overflow-x-auto">
             <div
               className={`grid ${COLUMNS} items-center gap-4 px-5 py-3.5 text-[11px] font-bold uppercase tracking-wide`}
               style={{ background: 'var(--pm-tint)', color: 'var(--pm-gold)' }}
             >
-              <span>Event</span>
-              <span>Tanggal</span>
-              <span>Lokasi</span>
-              <span>Tipe</span>
-              <span>Jastiper</span>
+              {(
+                [
+                  ['Event', 'name'],
+                  ['Tanggal', 'eventDate'],
+                  ['Lokasi', 'location'],
+                  ['Tipe', 'isOnline'],
+                  ['Jastiper', 'participantCount'],
+                ] as const
+              ).map(([label, key]) => (
+                <div key={key} role="columnheader" aria-sort={ariaSortOf(sort, key)}>
+                  <SortHeader label={label} sortKey={key} sort={sort} onSort={onSort} />
+                </div>
+              ))}
               <span>Status</span>
             </div>
             {visible.map(({ event, status }) => (

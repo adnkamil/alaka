@@ -188,7 +188,12 @@ export default function PartnerTopbar({ name, logoUrl }: PartnerTopbarProps) {
       </div>
       )}
 
-      <div className="flex items-center gap-3">
+      <Link
+        to="/partner/profil"
+        aria-label="Profil"
+        className="flex items-center gap-3 rounded-xl py-1 pl-1 pr-2 no-underline hover:bg-[var(--pm-tint)]"
+        style={{ color: 'inherit' }}
+      >
         <PartnerLogo
           name={name}
           logoUrl={logoUrl}
@@ -198,7 +203,7 @@ export default function PartnerTopbar({ name, logoUrl }: PartnerTopbarProps) {
           className="pm-display text-xs"
         />
         <span className="text-[13px] font-bold">{name}</span>
-      </div>
+      </Link>
     </header>
   )
 }

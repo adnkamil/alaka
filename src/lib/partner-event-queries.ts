@@ -1,10 +1,11 @@
-import { and, asc, eq, ilike, isNotNull, isNull, or, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, ilike, isNotNull, isNull, or, sql } from 'drizzle-orm'
 import { db } from '../db'
 import { calendarEvents } from '../db/schema'
 import { calendarBannerSrc } from './calendar'
 import { clampPage, pageOffset } from './pagination'
 import { todayIsoDateInAppTimeZone } from './timezone'
 import type { Paged } from './pagination'
+import type { SortState } from './table-sort'
 import type { PartnerEventStatus } from './partner-event-rules'
 import type { CalendarEventFields } from './calendar-event-input'
 
@@ -93,6 +94,36 @@ export async function listPartnerEvents(
 
 export type PartnerEventTab = 'all' | PartnerEventStatus
 
+/** Kolom tabel Event yang boleh diurutkan (Status diturunkan, tidak ikut). */
+export const EVENT_SORT_KEYS = [
+  'name',
+  'eventDate',
+  'location',
+  'isOnline',
+  'participantCount',
+] as const
+export type EventSortKey = (typeof EVENT_SORT_KEYS)[number]
+
+const EVENT_SORT_COLUMNS = {
+  name: sql`lower(${calendarEvents.name})`,
+  eventDate: sql`${calendarEvents.eventDate}`,
+  location: sql`lower(${calendarEvents.location})`,
+  isOnline: sql`${calendarEvents.isOnline}`,
+  participantCount,
+} as const
+
+/** Urutan pilihan pengguna, lalu urutan bawaan sebagai pemutus seri. */
+function eventOrder(sort: SortState<EventSortKey> | undefined) {
+  const fallback = [
+    sql`${calendarEvents.eventDate} desc`,
+    asc(calendarEvents.name),
+    asc(calendarEvents.id),
+  ]
+  if (!sort) return fallback
+  const column = EVENT_SORT_COLUMNS[sort.key]
+  return [sort.dir === 'asc' ? asc(column) : desc(column), ...fallback]
+}
+
 export type PartnerEventPage = Paged<PartnerEventRow> & {
   /** Jumlah per tab status. */
   counts: Record<PartnerEventTab, number>
@@ -133,7 +164,13 @@ function statusCondition(status: PartnerEventStatus, today: string) {
  */
 export async function listPartnerEventsPage(
   partnerId: string,
-  input: { tab: PartnerEventTab; page: number; pageSize: number; search?: string },
+  input: {
+    tab: PartnerEventTab
+    page: number
+    pageSize: number
+    search?: string
+    sort?: SortState<EventSortKey>
+  },
 ): Promise<PartnerEventPage> {
   const today = todayIsoDateInAppTimeZone()
   const owned = eq(calendarEvents.partnerId, partnerId)
@@ -175,11 +212,7 @@ export async function listPartnerEventsPage(
     .select(columns)
     .from(calendarEvents)
     .where(where)
-    .orderBy(
-      sql`${calendarEvents.eventDate} desc`,
-      asc(calendarEvents.name),
-      asc(calendarEvents.id),
-    )
+    .orderBy(...eventOrder(input.sort))
     .limit(input.pageSize)
     .offset(pageOffset(page, input.pageSize))
 

@@ -10,6 +10,7 @@ import {
 import type { InvoicePreviewResult } from './invoice-queries'
 import type { InvoiceStatus } from './invoice-rules'
 import { partnerOwnsEvent } from './partner-event-queries'
+import { partnerLogoUrl } from './partner-logo-rules'
 
 /**
  * Server function tagihan partner. Handler memakai import dinamis supaya `db`
@@ -47,6 +48,15 @@ export type PartnerBankInfo = {
 
 export type InvoiceDetail = InvoiceSummary & {
   brandName: string
+  brandId: string
+  /** Event partner (kalender) tempat tagihan ini dibuat. */
+  calendarEventId: string
+  eventName: string
+  /** Identitas penerbit dan penerima untuk lembar invoice cetak. */
+  partnerName: string
+  partnerWa: string | null
+  partnerLogoUrl: string | null
+  brandWa: string | null
   /** Rekening partner saat ini. Null = partner belum mengisinya. */
   partnerBank: PartnerBankInfo | null
   /** Nomor submit yang masuk tagihan ini. */
@@ -152,6 +162,7 @@ async function loadInvoiceDetail(invoiceId: string, scope: {
     invoiceSubmissions,
     eventSubmissions,
     brands,
+    calendarEvents,
     partners,
   } = await import('../db/schema')
   const invoice = await db
@@ -169,6 +180,14 @@ async function loadInvoiceDetail(invoiceId: string, scope: {
       paymentProofStored: invoices.paymentProofStored,
       paymentRejectReason: invoices.paymentRejectReason,
       brandName: brands.name,
+      brandId: invoices.brandId,
+      calendarEventId: invoices.calendarEventId,
+      eventName: calendarEvents.name,
+      partnerName: partners.name,
+      partnerWa: partners.waNumber,
+      partnerId: partners.id,
+      partnerLogoUpdatedAt: partners.logoUpdatedAt,
+      brandWa: brands.waNumber,
       bankName: partners.bankName,
       bankAccountNumber: partners.bankAccountNumber,
       bankAccountName: partners.bankAccountName,
@@ -176,6 +195,7 @@ async function loadInvoiceDetail(invoiceId: string, scope: {
     .from(invoices)
     .innerJoin(brands, eq(brands.id, invoices.brandId))
     .innerJoin(partners, eq(partners.id, invoices.partnerId))
+    .innerJoin(calendarEvents, eq(calendarEvents.id, invoices.calendarEventId))
     .where(
       and(
         eq(invoices.id, invoiceId),
@@ -216,6 +236,13 @@ async function loadInvoiceDetail(invoiceId: string, scope: {
     hasProof: invoice.paymentProofStored,
     paymentRejectReason: invoice.paymentRejectReason,
     brandName: invoice.brandName ?? 'Jastiper',
+    brandId: invoice.brandId,
+    calendarEventId: invoice.calendarEventId,
+    eventName: invoice.eventName,
+    partnerName: invoice.partnerName,
+    partnerWa: invoice.partnerWa,
+    partnerLogoUrl: partnerLogoUrl(invoice.partnerId, invoice.partnerLogoUpdatedAt),
+    brandWa: invoice.brandWa,
     partnerBank:
       invoice.bankName && invoice.bankAccountNumber && invoice.bankAccountName
         ? {
@@ -313,6 +340,99 @@ export const listEventInvoices = createServerFn({ method: 'GET' })
       paidConfirmedAt: r.paidConfirmedAt,
       hasProof: r.paymentProofStored,
       paymentRejectReason: r.paymentRejectReason,
+    }))
+  })
+
+/** Satu baris di daftar tagihan partner: lengkap dengan event dan jastiper-nya. */
+export type PartnerInvoiceRow = EventInvoiceSummary & {
+  calendarEventId: string
+  eventName: string
+  brandId: string
+  brandName: string
+}
+
+/**
+ * Semua tagihan milik partner yang login (terbaru dulu). Filter event dan
+ * jastiper bersifat opsional; filter status dilakukan di client karena
+ * jumlah tagihan per partner kecil.
+ */
+export const listPartnerInvoices = createServerFn({ method: 'GET' })
+  .validator(
+    z.object({
+      calendarEventId: idSchema.optional(),
+      brandId: idSchema.optional(),
+    }),
+  )
+  .handler(async ({ data }): Promise<Array<PartnerInvoiceRow>> => {
+    const partner = await requirePartner()
+    const { db } = await import('../db')
+    const { and, desc, eq, inArray } = await import('drizzle-orm')
+    const {
+      brands,
+      calendarEvents,
+      eventSubmissions,
+      invoices,
+      invoiceSubmissions,
+    } = await import('../db/schema')
+    const rows = await db
+      .select({
+        invoice: invoices,
+        eventName: calendarEvents.name,
+        brandName: brands.name,
+      })
+      .from(invoices)
+      .innerJoin(calendarEvents, eq(calendarEvents.id, invoices.calendarEventId))
+      .innerJoin(brands, eq(brands.id, invoices.brandId))
+      .where(
+        and(
+          eq(invoices.partnerId, partner.id),
+          data.calendarEventId
+            ? eq(invoices.calendarEventId, data.calendarEventId)
+            : undefined,
+          data.brandId ? eq(invoices.brandId, data.brandId) : undefined,
+        ),
+      )
+      .orderBy(desc(invoices.sentAt))
+    const links =
+      rows.length === 0
+        ? []
+        : await db
+            .select({
+              invoiceId: invoiceSubmissions.invoiceId,
+              submitNo: eventSubmissions.submitNo,
+            })
+            .from(invoiceSubmissions)
+            .innerJoin(
+              eventSubmissions,
+              eq(eventSubmissions.id, invoiceSubmissions.submissionId),
+            )
+            .where(
+              inArray(
+                invoiceSubmissions.invoiceId,
+                rows.map((r) => r.invoice.id),
+              ),
+            )
+    return rows.map(({ invoice: r, eventName, brandName }) => ({
+      submitNos: links
+        .filter((l) => l.invoiceId === r.id)
+        .map((l) => l.submitNo)
+        .sort((a, b) => a - b),
+      id: r.id,
+      number: r.number,
+      status: r.status,
+      totalAmount: Number(r.totalAmount),
+      totalPcs: r.totalPcs,
+      sentAt: r.sentAt,
+      cancelledAt: r.cancelledAt,
+      cancelReason: r.cancelReason,
+      paidClaimedAt: r.paidClaimedAt,
+      paidConfirmedAt: r.paidConfirmedAt,
+      hasProof: r.paymentProofStored,
+      paymentRejectReason: r.paymentRejectReason,
+      calendarEventId: r.calendarEventId,
+      eventName,
+      brandId: r.brandId,
+      brandName: brandName ?? 'Tanpa nama',
     }))
   })
 

@@ -1,8 +1,10 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, asc, count, eq, ilike, inArray } from 'drizzle-orm'
+import { and, asc, count, desc, eq, ilike, inArray, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { clampPage, pageOffset, pageParamsSchema } from './pagination'
 import { requirePartner } from './partner-auth'
+import { RULE_SORT_KEYS } from './partner-rule-sort'
+import { sortParamSchema } from './table-sort'
 import { hasPartnerPro } from './partner-entitlement'
 import { assertRuleScopesNoOverlap } from './partner-pricing'
 import { productSizesForRule, validateProductSizes } from './partner-rule-sizes'
@@ -156,6 +158,7 @@ export const listPartnerRulesPage = createServerFn({ method: 'GET' })
   .validator(
     pageParamsSchema.extend({
       search: z.string().max(100).default(''),
+      sort: sortParamSchema(RULE_SORT_KEYS),
     }),
   )
   .handler(async ({ data }) => {
@@ -175,11 +178,29 @@ export const listPartnerRulesPage = createServerFn({ method: 'GET' })
       .from(partnerPricingRules)
       .where(owned)
     const page = clampPage(data.page, total, data.pageSize)
+    const sortColumns = {
+      name: sql`lower(${partnerPricingRules.name})`,
+      minQty: sql`${partnerPricingRules.minQty}`,
+      bundlePrice: sql`${partnerPricingRules.bundlePrice}`,
+      isActive: sql`${partnerPricingRules.isActive}`,
+    }
+    const fallbackOrder = [
+      asc(partnerPricingRules.position),
+      asc(partnerPricingRules.id),
+    ]
+    const order = data.sort
+      ? [
+          data.sort.dir === 'asc'
+            ? asc(sortColumns[data.sort.key])
+            : desc(sortColumns[data.sort.key]),
+          ...fallbackOrder,
+        ]
+      : fallbackOrder
     const rules = await db
       .select()
       .from(partnerPricingRules)
       .where(owned)
-      .orderBy(asc(partnerPricingRules.position), asc(partnerPricingRules.id))
+      .orderBy(...order)
       .limit(data.pageSize)
       .offset(pageOffset(page, data.pageSize))
     const links = rules.length

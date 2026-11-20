@@ -6,6 +6,9 @@ import { PARTNER_STATUS_FILTERS } from '../../../lib/event-slot'
 import { getPartnerEventPicklist } from '../../../lib/partner-picklist-functions'
 import { useClientPager } from '../../../lib/use-client-pager'
 import PartnerTableToolbar from '../../../components/ui/PartnerTableToolbar'
+import SortHeader, { ariaSortOf } from '../../../components/ui/SortHeader'
+import { sortRows } from '../../../lib/table-sort'
+import { useTableSort } from '../../../lib/use-table-sort'
 
 export const Route = createFileRoute('/partner/event/rekap/$id')({
   // Status jastiper yang direkap, mengikuti chip di halaman event.
@@ -41,7 +44,18 @@ function PartnerEventRekapPage() {
   const rekapRows = (data?.rows ?? []).filter((row) =>
     row.productName.toLowerCase().includes(search.trim().toLowerCase()),
   )
-  const rekapPager = useClientPager(rekapRows)
+  const rekapSort = useTableSort<
+    'productName' | 'size' | 'variation' | 'source' | 'total'
+  >()
+  const rekapPager = useClientPager(
+    sortRows(rekapRows, rekapSort.sort, {
+      productName: (r) => r.productName,
+      size: (r) => r.size,
+      variation: (r) => r.variation,
+      source: (r) => (r.ruleName ? `Paket: ${r.ruleName}` : 'Satuan'),
+      total: (r) => r.total,
+    }),
+  )
 
   return (
     <main className="pm-wide flex flex-col gap-4 px-5 pb-8 pt-4 lg:gap-5">
@@ -150,9 +164,32 @@ function PartnerEventRekapPage() {
           <table className="w-full text-[13px]">
             <thead style={{ background: 'var(--app-card-soft, #f7f1e7)' }}>
               <tr>
-                {['Produk', 'Ukuran', 'Variasi', 'Sumber', 'Qty', 'Per jastiper'].map((h) => (
-                  <th key={h} className={`px-4 py-3 text-left text-[11px] font-semibold ${h === 'Qty' ? 'text-right' : ''}`} style={{ color: 'var(--app-text-soft)' }}>
-                    {h}
+                {(
+                  [
+                    ['Produk', 'productName'],
+                    ['Ukuran', 'size'],
+                    ['Variasi', 'variation'],
+                    ['Sumber', 'source'],
+                    ['Qty', 'total'],
+                    ['Per jastiper', undefined],
+                  ] as const
+                ).map(([h, key]) => (
+                  <th
+                    key={h}
+                    aria-sort={key ? ariaSortOf(rekapSort.sort, key) : undefined}
+                    className={`px-4 py-3 text-left text-[11px] font-semibold ${h === 'Qty' ? 'text-right' : ''}`}
+                    style={{ color: 'var(--app-text-soft)' }}
+                  >
+                    <SortHeader
+                      label={h}
+                      sortKey={key}
+                      sort={rekapSort.sort}
+                      onSort={(k) => {
+                        rekapSort.toggle(k)
+                        rekapPager.resetPage()
+                      }}
+                      align={h === 'Qty' ? 'right' : 'left'}
+                    />
                   </th>
                 ))}
               </tr>

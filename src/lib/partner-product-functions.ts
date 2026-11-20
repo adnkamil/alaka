@@ -7,6 +7,7 @@ import {
   parseAvatarDataUrl,
 } from './avatar-validation'
 import { pageParamsSchema } from './pagination'
+import { sortParamSchema } from './table-sort'
 import { requirePartner } from './partner-auth'
 import {
   PARTNER_PRODUCT_TABS,
@@ -16,6 +17,7 @@ import {
   getPartnerProduct,
   insertPartnerProduct,
   listPartnerProducts,
+  PRODUCT_SORT_KEYS,
   listPartnerProductsPage,
   updatePartnerProduct,
 } from './partner-product-queries'
@@ -77,12 +79,14 @@ export const fetchPartnerProductsPage = createServerFn({ method: 'GET' })
     pageParamsSchema.extend({
       tab: z.enum(PARTNER_PRODUCT_TABS as [string, ...Array<string>]),
       search: z.string().max(PARTNER_SEARCH_MAX),
+      sort: sortParamSchema(PRODUCT_SORT_KEYS),
     }),
   )
   .handler(async ({ data }) => {
     const partner = await requirePartner()
     return listPartnerProductsPage(partner.id, {
       ...data,
+      sort: data.sort ?? null,
       tab: data.tab as 'all' | 'aktif' | 'nonaktif',
     })
   })

@@ -20,8 +20,12 @@ import { partnerProductsPageQuery } from '../../../lib/queries'
 import type {
   PartnerProductListRow,
   PartnerProductRow,
+  ProductSortKey,
 } from '../../../lib/partner-product-queries'
 import PartnerTableToolbar from '../../../components/ui/PartnerTableToolbar'
+import SortHeader, { ariaSortOf } from '../../../components/ui/SortHeader'
+import { useTableSort } from '../../../lib/use-table-sort'
+import type { SortState } from '../../../lib/table-sort'
 
 export const Route = createFileRoute('/partner/katalog/')({
   // Halaman pertama dimuat dulu; halaman/filter berikutnya ditarik per halaman.
@@ -52,6 +56,7 @@ function PartnerCatalogPage() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
   const [notice, setNotice] = useState<string | null>(null)
+  const { sort, toggle } = useTableSort<ProductSortKey>()
   // Kata kunci dikirim ke server setelah berhenti mengetik sebentar.
   const debouncedSearch = useDebouncedValue(search.trim())
 
@@ -61,6 +66,7 @@ function PartnerCatalogPage() {
       search: debouncedSearch,
       page,
       pageSize,
+      sort,
     }),
     // Tabel tetap tampil (data lama) selama halaman berikutnya ditarik.
     placeholderData: keepPreviousData,
@@ -77,6 +83,10 @@ function PartnerCatalogPage() {
 
   function changeTab(next: Tab) {
     setTab(next)
+    setPage(1)
+  }
+  function changeSort(key: ProductSortKey) {
+    toggle(key)
     setPage(1)
   }
   function changeSearch(next: string) {
@@ -173,6 +183,8 @@ function PartnerCatalogPage() {
         onSearch={changeSearch}
         onToggle={handleToggle}
         pager={pager}
+        sort={sort}
+        onSort={changeSort}
       />
       {notice && <Toast message={notice} onClose={() => setNotice(null)} />}
     </>
@@ -248,7 +260,7 @@ function ProductRow({
   )
 }
 
-const COLUMNS = 'grid-cols-[minmax(0,1fr)_130px_150px_110px_70px]'
+const COLUMNS = 'min-w-[780px] grid-cols-[minmax(0,1fr)_130px_150px_110px_70px]'
 
 /** Katalog layout desktop (>= lg) sesuai Figma "D3 Katalog Produk". */
 function CatalogDesktop({
@@ -260,6 +272,8 @@ function CatalogDesktop({
   onSearch,
   onToggle,
   pager,
+  sort,
+  onSort,
 }: {
   visible: Array<PartnerProductListRow>
   counts: Record<Tab, number>
@@ -269,6 +283,8 @@ function CatalogDesktop({
   onSearch: (value: string) => void
   onToggle: (product: PartnerProductRow) => void
   pager: React.ComponentProps<typeof Pagination>
+  sort: SortState<ProductSortKey>
+  onSort: (key: ProductSortKey) => void
 }) {
   return (
     <main className="pm-wide hidden flex-col gap-5 lg:flex">
@@ -327,15 +343,23 @@ function CatalogDesktop({
             label="Cari nama atau kode produk"
             pager={pager}
           />
-          <div className="app-card overflow-hidden">
+          <div className="app-card overflow-x-auto">
             <div
               className={`grid ${COLUMNS} items-center gap-4 px-5 py-3.5 text-[11px] font-bold uppercase tracking-wide`}
               style={{ background: 'var(--pm-tint)', color: 'var(--pm-gold)' }}
             >
-              <span>Produk</span>
-              <span>Harga</span>
-              <span>Dipakai di event</span>
-              <span>Status</span>
+              {(
+                [
+                  ['Produk', 'name'],
+                  ['Harga', 'price'],
+                  ['Dipakai di event', 'eventCount'],
+                  ['Status', 'isActive'],
+                ] as const
+              ).map(([label, key]) => (
+                <div key={key} role="columnheader" aria-sort={ariaSortOf(sort, key)}>
+                  <SortHeader label={label} sortKey={key} sort={sort} onSort={onSort} />
+                </div>
+              ))}
               <span>Aksi</span>
             </div>
             {visible.map((product) => (

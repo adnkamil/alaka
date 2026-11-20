@@ -953,3 +953,166 @@ a {
     max-width: 480px;
   }
 }
+
+/* Cetak (mis. daftar packing): buang navigasi portal partner dan lebarkan isi. */
+@media print {
+  .pm-sidebar,
+  .pm-topbar,
+  .pm-bottomnav {
+    display: none !important;
+  }
+  .pm-root {
+    display: block !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Lembar cetak: invoice dan daftar packing. Selalu terang (kertas putih),
+   apa pun tema aplikasi.
+   --------------------------------------------------------------------------- */
+.inv-sheet {
+  --inv-ink: #111827;
+  --inv-mute: #6b7280;
+  --inv-line: #e5e7eb;
+  --inv-tint: #f8fafc;
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 794px; /* A4 pada 96dpi */
+  margin: 0 auto;
+  padding: 36px 40px;
+  background: #fff;
+  color: var(--inv-ink);
+  border: 1px solid var(--inv-line);
+  border-radius: 16px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.inv-sheet p,
+.inv-sheet h1,
+.inv-sheet ul,
+.inv-sheet dl,
+.inv-sheet dd {
+  margin: 0;
+}
+.inv-muted { color: var(--inv-mute); font-size: 12px; }
+.inv-strong { font-weight: 700; display: block; }
+.inv-sub { display: block; color: var(--inv-mute); font-size: 12px; }
+.inv-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--inv-line);
+}
+.inv-brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.inv-logo {
+  width: 56px; height: 56px; flex: none; object-fit: contain; border-radius: 10px;
+}
+.inv-logo--initial {
+  display: flex; align-items: center; justify-content: center;
+  background: #f1f5f9; font-size: 24px; font-weight: 800;
+}
+.inv-partner { font-size: 22px; font-weight: 800; line-height: 1.15; }
+.inv-title { text-align: right; flex: none; }
+.inv-doc { font-size: 18px; font-weight: 800; letter-spacing: 0.02em; }
+.inv-number {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px; font-weight: 700;
+}
+.inv-boxes {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 20px;
+}
+.inv-box {
+  border: 1px solid var(--inv-line); border-radius: 14px;
+  background: var(--inv-tint); padding: 12px 16px;
+}
+.inv-box--pay { display: flex; flex-direction: column; gap: 1px; }
+.inv-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--inv-mute); margin-bottom: 4px;
+}
+.inv-box-title { font-size: 16px; font-weight: 800; }
+.inv-account { font-size: 17px; font-weight: 800; letter-spacing: 0.04em; }
+.inv-table { width: 100%; border-collapse: collapse; margin-top: 22px; }
+.inv-table th {
+  background: var(--inv-tint); color: var(--inv-ink); font-size: 11px;
+  font-weight: 700; text-align: left; padding: 9px 10px;
+}
+.inv-table td {
+  padding: 10px; vertical-align: top; border-bottom: 1px solid var(--inv-line);
+}
+.inv-table tr { break-inside: avoid; }
+.inv-table thead { display: table-header-group; }
+.inv-c-no { width: 36px; text-align: center !important; }
+.inv-c-qty { width: 70px; text-align: center !important; }
+.inv-c-money { width: 110px; text-align: right !important; white-space: nowrap; }
+.inv-bundle { list-style: none; padding: 4px 0 0 12px; border-left: 2px solid var(--inv-line); margin-top: 4px; }
+.inv-bundle li { padding: 2px 0; }
+.inv-summary {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 24px; margin-top: 18px; break-inside: avoid;
+}
+.inv-pay { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; max-width: 300px; }
+.inv-totals { width: 280px; flex: none; }
+.inv-totals > div { display: flex; justify-content: space-between; padding: 4px 0; }
+.inv-totals dd { font-weight: 700; }
+.inv-grand {
+  margin-top: 6px; padding-top: 10px !important; border-top: 2px solid var(--inv-ink);
+  font-size: 16px; font-weight: 800;
+}
+.inv-grand dd { font-size: 18px; font-weight: 800; }
+.inv-foot {
+  margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--inv-line);
+  text-align: center; color: var(--inv-mute); font-size: 12px;
+}
+.inv-stamp {
+  position: absolute; top: 120px; right: 56px; transform: rotate(-12deg);
+  border: 3px solid; border-radius: 10px; padding: 2px 14px;
+  font-size: 26px; font-weight: 800; letter-spacing: 0.08em; opacity: 0.8;
+  pointer-events: none;
+}
+/* Packing: tulisan besar supaya mudah dibaca di gudang. */
+.inv-sheet--packing { font-size: 11px; line-height: 1.3; }
+.inv-sheet--packing .inv-box-title { font-size: 13px; }
+.inv-sheet--packing .inv-doc { font-size: 15px; }
+.inv-table--packing { margin-top: 14px; }
+.inv-table--packing th { padding: 6px 8px; font-size: 10px; }
+.inv-table--packing td { padding: 4px 8px; }
+.inv-table--packing tfoot td { border-bottom: 0; border-top: 2px solid var(--inv-ink); }
+.inv-c-check { width: 36px; text-align: center !important; }
+.inv-c-opt { width: 130px; }
+.inv-checkbox {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 14px; height: 14px; border: 1.5px solid var(--inv-ink); border-radius: 3px; font-size: 11px;
+  font-weight: 800; line-height: 1;
+}
+.inv-qty-big { font-size: 13px; font-weight: 800; }
+.inv-signs { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 48px; break-inside: avoid; }
+.inv-signs > div { border-top: 1px solid var(--inv-ink); padding-top: 6px; text-align: center; color: var(--inv-mute); font-size: 12px; }
+
+@media (max-width: 640px) {
+  .inv-sheet { padding: 20px 16px; font-size: 12px; overflow-x: auto; }
+  .inv-head { flex-direction: column; }
+  .inv-title { text-align: left; }
+  .inv-boxes { grid-template-columns: 1fr; }
+  .inv-summary { flex-direction: column; }
+  .inv-totals, .inv-pay { width: 100%; max-width: none; }
+  .inv-c-money { width: 90px; }
+  .inv-c-opt { width: 80px; }
+}
+
+@media print {
+  @page { size: A4; margin: 12mm; }
+  html, body { background: #fff !important; }
+  .inv-sheet {
+    max-width: none; border: 0; border-radius: 0; padding: 0; overflow: visible;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .inv-sheet + .inv-sheet { break-before: page; }
+  .pm-content, .pm-main, .app-shell {
+    padding: 0 !important; margin: 0 !important; max-width: none !important;
+    background: #fff !important; display: block !important;
+  }
+  .pm-wide { padding: 0 !important; max-width: none !important; }
+}

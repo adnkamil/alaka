@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { X } from 'lucide-react'
+import InvoiceLinesBySubmit from './InvoiceLinesBySubmit'
 import InvoiceStatusBadge from './InvoiceStatusBadge'
 import PaymentProofViewer from './PaymentProofViewer'
 import { useBackToClose } from '../lib/back-to-close'
@@ -195,38 +196,8 @@ export default function InvoiceDetailModal({
               )}
             </div>
 
-            <div className="overflow-y-auto p-0">
-              <table className="w-full text-[13px]">
-                <thead style={{ background: 'var(--pm-tint)' }}>
-                  <tr>
-                    {['Submit', 'Barang', 'Qty', 'Harga', 'Jumlah'].map((h) => (
-                      <th
-                        key={h}
-                        className={`px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide ${['Qty', 'Harga', 'Jumlah'].includes(h) ? 'text-right' : 'text-left'}`}
-                        style={{ color: 'var(--pm-gold)' }}
-                      >
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {d.lines.map((l) => (
-                    <tr key={l.id} className="border-t" style={{ borderColor: 'var(--app-border)' }}>
-                      <td className="pm-num px-4 py-2.5">{l.submitNo}</td>
-                      <td className="px-4 py-2.5">
-                        {l.label}
-                        {l.kind === 'paket' && (
-                          <span className="ml-1 text-[11px]" style={{ color: 'var(--app-text-soft)' }}>(harga paket)</span>
-                        )}
-                      </td>
-                      <td className="pm-num px-4 py-2.5 text-right">{l.qty}</td>
-                      <td className="pm-num px-4 py-2.5 text-right">{formatRupiah(l.unitPrice)}</td>
-                      <td className="pm-num px-4 py-2.5 text-right font-semibold">{formatRupiah(l.amount)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="overflow-y-auto">
+              <InvoiceLinesBySubmit lines={d.lines} />
             </div>
 
             <div className="flex flex-col gap-3 border-t p-5" style={{ borderColor: 'var(--app-border)' }}>
@@ -392,7 +363,7 @@ export default function InvoiceDetailModal({
 }
 
 /** Rekening tujuan transfer. Jastiper bisa menyalin nomornya. */
-function BankInfo({
+export function BankInfo({
   bank,
   forPartner,
   totalAmount,

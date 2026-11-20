@@ -8,6 +8,9 @@ import { Layers, Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import Pagination from '../../../components/ui/Pagination'
 import PartnerTableToolbar from '../../../components/ui/PartnerTableToolbar'
+import SortHeader, { ariaSortOf } from '../../../components/ui/SortHeader'
+import { useTableSort } from '../../../lib/use-table-sort'
+import type { RuleSortKey } from '../../../lib/partner-rule-sort'
 import { useDebouncedValue } from '../../../lib/use-debounced-value'
 import { DEFAULT_PAGE_SIZE } from '../../../lib/pagination'
 import { deletePartnerRule } from '../../../lib/partner-rule-functions'
@@ -19,7 +22,7 @@ export const Route = createFileRoute('/partner/paket/')({
 
 const RULES_KEY = ['partner-rules']
 
-const COLUMNS = 'grid-cols-[minmax(0,1.5fr)_70px_150px_110px_110px_130px]'
+const COLUMNS = 'min-w-[920px] grid-cols-[minmax(0,1.5fr)_70px_150px_110px_110px_130px]'
 
 function formatPrice(value: number) {
   return `Rp${value.toLocaleString('id-ID')}`
@@ -45,8 +48,9 @@ function PartnerPaketPage() {
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebouncedValue(search.trim())
+  const { sort, toggle } = useTableSort<RuleSortKey>()
   const { data, isLoading, error } = useQuery({
-    ...partnerRulesPageQuery({ page, pageSize, search: debouncedSearch }),
+    ...partnerRulesPageQuery({ page, pageSize, search: debouncedSearch, sort }),
     // Tabel tetap tampil (data lama) selama halaman berikutnya ditarik.
     placeholderData: keepPreviousData,
   })
@@ -224,16 +228,42 @@ function PartnerPaketPage() {
           </div>
 
           {/* Desktop: tabel, gaya sama dengan katalog. */}
-          <div className="app-card hidden overflow-hidden lg:block">
+          <div className="app-card hidden overflow-x-auto lg:block">
             <div
               className={`grid ${COLUMNS} items-center gap-4 px-5 py-3.5 text-[11px] font-bold uppercase tracking-wide`}
               style={{ background: 'var(--pm-tint)', color: 'var(--pm-gold)' }}
             >
-              <span>Nama aturan</span>
-              <span>Pcs</span>
-              <span>Harga paket</span>
+              {(
+                [
+                  ['Nama aturan', 'name'],
+                  ['Pcs', 'minQty'],
+                  ['Harga paket', 'bundlePrice'],
+                ] as const
+              ).map(([label, key]) => (
+                <div key={key} role="columnheader" aria-sort={ariaSortOf(sort, key)}>
+                  <SortHeader
+                    label={label}
+                    sortKey={key}
+                    sort={sort}
+                    onSort={(k) => {
+                      toggle(k)
+                      setPage(1)
+                    }}
+                  />
+                </div>
+              ))}
               <span>Produk</span>
-              <span>Status</span>
+              <div role="columnheader" aria-sort={ariaSortOf(sort, 'isActive')}>
+                <SortHeader
+                  label="Status"
+                  sortKey="isActive"
+                  sort={sort}
+                  onSort={(k) => {
+                    toggle(k)
+                    setPage(1)
+                  }}
+                />
+              </div>
               <span>Aksi</span>
             </div>
             {rules.map((rule) => (
