@@ -1,0 +1,1 @@
+ALTER TABLE "event_submissions" ADD COLUMN "reopened_at" timestamp with time zone;

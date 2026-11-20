@@ -64,11 +64,11 @@ describe('previewPartnerBundles', () => {
   })
 })
 
-describe('previewPartnerBundles dengan rentang ukuran', () => {
+describe('previewPartnerBundles dengan ukuran per produk', () => {
   const catalog = {
     rules: [
-      { id: 'sl', name: 'Get 2 S–L', minQty: 2, bundlePrice: 100000, productIds: ['p1'], sizes: ['S', 'M', 'L'] },
-      { id: 'xl', name: 'Get 2 XL–XXXL', minQty: 2, bundlePrice: 110000, productIds: ['p1'], sizes: ['XL', 'XXL', 'XXXL'] },
+      { id: 'sl', name: 'Get 2 S–L', minQty: 2, bundlePrice: 100000, productIds: ['p1'], productSizes: { p1: ['S', 'M', 'L'] } },
+      { id: 'xl', name: 'Get 2 XL–XXXL', minQty: 2, bundlePrice: 110000, productIds: ['p1'], productSizes: { p1: ['XL', 'XXL', 'XXXL'] } },
     ],
     variants: [
       { id: 'v-l', productId: 'p1', size: 'L' },

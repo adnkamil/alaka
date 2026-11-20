@@ -5,6 +5,7 @@ import type {
   PartnerItemProduct,
   PartnerItemVariant,
 } from '../lib/partner-item-label'
+import { ruleCoversVariant } from '../lib/partner-pricing'
 
 export interface CatalogPick {
   partnerVariantId: string
@@ -28,6 +29,10 @@ interface PartnerCatalogPickerProps {
   onClose: () => void
   /** Pesan singkat setelah barang ditambahkan (mode add). */
   toast?: string | null
+  /** Keterangan di atas daftar produk, mis. katalog dibatasi ke satu paket. */
+  notice?: string | null
+  /** Batas atas jumlah yang boleh dipilih (selain stok), mis. sisa pcs yang diganti. */
+  maxQty?: number | null
 }
 
 const PINK = '#b42318'
@@ -70,6 +75,8 @@ export default function PartnerCatalogPicker({
   onDelete,
   onClose,
   toast = null,
+  notice = null,
+  maxQty = null,
 }: PartnerCatalogPickerProps) {
   const pickedTotal = Object.values(pickedQty).reduce((sum, qty) => sum + qty, 0)
   const [query, setQuery] = useState('')
@@ -116,6 +123,14 @@ export default function PartnerCatalogPicker({
       </div>
 
       <div className="space-y-3 p-4">
+        {notice && (
+          <p
+            className="rounded-xl p-3 text-xs"
+            style={{ background: 'var(--app-accent-soft)', color: '#9c463b' }}
+          >
+            {notice}
+          </p>
+        )}
         <label className="relative flex items-center">
           <Search size={16} className="absolute left-3" style={{ color: 'var(--app-text-soft)' }} />
           <input
@@ -273,6 +288,7 @@ export default function PartnerCatalogPicker({
             setProduct(null)
           }}
           onDelete={onDelete}
+          qtyLimit={maxQty}
           onClose={() => setProduct(null)}
         />
       )}
@@ -289,6 +305,7 @@ function VariantSheet({
   initialQty,
   onPick,
   onDelete,
+  qtyLimit,
   onClose,
 }: {
   product: PartnerItemProduct
@@ -298,6 +315,8 @@ function VariantSheet({
   initialQty: number
   onPick: (pick: CatalogPick) => void
   onDelete?: () => void
+  /** Batas atas jumlah selain stok. Null = hanya dibatasi stok. */
+  qtyLimit: number | null
   onClose: () => void
 }) {
   const sizes = unique(product.variants.map((v) => v.size))
@@ -325,7 +344,12 @@ function VariantSheet({
   const variant = groupsComplete ? (product.variants.find((v) => matches(v, size, variation)) ?? null) : null
   const alreadyInOrder = variant ? (pickedQty[variant.id] ?? 0) : 0
   const soldOut = variant !== null && variant.stock <= 0
-  const maxQty = variant ? Math.max(1, variant.stock) : Number.POSITIVE_INFINITY
+  const maxQty = Math.min(
+    qtyLimit === null ? Number.POSITIVE_INFINITY : Math.max(1, qtyLimit),
+    variant ? Math.max(1, variant.stock) : Number.POSITIVE_INFINITY,
+  )
+  // Jumlah yang dipakai: tetap di bawah batas walau varian diganti ke yang stoknya lebih sedikit.
+  const effQty = Math.min(qty, maxQty)
   const label = [size, variation].filter(Boolean).join(' / ')
 
   const ctaLabel =
@@ -334,10 +358,10 @@ function VariantSheet({
       : soldOut
         ? 'Stok habis'
         : mode === 'replace'
-        ? `Simpan perubahan · ${rupiah(variant.price * qty)}`
+        ? `Simpan perubahan · ${rupiah(variant.price * effQty)}`
         : alreadyInOrder > 0
-          ? `Tambah jumlah · ${rupiah(variant.price * qty)}`
-          : `Tambah ke pesanan · ${rupiah(variant.price * qty)}`
+          ? `Tambah jumlah · ${rupiah(variant.price * effQty)}`
+          : `Tambah ke pesanan · ${rupiah(variant.price * effQty)}`
 
   return (
     <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/40 sm:items-center" role="dialog" aria-modal="true" aria-label="Pilih varian">
@@ -363,7 +387,11 @@ function VariantSheet({
                 const inRule =
                   size === null && sizes.length > 0
                     ? null
-                    : rule.sizes.length === 0 || (size !== null && rule.sizes.includes(size))
+                    : ruleCoversVariant(
+                        { productIds: [product.id], productSizes: rule.productSizes },
+                        product.id,
+                        size,
+                      )
                 return (
                   <Chip
                     key={rule.id}
@@ -419,14 +447,19 @@ function VariantSheet({
           </p>
         )}
 
+        {qtyLimit !== null && (
+          <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
+            Maksimal {qtyLimit} pcs untuk barang ini.
+          </p>
+        )}
         <div className="flex items-center justify-between">
           <span className="text-sm">Jumlah</span>
           <div className="flex items-center gap-3">
-            <button type="button" aria-label="Kurangi jumlah" onClick={() => setQty((q) => Math.max(1, q - 1))} className="app-btn-outline !h-8 !w-8 !min-h-0 !p-0">
+            <button type="button" aria-label="Kurangi jumlah" onClick={() => setQty(Math.max(1, effQty - 1))} className="app-btn-outline !h-8 !w-8 !min-h-0 !p-0">
               −
             </button>
-            <span className="pm-num w-6 text-center font-bold">{qty}</span>
-            <button type="button" aria-label="Tambah jumlah" onClick={() => setQty((q) => Math.min(maxQty, q + 1))} disabled={qty >= maxQty} className="app-btn-outline !h-8 !w-8 !min-h-0 !p-0">
+            <span className="pm-num w-6 text-center font-bold">{effQty}</span>
+            <button type="button" aria-label="Tambah jumlah" onClick={() => setQty(Math.min(maxQty, effQty + 1))} disabled={effQty >= maxQty} className="app-btn-outline !h-8 !w-8 !min-h-0 !p-0">
               +
             </button>
           </div>
@@ -434,7 +467,7 @@ function VariantSheet({
 
         <button
           type="button"
-          disabled={variant === null || soldOut || qty > variant.stock}
+          disabled={variant === null || soldOut || effQty > variant.stock}
           onClick={() => {
             if (!variant || soldOut) return
             onPick({
@@ -442,7 +475,7 @@ function VariantSheet({
               productName: product.name,
               label,
               price: variant.price,
-              qty,
+              qty: effQty,
             })
           }}
           className="app-btn-primary w-full"

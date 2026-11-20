@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { db } from '../db'
 import {
   events,
+  invoices,
   itemComponents,
   items,
   orders,
@@ -126,6 +127,18 @@ export const deleteEvent = createServerFn({ method: 'POST' })
       })
       if (!owned) return
 
+      // Event yang sudah pernah ditagih partner tidak boleh hilang diam-diam.
+      const billed = await tx
+        .select({ id: invoices.id })
+        .from(invoices)
+        .where(eq(invoices.eventId, data.id))
+        .limit(1)
+      if (billed.length > 0) {
+        throw new Error(
+          'Event ini sudah punya tagihan dari partner, jadi tidak bisa dihapus.',
+        )
+      }
+
       // Barang yang sudah disetujui partner sudah memotong stok. Karena
       // pesanannya ikut terhapus, stoknya dikembalikan di transaksi yang sama.
       const approvedSingles = await tx
@@ -158,6 +171,10 @@ export const deleteEvent = createServerFn({ method: 'POST' })
         aggregateStockDemand([...approvedSingles, ...approvedComponents]),
       )
 
+      // Pesanan dihapus lebih dulu (barang dan isi paketnya ikut). Kalau event
+      // langsung dihapus, submit ikut terhapus dan mengosongkan `submission_id`
+      // isi paket yang masih berstatus, melanggar `item_components_submit_pair`.
+      await tx.delete(orders).where(eq(orders.eventId, data.id))
       await tx
         .delete(events)
         .where(and(eq(events.id, data.id), eq(events.brandId, brandIdOf(user))))
@@ -290,6 +307,11 @@ export const getEventDetail = createServerFn({ method: 'GET' })
           const rule = ruleId ? ruleById.get(ruleId) : undefined
           if (!rule || !rule.isActive || !proPartners.has(rule.partnerId)) continue
           groupLabelByItem.set(item.id, rule.name)
+          // Pengajuan menunggu cek partner dan disanggah tinggal riwayat: keduanya
+          // tidak membentuk paket, jadi tidak dihitung sebagai "N pcs lagi".
+          if (item.submitStatus === 'pengajuan' || item.submitStatus === 'disanggah') {
+            continue
+          }
           singles.push({
             itemId: item.id,
             qty: item.qty,

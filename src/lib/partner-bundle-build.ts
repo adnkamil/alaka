@@ -7,13 +7,14 @@ import {
   partnerPricingRules,
   partnerProducts,
   partnerRuleProducts,
-  partnerRuleSizes,
+  partnerRuleProductSizes,
   partnerSubscriptions,
   partnerVariantValues,
   partnerVariants,
 } from '../db/schema'
 import { hasPartnerPro } from './partner-entitlement'
 import { partnerItemName, variantLabel } from './partner-item-label'
+import { productSizesForRule } from './partner-rule-sizes'
 import { aggregateStockDemand, findStockShortages, formatStockShortages } from './partner-stock'
 import {
   PricingError,
@@ -89,9 +90,9 @@ export async function buildPartnerBundle(
     .where(eq(partnerRuleProducts.ruleId, rule.id))
   const ruleProductIds = new Set(ruleProductRows.map((r) => r.productId))
   const ruleSizeRows = await tx
-    .select({ name: partnerRuleSizes.sizeName })
-    .from(partnerRuleSizes)
-    .where(eq(partnerRuleSizes.ruleId, rule.id))
+    .select()
+    .from(partnerRuleProductSizes)
+    .where(eq(partnerRuleProductSizes.ruleId, rule.id))
 
   // Produk yang dibeli harus memang dijual di event partner ini.
   const eventProductRows = await tx
@@ -180,7 +181,7 @@ export async function buildPartnerBundle(
     minQty: rule.minQty,
     bundlePrice: Number(rule.bundlePrice),
     productIds: [...ruleProductIds],
-    sizes: ruleSizeRows.map((z) => z.name),
+    productSizes: productSizesForRule(ruleSizeRows, rule.id),
   }
 
   let line

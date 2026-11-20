@@ -2,7 +2,18 @@
 // dari stock-check-functions.ts). Satu run = satu kali tombol ditekan. Setiap
 // submit diproses dalam transaksi sendiri lewat reviewSubmission, jadi hasilnya
 // sama dengan cek manual dan status log-nya ikut tercatat.
-import { and, asc, desc, eq, gt, inArray, isNull, lte, sql } from 'drizzle-orm'
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gt,
+  inArray,
+  isNotNull,
+  isNull,
+  lte,
+  sql,
+} from 'drizzle-orm'
 import {
   eventSubmissions,
   events,
@@ -22,7 +33,16 @@ export { HEARTBEAT_STALE_MS } from './stock-check-allocate'
 
 export type StockCheckRun = typeof stockCheckRuns.$inferSelect
 
-/** Submit belum dicek dalam satu event kalender, urut sesuai antrean. */
+/**
+ * Submit belum dicek dalam satu event kalender, urut sesuai antrean.
+ *
+ * Submit yang dibuka lagi karena ada pengganti (`reopened_at` terisi)
+ * didahulukan, yang lebih dulu dibuka lebih dulu. Mereka diambil tanpa melihat
+ * posisi `afterSeq` dan `upperSeq`, jadi yang dibuka setelah run dimulai (atau
+ * sudah terlewati posisi run) tetap diproses sebelum sisa antrean. Sisanya
+ * mengikuti `queueSeq` di dalam batas run seperti biasa. Urutan ini sama dengan
+ * `compareCheckQueue` di daftar submit partner.
+ */
 export async function loadPendingQueue(
   tx: OrderTx,
   calendarEventId: string,
@@ -30,7 +50,7 @@ export async function loadPendingQueue(
   upperSeq: number,
   limit: number,
 ): Promise<Array<{ id: string; queueSeq: number }>> {
-  return tx
+  const priority = await tx
     .select({ id: eventSubmissions.id, queueSeq: eventSubmissions.queueSeq })
     .from(eventSubmissions)
     .innerJoin(events, eq(events.id, eventSubmissions.eventId))
@@ -38,12 +58,29 @@ export async function loadPendingQueue(
       and(
         eq(events.calendarEventId, calendarEventId),
         isNull(eventSubmissions.stockCheckedAt),
+        isNotNull(eventSubmissions.reopenedAt),
+      ),
+    )
+    .orderBy(asc(eventSubmissions.reopenedAt), asc(eventSubmissions.queueSeq))
+    .limit(limit)
+  if (priority.length >= limit) return priority
+
+  const regular = await tx
+    .select({ id: eventSubmissions.id, queueSeq: eventSubmissions.queueSeq })
+    .from(eventSubmissions)
+    .innerJoin(events, eq(events.id, eventSubmissions.eventId))
+    .where(
+      and(
+        eq(events.calendarEventId, calendarEventId),
+        isNull(eventSubmissions.stockCheckedAt),
+        isNull(eventSubmissions.reopenedAt),
         gt(eventSubmissions.queueSeq, afterSeq),
         lte(eventSubmissions.queueSeq, upperSeq),
       ),
     )
     .orderBy(asc(eventSubmissions.queueSeq))
-    .limit(limit)
+    .limit(limit - priority.length)
+  return [...priority, ...regular]
 }
 
 async function countPending(
@@ -263,11 +300,21 @@ export async function processSubmissionAutoCheck(
     })
   }
 
+  // Submit yang dibuka lagi memotong antrean, jadi posisi run (`lastSeq`) tidak
+  // boleh ikut maju: submit biasa di antara posisi lama dan nomornya akan
+  // terlewat. Ia juga dihitung lagi di `total`, kecuali masih dalam antrean
+  // run (belum terlewati dan tidak melebihi batas), karena sudah terhitung.
+  const isReplacement = submission?.reopenedAt != null
   await tx
     .update(stockCheckRuns)
     .set({
-      lastSeq: queueSeq,
+      ...(isReplacement ? {} : { lastSeq: queueSeq }),
       processedCount: sql`${stockCheckRuns.processedCount} + 1`,
+      ...(isReplacement
+        ? {
+            totalCount: sql`${stockCheckRuns.totalCount} + case when ${queueSeq} > ${stockCheckRuns.lastSeq} and ${queueSeq} <= ${stockCheckRuns.upperSeq} then 0 else 1 end`,
+          }
+        : {}),
       currentSubmissionId: null,
       heartbeatAt: now,
     })

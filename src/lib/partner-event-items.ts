@@ -15,7 +15,8 @@ import {
 
 } from './partner-item-label'
 import type { PartnerEventItemCatalog, PartnerItemRule } from './partner-item-label';
-import { partnerPricingRules, partnerRuleProducts, partnerRuleSizes, partnerSubscriptions } from '../db/schema';
+import { partnerPricingRules, partnerRuleProducts, partnerRuleProductSizes, partnerSubscriptions } from '../db/schema';
+import { productSizesForRule } from './partner-rule-sizes';
 import { hasPartnerPro } from './partner-entitlement';
 import { partnerProductPhotoUrl } from './partner-product-rules';
 import {
@@ -112,9 +113,9 @@ export async function loadEventPartnerItemCatalog(
   // Satu produk bisa masuk beberapa aturan; semua ikut ditampilkan.
   const sizeRows = activeRuleIds.size
     ? await db
-        .select({ ruleId: partnerRuleSizes.ruleId, sizeName: partnerRuleSizes.sizeName })
-        .from(partnerRuleSizes)
-        .where(inArray(partnerRuleSizes.ruleId, [...activeRuleIds]))
+        .select()
+        .from(partnerRuleProductSizes)
+        .where(inArray(partnerRuleProductSizes.ruleId, [...activeRuleIds]))
     : []
   const rulesByProduct = new Map<string, Array<PartnerItemRule>>()
   for (const row of ruleProductRows) {
@@ -127,7 +128,7 @@ export async function loadEventPartnerItemCatalog(
         name: rule.name,
         minQty: rule.minQty,
         bundlePrice: Number(rule.bundlePrice),
-        sizes: sizeRows.filter((z) => z.ruleId === rule.id).map((z) => z.sizeName),
+        productSizes: productSizesForRule(sizeRows, rule.id),
       })
     }
     rulesByProduct.set(row.productId, list)
@@ -178,7 +179,7 @@ export async function loadEventPartnerItemCatalog(
       name: r.name,
       minQty: r.minQty,
       bundlePrice: Number(r.bundlePrice),
-      sizes: sizeRows.filter((z) => z.ruleId === r.id).map((z) => z.sizeName),
+      productSizes: productSizesForRule(sizeRows, r.id),
     })),
     products: productRows
       .map((product) => ({

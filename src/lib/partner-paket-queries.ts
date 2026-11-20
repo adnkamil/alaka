@@ -1,6 +1,7 @@
 // Operasi paket partner di dalam transaksi. Menerima `tx` dari pemanggil dan
 // tidak mengimpor db. Aturan: barang satuan membentuk paket lewat FIFO per
 // pemesan (pesanan), dengan aturan yang sama.
+import { invoicedSubmissionIds } from './invoice-queries'
 import { and, eq, inArray } from 'drizzle-orm'
 import {
   itemComponents,
@@ -11,13 +12,15 @@ import {
   partnerPricingRules,
   partnerProducts,
   partnerRuleProducts,
-  partnerRuleSizes,
+  partnerRuleProductSizes,
   partnerSubscriptions,
   partnerVariantValues,
   partnerVariants,
 } from '../db/schema'
 import { hasPartnerPro } from './partner-entitlement'
 import { formBundles } from './partner-bundle-fifo'
+import { ruleCoversVariant } from './partner-pricing'
+import { productSizesForRule } from './partner-rule-sizes'
 import { partnerItemName, variantLabel } from './partner-item-label'
 import {
   recalculateOrderStatus,
@@ -101,9 +104,9 @@ export function variantItemName(info: {
 }
 
 /**
- * Aturan paket untuk satu barang: aturan yang memuat produknya dan rentang
- * ukurannya mencakup ukuran barang itu. Satu produk bisa punya beberapa aturan
- * dengan rentang ukuran yang berbeda.
+ * Aturan paket untuk satu barang: aturan yang memuat produknya dan ukuran
+ * barang itu termasuk ukuran yang dipilih untuk produk tersebut di aturan.
+ * Satu produk bisa punya beberapa aturan dengan ukuran yang berbeda.
  */
 export async function findRuleForVariant(
   tx: OrderTx,
@@ -116,12 +119,20 @@ export async function findRuleForVariant(
     .where(eq(partnerRuleProducts.partnerProductId, productId))
   for (const link of links) {
     const sizeRows = await tx
-      .select({ name: partnerRuleSizes.sizeName })
-      .from(partnerRuleSizes)
-      .where(eq(partnerRuleSizes.ruleId, link.ruleId))
+      .select({ name: partnerRuleProductSizes.sizeName })
+      .from(partnerRuleProductSizes)
+      .where(
+        and(
+          eq(partnerRuleProductSizes.ruleId, link.ruleId),
+          eq(partnerRuleProductSizes.partnerProductId, productId),
+        ),
+      )
     if (
-      sizeRows.length === 0 ||
-      (size !== null && sizeRows.some((z) => z.name === size))
+      ruleCoversVariant(
+        { productIds: [productId], productSizes: { [productId]: sizeRows.map((z) => z.name) } },
+        productId,
+        size,
+      )
     ) {
       return { id: link.ruleId }
     }
@@ -170,10 +181,23 @@ export async function regroupRuleInOrder(
   const ruleProductIds = new Set(ruleProductRows.map((r) => r.productId))
   if (ruleProductIds.size === 0) return
   const ruleSizeRows = await tx
-    .select({ name: partnerRuleSizes.sizeName })
-    .from(partnerRuleSizes)
-    .where(eq(partnerRuleSizes.ruleId, ruleId))
-  const ruleSizes = new Set(ruleSizeRows.map((z) => z.name))
+    .select({
+      productId: partnerRuleProductSizes.partnerProductId,
+      name: partnerRuleProductSizes.sizeName,
+    })
+    .from(partnerRuleProductSizes)
+    .where(eq(partnerRuleProductSizes.ruleId, ruleId))
+  const ruleScope = {
+    productIds: [...ruleProductIds],
+    productSizes: productSizesForRule(
+      ruleSizeRows.map((z) => ({
+        ruleId,
+        partnerProductId: z.productId,
+        sizeName: z.name,
+      })),
+      ruleId,
+    ),
+  }
 
   const singleRows = await tx
     .select({
@@ -184,6 +208,8 @@ export async function regroupRuleInOrder(
       partnerVariantId: items.partnerVariantId,
       submitStatus: items.submitStatus,
       submissionId: items.submissionId,
+      replacesItemId: items.replacesItemId,
+      replacesComponentId: items.replacesComponentId,
     })
     .from(items)
     .where(and(eq(items.orderId, orderId), eq(items.isBundle, false)))
@@ -193,10 +219,22 @@ export async function regroupRuleInOrder(
     .filter((id): id is string => id !== null)
   const infoMap = await loadVariantInfo(tx, variantIds)
 
+  // Satuan dari submit yang sudah ditagih tidak boleh membentuk paket baru:
+  // harga submit itu sudah dikirim ke jastiper dan tidak boleh berubah.
+  const invoicedSubmissions = await invoicedSubmissionIds(
+    tx,
+    [...new Set(singleRows.map((s) => s.submissionId))].filter(
+      (id): id is string => id !== null,
+    ),
+  )
+
   // Alur slot: setelah partner mengecek, `qty` = jumlah yang dapat. Baris
   // dengan qty 0 ("tidak dapat") tidak boleh ikut FIFO dan tidak boleh terhapus.
   const pool = singleRows.filter((s) => {
     if (s.qty <= 0) return false
+    if (s.submissionId !== null && invoicedSubmissions.has(s.submissionId)) {
+      return false
+    }
     // Alur submit bertahap: pengajuan menunggu cek partner, disanggah tinggal
     // sebagai riwayat. Keduanya tidak boleh ikut membentuk paket.
     if (s.submitStatus === 'pengajuan' || s.submitStatus === 'disanggah') {
@@ -204,9 +242,9 @@ export async function regroupRuleInOrder(
     }
     if (!s.partnerVariantId) return false
     const info = infoMap.get(s.partnerVariantId)
-    if (info === undefined || !ruleProductIds.has(info.productId)) return false
-    // Dengan rentang ukuran, hanya ukuran di dalam rentang yang masuk paket.
-    return ruleSizes.size === 0 || (info.size !== null && ruleSizes.has(info.size))
+    if (info === undefined) return false
+    // Hanya ukuran yang dipilih untuk produknya di aturan yang masuk paket.
+    return ruleCoversVariant(ruleScope, info.productId, info.size)
   })
   if (pool.length === 0) return
 
@@ -238,6 +276,9 @@ export async function regroupRuleInOrder(
         addedAt: single.createdAt,
         submitStatus: single.submitStatus,
         submissionId: single.submissionId,
+        // Tautan pengganti ikut pindah, supaya lubang yang digantikan tetap tertutup.
+        replacesItemId: single.replacesItemId,
+        replacesComponentId: single.replacesComponentId,
       }
     })
     const [bundleRow] = await tx
@@ -267,6 +308,8 @@ export async function regroupRuleInOrder(
         submitStatus: c.submitStatus,
         submissionId: c.submissionId,
         addedAt: c.addedAt,
+        replacesItemId: c.replacesItemId,
+        replacesComponentId: c.replacesComponentId,
       })),
     )
   }
@@ -321,7 +364,8 @@ export async function dissolveBundle(
     // Barang yang sama dan harganya sama digabung jadi satu baris dengan qty lebih besar.
     if (c.partnerVariantId) {
       // Hanya digabung dengan baris satuan yang status submitnya sama. Baris
-      // draft, pengajuan, dan disetujui tidak boleh tercampur.
+      // draft, pengajuan, dan disetujui tidak boleh tercampur. Tautan pengganti
+      // juga harus sama, supaya lubang yang digantikan tidak tertukar.
       const sameSingles = await tx
         .select()
         .from(items)
@@ -337,7 +381,9 @@ export async function dissolveBundle(
           Number(row.originalPrice) === price &&
           Number(row.fee) === feePerPcs &&
           row.submitStatus === c.submitStatus &&
-          row.submissionId === c.submissionId,
+          row.submissionId === c.submissionId &&
+          row.replacesItemId === c.replacesItemId &&
+          row.replacesComponentId === c.replacesComponentId,
       )
       if (match) {
         await tx
@@ -360,6 +406,9 @@ export async function dissolveBundle(
       qty: returnQty,
       submitStatus: c.submitStatus,
       submissionId: c.submissionId,
+      replacesItemId: c.replacesItemId,
+      replacesComponentId: c.replacesComponentId,
+      replacementWaivedAt: c.replacementWaivedAt,
       obtained: false,
       isBundle: false,
       partnerVariantId: c.partnerVariantId,

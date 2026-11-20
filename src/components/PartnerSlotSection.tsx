@@ -154,7 +154,7 @@ export default function PartnerSlotSection({
             <Link
               key={row.eventId}
               to="/partner/event/jastiper/$id/$brandId"
-              search={{ view: undefined }}
+              search={{ submit: undefined }}
               params={{ id: calendarEventId, brandId: row.brandId }}
               className="flex items-center gap-3 border-t py-2.5 text-[13px] no-underline"
               style={{ borderColor: 'var(--app-border)', color: 'inherit' }}

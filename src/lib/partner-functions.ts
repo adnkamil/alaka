@@ -231,6 +231,9 @@ export const fetchCurrentPartner = createServerFn({ method: 'GET' }).handler(
       name: partner.name,
       email: partner.email,
       waNumber: partner.waNumber,
+      bankName: partner.bankName,
+      bankAccountNumber: partner.bankAccountNumber,
+      bankAccountName: partner.bankAccountName,
       logoUrl: partnerLogoUrl(partner.id, partner.logoUpdatedAt),
     }
   },

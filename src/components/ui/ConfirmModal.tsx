@@ -10,6 +10,8 @@ interface ConfirmModalProps {
   cancelText?: string
   danger?: boolean
   loading?: boolean
+  /** Teks tombol saat `loading`. */
+  loadingText?: string
   onOk: () => void | Promise<void>
   onCancel: () => void
 }
@@ -22,6 +24,7 @@ export default function ConfirmModal({
   cancelText = 'Batal',
   danger = true,
   loading = false,
+  loadingText = 'Menghapus...',
   onOk,
   onCancel,
 }: ConfirmModalProps) {
@@ -127,7 +130,7 @@ export default function ConfirmModal({
               background: danger ? 'var(--app-danger)' : 'var(--app-accent)',
             }}
           >
-            {loading ? 'Menghapus...' : okText}
+            {loading ? loadingText : okText}
           </button>
         </div>
       </div>

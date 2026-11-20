@@ -7,7 +7,7 @@ import {
   items,
   orders,
   partnerRuleProducts,
-  partnerRuleSizes,
+  partnerRuleProductSizes,
   partnerVariants,
 } from '../db/schema'
 import { getSessionUser } from './auth'
@@ -24,6 +24,8 @@ import {
   variantItemName,
 } from './partner-paket-queries'
 import { partnerItemName, variantLabel } from './partner-item-label'
+import { ruleCoversVariant } from './partner-pricing'
+import { productSizesForRule } from './partner-rule-sizes'
 
 async function requireUser() {
   const user = await getSessionUser()
@@ -114,7 +116,11 @@ export const addPartnerItem = createServerFn({ method: 'POST' })
         )
       const match = sameSingles.find(
         (row) =>
-          Number(row.originalPrice) === data.originalPrice && Number(row.fee) === data.fee,
+          // Hanya digabung dengan draft. Baris yang sudah disubmit terkunci
+          // qty-nya, dan menambah qty di sana melewati pengecekan partner.
+          row.submitStatus === null &&
+          Number(row.originalPrice) === data.originalPrice &&
+          Number(row.fee) === data.fee,
       )
       if (match) {
         await tx
@@ -231,10 +237,9 @@ export const updateBundleComponent = createServerFn({ method: 'POST' })
         .where(eq(partnerRuleProducts.ruleId, bundle.partnerRuleId))
       const ruleProductIds = new Set(ruleProductRows.map((r) => r.productId))
       const ruleSizeRows = await tx
-        .select({ name: partnerRuleSizes.sizeName })
-        .from(partnerRuleSizes)
-        .where(eq(partnerRuleSizes.ruleId, bundle.partnerRuleId))
-      const ruleSizes = new Set(ruleSizeRows.map((z) => z.name))
+        .select()
+        .from(partnerRuleProductSizes)
+        .where(eq(partnerRuleProductSizes.ruleId, bundle.partnerRuleId))
 
       const info = (await loadVariantInfo(tx, [data.partnerVariantId])).get(
         data.partnerVariantId,
@@ -250,10 +255,16 @@ export const updateBundleComponent = createServerFn({ method: 'POST' })
         throw new Error('Produk ini tidak masuk aturan paket.')
       }
       if (
-        ruleSizes.size > 0 &&
-        (info.size === null || !ruleSizes.has(info.size))
+        !ruleCoversVariant(
+          {
+            productIds: [...ruleProductIds],
+            productSizes: productSizesForRule(ruleSizeRows, bundle.partnerRuleId),
+          },
+          info.productId,
+          info.size,
+        )
       ) {
-        throw new Error('Ukuran ini tidak masuk rentang aturan paket.')
+        throw new Error('Ukuran ini tidak dipilih untuk produk itu di aturan paket.')
       }
 
       await tx

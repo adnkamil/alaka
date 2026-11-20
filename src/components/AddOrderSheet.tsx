@@ -27,6 +27,7 @@ import PartnerCatalogPicker, {type CatalogPick} from './PartnerCatalogPicker';
 import OrderItemList, { SubmitStatusBadge, type OrderItemView } from './OrderItemList'
 import { updateSubmittedItemPrice } from '../lib/submit-price-functions'
 import { previewPartnerBundles } from '../lib/partner-paket-preview'
+import { ruleCoversVariant } from '../lib/partner-pricing'
 import { pendingNoteText } from '../lib/order-item-groups'
 
 interface FeeTier {
@@ -391,7 +392,14 @@ export default function AddOrderSheet({
       items.map((item, index) => ({
         key: String(index),
         name: item.name,
-        partnerVariantId: item.bundle ? null : item.partnerVariantId,
+        // Barang yang sudah dikirim (pengajuan) atau disanggah tidak ikut membentuk
+        // paket, sama dengan aturan server (`regroupRuleInOrder`).
+        partnerVariantId:
+          item.bundle ||
+          item.submitStatus === 'pengajuan' ||
+          item.submitStatus === 'disanggah'
+            ? null
+            : item.partnerVariantId,
         qty: item.qty,
       })),
       {
@@ -433,9 +441,7 @@ export default function AddOrderSheet({
     for (const v of partnerCatalog.variants) {
       // Sama dengan aturan di pratinjau: produknya ada di aturan dan ukurannya masuk rentang.
       const rule = partnerCatalog.rules.find(
-        (r) =>
-          r.productIds.includes(v.productId) &&
-          (!r.sizes?.length || (v.size != null && r.sizes.includes(v.size))),
+        (r) => ruleCoversVariant(r, v.productId, v.size ?? null),
       )
       if (rule) map.set(v.id, rule.name)
     }
@@ -446,9 +452,8 @@ export default function AddOrderSheet({
     const out: Record<string, Array<{ id: string; label: string }>> = {}
     if (!partnerCatalog) return out
     for (const rule of partnerCatalog.rules) {
-      const productIds = new Set(rule.productIds)
       out[rule.id] = partnerCatalog.variants
-        .filter((v) => productIds.has(v.productId))
+        .filter((v) => ruleCoversVariant(rule, v.productId, v.size ?? null))
         .map((v) => {
           const product = partnerCatalog.products.find((p) => p.id === v.productId)
           const label = [v.size, v.variation].filter(Boolean).join(' / ')

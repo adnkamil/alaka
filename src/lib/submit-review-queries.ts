@@ -12,6 +12,8 @@ import {
 import type { OrderTx } from './order-status-queries'
 import { partnerItemName, variantLabel } from './partner-item-label'
 import { loadVariantInfo } from './partner-paket-queries'
+import { analyzeSubmits } from './submit-replacement-groups'
+import type { HoleStatus } from './submit-replacement'
 import type { SubmitStatus } from './submit-status'
 
 export type ReviewRow = {
@@ -31,6 +33,27 @@ export type ReviewRow = {
   partnerVariantId: string | null
   /** Stok varian saat ini (live), untuk kolom "Stok" di halaman cek. */
   stock: number | null
+  /** Barang ini pengganti untuk barang yang ditolak: nama barang yang digantikan. */
+  replaces?: string | null
+}
+
+/**
+ * Satu barang yang ditolak beserta pengganti yang dikirim jastiper untuknya.
+ * Kalau pengganti itu ditolak lagi, ia punya pasangan sendiri (`rejected.id`
+ * sama dengan id pengganti), sehingga membentuk rantai.
+ */
+export type ReplacementPair = {
+  rejected: { id: string; label: string; qty: number }
+  replacements: Array<{
+    id: string
+    label: string
+    qty: number
+    status: SubmitStatus | null
+  }>
+  /** Keputusan jastiper: diganti, menunggu dicek, belum diputuskan, atau tidak diganti. */
+  state: HoleStatus
+  /** Pcs yang belum diganti dan belum diputuskan jastiper. */
+  openQty: number
 }
 
 export type ReviewBundle = {
@@ -43,6 +66,13 @@ export type ReviewSubmission = {
   submissionId: string
   submitNo: number
   submittedAt: Date
+  /**
+   * Submit dibuka lagi karena jastiper mengirim pengganti: hanya barang
+   * penggantinya yang menunggu dicek, barang lain sudah selesai.
+   */
+  reopened?: boolean
+  /** Barang ditolak yang punya pengganti atau diputuskan tidak diganti. */
+  replacementPairs?: Array<ReplacementPair>
   /** Sudah dicek stoknya (centang). False = menunggu. */
   checked: boolean
   satuan: Array<ReviewRow>
@@ -95,6 +125,8 @@ export async function loadSubmissionsForPartner(
       status: items.submitStatus,
       submissionId: items.submissionId,
       partnerVariantId: items.partnerVariantId,
+      replacesItemId: items.replacesItemId,
+      replacesComponentId: items.replacesComponentId,
       orderEventId: orders.eventId,
     })
     .from(items)
@@ -118,6 +150,8 @@ export async function loadSubmissionsForPartner(
       status: itemComponents.submitStatus,
       submissionId: itemComponents.submissionId,
       partnerVariantId: itemComponents.partnerVariantId,
+      replacesItemId: itemComponents.replacesItemId,
+      replacesComponentId: itemComponents.replacesComponentId,
       ruleName: items.ruleName,
     })
     .from(itemComponents)
@@ -149,6 +183,8 @@ export async function loadSubmissionsForPartner(
       submitNo: s.submitNo,
       submittedAt: s.submittedAt,
       checked: s.stockCheckedAt !== null,
+      reopened: s.reopenedAt !== null && s.stockCheckedAt === null,
+      replacementPairs: [],
       satuan: [],
       paket: [],
     })
@@ -208,5 +244,99 @@ export async function loadSubmissionsForPartner(
     })
   }
 
+  await addReplacementPairs(tx, {
+    subs,
+    subById,
+    satuanRows,
+    compRows,
+  })
   return [...result.values()]
+}
+
+type PairSub = { id: string; stockCheckedAt: Date | null }
+
+/**
+ * Pasangkan barang ditolak dengan penggantinya, supaya partner langsung tahu
+ * mana yang ditolak dan mana penggantinya. Barang pengganti juga diberi nama
+ * barang yang digantikan (`replaces`).
+ */
+async function addReplacementPairs(
+  tx: OrderTx,
+  input: {
+    subs: Array<PairSub>
+    subById: Map<string, ReviewSubmission>
+    satuanRows: Array<{
+      id: string
+      name: string
+      replacesItemId: string | null
+      replacesComponentId: string | null
+    }>
+    compRows: Array<{
+      id: string
+      productName: string
+      size: string | null
+      variation: string | null
+      replacesItemId: string | null
+      replacesComponentId: string | null
+    }>
+  },
+) {
+  const { subs, subById, satuanRows, compRows } = input
+  const links = [...satuanRows, ...compRows]
+  if (!links.some((r) => r.replacesItemId ?? r.replacesComponentId)) return
+
+  const { holes } = await analyzeSubmits(
+    tx,
+    subs.map((s) => ({ id: s.id, checked: s.stockCheckedAt !== null })),
+  )
+  const labelById = new Map<string, string>([
+    ...satuanRows.map((r): [string, string] => [r.id, r.name]),
+    ...compRows.map((c): [string, string] => [
+      c.id,
+      partnerItemName(
+        c.productName,
+        variantLabel({ size: c.size, variation: c.variation }),
+      ),
+    ]),
+  ])
+
+  // Barang pengganti: nama barang yang digantikan.
+  const replacedBy = new Map<string, string>()
+  for (const r of links) {
+    const target = r.replacesItemId ?? r.replacesComponentId
+    const label = target ? labelById.get(target) : undefined
+    if (label) replacedBy.set(r.id, label)
+  }
+  for (const sub of subById.values()) {
+    for (const row of [...sub.satuan, ...sub.paket.flatMap((p) => p.rows)]) {
+      row.replaces = replacedBy.get(row.id) ?? null
+    }
+  }
+
+  for (const h of holes) {
+    // Barang yang sendiri adalah pengganti juga ikut, supaya rantai
+    // (A diganti B, B ditolak lagi diganti C) bisa ditampilkan utuh.
+    if (
+      h.replacements.length === 0 &&
+      h.status !== 'tidak_diganti' &&
+      !replacedBy.has(h.id)
+    ) {
+      continue
+    }
+    const sub = subById.get(h.submissionId)
+    if (!sub) continue
+    sub.replacementPairs?.push({
+      rejected: { id: h.id, label: labelById.get(h.id) ?? 'Barang', qty: h.qty },
+      replacements: h.replacements
+        .filter((r) => r.status !== 'dibatalkan')
+        .map((r) => ({
+          id: r.id,
+          label: labelById.get(r.id) ?? 'Barang',
+          qty: r.qty,
+          status: r.status,
+        })),
+      state: h.status,
+      openQty: h.openQty,
+    })
+  }
 }

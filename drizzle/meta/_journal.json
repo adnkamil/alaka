@@ -316,6 +316,69 @@
       "when": 1794905834362,
       "tag": "0044_submit_status_dibatalkan",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1794982437331,
+      "tag": "0045_partner_rule_product_sizes",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1795005903098,
+      "tag": "0046_complex_ma_gnuci",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1795007360796,
+      "tag": "0047_plain_pretty_boy",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1795008209859,
+      "tag": "0048_dazzling_magma",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1795008431687,
+      "tag": "0049_regular_lady_vermin",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1795085067864,
+      "tag": "0050_plain_psynapse",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1795103097226,
+      "tag": "0051_military_next_avengers",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1795103115065,
+      "tag": "0052_pindahkan_pengganti_ke_submit_asal",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1795103126888,
+      "tag": "0053_free_kree",
+      "breakpoints": true
     }
   ]
 }

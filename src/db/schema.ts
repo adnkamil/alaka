@@ -5,6 +5,7 @@ import {
   check,
   date,
   decimal,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -17,6 +18,7 @@ import {
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core'
+import type { AnyPgColumn } from 'drizzle-orm/pg-core'
 import {
   PRO_DURATION_DAYS,
   PRO_PLAN_CODE,
@@ -544,7 +546,8 @@ export const orders = pgTable('orders', {
 
 /**
  * Satu kali jastiper menekan "Submit" untuk sebuah event. Submit pertama =
- * submit_no 1. Submit ulang (pengganti barang yang disanggah) = 2, 3, dst.
+ * submit_no 1, berikutnya 2, 3, dst. Pengganti barang yang disanggah tidak
+ * membuat submit baru: barangnya masuk ke submit yang sama (lihat `reopened_at`).
  * Dipakai untuk kolom "submit ke" di halaman detil event partner.
  */
 export const eventSubmissions = pgTable(
@@ -567,6 +570,13 @@ export const eventSubmissions = pgTable(
       .generatedAlwaysAsIdentity(),
     /** Null = belum dicek (menunggu). Terisi saat pengecekan selesai (centang). */
     stockCheckedAt: timestamp('stock_checked_at', { withTimezone: true }),
+    /**
+     * Terisi saat jastiper mengirim pengganti untuk barang yang disanggah di
+     * submit ini: pengganti masuk ke submit yang sama, `stock_checked_at`
+     * dikosongkan (kembali menunggu dicek), dan submit didahulukan di antrean.
+     * Dikosongkan lagi saat partner selesai mengecek.
+     */
+    reopenedAt: timestamp('reopened_at', { withTimezone: true }),
   },
   (table) => [
     uniqueIndex('event_submissions_event_no_unique').on(
@@ -666,6 +676,24 @@ export const items = pgTable('items', {
   // Snapshot aturan paket, supaya paket tetap bisa ditampilkan setelah aturan dihapus.
   ruleName: varchar('rule_name'),
   ruleMinQty: integer('rule_min_qty'),
+  /**
+   * Alur pengganti: baris disanggah yang digantikan barang ini. Satu dari dua
+   * kolom terisi: barang satuan disanggah, atau komponen paket disanggah.
+   * Pengganti selalu dikirim sebagai barang satuan; tautannya ikut pindah saat
+   * barang dipaketkan (FIFO) atau paketnya dibongkar.
+   */
+  replacesItemId: uuid('replaces_item_id'),
+  replacesComponentId: uuid('replaces_component_id').references(
+    (): AnyPgColumn => itemComponents.id,
+    { onDelete: 'set null' },
+  ),
+  /**
+   * Untuk baris disanggah: jastiper (atau partner lewat "tagih apa adanya")
+   * memutuskan barang ini tidak diganti.
+   */
+  replacementWaivedAt: timestamp('replacement_waived_at', {
+    withTimezone: true,
+  }),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -674,6 +702,15 @@ export const items = pgTable('items', {
     'items_submit_pair',
     sql`(${table.submitStatus} is null) = (${table.submissionId} is null)`,
   ),
+  // Daftar submit, tagihan, dan riwayat membaca barang per submit.
+  index('items_submission_idx').on(table.submissionId),
+  foreignKey({
+    columns: [table.replacesItemId],
+    foreignColumns: [table.id],
+    name: 'items_replaces_fk',
+  }).onDelete('set null'),
+  index('items_replaces_idx').on(table.replacesItemId),
+  index('items_replaces_component_idx').on(table.replacesComponentId),
 ])
 
 // Isi sebuah bundle, satu baris per barang. Total pcs = items.qty * qty di sini.
@@ -704,10 +741,35 @@ export const itemComponents = pgTable(
     addedAt: timestamp('added_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
+    /**
+     * Tautan pengganti, sama dengan kolom bernama sama di `items`. Pengganti
+     * selalu dikirim sebagai barang satuan; setelah disetujui, barang itu bisa
+     * dipaketkan (FIFO) atau dibongkar lagi, dan tautannya ikut pindah.
+     */
+    replacesItemId: uuid('replaces_item_id').references(
+      (): AnyPgColumn => items.id,
+      { onDelete: 'set null' },
+    ),
+    replacesComponentId: uuid('replaces_component_id'),
+    /**
+     * Untuk komponen disanggah: diputuskan tidak diganti (oleh jastiper, atau
+     * partner lewat "tagih apa adanya"). Pcs lain di paket ditagih apa adanya.
+     */
+    replacementWaivedAt: timestamp('replacement_waived_at', {
+      withTimezone: true,
+    }),
   },
   (table) => [
     index('item_components_item_idx').on(table.itemId),
     index('item_components_variant_idx').on(table.partnerVariantId),
+    index('item_components_submission_idx').on(table.submissionId),
+    foreignKey({
+      columns: [table.replacesComponentId],
+      foreignColumns: [table.id],
+      name: 'item_components_replaces_fk',
+    }).onDelete('set null'),
+    index('item_components_replaces_idx').on(table.replacesComponentId),
+    index('item_components_replaces_item_idx').on(table.replacesItemId),
     check('item_components_qty_pos', sql`${table.qty} > 0`),
     check(
       'item_components_submit_pair',
@@ -1063,6 +1125,13 @@ export const partners = pgTable(
     passwordHash: varchar('password_hash'),
     /** Nomor WhatsApp partner (format lokal). Opsional. */
     waNumber: varchar('wa_number'),
+    /**
+     * Rekening tujuan pembayaran tagihan jastiper. Ketiganya terisi bersama
+     * atau kosong bersama (dijaga aturan profil). Null = belum diisi.
+     */
+    bankName: varchar('bank_name'),
+    bankAccountNumber: varchar('bank_account_number'),
+    bankAccountName: varchar('bank_account_name'),
     /** Kapan undangan diterima & kata sandi dibuat. Null = masih "Diundang". */
     activatedAt: timestamp('activated_at', { withTimezone: true }),
     /**
@@ -1371,19 +1440,32 @@ export const partnerRuleProducts = pgTable(
   (table) => [primaryKey({ columns: [table.ruleId, table.partnerProductId] })],
 )
 
-// Rentang ukuran tiap aturan paket, dicocokkan dengan nama nilai ukuran pada
-// varian (mis. "S", "XL"). Tanpa baris = aturan berlaku untuk semua ukuran.
-// Satu produk boleh masuk beberapa aturan selama rentang ukurannya tidak
-// tumpang tindih (dicek di server).
-export const partnerRuleSizes = pgTable(
-  'partner_rule_sizes',
+// Ukuran yang ikut aturan paket, per produk di aturan, dicocokkan dengan nama
+// nilai ukuran pada varian produk itu (mis. "S", "XL", "40"). Dipilih eksplisit
+// saat produk ditambahkan ke aturan: ukuran baru yang ditambah partner ke produk
+// tidak otomatis ikut. Produk tanpa ukuran tidak punya baris di sini. Satu
+// produk boleh masuk beberapa aturan selama ukurannya tidak tumpang tindih
+// (dicek di server). Baris ikut terhapus saat produk dikeluarkan dari aturan.
+export const partnerRuleProductSizes = pgTable(
+  'partner_rule_product_sizes',
   {
-    ruleId: uuid('rule_id')
-      .notNull()
-      .references(() => partnerPricingRules.id, { onDelete: 'cascade' }),
+    ruleId: uuid('rule_id').notNull(),
+    partnerProductId: uuid('partner_product_id').notNull(),
     sizeName: varchar('size_name').notNull(),
   },
-  (table) => [primaryKey({ columns: [table.ruleId, table.sizeName] })],
+  (table) => [
+    primaryKey({
+      columns: [table.ruleId, table.partnerProductId, table.sizeName],
+    }),
+    foreignKey({
+      name: 'partner_rule_product_sizes_rule_product_fk',
+      columns: [table.ruleId, table.partnerProductId],
+      foreignColumns: [
+        partnerRuleProducts.ruleId,
+        partnerRuleProducts.partnerProductId,
+      ],
+    }).onDelete('cascade'),
+  ],
 )
 
 // Token atur ulang kata sandi PARTNER. Pola sama dengan `password_reset_tokens`
@@ -1459,4 +1541,118 @@ export const notificationReads = pgTable(
     readAt: timestamp('read_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [primaryKey({ columns: [table.userId, table.notificationId] })],
+)
+
+/**
+ * Status tagihan partner ke jastiper.
+ * ditagih -> menunggu_review (jastiper klaim bayar + bukti) -> lunas (partner
+ * konfirmasi). Partner bisa menolak bukti: kembali ke ditagih. Dibatalkan hanya
+ * dari ditagih.
+ */
+export const invoiceStatusEnum = pgEnum('invoice_status', [
+  'ditagih',
+  'dibatalkan',
+  'menunggu_review',
+  'lunas',
+])
+
+/**
+ * Tagihan partner untuk satu jastiper di satu event partner. Satu tagihan
+ * berisi satu atau lebih submit utuh. `onDelete: 'restrict'` disengaja: event
+ * atau submit yang sudah ditagih tidak boleh hilang diam-diam.
+ */
+export const invoices = pgTable(
+  'invoices',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    /** Nomor urut global, ditampilkan sebagai "INV-000123". */
+    number: bigint('number', { mode: 'number' })
+      .notNull()
+      .generatedAlwaysAsIdentity(),
+    calendarEventId: uuid('calendar_event_id')
+      .notNull()
+      .references(() => calendarEvents.id, { onDelete: 'restrict' }),
+    partnerId: uuid('partner_id')
+      .notNull()
+      .references(() => partners.id, { onDelete: 'restrict' }),
+    /** Event belanja jastiper. */
+    eventId: uuid('event_id')
+      .notNull()
+      .references(() => events.id, { onDelete: 'restrict' }),
+    brandId: uuid('brand_id')
+      .notNull()
+      .references(() => brands.id, { onDelete: 'restrict' }),
+    status: invoiceStatusEnum().notNull().default('ditagih'),
+    totalAmount: decimal('total_amount', { precision: 14, scale: 2 }).notNull(),
+    totalPcs: integer('total_pcs').notNull(),
+    sentAt: timestamp('sent_at', { withTimezone: true }).notNull().defaultNow(),
+    cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
+    cancelReason: text('cancel_reason'),
+    /** Jastiper menekan "Sudah bayar" (bersama bukti). */
+    paidClaimedAt: timestamp('paid_claimed_at', { withTimezone: true }),
+    /** Partner menandai lunas. */
+    paidConfirmedAt: timestamp('paid_confirmed_at', { withTimezone: true }),
+    /** Bukti bayar ada di Blobs (key `invoice-<id>`). */
+    paymentProofStored: boolean('payment_proof_stored').notNull().default(false),
+    /** Alasan partner menolak bukti terakhir; dikosongkan saat jastiper klaim lagi. */
+    paymentRejectReason: text('payment_reject_reason'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('invoices_number_unique').on(table.number),
+    index('invoices_calendar_event_idx').on(table.calendarEventId),
+    index('invoices_brand_event_idx').on(table.brandId, table.eventId),
+  ],
+)
+
+/** Submit yang masuk satu tagihan. */
+export const invoiceSubmissions = pgTable(
+  'invoice_submissions',
+  {
+    invoiceId: uuid('invoice_id')
+      .notNull()
+      .references(() => invoices.id, { onDelete: 'cascade' }),
+    submissionId: uuid('submission_id')
+      .notNull()
+      .references(() => eventSubmissions.id, { onDelete: 'restrict' }),
+    amount: decimal({ precision: 14, scale: 2 }).notNull(),
+    pcs: integer().notNull(),
+    /** Terisi saat tagihan dibatalkan: submit bebas ditagih lagi. */
+    releasedAt: timestamp('released_at', { withTimezone: true }),
+  },
+  (table) => [
+    primaryKey({ columns: [table.invoiceId, table.submissionId] }),
+    // Satu submit hanya boleh ada di satu tagihan aktif.
+    uniqueIndex('invoice_submissions_active_unique')
+      .on(table.submissionId)
+      .where(sql`released_at is null`),
+  ],
+)
+
+/**
+ * Snapshot baris tagihan. Harga katalog live bisa berubah, tagihan tidak boleh
+ * ikut berubah.
+ */
+export const invoiceLines = pgTable(
+  'invoice_lines',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    invoiceId: uuid('invoice_id')
+      .notNull()
+      .references(() => invoices.id, { onDelete: 'cascade' }),
+    submissionId: uuid('submission_id').notNull(),
+    /** 'satuan' | 'paket' */
+    kind: varchar().notNull(),
+    /** Nama produk (ukuran / variasi), atau nama paket beserta isinya. */
+    label: text().notNull(),
+    qty: integer().notNull(),
+    unitPrice: decimal('unit_price', { precision: 14, scale: 2 }).notNull(),
+    amount: decimal({ precision: 14, scale: 2 }).notNull(),
+  },
+  (table) => [index('invoice_lines_invoice_idx').on(table.invoiceId)],
 )

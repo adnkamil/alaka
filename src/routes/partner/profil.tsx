@@ -1,7 +1,14 @@
 import { useRef, useState } from 'react'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, useRouter } from '@tanstack/react-router'
-import { ChevronRight, KeyRound, LogOut, Mail, Store } from 'lucide-react'
+import {
+  ChevronRight,
+  KeyRound,
+  Landmark,
+  LogOut,
+  Mail,
+  Store,
+} from 'lucide-react'
 import ChangePasswordModal from '../../components/ChangePasswordModal'
 import PartnerLogo from '../../components/PartnerLogo'
 import PartnerSubscriptionCard from '../../components/PartnerSubscriptionCard'
@@ -16,7 +23,10 @@ import {
   updateOwnPartnerProfile,
 } from '../../lib/partner-profile-functions'
 import {
+  BANK_ACCOUNT_NAME_MAX,
+  BANK_NAME_MAX,
   PARTNER_NAME_MAX,
+  normalizePartnerBankAccount,
   normalizePartnerProfile,
 } from '../../lib/partner-profile-rules'
 import { currentPartnerQuery } from '../../lib/queries'
@@ -56,6 +66,9 @@ function PartnerProfilePage() {
           <ProfileForm
             initialName={partner.name}
             initialWaNumber={partner.waNumber ?? ''}
+            initialBankName={partner.bankName ?? ''}
+            initialBankAccountNumber={partner.bankAccountNumber ?? ''}
+            initialBankAccountName={partner.bankAccountName ?? ''}
           />
         </div>
         <div className="lg:col-start-1 lg:row-start-3">
@@ -97,14 +110,25 @@ function LogoutButton() {
 function ProfileForm({
   initialName,
   initialWaNumber,
+  initialBankName,
+  initialBankAccountNumber,
+  initialBankAccountName,
 }: {
   initialName: string
   initialWaNumber: string
+  initialBankName: string
+  initialBankAccountNumber: string
+  initialBankAccountName: string
 }) {
   const queryClient = useQueryClient()
   const router = useRouter()
   const [name, setName] = useState(initialName)
   const [waNumber, setWaNumber] = useState(initialWaNumber)
+  const [bankName, setBankName] = useState(initialBankName)
+  const [bankAccountNumber, setBankAccountNumber] = useState(
+    initialBankAccountNumber,
+  )
+  const [bankAccountName, setBankAccountName] = useState(initialBankAccountName)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
@@ -119,15 +143,36 @@ function ProfileForm({
       return
     }
 
+    const bank = normalizePartnerBankAccount({
+      bankName,
+      bankAccountNumber,
+      bankAccountName,
+    })
+    if (!bank.ok) {
+      setError(bank.error)
+      return
+    }
+
     setSaving(true)
     try {
-      await updateOwnPartnerProfile({ data: { name, waNumber } })
+      await updateOwnPartnerProfile({
+        data: {
+          name,
+          waNumber,
+          bankName,
+          bankAccountNumber,
+          bankAccountName,
+        },
+      })
       // Nama baru tampil di header (konteks route) dan di etalase jastiper.
       await queryClient.invalidateQueries({ queryKey: ['current-partner'] })
       await queryClient.invalidateQueries({ queryKey: ['calendar-event'] })
       await router.invalidate()
       setName(checked.value.name)
       setWaNumber(checked.value.waNumber ?? '')
+      setBankName(bank.value.bankName ?? '')
+      setBankAccountNumber(bank.value.bankAccountNumber ?? '')
+      setBankAccountName(bank.value.bankAccountName ?? '')
       setNotice('Profil disimpan')
     } catch (err) {
       setError(getErrorMessage(err, 'Gagal menyimpan profil'))
@@ -192,6 +237,56 @@ function ProfileForm({
               Tersimpan: {formatPhoneNumber(initialWaNumber)}
             </span>
           )}
+        </label>
+      </div>
+
+      <div className="border-t" style={{ borderColor: 'var(--app-border)' }} />
+
+      <div className="flex items-center gap-2">
+        <span className="app-icon-tile h-9 w-9 shrink-0">
+          <Landmark size={16} />
+        </span>
+        <div>
+          <p className="text-sm font-semibold">Rekening pembayaran</p>
+          <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
+            Tampil di rincian tagihan supaya jastiper tahu ke mana harus
+            transfer. Kosongkan semua kalau belum mau diisi.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-5">
+        <label className="flex flex-col gap-1.5 text-xs font-semibold">
+          Nama bank
+          <input
+            maxLength={BANK_NAME_MAX}
+            value={bankName}
+            onChange={(e) => setBankName(e.target.value)}
+            className="app-input"
+            placeholder="Mis. BCA, Mandiri, BRI"
+          />
+        </label>
+
+        <label className="flex flex-col gap-1.5 text-xs font-semibold">
+          Nomor rekening
+          <input
+            inputMode="numeric"
+            value={bankAccountNumber}
+            onChange={(e) => setBankAccountNumber(e.target.value)}
+            className="app-input"
+            placeholder="Hanya angka"
+          />
+        </label>
+
+        <label className="flex flex-col gap-1.5 text-xs font-semibold lg:col-span-2">
+          Atas nama
+          <input
+            maxLength={BANK_ACCOUNT_NAME_MAX}
+            value={bankAccountName}
+            onChange={(e) => setBankAccountName(e.target.value)}
+            className="app-input"
+            placeholder="Nama pemilik rekening"
+          />
         </label>
       </div>
 

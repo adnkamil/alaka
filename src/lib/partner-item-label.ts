@@ -17,8 +17,11 @@ export interface PartnerItemRule {
   name: string
   minQty: number
   bundlePrice: number
-  /** Kosong = semua ukuran. */
-  sizes: Array<string>
+  /**
+   * Ukuran yang ikut aturan, per produk (productId -> nama ukuran). Varian
+   * berukuran hanya ikut kalau ukurannya ada di sini; lihat ruleCoversVariant.
+   */
+  productSizes: Record<string, Array<string>>
 }
 
 export interface PartnerItemProduct {
