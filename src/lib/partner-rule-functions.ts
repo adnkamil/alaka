@@ -5,7 +5,6 @@ import { clampPage, pageOffset, pageParamsSchema } from './pagination'
 import { requirePartner } from './partner-auth'
 import { RULE_SORT_KEYS } from './partner-rule-sort'
 import { sortParamSchema } from './table-sort'
-import { hasPartnerPro } from './partner-entitlement'
 import { assertRuleScopesNoOverlap } from './partner-pricing'
 import { productSizesForRule, validateProductSizes } from './partner-rule-sizes'
 import { syncDefaultVariant } from './partner-default-variant'
@@ -78,22 +77,6 @@ export const listPartnerProductSizes = createServerFn({
   )
   return Object.fromEntries(sizes) as Record<string, Array<string>>
 })
-
-async function assertPro(partnerId: string) {
-  const { db } = await import('../db')
-  const { partnerSubscriptions } = await import('../db/schema')
-  const subs = await db
-    .select({
-      status: partnerSubscriptions.status,
-      startedAt: partnerSubscriptions.startedAt,
-      endsAt: partnerSubscriptions.endsAt,
-    })
-    .from(partnerSubscriptions)
-    .where(eq(partnerSubscriptions.partnerId, partnerId))
-  if (!hasPartnerPro(subs)) {
-    throw new Error('Aturan paket membutuhkan langganan PRO partner.')
-  }
-}
 
 /** Daftar aturan paket milik partner, beserta produk di tiap aturan. */
 export const listPartnerRules = createServerFn({ method: 'GET' }).handler(
@@ -265,7 +248,6 @@ export const savePartnerRule = createServerFn({ method: 'POST' })
   .validator(ruleInputSchema)
   .handler(async ({ data }) => {
     const partner = await requirePartner()
-    await assertPro(partner.id)
     const { db } = await import('../db')
     const {
       partnerProducts,
@@ -612,9 +594,6 @@ export const setPartnerProductRules = createServerFn({ method: 'POST' })
       return !sameSizes(a, b)
     })
     if (changedIds.length === 0) return { ok: true as const }
-
-    // Menambah produk atau mengubah ukurannya butuh PRO; mengeluarkan saja tidak.
-    if (changedIds.some((id) => wanted.has(id))) await assertPro(partner.id)
 
     // Cek bentrok ukuran memakai keanggotaan produk ini setelah disimpan.
     try {

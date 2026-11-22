@@ -109,7 +109,7 @@ function PartnerPaketPage() {
             className="mt-1 text-[13px]"
             style={{ color: 'var(--app-text-soft)' }}
           >
-            {total} aturan · membutuhkan langganan PRO
+            {total} aturan
           </p>
         </div>
         <Link

@@ -358,8 +358,8 @@ export default function PartnerVariantEditor({
               style={{ color: 'var(--app-text-soft)' }}
             >
               {hasVariants
-                ? 'Varian aktif (PRO). Harga dan stok diisi per kombinasi di tabel.'
-                : 'Aktifkan varian (PRO) kalau harga atau stok beda per ukuran/variasi.'}
+                ? 'Varian aktif. Harga dan stok diisi per kombinasi di tabel.'
+                : 'Aktifkan varian kalau harga atau stok beda per ukuran/variasi.'}
             </p>
           </div>
           <button

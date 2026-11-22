@@ -56,6 +56,8 @@ function PartnerInvoiceDetailPage() {
         'partner-submit-list',
         'partner-event-revenue',
         'partner-jastiper-detail',
+        // Lunas memotong biaya admin dari saldo kredit.
+        'partner-credit',
       ].map((key) => queryClient.invalidateQueries({ queryKey: [key] })),
     )
     setProofKey((k) => k + 1)
@@ -216,6 +218,19 @@ function PartnerInvoiceDetailPage() {
                 <Info label="Total invoice">
                   <span className="pm-num font-bold">{formatRupiah(d.totalAmount)}</span>
                 </Info>
+                {d.adminFee && d.adminFee.amount > 0 && (
+                  <Info
+                    label={`Biaya admin ALAKA (${d.adminFee.percent.toLocaleString('id-ID', { maximumFractionDigits: 2 })}%)`}
+                  >
+                    <Link
+                      to="/partner/saldo"
+                      className="pm-num font-semibold no-underline"
+                      style={{ color: 'var(--app-accent)' }}
+                    >
+                      −{formatRupiah(d.adminFee.amount)} dari saldo
+                    </Link>
+                  </Info>
+                )}
                 <Info label="Submit">
                   <span className="flex flex-wrap gap-x-2">
                     {d.submitNos.map((n) => (

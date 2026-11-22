@@ -8,11 +8,9 @@ import {
   partnerProducts,
   partnerRuleProducts,
   partnerRuleProductSizes,
-  partnerSubscriptions,
   partnerVariantValues,
   partnerVariants,
 } from '../db/schema'
-import { hasPartnerPro } from './partner-entitlement'
 import { partnerItemName, variantLabel } from './partner-item-label'
 import { productSizesForRule } from './partner-rule-sizes'
 import { aggregateStockDemand, findStockShortages, formatStockShortages } from './partner-stock'
@@ -68,20 +66,6 @@ export async function buildPartnerBundle(
   })
   if (!rule || !rule.isActive) {
     throw new Error('Aturan paket tidak ditemukan atau nonaktif.')
-  }
-
-  // Partner harus PRO untuk membuat bundle baru. Bundle yang sudah ada
-  // tetap bisa dilihat dan diubah harganya walaupun langganan sudah habis.
-  const subs = await tx
-    .select({
-      status: partnerSubscriptions.status,
-      startedAt: partnerSubscriptions.startedAt,
-      endsAt: partnerSubscriptions.endsAt,
-    })
-    .from(partnerSubscriptions)
-    .where(eq(partnerSubscriptions.partnerId, rule.partnerId))
-  if (!hasPartnerPro(subs)) {
-    throw new Error('Fitur paket belum aktif untuk partner ini.')
   }
 
   const ruleProductRows = await tx

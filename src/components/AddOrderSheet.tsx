@@ -437,7 +437,7 @@ export default function AddOrderSheet({
   }
 
   // Pratinjau paket: dihitung dari barang di form, sama dengan aturan server.
-  // Hanya untuk partner PRO (katalog enabled).
+  // Hanya kalau event punya katalog paket partner (katalog enabled).
   const bundlePreview = useMemo(() => {
     if (!partnerCatalog?.enabled) return { bundles: [], pending: [] }
     return previewPartnerBundles(

@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { getSessionUserFromRequest } from '../../../lib/auth'
-import { getPaymentProof } from '../../../lib/storage'
+import { getTopupProof } from '../../../lib/storage'
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -8,8 +8,8 @@ const UUID_PATTERN =
 // Bukti transfer itu privat: jangan pernah masuk cache bersama.
 const PRIVATE_HEADERS = { 'Cache-Control': 'private, no-store' }
 
-/** Bukti transfer langganan partner. Hanya admin yang boleh melihat. */
-export const Route = createFileRoute('/api/partner-subscription-proof/$id')({
+/** Bukti transfer top up saldo partner. Hanya admin ALAKA yang boleh melihat. */
+export const Route = createFileRoute('/api/partner-topup-proof/$id')({
   server: {
     handlers: {
       GET: async ({ request, params }) => {
@@ -23,7 +23,7 @@ export const Route = createFileRoute('/api/partner-subscription-proof/$id')({
         if (!viewer.isAdmin) {
           return new Response('Not found', { status: 404, headers: PRIVATE_HEADERS })
         }
-        const proof = await getPaymentProof(params.id)
+        const proof = await getTopupProof(params.id)
         if (!proof) {
           return new Response('Not found', { status: 404, headers: PRIVATE_HEADERS })
         }

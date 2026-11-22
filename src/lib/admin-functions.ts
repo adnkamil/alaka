@@ -169,6 +169,7 @@ async function upsertSubscriptionSettings(
     qrisString: string
     proPrice: string
     originalPrice: string | null
+    adminFeePercent: string
   }>,
   adminId: string,
 ) {
@@ -243,6 +244,34 @@ export const updateSubscriptionPrice = createServerFn({ method: 'POST' })
         originalPrice:
           data.originalPrice === null ? null : data.originalPrice.toFixed(2),
       },
+      admin.id,
+    )
+    return { success: true }
+  })
+
+/**
+ * Admin atur biaya admin partner (persen dari harga produk di tagihan partner
+ * yang lunas, maks 2 desimal). Hanya berlaku untuk tagihan yang lunas SETELAH
+ * diubah; yang sudah lunas menyimpan snapshot persennya sendiri.
+ */
+export const updateAdminFeePercent = createServerFn({ method: 'POST' })
+  .validator(
+    z.object({
+      percent: z
+        .number()
+        .min(0, 'Persen tidak boleh negatif')
+        .max(100, 'Persen maksimal 100')
+        // Toleransi floating point: 2.55 * 100 = 254.99999999999997.
+        .refine(
+          (n) => Math.abs(Math.round(n * 100) - n * 100) < 1e-6,
+          'Maksimal 2 angka di belakang koma',
+        ),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const admin = await requireAdminUser()
+    await upsertSubscriptionSettings(
+      { adminFeePercent: data.percent.toFixed(2) },
       admin.id,
     )
     return { success: true }

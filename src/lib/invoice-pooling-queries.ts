@@ -6,9 +6,7 @@ import {
   partnerPricingRules,
   partnerRuleProductSizes,
   partnerRuleProducts,
-  partnerSubscriptions,
 } from '../db/schema'
-import { hasPartnerPro } from './partner-entitlement'
 import {
   applyPoolToBilling,
   poolSinglesIntoBundles,
@@ -87,7 +85,7 @@ async function loadActiveRules(
 
 /**
  * Jadikan pcs disetujui paket menurut aturan aktif partner, dengan harga aturan
- * saat ini. Tidak menulis apa pun. Partner tanpa PRO tidak mendapat pemaketan.
+ * saat ini. Tidak menulis apa pun.
  * `groupOf` menentukan pcs mana yang dipaketkan bersama, dari id submitnya.
  * Bawaannya semua pcs satu kelompok (satu tagihan, satu jastiper).
  */
@@ -109,16 +107,6 @@ export async function poolInvoiceBilling(
   }
   // Satu pcs saja tidak mungkin jadi paket.
   if (poolable.reduce((sum, s) => sum + s.qty, 0) < 2) return unchanged
-
-  const subs = await tx
-    .select({
-      status: partnerSubscriptions.status,
-      startedAt: partnerSubscriptions.startedAt,
-      endsAt: partnerSubscriptions.endsAt,
-    })
-    .from(partnerSubscriptions)
-    .where(eq(partnerSubscriptions.partnerId, partnerId))
-  if (!hasPartnerPro(subs)) return unchanged
 
   const rules = await loadActiveRules(tx, partnerId)
   if (rules.length === 0) return unchanged

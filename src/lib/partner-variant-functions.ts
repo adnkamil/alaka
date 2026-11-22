@@ -10,7 +10,6 @@ import { z } from 'zod'
 import { requirePartner } from './partner-auth'
 import { HEARTBEAT_STALE_MS } from './stock-check-allocate'
 import { getPartnerProduct } from './partner-product-queries'
-import { hasPartnerPro } from './partner-entitlement'
 import {
   VariantPlanError,
   planVariantChanges,
@@ -192,26 +191,13 @@ export const savePartnerProductVariants = createServerFn({ method: 'POST' })
       partnerOptionValues,
       partnerVariants,
       partnerVariantValues,
-      partnerSubscriptions,
       items,
       itemComponents,
     } = schema
     await assertOwnedProduct(partner.id, data.productId)
 
-    if (data.hasVariants) {
-      const subs = await db
-        .select({
-          status: partnerSubscriptions.status,
-          startedAt: partnerSubscriptions.startedAt,
-          endsAt: partnerSubscriptions.endsAt,
-        })
-        .from(partnerSubscriptions)
-        .where(eq(partnerSubscriptions.partnerId, partner.id))
-      if (!hasPartnerPro(subs)) {
-        throw new Error('Fitur varian membutuhkan langganan PRO partner.')
-      }
-    } else {
-      if (data.price === null) throw new Error('Isi harga produk.')
+    if (!data.hasVariants && data.price === null) {
+      throw new Error('Isi harga produk.')
     }
 
     // Foto variasi dicek dulu sebelum transaksi supaya file rusak ditolak lebih awal.

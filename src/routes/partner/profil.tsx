@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
-import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
-import { createFileRoute, useRouter } from '@tanstack/react-router'
+import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
+import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
 import {
   ChevronRight,
   KeyRound,
@@ -8,10 +8,10 @@ import {
   LogOut,
   Mail,
   Store,
+  Wallet,
 } from 'lucide-react'
 import ChangePasswordModal from '../../components/ChangePasswordModal'
 import PartnerLogo from '../../components/PartnerLogo'
-import PartnerSubscriptionCard from '../../components/PartnerSubscriptionCard'
 import Toast from '../../components/ui/Toast'
 import { blobToDataUrl, fileToAvatarBlob } from '../../lib/avatar-image'
 import { getErrorMessage } from '../../lib/error-message'
@@ -30,6 +30,9 @@ import {
   normalizePartnerProfile,
 } from '../../lib/partner-profile-rules'
 import { currentPartnerQuery } from '../../lib/queries'
+import { creditBalanceState } from '../../lib/partner-credit'
+import { fetchPartnerCreditOverview } from '../../lib/partner-credit-functions'
+import { formatRupiah } from '../../lib/partner-product-rules'
 
 export const Route = createFileRoute('/partner/profil')({
   loader: ({ context }) =>
@@ -60,7 +63,7 @@ function PartnerProfilePage() {
           <LogoCard name={partner.name} logoUrl={partner.logoUrl} />
         </div>
         <div className="lg:col-start-1 lg:row-start-2">
-          <PartnerSubscriptionCard />
+          <CreditCard />
         </div>
         <div className="lg:col-start-2 lg:row-span-3 lg:row-start-1">
           <ProfileForm
@@ -304,6 +307,41 @@ function ProfileForm({
       </button>
       {notice && <Toast message={notice} onClose={() => setNotice(null)} />}
     </form>
+  )
+}
+
+/** Ringkasan saldo kredit; ketuk untuk top up dan riwayat di /partner/saldo. */
+function CreditCard() {
+  const { data } = useQuery({
+    queryKey: ['partner-credit'],
+    queryFn: () => fetchPartnerCreditOverview(),
+  })
+  const state = data ? creditBalanceState(data.balance) : null
+  return (
+    <Link
+      to="/partner/saldo"
+      className="app-card flex items-center gap-3 p-4 no-underline lg:p-5"
+    >
+      <span className="app-icon-tile h-9 w-9 shrink-0">
+        <Wallet size={16} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold">Saldo kredit</span>
+        <span
+          className="pm-num block text-xs"
+          style={{
+            color: state && state.arrears > 0 ? 'var(--app-danger)' : 'var(--app-text-soft)',
+          }}
+        >
+          {!state
+            ? 'Untuk biaya admin ALAKA'
+            : state.arrears > 0
+              ? `Tunggakan ${formatRupiah(state.arrears)}`
+              : formatRupiah(state.balance)}
+        </span>
+      </span>
+      <ChevronRight size={18} style={{ color: 'var(--app-text-mute)' }} />
+    </Link>
   )
 }
 

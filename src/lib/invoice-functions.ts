@@ -61,6 +61,11 @@ export type InvoiceDetail = InvoiceSummary & {
   partnerBank: PartnerBankInfo | null
   /** Nomor submit yang masuk tagihan ini. */
   submitNos: Array<number>
+  /**
+   * Biaya admin ALAKA yang dipotong dari saldo partner saat lunas. Hanya diisi
+   * untuk partner (jastiper tidak melihatnya). Null = belum lunas / tidak dipotong.
+   */
+  adminFee: { percent: number; amount: number } | null
   /** Snapshot saat tagihan dibuat, bukan hitung ulang dari harga katalog. */
   lines: Array<{
     id: string
@@ -179,6 +184,8 @@ async function loadInvoiceDetail(invoiceId: string, scope: {
       paidConfirmedAt: invoices.paidConfirmedAt,
       paymentProofStored: invoices.paymentProofStored,
       paymentRejectReason: invoices.paymentRejectReason,
+      adminFeePercent: invoices.adminFeePercent,
+      adminFeeAmount: invoices.adminFeeAmount,
       brandName: brands.name,
       brandId: invoices.brandId,
       calendarEventId: invoices.calendarEventId,
@@ -252,6 +259,13 @@ async function loadInvoiceDetail(invoiceId: string, scope: {
           }
         : null,
     submitNos: subs.map((s) => s.submitNo),
+    adminFee:
+      scope.partnerId && invoice.adminFeePercent !== null && invoice.adminFeeAmount !== null
+        ? {
+            percent: Number(invoice.adminFeePercent),
+            amount: Number(invoice.adminFeeAmount),
+          }
+        : null,
     lines: lines
       .map((l) => ({
         id: l.id,
