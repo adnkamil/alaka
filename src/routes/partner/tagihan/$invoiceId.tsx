@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
 import { ArrowLeft, MessageCircle, Printer } from 'lucide-react'
 import { BankInfo } from '../../../components/InvoiceDetailModal'
+import UnderlineTabs from '../../../components/ui/UnderlineTabs'
 import InvoiceDocument from '../../../components/InvoiceDocument'
 import InvoicePackingList from '../../../components/InvoicePackingList'
 import InvoiceLinesBySubmit from '../../../components/InvoiceLinesBySubmit'
@@ -141,25 +142,16 @@ function PartnerInvoiceDetailPage() {
       ) : (
         <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-5">
           <div className="flex flex-col gap-4">
-            <div className="flex gap-2 print:hidden" role="tablist" aria-label="Tampilan tagihan">
-              {(
-                [
-                  { key: 'tagihan', label: 'Tagihan' },
-                  { key: 'packing', label: 'Daftar packing' },
-                ] as const
-              ).map((item) => (
-                <button
-                  key={item.key}
-                  type="button"
-                  role="tab"
-                  aria-selected={view === item.key}
-                  onClick={() => setView(item.key)}
-                  className={`pm-chip ${view === item.key ? 'pm-chip--active' : ''}`}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
+            <UnderlineTabs
+              className="print:hidden"
+              ariaLabel="Tampilan tagihan"
+              items={[
+                { key: 'tagihan', label: 'Tagihan' },
+                { key: 'packing', label: 'Daftar packing' },
+              ]}
+              value={view}
+              onChange={setView}
+            />
             {view === 'packing' ? (
               <InvoicePackingList invoice={d} />
             ) : (
@@ -252,7 +244,7 @@ function PartnerInvoiceDetailPage() {
                   Jastiper mengaku sudah bayar {formatWibDateTime(d.paidClaimedAt)}
                 </p>
               )}
-              {d.status === 'lunas' && d.paidConfirmedAt && (
+              {d.status === 'lunas' && d.paidConfirmedAt && !d.hasProof && (
                 <p style={{ color: 'var(--app-text-soft)' }}>
                   Lunas {formatWibDateTime(d.paidConfirmedAt)}
                 </p>
@@ -286,12 +278,20 @@ function PartnerInvoiceDetailPage() {
               <BankInfo bank={d.partnerBank} forPartner totalAmount={d.totalAmount} />
             )}
             {d.hasProof && (
-              <div className="app-card p-4">
+              <div className="app-card flex flex-wrap items-center justify-between gap-x-3 gap-y-1 p-4">
                 <PaymentProofViewer
                   src={`/api/invoice-proof/${invoiceId}?v=${proofKey}`}
                   label="Lihat bukti bayar"
                   className="flex items-center gap-1.5 text-xs font-semibold"
                 />
+                {d.status === 'lunas' && d.paidConfirmedAt && (
+                  <span
+                    className="text-xs"
+                    style={{ color: 'var(--app-text-soft)' }}
+                  >
+                    Lunas {formatWibDateTime(d.paidConfirmedAt)}
+                  </span>
+                )}
               </div>
             )}
 

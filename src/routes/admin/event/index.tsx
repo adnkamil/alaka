@@ -5,6 +5,7 @@ import { CalendarDays, MapPin, Plus } from 'lucide-react'
 import { formatDateRange, isCalendarEventFinished } from '../../../lib/calendar'
 import { adminCalendarEventsQuery } from '../../../lib/queries'
 import { todayIsoDateInAppTimeZone } from '../../../lib/timezone'
+import UnderlineTabs from '../../../components/ui/UnderlineTabs'
 
 export const Route = createFileRoute('/admin/event/')({
   loader: ({ context }) =>
@@ -52,25 +53,16 @@ function AdminEventListPage() {
         </Link>
       </div>
 
-      <div className="mb-4 flex gap-2" role="tablist" aria-label="Filter event">
-        {(
-          [
-            { key: 'upcoming', label: 'Mendatang', count: upcoming.length },
-            { key: 'past', label: 'Selesai', count: past.length },
-          ] as const
-        ).map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            role="tab"
-            aria-selected={tab === item.key}
-            onClick={() => setTab(item.key)}
-            className={`pm-chip ${tab === item.key ? 'pm-chip--active' : ''}`}
-          >
-            {item.label} ({item.count})
-          </button>
-        ))}
-      </div>
+      <UnderlineTabs
+        className="mb-4"
+        ariaLabel="Filter event"
+        items={[
+          { key: 'upcoming', label: 'Mendatang', count: upcoming.length },
+          { key: 'past', label: 'Selesai', count: past.length },
+        ]}
+        value={tab}
+        onChange={setTab}
+      />
 
       {visible.length === 0 ? (
         <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>

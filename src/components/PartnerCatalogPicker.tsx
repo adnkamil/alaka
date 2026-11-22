@@ -52,6 +52,15 @@ function unique(values: Array<string | null>): Array<string> {
   return Array.from(new Set(values.filter((v): v is string => Boolean(v))))
 }
 
+/** Foto variasi pertama (urut variasi), dipakai kalau produk belum punya foto. */
+function firstVariationPhoto(product: PartnerItemProduct): string | null {
+  const photos = product.variationPhotos ?? {}
+  for (const v of product.variants) {
+    if (v.variation && photos[v.variation]) return photos[v.variation]
+  }
+  return null
+}
+
 function priceLabel(product: PartnerItemProduct): string {
   const prices = product.variants.map((v) => v.price)
   if (prices.length === 0) return '—'
@@ -232,8 +241,8 @@ export default function PartnerCatalogPicker({
               className="flex min-h-[64px] w-full items-center gap-3 rounded-xl border p-3 text-left"
               style={{ borderColor: 'var(--app-border)' }}
             >
-              {p.photoUrl ? (
-                <img src={p.photoUrl} alt="" className="h-12 w-12 flex-shrink-0 rounded-lg object-cover" />
+              {(p.photoUrl ?? firstVariationPhoto(p)) ? (
+                <img src={(p.photoUrl ?? firstVariationPhoto(p))!} alt="" className="h-12 w-12 flex-shrink-0 rounded-lg object-cover" />
               ) : (
                 <span className="h-12 w-12 flex-shrink-0 rounded-lg" style={{ background: tintFor(p.name) }} aria-hidden="true" />
               )}
@@ -352,6 +361,13 @@ function VariantSheet({
   const effQty = Math.min(qty, maxQty)
   const label = [size, variation].filter(Boolean).join(' / ')
 
+  const variationPhotos = product.variationPhotos ?? {}
+  // Foto header: foto variasi yang dipilih, lalu foto produk, lalu foto variasi pertama.
+  const headerPhoto =
+    (variation ? variationPhotos[variation] : undefined) ??
+    product.photoUrl ??
+    firstVariationPhoto(product)
+
   const ctaLabel =
     variant === null
       ? 'Pilih variasi dulu'
@@ -367,6 +383,13 @@ function VariantSheet({
     <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/40 sm:items-center" role="dialog" aria-modal="true" aria-label="Pilih varian">
       <div className="flex max-h-[85dvh] w-full max-w-lg flex-col gap-4 overflow-y-auto rounded-t-2xl p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:rounded-2xl" style={{ background: 'var(--app-card)' }}>
         <div className="flex items-start gap-3">
+          {headerPhoto && (
+            <img
+              src={headerPhoto}
+              alt={variation ?? product.name}
+              className="h-20 w-20 flex-shrink-0 rounded-xl object-cover"
+            />
+          )}
           <div className="min-w-0 flex-1">
             <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>{mode === 'replace' ? 'Ubah varian' : 'Pilih varian'}</p>
             <p className="font-semibold">{product.name}</p>
@@ -422,7 +445,14 @@ function VariantSheet({
             <p className="mb-2 text-xs" style={{ color: 'var(--app-text-soft)' }}>Variasi</p>
             <div className="flex flex-wrap gap-2">
               {variations.map((va) => (
-                <Chip key={va} label={va} selected={variation === va} disabled={!available('variation', va)} onClick={() => setVariation(va)} />
+                <Chip
+                  key={va}
+                  label={va}
+                  image={variationPhotos[va] ?? null}
+                  selected={variation === va}
+                  disabled={!available('variation', va)}
+                  onClick={() => setVariation(va)}
+                />
               ))}
             </div>
           </div>
@@ -499,8 +529,11 @@ function Chip({
   disabled,
   onClick,
   filled = false,
+  image = null,
 }: {
   label: string
+  /** Foto kecil di kiri label (foto variasi). */
+  image?: string | null
   selected: boolean
   disabled: boolean
   onClick: () => void
@@ -514,7 +547,13 @@ function Chip({
       disabled={disabled}
       aria-pressed={selected}
       onClick={onClick}
-      className={solid ? 'rounded-2xl border px-4 py-2 text-sm font-semibold' : 'rounded-full border px-3 py-1.5 text-sm'}
+      className={
+        solid
+          ? 'rounded-2xl border px-4 py-2 text-sm font-semibold'
+          : image
+            ? 'flex items-center gap-2 rounded-full border py-1 pr-3 pl-1 text-sm'
+            : 'rounded-full border px-3 py-1.5 text-sm'
+      }
       style={{
         borderColor: selected ? 'var(--app-accent)' : 'var(--app-border)',
         background: solid ? 'var(--app-accent)' : 'transparent',
@@ -523,6 +562,14 @@ function Chip({
         textDecoration: disabled ? 'line-through' : 'none',
       }}
     >
+      {image && (
+        <img
+          src={image}
+          alt=""
+          className="h-7 w-7 flex-shrink-0 rounded-full object-cover"
+          style={{ opacity: disabled ? 0.5 : 1 }}
+        />
+      )}
       {label}
     </button>
   )

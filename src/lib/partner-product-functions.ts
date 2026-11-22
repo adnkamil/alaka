@@ -126,7 +126,12 @@ const photoChangeSchema = z.discriminatedUnion('action', [
 ])
 
 export const updateOwnPartnerProduct = createServerFn({ method: 'POST' })
-  .validator(fieldsSchema.extend({ id: idSchema, photo: photoChangeSchema }))
+  .validator(
+    // Harga opsional: halaman ubah menyimpannya lewat savePartnerProductVariants.
+    fieldsSchema
+      .partial({ price: true })
+      .extend({ id: idSchema, photo: photoChangeSchema }),
+  )
   .handler(async ({ data }) => {
     const partner = await requirePartner()
     const { id, photo, ...fields } = data

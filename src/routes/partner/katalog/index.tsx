@@ -6,6 +6,7 @@ import {
 } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { Inbox, Package, Plus } from 'lucide-react'
+import UnderlineTabs from '../../../components/ui/UnderlineTabs'
 import Pagination from '../../../components/ui/Pagination'
 import Toast from '../../../components/ui/Toast'
 import { getErrorMessage } from '../../../lib/error-message'
@@ -128,18 +129,12 @@ function PartnerCatalogPage() {
           pager={pager}
         />
 
-        <div className="flex flex-wrap gap-2">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => changeTab(t.key)}
-              className={`pm-chip ${tab === t.key ? 'pm-chip--active' : ''}`}
-            >
-              {t.label} {counts[t.key]}
-            </button>
-          ))}
-        </div>
+        <UnderlineTabs
+          ariaLabel="Status produk"
+          items={TABS.map((t) => ({ ...t, count: counts[t.key] }))}
+          value={tab}
+          onChange={changeTab}
+        />
 
         {visible.length === 0 ? (
           <div className="app-card flex flex-col items-center gap-2 p-8 text-center">
@@ -310,20 +305,12 @@ function CatalogDesktop({
         </Link>
       </header>
 
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex flex-wrap gap-2">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => onTab(t.key)}
-              className={`pm-chip ${tab === t.key ? 'pm-chip--active' : ''}`}
-            >
-              {t.label} {counts[t.key]}
-            </button>
-          ))}
-        </div>
-      </div>
+      <UnderlineTabs
+        ariaLabel="Status produk"
+        items={TABS.map((t) => ({ ...t, count: counts[t.key] }))}
+        value={tab}
+        onChange={onTab}
+      />
 
       {visible.length === 0 ? (
         <div className="app-card flex flex-col items-center gap-2 p-10 text-center">

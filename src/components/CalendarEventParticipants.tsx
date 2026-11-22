@@ -1,5 +1,4 @@
-import { MessageCircle } from 'lucide-react'
-import { buildWhatsAppLink, formatDate, formatPhoneNumber } from '../lib/format'
+import { formatDate } from '../lib/format'
 
 export type ParticipantRow = {
   brandId: string

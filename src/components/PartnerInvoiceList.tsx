@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
 import InvoiceStatusBadge from './InvoiceStatusBadge'
 import Pagination from './ui/Pagination'
+import FilterSelect from './ui/FilterSelect'
 import PartnerTableToolbar from './ui/PartnerTableToolbar'
 import SortHeader, { ariaSortOf } from './ui/SortHeader'
 import { submitNosLabel } from './EventInvoicesSection'
@@ -45,11 +46,14 @@ export default function PartnerInvoiceList({
   calendarEventId,
   brandId,
   hideWhenEmpty = false,
+  hideStatusFilter = false,
 }: {
   calendarEventId?: string
   brandId?: string
   /** Tidak menampilkan apa pun kalau belum ada tagihan (untuk detail jastiper). */
   hideWhenEmpty?: boolean
+  /** Sembunyikan filter status (tagihan per jastiper biasanya sedikit). */
+  hideStatusFilter?: boolean
 }) {
   const { data: invoices = [], isLoading } = useQuery({
     queryKey: ['partner-invoices', calendarEventId ?? null, brandId ?? null],
@@ -99,8 +103,12 @@ export default function PartnerInvoiceList({
   type ColumnDef = [string, InvoiceSortKey, 'left' | 'right']
   const columns: Array<ColumnDef> = [
     ['No. invoice', 'number', 'left'],
-    ...(brandId ? [] : ([['Jastiper', 'brandName', 'left']] satisfies Array<ColumnDef>)),
-    ...(calendarEventId ? [] : ([['Event', 'eventName', 'left']] satisfies Array<ColumnDef>)),
+    ...(brandId
+      ? []
+      : ([['Jastiper', 'brandName', 'left']] satisfies Array<ColumnDef>)),
+    ...(calendarEventId
+      ? []
+      : ([['Event', 'eventName', 'left']] satisfies Array<ColumnDef>)),
     ['Submit', 'submitNos', 'left'],
     ['Pcs', 'totalPcs', 'right'],
     ['Tanggal kirim', 'sentAt', 'left'],
@@ -112,24 +120,6 @@ export default function PartnerInvoiceList({
 
   return (
     <section className="flex flex-col gap-3">
-      <div className="flex flex-wrap gap-2" role="tablist" aria-label="Status tagihan">
-        {STATUS_FILTERS.map((f) => (
-          <button
-            key={f.key}
-            type="button"
-            role="tab"
-            aria-selected={status === f.key}
-            onClick={() => {
-              setStatus(f.key)
-              resetPage()
-            }}
-            className={`pm-chip ${status === f.key ? 'pm-chip--active' : ''}`}
-          >
-            {f.label} {countOf(f.key)}
-          </button>
-        ))}
-      </div>
-
       {invoices.length > 0 && (
         <PartnerTableToolbar
           search={search}
@@ -140,15 +130,42 @@ export default function PartnerInvoiceList({
           placeholder={searchLabel}
           label={searchLabel}
           pager={pager}
+          filter={
+            hideStatusFilter ? undefined : (
+              <FilterSelect
+                label="Status"
+                value={status}
+                options={STATUS_FILTERS.map((f) => {
+                  const count = countOf(f.key)
+                  return {
+                    value: f.key,
+                    label: `${f.label} (${count})`,
+                    // Status tanpa tagihan tidak bisa dipilih, kecuali yang sedang aktif.
+                    disabled: count === 0 && f.key !== status,
+                  }
+                })}
+                onChange={(value) => {
+                  setStatus(value)
+                  resetPage()
+                }}
+              />
+            )
+          }
         />
       )}
 
       {isLoading ? (
-        <p className="py-6 text-center text-sm" style={{ color: 'var(--app-text-soft)' }}>
+        <p
+          className="py-6 text-center text-sm"
+          style={{ color: 'var(--app-text-soft)' }}
+        >
           Memuat tagihan…
         </p>
       ) : rows.length === 0 ? (
-        <p className="app-card px-4 py-6 text-center text-sm" style={{ color: 'var(--app-text-soft)' }}>
+        <p
+          className="app-card px-4 py-6 text-center text-sm"
+          style={{ color: 'var(--app-text-soft)' }}
+        >
           {invoices.length === 0
             ? 'Belum ada tagihan.'
             : 'Tidak ada tagihan yang cocok.'}
@@ -203,11 +220,20 @@ export default function PartnerInvoiceList({
                       {formatInvoiceNumber(inv.number)}
                     </Link>
                   </td>
-                  {!brandId && <td className="px-4 py-3 font-semibold">{inv.brandName}</td>}
-                  {!calendarEventId && <td className="px-4 py-3">{inv.eventName}</td>}
+                  {!brandId && (
+                    <td className="px-4 py-3 font-semibold">{inv.brandName}</td>
+                  )}
+                  {!calendarEventId && (
+                    <td className="px-4 py-3">{inv.eventName}</td>
+                  )}
                   <td className="px-4 py-3">{submitNosLabel(inv.submitNos)}</td>
-                  <td className="pm-num px-4 py-3 text-right">{inv.totalPcs}</td>
-                  <td className="px-4 py-3" style={{ color: 'var(--app-text-soft)' }}>
+                  <td className="pm-num px-4 py-3 text-right">
+                    {inv.totalPcs}
+                  </td>
+                  <td
+                    className="px-4 py-3"
+                    style={{ color: 'var(--app-text-soft)' }}
+                  >
                     {formatWibDateTime(inv.sentAt)}
                   </td>
                   <td className="pm-num px-4 py-3 text-right font-bold">

@@ -256,31 +256,35 @@ function partnerProductPhotoKey(productId: string): string {
   return `${PARTNER_PRODUCT_PHOTO_PREFIX}${productId}`
 }
 
-export async function putPartnerProductPhoto(
-  productId: string,
+/** Foto per variasi (warna/motif). Key = id nilai opsi variasi. */
+const PARTNER_VARIANT_PHOTO_PREFIX = 'partner-variant-photos/'
+
+function partnerVariantPhotoKey(optionValueId: string): string {
+  return `${PARTNER_VARIANT_PHOTO_PREFIX}${optionValueId}`
+}
+
+async function putR2Photo(
+  key: string,
   bytes: Uint8Array,
   contentType: AvatarContentType,
 ): Promise<void> {
   await r2().send(
     new PutObjectCommand({
       Bucket: r2Config().bucket,
-      Key: partnerProductPhotoKey(productId),
+      Key: key,
       Body: bytes,
       ContentType: contentType,
     }),
   )
 }
 
-export async function getPartnerProductPhoto(
-  productId: string,
+async function getR2Photo(
+  key: string,
 ): Promise<{ data: ArrayBuffer; contentType: AvatarContentType } | null> {
   let res
   try {
     res = await r2().send(
-      new GetObjectCommand({
-        Bucket: r2Config().bucket,
-        Key: partnerProductPhotoKey(productId),
-      }),
+      new GetObjectCommand({ Bucket: r2Config().bucket, Key: key }),
     )
   } catch (err) {
     if (err instanceof NoSuchKey) return null
@@ -300,15 +304,50 @@ export async function getPartnerProductPhoto(
   return { data, contentType }
 }
 
+async function deleteR2Photo(key: string): Promise<void> {
+  await r2().send(
+    new DeleteObjectCommand({ Bucket: r2Config().bucket, Key: key }),
+  )
+}
+
+export async function putPartnerProductPhoto(
+  productId: string,
+  bytes: Uint8Array,
+  contentType: AvatarContentType,
+): Promise<void> {
+  await putR2Photo(partnerProductPhotoKey(productId), bytes, contentType)
+}
+
+export async function getPartnerProductPhoto(
+  productId: string,
+): Promise<{ data: ArrayBuffer; contentType: AvatarContentType } | null> {
+  return getR2Photo(partnerProductPhotoKey(productId))
+}
+
 export async function deletePartnerProductPhoto(
   productId: string,
 ): Promise<void> {
-  await r2().send(
-    new DeleteObjectCommand({
-      Bucket: r2Config().bucket,
-      Key: partnerProductPhotoKey(productId),
-    }),
-  )
+  await deleteR2Photo(partnerProductPhotoKey(productId))
+}
+
+export async function putPartnerVariantPhoto(
+  optionValueId: string,
+  bytes: Uint8Array,
+  contentType: AvatarContentType,
+): Promise<void> {
+  await putR2Photo(partnerVariantPhotoKey(optionValueId), bytes, contentType)
+}
+
+export async function getPartnerVariantPhoto(
+  optionValueId: string,
+): Promise<{ data: ArrayBuffer; contentType: AvatarContentType } | null> {
+  return getR2Photo(partnerVariantPhotoKey(optionValueId))
+}
+
+export async function deletePartnerVariantPhoto(
+  optionValueId: string,
+): Promise<void> {
+  await deleteR2Photo(partnerVariantPhotoKey(optionValueId))
 }
 
 // --- Katalog PDF partner (LEGACY) ---------------------------------------

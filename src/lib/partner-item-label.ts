@@ -29,6 +29,8 @@ export interface PartnerItemProduct {
   name: string
   /** URL foto produk, null kalau belum ada foto. */
   photoUrl?: string | null
+  /** Foto per variasi (nama variasi -> URL). Variasi tanpa foto tidak punya entri. */
+  variationPhotos?: Record<string, string>
   /** Semua aturan paket yang memuat produk ini (kosong kalau tidak ada / bukan PRO). */
   rules?: Array<PartnerItemRule>
   variants: Array<PartnerItemVariant>

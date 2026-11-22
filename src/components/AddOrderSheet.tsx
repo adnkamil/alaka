@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronDown, Plus, Trash2, User, X } from 'lucide-react'
+import { Check, ChevronDown, Lock, Plus, Trash2, User, X } from 'lucide-react'
 import NumberInput from './ui/NumberInput'
 import Switch from './ui/Switch'
 import type {PartnerBundleCatalog, PartnerBundleSubmit} from './PartnerBundleSheet';
@@ -17,11 +17,7 @@ import {
   openIndexAfterRemove,
 } from '../lib/order-sheet-items'
 import { lineTotal, summarizeItems } from '../lib/order-totals'
-import {
-  partnerItemName
-
-
-} from '../lib/partner-item-label'
+import { partnerItemName, splitItemName } from '../lib/partner-item-label'
 import type {PartnerEventItemCatalog} from '../lib/partner-item-label';
 import PartnerCatalogPicker, {type CatalogPick} from './PartnerCatalogPicker';
 import OrderItemList, { SubmitStatusBadge, type OrderItemView } from './OrderItemList'
@@ -228,39 +224,48 @@ function itemNameForSubmit(item: ItemDraft) {
 }
 
 /**
- * Harga jual dan fee barang yang sudah terkirim ke partner. Jumlah dan nama
- * tetap terkunci, jadi hanya dua angka ini yang bisa disimpan di sini.
+ * Isi kartu barang yang sudah terkirim ke partner. Nama, varian, dan jumlah
+ * terkunci, jadi yang tampil cuma ringkasan barang plus harga dan fee yang
+ * masih bisa disimpan. Menggantikan form biasa supaya tidak ada tombol
+ * (Ubah varian, Jumlah, Hapus barang) yang kelihatan aktif padahal mati.
  */
-function SubmittedPriceEditor({
+function SubmittedItemBody({
   itemId,
+  name,
+  nameLabel,
+  qty,
   originalPrice,
   fee,
   onSaved,
 }: {
   itemId: string
+  name: string
+  nameLabel: string
+  qty: number
   originalPrice: number
   fee: number
   onSaved?: () => void
 }) {
-  const [price, setPrice] = useState(String(originalPrice))
-  const [feeValue, setFeeValue] = useState(String(fee))
+  const [price, setPrice] = useState(originalPrice)
+  const [feeValue, setFeeValue] = useState(fee)
+  const [savedPrice, setSavedPrice] = useState(originalPrice)
+  const [savedFee, setSavedFee] = useState(fee)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [saved, setSaved] = useState(false)
+  const [justSaved, setJustSaved] = useState(false)
+  const dirty = price !== savedPrice || feeValue !== savedFee
 
   async function save() {
     setBusy(true)
     setError(null)
-    setSaved(false)
+    setJustSaved(false)
     try {
       await updateSubmittedItemPrice({
-        data: {
-          itemId,
-          originalPrice: Number(price),
-          fee: Number(feeValue),
-        },
+        data: { itemId, originalPrice: price, fee: feeValue },
       })
-      setSaved(true)
+      setSavedPrice(price)
+      setSavedFee(feeValue)
+      setJustSaved(true)
       onSaved?.()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Gagal menyimpan')
@@ -270,41 +275,88 @@ function SubmittedPriceEditor({
   }
 
   return (
-    <div className="mb-3 space-y-2 rounded-lg border p-3" style={{ borderColor: 'var(--app-border)' }}>
-      <p className="text-xs">Sudah dikirim ke partner. Hanya harga dan fee yang bisa diubah.</p>
-      <div className="flex gap-2">
-        <label className="flex flex-1 flex-col text-xs">
-          Harga jual
-          <input
-            type="number"
-            min={0}
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1">
+        <span className="text-xs">{nameLabel}</span>
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-sm font-semibold">{name}</p>
+          <span
+            className="flex-shrink-0 text-xs font-semibold"
+            style={{ color: 'var(--app-text-soft)' }}
+          >
+            ×{qty}
+          </span>
+        </div>
+      </div>
+
+      <p
+        className="flex items-start gap-1.5 rounded-lg px-2.5 py-2 text-[11px]"
+        style={{ background: 'var(--app-accent-soft)', color: 'var(--app-text-soft)' }}
+      >
+        <Lock size={12} className="mt-0.5 flex-shrink-0" aria-hidden="true" />
+        Sudah dikirim ke partner. Barang dan jumlah terkunci, hanya harga dan fee yang bisa diubah.
+      </p>
+
+      <div className="grid grid-cols-2 gap-2">
+        <label className="flex flex-col gap-1 text-xs">
+          <span className="whitespace-nowrap">Harga asli</span>
+          <NumberInput
+            required
             value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            className="rounded border px-2 py-1 text-sm"
+            onChange={(v) => {
+              setPrice(v)
+              setJustSaved(false)
+            }}
+            className="app-input"
           />
         </label>
-        <label className="flex flex-1 flex-col text-xs">
-          Fee
-          <input
-            type="number"
-            min={0}
+        <label className="flex flex-col gap-1 text-xs">
+          <span className="whitespace-nowrap">Fee jastip</span>
+          <NumberInput
             value={feeValue}
-            onChange={(e) => setFeeValue(e.target.value)}
-            className="rounded border px-2 py-1 text-sm"
+            onChange={(v) => {
+              setFeeValue(v)
+              setJustSaved(false)
+            }}
+            className="app-input"
+            placeholder="0"
           />
         </label>
       </div>
-      {error && <p className="text-xs text-red-600">{error}</p>}
-      {saved && <p className="text-xs">Tersimpan.</p>}
-      <button
-        type="button"
-        onClick={save}
-        disabled={busy}
-        className="rounded-lg px-3 py-1.5 text-sm font-semibold disabled:opacity-40"
-        style={{ background: 'var(--app-accent)', color: '#fff' }}
-      >
-        Simpan harga
-      </button>
+
+      {error && (
+        <p className="text-xs" style={{ color: 'var(--app-danger)' }}>
+          {error}
+        </p>
+      )}
+
+      <div className="flex items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={save}
+          disabled={busy || !dirty}
+          className="rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-40"
+          style={{ background: 'var(--app-accent)', color: '#fff' }}
+        >
+          {busy ? 'Menyimpan…' : 'Simpan harga'}
+        </button>
+        {justSaved && !dirty ? (
+          <span
+            className="flex items-center gap-1 text-xs font-semibold"
+            style={{ color: 'var(--app-accent)' }}
+          >
+            <Check size={14} aria-hidden="true" />
+            Tersimpan
+          </span>
+        ) : (
+          <span
+            className="shrink-0 whitespace-nowrap text-xs font-semibold"
+            style={{ color: 'var(--app-text-soft)' }}
+          >
+            = {lineTotal({ qty, originalPrice: price, fee: feeValue }).toLocaleString('id-ID')}
+          </span>
+        )}
+      </div>
     </div>
   )
 }
@@ -933,28 +985,46 @@ export default function AddOrderSheet({
                     >
                       <SubmitStatusBadge status={item.submitStatus} />
                       <span className="min-w-0 flex-1">
-                        {item.partnerVariantId && variantDisplayById.get(item.partnerVariantId) ? (
-                          <>
-                            {ruleNameByVariant.get(item.partnerVariantId) && (
-                              <span
-                                className="block truncate text-[11px]"
-                                style={{ color: 'var(--app-text-mute)' }}
-                              >
-                                {ruleNameByVariant.get(item.partnerVariantId)}
-                              </span>
-                            )}
-                            <span className="block truncate text-sm font-medium">
-                              {variantDisplayById.get(item.partnerVariantId)?.productName}
-                            </span>
-                            {variantDisplayById.get(item.partnerVariantId)?.variantLabel && (
-                              <span
-                                className="block truncate text-[11px]"
-                                style={{ color: 'var(--app-text-mute)' }}
-                              >
-                                {variantDisplayById.get(item.partnerVariantId)?.variantLabel}
-                              </span>
-                            )}
-                          </>
+                        {partnerMode && item.name ? (
+                          (() => {
+                            // Varian yang sudah tidak ada di katalog aktif (mis. barang lama
+                            // yang sudah diajukan) tetap tampil sama: nama dipecah dari teks tersimpan.
+                            const display =
+                              (item.partnerVariantId && variantDisplayById.get(item.partnerVariantId)) ||
+                              (() => {
+                                const parts = splitItemName(item.name)
+                                return {
+                                  productName: parts.product,
+                                  variantLabel: [parts.size, parts.variation].filter(Boolean).join(' / '),
+                                }
+                              })()
+                            const ruleName = item.partnerVariantId
+                              ? ruleNameByVariant.get(item.partnerVariantId)
+                              : undefined
+                            return (
+                              <>
+                                {ruleName && (
+                                  <span
+                                    className="block truncate text-[11px]"
+                                    style={{ color: 'var(--app-text-mute)' }}
+                                  >
+                                    {ruleName}
+                                  </span>
+                                )}
+                                <span className="block truncate text-sm font-medium">
+                                  {display.productName}
+                                </span>
+                                {display.variantLabel && (
+                                  <span
+                                    className="block truncate text-[11px]"
+                                    style={{ color: 'var(--app-text-mute)' }}
+                                  >
+                                    {display.variantLabel}
+                                  </span>
+                                )}
+                              </>
+                            )
+                          })()
                         ) : (
                           <span
                             className="block truncate text-sm font-medium"
@@ -1000,19 +1070,24 @@ export default function AddOrderSheet({
                       aria-hidden={openIndex !== index}
                     >
                       <div className="min-h-0 overflow-hidden">
-                      {/* Barang terkirim: hanya harga dan fee yang bisa diubah, lewat editor di atas form. */}
-                      {item.id && item.submitStatus && openIndex === index && (
-                        <div className="px-3 pt-3">
-                          <SubmittedPriceEditor
-                            itemId={item.id}
-                            originalPrice={item.originalPrice}
-                            fee={item.fee}
-                            onSaved={onSubmittedPriceSaved}
-                          />
-                        </div>
-                      )}
-                      {/* Saat tertutup, kontrol di dalamnya dinonaktifkan supaya tidak ikut validasi form. Barang terkirim juga dikunci. */}
-                      <fieldset disabled={openIndex !== index || Boolean(item.submitStatus)} className="m-0 min-w-0 border-0 p-0">
+                      {item.id && item.submitStatus ? (
+                        // Barang terkirim: ringkasan terkunci + editor harga/fee, tanpa form biasa.
+                        <fieldset disabled={openIndex !== index} className="m-0 min-w-0 border-0 p-0">
+                          <div className="border-t p-3" style={{ borderColor: 'var(--app-border)' }}>
+                            <SubmittedItemBody
+                              itemId={item.id}
+                              name={itemTitle(item) || item.name}
+                              nameLabel={partnerMode ? 'Produk partner' : 'Nama barang'}
+                              qty={remainingQty}
+                              originalPrice={item.originalPrice}
+                              fee={item.fee}
+                              onSaved={onSubmittedPriceSaved}
+                            />
+                          </div>
+                        </fieldset>
+                      ) : (
+                      // Saat tertutup, kontrol di dalamnya dinonaktifkan supaya tidak ikut validasi form.
+                      <fieldset disabled={openIndex !== index} className="m-0 min-w-0 border-0 p-0">
                       <div
                         id={`order-item-body-${index}`}
                         className="border-t p-3"
@@ -1318,6 +1393,7 @@ export default function AddOrderSheet({
                         )}
                       </div>
                       </fieldset>
+                      )}
                       </div>
                     </div>
                   </div>

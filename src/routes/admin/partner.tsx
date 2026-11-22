@@ -20,6 +20,7 @@ import { adminPartnersQuery } from '../../lib/queries'
 import type { PartnerRow } from '../../lib/partner-queries'
 import type { PartnerStatus } from '../../lib/partner-rules'
 import type { PartnerFormValue } from '../../components/PartnerFormModal'
+import UnderlineTabs from '../../components/ui/UnderlineTabs'
 
 export const Route = createFileRoute('/admin/partner')({
   // `q` = kata kunci pencarian; dipakai bersama oleh topbar desktop & halaman.
@@ -155,27 +156,13 @@ function AdminPartnerPage() {
           />
         </div>
 
-        <div className="mb-4 flex flex-wrap gap-2">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => setTab(t.key)}
-              className={`pm-chip ${tab === t.key ? 'pm-chip--active' : ''}`}
-            >
-              <span>{t.label}</span>
-              <span
-                className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-                  tab === t.key
-                    ? 'bg-white/20 text-white'
-                    : 'bg-[var(--app-accent-soft)] text-[var(--app-accent)]'
-                }`}
-              >
-                {counts[t.key]}
-              </span>
-            </button>
-          ))}
-        </div>
+        <UnderlineTabs
+          className="mb-4"
+          ariaLabel="Status partner"
+          items={TABS.map((t) => ({ ...t, count: counts[t.key] }))}
+          value={tab}
+          onChange={setTab}
+        />
 
         {visible.length === 0 ? (
           <div className="app-card flex flex-col items-center gap-2 p-8 text-center">
@@ -225,19 +212,14 @@ function AdminPartnerPage() {
           </button>
         </header>
 
+        <UnderlineTabs
+          ariaLabel="Status partner"
+          items={TABS.map((t) => ({ ...t, count: counts[t.key] }))}
+          value={tab}
+          onChange={setTab}
+        />
+
         <div className="flex items-center justify-between gap-4">
-          <div className="flex flex-wrap gap-2">
-            {TABS.map((t) => (
-              <button
-                key={t.key}
-                type="button"
-                onClick={() => setTab(t.key)}
-                className={`pm-chip ${tab === t.key ? 'pm-chip--active' : ''}`}
-              >
-                {t.label} {counts[t.key]}
-              </button>
-            ))}
-          </div>
           <div className="relative w-full max-w-[336px]">
             <Search
               size={17}

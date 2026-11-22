@@ -41,6 +41,14 @@ export function formatRupiah(value: number): string {
   }).format(value)
 }
 
+/** Alamat foto satu variasi (nilai opsi). `version` mengganti URL saat foto diganti. */
+export function partnerVariantPhotoUrl(
+  optionValueId: string,
+  version: Date,
+): string {
+  return `/api/partner-variant-photo/${optionValueId}?v=${version.getTime()}`
+}
+
 /** Alamat foto produk; `version` (photoUpdatedAt) mengganti URL saat foto diganti. */
 export function partnerProductPhotoUrl(
   productId: string,

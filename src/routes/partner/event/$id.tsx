@@ -22,6 +22,7 @@ import { hasBankAccount } from '../../../lib/invoice-rules'
 import type { PartnerSubmitRow } from '../../../lib/partner-submit-list'
 import PartnerSlotSection from '../../../components/PartnerSlotSection'
 import PartnerRevenueCard from '../../../components/PartnerRevenueCard'
+import UnderlineTabs from '../../../components/ui/UnderlineTabs'
 import Pagination from '../../../components/ui/Pagination'
 import { formatWibDateTime } from '../../../lib/event-slot'
 import type { PartnerStatusFilter } from '../../../lib/event-slot'
@@ -295,20 +296,17 @@ function SubmitFilterChips({
   onChange: (next: SubmitFilter) => void
 }) {
   return (
-    <div className="flex flex-wrap gap-2" role="tablist" aria-label="Filter submit">
-      {SUBMIT_FILTERS.map((f) => (
-        <button
-          key={f.key}
-          type="button"
-          role="tab"
-          aria-selected={active === f.key}
-          onClick={() => onChange(f.key)}
-          className={`pm-chip ${active === f.key ? 'pm-chip--active' : ''}`}
-        >
-          {f.label} {counts[f.key]}
-        </button>
-      ))}
-    </div>
+    <UnderlineTabs
+      ariaLabel="Filter submit"
+      items={SUBMIT_FILTERS.map((f) => ({
+        ...f,
+        count: counts[f.key],
+        // Yang menunggu dicek butuh tindakan partner, jadi badge-nya ditonjolkan.
+        highlight: f.key === 'menunggu',
+      }))}
+      value={active}
+      onChange={onChange}
+    />
   )
 }
 
@@ -506,11 +504,6 @@ function PartnerEventDetailPage() {
 
   const status = partnerEventStatus(event, todayIsoDateInAppTimeZone())
   const totalOrders = participants.reduce((sum, p) => sum + p.orderCount, 0)
-  const tabs = [
-    { key: 'info', label: 'Info' },
-    { key: 'produk', label: `Produk ${products.length}` },
-    { key: 'jastiper', label: `Jastiper ${participants.length}` },
-  ] as const
 
   async function handleSetEnded(ended: boolean) {
     setBusy(true)
@@ -687,26 +680,16 @@ function PartnerEventDetailPage() {
         </div>
 
 
-        <div className="flex gap-2" role="tablist" aria-label="Isi event">
-          {(
-            [
-              { key: 'info', label: 'Info' },
-              { key: 'produk', label: `Produk ${products.length}` },
-              { key: 'jastiper', label: `Jastiper ${participants.length}` },
-            ] as const
-          ).map((item) => (
-            <button
-              key={item.key}
-              type="button"
-              role="tab"
-              aria-selected={tab === item.key}
-              onClick={() => setTab(item.key)}
-              className={`pm-chip ${tab === item.key ? 'pm-chip--active' : ''}`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
+        <UnderlineTabs
+          ariaLabel="Isi event"
+          items={[
+            { key: 'info', label: 'Info' },
+            { key: 'produk', label: 'Produk', count: products.length },
+            { key: 'jastiper', label: 'Jastiper', count: participants.length },
+          ]}
+          value={tab}
+          onChange={setTab}
+        />
 
         {tab === 'info' && (
           <section className="flex flex-col gap-3">

@@ -29,6 +29,7 @@ import { formatDateTime } from '../../lib/format'
 import { paymentProofUrl } from '../../lib/payment-proof'
 import type { AdminSubscriptionRow } from '../../lib/admin-queries'
 import type { LucideIcon } from 'lucide-react'
+import UnderlineTabs from '../../components/ui/UnderlineTabs'
 
 const adminMetricsQuery = queryOptions({
   queryKey: ['admin-metrics'],
@@ -260,33 +261,17 @@ function AdminDashboardPage() {
           Verifikasi pengajuan &amp; pantau status langganan user.
         </p>
 
-        <div className="mb-4 grid grid-cols-3 gap-2 lg:max-w-[460px]">
-          {(
-            [
-              { key: 'pending', label: 'Pending', count: pending.length },
-              { key: 'active', label: 'PRO Aktif', count: active.length },
-              { key: 'all', label: 'Semua', count: subscriptions.length },
-            ] as const
-          ).map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => setTab(t.key)}
-              className={`pm-chip justify-center ${tab === t.key ? 'pm-chip--active' : ''}`}
-            >
-              <span>{t.label}</span>
-              <span
-                className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-                  tab === t.key
-                    ? 'bg-white/20 text-white'
-                    : 'bg-[var(--app-accent-soft)] text-[var(--app-accent)]'
-                }`}
-              >
-                {t.count}
-              </span>
-            </button>
-          ))}
-        </div>
+        <UnderlineTabs
+          className="mb-4"
+          ariaLabel="Status langganan"
+          items={[
+            { key: 'pending', label: 'Pending', count: pending.length },
+            { key: 'active', label: 'PRO Aktif', count: active.length },
+            { key: 'all', label: 'Semua', count: subscriptions.length },
+          ]}
+          value={tab}
+          onChange={setTab}
+        />
 
         {actionError && (
           <p

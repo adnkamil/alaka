@@ -50,6 +50,14 @@ interface PartnerProductFormProps {
   onSubmit: (value: PartnerProductFormValue) => Promise<void>
   /** Tombol aksi di header desktop. Kalau kosong, form memakai Batal/Simpan sendiri. */
   headerActions?: React.ReactNode
+  /**
+   * Sembunyikan field Harga. Dipakai halaman ubah: harga & stok diatur di
+   * kartu Informasi penjualan (PartnerVariantEditor), seperti pola Shopee.
+   * `price` yang dikirim ke `onSubmit` = harga awal dan sebaiknya diabaikan.
+   */
+  hidePrice?: boolean
+  /** Bagian tambahan di bawah form (mis. editor varian di halaman tambah). */
+  afterForm?: React.ReactNode
   ref?: React.Ref<PartnerProductFormHandle>
 }
 
@@ -90,6 +98,8 @@ export default function PartnerProductForm({
   breadcrumb,
   onSubmit,
   headerActions,
+  hidePrice = false,
+  afterForm,
   ref,
 }: PartnerProductFormProps) {
   const fileInput = useRef<HTMLInputElement>(null)
@@ -111,7 +121,7 @@ export default function PartnerProductForm({
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const price = parseRupiah(priceText)
+  const price = hidePrice ? (initial?.price ?? 0) : parseRupiah(priceText)
 
   async function handlePickPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -178,7 +188,7 @@ export default function PartnerProductForm({
     <>
       <form
         id={FORM_ID}
-        className={`flex flex-col gap-3.5 lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start lg:gap-x-4 lg:gap-y-5 lg:pb-0 ${headerActions === undefined ? 'pb-[120px]' : ''}`}
+        className={`flex flex-col gap-3.5 lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start lg:gap-x-4 lg:gap-y-5 lg:pb-0`}
         onSubmit={handleSubmit}
       >
         <header className="hidden items-start justify-between gap-4 lg:col-span-2 lg:row-start-1 lg:flex">
@@ -243,7 +253,9 @@ export default function PartnerProductForm({
             />
           </Field>
 
-          <div className="flex flex-col gap-3.5 lg:grid lg:grid-cols-2 lg:gap-4">
+          <div
+            className={`flex flex-col gap-3.5 ${hidePrice ? '' : 'lg:grid lg:grid-cols-2 lg:gap-4'}`}
+          >
             <Field label="Kode produk (opsional)">
               <input
                 maxLength={PRODUCT_CODE_MAX}
@@ -254,15 +266,17 @@ export default function PartnerProductForm({
               />
             </Field>
 
-            <Field label="Harga">
-              <RupiahInput
-                required
-                value={priceText}
-                onChange={setPriceText}
-                className="app-input"
-                placeholder="189.000"
-              />
-            </Field>
+            {!hidePrice && (
+              <Field label="Harga">
+                <RupiahInput
+                  required
+                  value={priceText}
+                  onChange={setPriceText}
+                  className="app-input"
+                  placeholder="189.000"
+                />
+              </Field>
+            )}
           </div>
 
           <Field label="Deskripsi">
@@ -371,17 +385,23 @@ export default function PartnerProductForm({
         )}
       </form>
 
+      {afterForm}
+
       {headerActions === undefined && (
-        <div className="pm-footer lg:hidden">
-          <button
-            type="submit"
-            form={FORM_ID}
-            disabled={isSubmitting || photoBusy}
-            className="app-btn-primary w-full"
-          >
-            {submitText}
-          </button>
-        </div>
+        <>
+          {/* Ruang untuk tombol simpan yang menempel di bawah (mobile). */}
+          <div aria-hidden className="h-[104px] shrink-0 lg:hidden" />
+          <div className="pm-footer lg:hidden">
+            <button
+              type="submit"
+              form={FORM_ID}
+              disabled={isSubmitting || photoBusy}
+              className="app-btn-primary w-full"
+            >
+              {submitText}
+            </button>
+          </div>
+        </>
       )}
     </>
   )

@@ -34,9 +34,8 @@ async function loadProductSizeNames(
 ): Promise<Map<string, Array<string>>> {
   const result = new Map<string, Array<string>>()
   if (productIds.length === 0) return result
-  const { partnerOptionGroups, partnerOptionValues } = await import(
-    '../db/schema'
-  )
+  const { partnerOptionGroups, partnerOptionValues } =
+    await import('../db/schema')
   const rows = await db
     .select({
       productId: partnerOptionGroups.partnerProductId,
@@ -63,22 +62,22 @@ async function loadProductSizeNames(
 }
 
 /** Ukuran milik tiap produk partner, untuk memilih ukuran di form aturan. */
-export const listPartnerProductSizes = createServerFn({ method: 'GET' }).handler(
-  async () => {
-    const partner = await requirePartner()
-    const { db } = await import('../db')
-    const { partnerProducts } = await import('../db/schema')
-    const owned = await db
-      .select({ id: partnerProducts.id })
-      .from(partnerProducts)
-      .where(eq(partnerProducts.partnerId, partner.id))
-    const sizes = await loadProductSizeNames(
-      db,
-      owned.map((p) => p.id),
-    )
-    return Object.fromEntries(sizes) as Record<string, Array<string>>
-  },
-)
+export const listPartnerProductSizes = createServerFn({
+  method: 'GET',
+}).handler(async () => {
+  const partner = await requirePartner()
+  const { db } = await import('../db')
+  const { partnerProducts } = await import('../db/schema')
+  const owned = await db
+    .select({ id: partnerProducts.id })
+    .from(partnerProducts)
+    .where(eq(partnerProducts.partnerId, partner.id))
+  const sizes = await loadProductSizeNames(
+    db,
+    owned.map((p) => p.id),
+  )
+  return Object.fromEntries(sizes) as Record<string, Array<string>>
+})
 
 async function assertPro(partnerId: string) {
   const { db } = await import('../db')
@@ -101,8 +100,11 @@ export const listPartnerRules = createServerFn({ method: 'GET' }).handler(
   async () => {
     const partner = await requirePartner()
     const { db } = await import('../db')
-    const { partnerPricingRules, partnerRuleProducts, partnerRuleProductSizes } =
-      await import('../db/schema')
+    const {
+      partnerPricingRules,
+      partnerRuleProducts,
+      partnerRuleProductSizes,
+    } = await import('../db/schema')
     const rules = await db
       .select()
       .from(partnerPricingRules)
@@ -164,13 +166,19 @@ export const listPartnerRulesPage = createServerFn({ method: 'GET' })
   .handler(async ({ data }) => {
     const partner = await requirePartner()
     const { db } = await import('../db')
-    const { partnerPricingRules, partnerRuleProducts, partnerRuleProductSizes } =
-      await import('../db/schema')
+    const {
+      partnerPricingRules,
+      partnerRuleProducts,
+      partnerRuleProductSizes,
+    } = await import('../db/schema')
     const term = data.search.trim()
     const owned = term
       ? and(
           eq(partnerPricingRules.partnerId, partner.id),
-          ilike(partnerPricingRules.name, `%${term.replace(/[\\%_]/g, (c) => `\\${c}`)}%`),
+          ilike(
+            partnerPricingRules.name,
+            `%${term.replace(/[\\%_]/g, (c) => `\\${c}`)}%`,
+          ),
         )
       : eq(partnerPricingRules.partnerId, partner.id)
     const [{ total }] = await db
@@ -465,7 +473,7 @@ export const deletePartnerRule = createServerFn({ method: 'POST' })
   })
 
 type RuleTx = Parameters<
-  Parameters<typeof import('../db')['db']['transaction']>[0]
+  Parameters<(typeof import('../db'))['db']['transaction']>[0]
 >[0]
 
 /**
@@ -501,25 +509,36 @@ async function notifyRuleChange(
 }
 
 /**
- * Mengeluarkan satu produk dari aturan paket dari halaman produknya. Hanya
- * bisa melepas: memasukkan produk ke aturan dilakukan dari halaman aturan,
- * karena ukuran yang ikut aturan harus dipilih di sana.
+ * Atur keanggotaan satu produk di aturan paket dari halaman produknya: masuk ke
+ * aturan, keluar dari aturan, atau ubah ukuran yang ikut. `rules` berisi semua
+ * aturan yang memuat produk ini setelah disimpan; aturan lain tidak memuatnya.
  */
 export const setPartnerProductRules = createServerFn({ method: 'POST' })
   .validator(
     z.object({
       productId: idSchema,
-      ruleIds: z.array(idSchema).max(50),
+      rules: z
+        .array(
+          z.object({
+            ruleId: idSchema,
+            sizes: z.array(z.string().trim().min(1).max(40)).max(50),
+          }),
+        )
+        .max(50),
     }),
   )
   .handler(async ({ data }) => {
     const partner = await requirePartner()
     const { db } = await import('../db')
-    const { partnerProducts, partnerPricingRules, partnerRuleProducts } =
-      await import('../db/schema')
+    const {
+      partnerProducts,
+      partnerPricingRules,
+      partnerRuleProducts,
+      partnerRuleProductSizes,
+    } = await import('../db/schema')
 
     const [product] = await db
-      .select({ id: partnerProducts.id })
+      .select({ id: partnerProducts.id, name: partnerProducts.name })
       .from(partnerProducts)
       .where(
         and(
@@ -529,39 +548,127 @@ export const setPartnerProductRules = createServerFn({ method: 'POST' })
       )
     if (!product) throw new Error('Produk tidak ditemukan')
 
-    const keepIds = [...new Set(data.ruleIds)]
-    return db.transaction(async (tx) => {
-      // Hanya aturan milik partner ini yang memuat produk ini yang dipertimbangkan.
-      const current = await tx
-        .select({ ruleId: partnerRuleProducts.ruleId })
-        .from(partnerRuleProducts)
-        .innerJoin(
-          partnerPricingRules,
-          eq(partnerPricingRules.id, partnerRuleProducts.ruleId),
-        )
-        .where(
-          and(
-            eq(partnerRuleProducts.partnerProductId, data.productId),
-            eq(partnerPricingRules.partnerId, partner.id),
-          ),
-        )
-      const currentIds = current.map((c) => c.ruleId)
-      if (keepIds.some((id) => !currentIds.includes(id))) {
-        throw new Error(
-          'Tambahkan produk ke aturan dari halaman Paket, karena ukurannya perlu dipilih di sana.',
-        )
+    const ownRules = await db
+      .select({ id: partnerPricingRules.id, name: partnerPricingRules.name })
+      .from(partnerPricingRules)
+      .where(eq(partnerPricingRules.partnerId, partner.id))
+    const ruleName = new Map(ownRules.map((r) => [r.id, r.name]))
+    const ownRuleIds = ownRules.map((r) => r.id)
+
+    // Keanggotaan yang diminta: ruleId -> ukuran (unik, harus ukuran produk ini).
+    const productSizeNames =
+      (await loadProductSizeNames(db, [product.id])).get(product.id) ?? []
+    const wanted = new Map<string, Array<string>>()
+    for (const entry of data.rules) {
+      if (!ruleName.has(entry.ruleId)) {
+        throw new Error('Ada aturan paket yang bukan milik partner ini.')
       }
-      const toRemove = currentIds.filter((id) => !keepIds.includes(id))
-      if (toRemove.length > 0) {
-        // Ukuran produk di aturan itu ikut terhapus (cascade).
+      const sizes = [...new Set(entry.sizes)]
+      const problem = validateProductSizes(
+        product.name,
+        productSizeNames,
+        sizes,
+      )
+      if (problem) {
+        throw new Error(`${ruleName.get(entry.ruleId)}: ${problem}`)
+      }
+      wanted.set(entry.ruleId, sizes)
+    }
+
+    const links = ownRuleIds.length
+      ? await db
+          .select()
+          .from(partnerRuleProducts)
+          .where(inArray(partnerRuleProducts.ruleId, ownRuleIds))
+      : []
+    const sizeRows = ownRuleIds.length
+      ? await db
+          .select()
+          .from(partnerRuleProductSizes)
+          .where(inArray(partnerRuleProductSizes.ruleId, ownRuleIds))
+      : []
+
+    // Keadaan sekarang untuk produk ini, untuk tahu aturan mana yang berubah.
+    const before = new Map<string, Array<string>>()
+    for (const l of links) {
+      if (l.partnerProductId !== product.id) continue
+      before.set(
+        l.ruleId,
+        sizeRows
+          .filter(
+            (row) =>
+              row.ruleId === l.ruleId && row.partnerProductId === product.id,
+          )
+          .map((row) => row.sizeName),
+      )
+    }
+    const sameSizes = (a: Array<string>, b: Array<string>) =>
+      a.length === b.length && a.every((x) => b.includes(x))
+    const changedIds = ownRuleIds.filter((id) => {
+      const a = before.get(id)
+      const b = wanted.get(id)
+      if (!a && !b) return false
+      if (!a || !b) return true
+      return !sameSizes(a, b)
+    })
+    if (changedIds.length === 0) return { ok: true as const }
+
+    // Menambah produk atau mengubah ukurannya butuh PRO; mengeluarkan saja tidak.
+    if (changedIds.some((id) => wanted.has(id))) await assertPro(partner.id)
+
+    // Cek bentrok ukuran memakai keanggotaan produk ini setelah disimpan.
+    try {
+      assertRuleScopesNoOverlap(
+        ownRuleIds.map((id) => {
+          const productSizes = productSizesForRule(sizeRows, id)
+          const productIds = links
+            .filter((l) => l.ruleId === id && l.partnerProductId !== product.id)
+            .map((l) => l.partnerProductId)
+          delete productSizes[product.id]
+          const mine = wanted.get(id)
+          if (mine) {
+            productIds.push(product.id)
+            if (mine.length > 0) productSizes[product.id] = mine
+          }
+          return { id, productIds, productSizes }
+        }),
+      )
+    } catch {
+      throw new Error(
+        `${product.name} sudah ada di aturan paket lain dengan ukuran yang sama.`,
+      )
+    }
+
+    return db.transaction(async (tx) => {
+      for (const ruleId of changedIds) {
+        await notifyRuleChange(tx, ruleId, ruleName.get(ruleId)!, 'updated')
+        // Hapus lalu tulis ulang; ukuran ikut terhapus (cascade).
         await tx
           .delete(partnerRuleProducts)
           .where(
             and(
-              eq(partnerRuleProducts.partnerProductId, data.productId),
-              inArray(partnerRuleProducts.ruleId, toRemove),
+              eq(partnerRuleProducts.ruleId, ruleId),
+              eq(partnerRuleProducts.partnerProductId, product.id),
             ),
           )
+        const sizes = wanted.get(ruleId)
+        if (!sizes) continue
+        await tx
+          .insert(partnerRuleProducts)
+          .values({ ruleId, partnerProductId: product.id })
+        if (sizes.length > 0) {
+          await tx.insert(partnerRuleProductSizes).values(
+            sizes.map((sizeName) => ({
+              ruleId,
+              partnerProductId: product.id,
+              sizeName,
+            })),
+          )
+        }
+      }
+      // Produk tanpa varian wajib punya varian Standar supaya bisa dipilih di paket.
+      if (wanted.size > 0) {
+        await syncDefaultVariant(tx as unknown as Db, product.id)
       }
       return { ok: true as const }
     })

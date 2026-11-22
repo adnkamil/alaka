@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { eq } from 'drizzle-orm'
+import { eq, lt } from 'drizzle-orm'
 import {
   deleteCookie,
   getCookie,
@@ -8,6 +8,7 @@ import {
 import { db } from '../db'
 import { partnerSessions, partners } from '../db/schema'
 import { PARTNER_SESSION_COOKIE_NAME } from './partner-rules'
+import { hashSessionToken } from './session-token'
 
 /**
  * Sesi login Partner Portal. Cookie dan tabelnya terpisah dari sesi jastiper
@@ -20,7 +21,16 @@ const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000 // 30 hari, sama dengan user
 export async function createPartnerSession(partnerId: string) {
   const token = randomUUID()
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS)
-  await db.insert(partnerSessions).values({ partnerId, token, expiresAt })
+  // Yang disimpan di DB cuma hash-nya; token mentah hanya ada di cookie.
+  await db
+    .insert(partnerSessions)
+    .values({ partnerId, token: hashSessionToken(token), expiresAt })
+
+  // Housekeeping: buang sesi kedaluwarsa. Gagal bukan masalah.
+  await db
+    .delete(partnerSessions)
+    .where(lt(partnerSessions.expiresAt, new Date()))
+    .catch(() => {})
 
   setCookie(PARTNER_SESSION_COOKIE_NAME, token, {
     httpOnly: true,
@@ -40,7 +50,7 @@ export async function getPartnerBySessionToken(token: string | undefined) {
     .select({ partner: partners, session: partnerSessions })
     .from(partnerSessions)
     .innerJoin(partners, eq(partnerSessions.partnerId, partners.id))
-    .where(eq(partnerSessions.token, token))
+    .where(eq(partnerSessions.token, hashSessionToken(token)))
     .limit(1)
   if (rows.length === 0) return null
   const row = rows[0]
@@ -99,7 +109,9 @@ export async function requirePartner() {
 export async function destroyPartnerSession() {
   const token = getCookie(PARTNER_SESSION_COOKIE_NAME)
   if (token) {
-    await db.delete(partnerSessions).where(eq(partnerSessions.token, token))
+    await db
+      .delete(partnerSessions)
+      .where(eq(partnerSessions.token, hashSessionToken(token)))
   }
   deleteCookie(PARTNER_SESSION_COOKIE_NAME, { path: '/' })
 }

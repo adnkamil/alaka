@@ -48,13 +48,13 @@ describe('formatDate', () => {
   })
 
   it('terima Date dan string ISO', () => {
-    const expected = '12 Agustus 2026'
+    const expected = '12 Agu 2026'
     assert.equal(formatDate(new Date('2026-08-12T05:00:00Z')), expected)
     assert.equal(formatDate('2026-08-12T05:00:00Z'), expected)
   })
 
   it('batas hari dihitung dalam WIB, bukan zona perangkat', () => {
-    // 31 Des 17:30 UTC = 1 Jan 00:30 WIB -> harus "1 Januari 2027".
-    assert.equal(formatDate('2026-12-31T17:30:00Z'), '1 Januari 2027')
+    // 31 Des 17:30 UTC = 1 Jan 00:30 WIB -> harus "1 Jan 2027".
+    assert.equal(formatDate('2026-12-31T17:30:00Z'), '1 Jan 2027')
   })
 })

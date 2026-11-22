@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { PARTNER_STATUS_FILTERS } from '../../../lib/event-slot'
 import { getPartnerEventPicklist } from '../../../lib/partner-picklist-functions'
 import { useClientPager } from '../../../lib/use-client-pager'
+import UnderlineTabs from '../../../components/ui/UnderlineTabs'
 import PartnerTableToolbar from '../../../components/ui/PartnerTableToolbar'
 import SortHeader, { ariaSortOf } from '../../../components/ui/SortHeader'
 import { sortRows } from '../../../lib/table-sort'
@@ -82,24 +83,19 @@ function PartnerEventRekapPage() {
         </Link>
       </header>
 
-      <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={() => setFilter('')} className={`pm-chip ${filter === '' ? 'pm-chip--active' : ''}`}>
-          Semua
-        </button>
-        <button type="button" onClick={() => setFilter('satuan')} className={`pm-chip ${filter === 'satuan' ? 'pm-chip--active' : ''}`}>
-          Barang satuan
-        </button>
-        {data?.rules.map((r) => (
-          <button
-            key={r.id}
-            type="button"
-            onClick={() => setFilter(r.id)}
-            className={`pm-chip ${filter === r.id ? 'pm-chip--active' : ''}`}
-          >
-            Paket: {r.name}
-          </button>
-        ))}
-      </div>
+      <UnderlineTabs
+        ariaLabel="Filter rekap"
+        items={[
+          { key: '', label: 'Semua' },
+          { key: 'satuan', label: 'Barang satuan' },
+          ...(data?.rules ?? []).map((r) => ({
+            key: r.id,
+            label: `Paket: ${r.name}`,
+          })),
+        ]}
+        value={filter}
+        onChange={setFilter}
+      />
 
       {error && (
         <div className="app-card p-4 text-sm" style={{ color: '#b42318' }}>

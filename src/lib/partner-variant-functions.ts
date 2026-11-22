@@ -1,4 +1,9 @@
 import { syncDefaultVariant } from './partner-default-variant'
+import {
+  AVATAR_MAX_DATA_URL_LENGTH,
+  parseAvatarDataUrl,
+} from './avatar-validation'
+import { partnerVariantPhotoUrl } from './partner-product-rules'
 import { createServerFn } from '@tanstack/react-start'
 import { and, eq, inArray, sql } from 'drizzle-orm'
 import { z } from 'zod'
@@ -32,6 +37,22 @@ const saveSchema = z.object({
   sizes: z.array(z.string()).max(50),
   variations: z.array(z.string()).max(200),
   variants: z.array(variantInputSchema).max(2000),
+  /** Perubahan foto per nama variasi. Variasi tanpa entri: foto tidak berubah. */
+  variationPhotos: z
+    .record(
+      z.string().trim().min(1).max(100),
+      z.discriminatedUnion('action', [
+        z.object({ action: z.literal('remove') }),
+        z.object({
+          action: z.literal('replace'),
+          dataUrl: z
+            .string()
+            .max(AVATAR_MAX_DATA_URL_LENGTH, 'Foto terlalu besar'),
+        }),
+      ]),
+    )
+    .refine((v) => Object.keys(v).length <= 200, 'Terlalu banyak foto variasi')
+    .default({}),
 })
 
 async function assertOwnedProduct(partnerId: string, productId: string) {
@@ -82,6 +103,14 @@ export const getPartnerProductVariants = createServerFn({ method: 'GET' })
         .filter((v) => v.optionGroupId === groupId)
         .sort((a, b) => a.position - b.position)
         .map((v) => v.name)
+    }
+    // Foto per variasi: nama variasi -> URL foto.
+    const variationGroupId = groups.find((g) => g.type === 'variasi')?.id
+    const variationPhotos: Record<string, string> = {}
+    for (const v of values) {
+      if (v.optionGroupId === variationGroupId && v.imageUrl) {
+        variationPhotos[v.name] = v.imageUrl
+      }
     }
 
     const variantRows = await db
@@ -140,6 +169,7 @@ export const getPartnerProductVariants = createServerFn({ method: 'GET' })
       stock: standardStock,
       sizes: sortedNames('ukuran'),
       variations: sortedNames('variasi'),
+      variationPhotos,
       variants,
     }
   })
@@ -184,7 +214,20 @@ export const savePartnerProductVariants = createServerFn({ method: 'POST' })
       if (data.price === null) throw new Error('Isi harga produk.')
     }
 
-    return db.transaction(async (tx) => {
+    // Foto variasi dicek dulu sebelum transaksi supaya file rusak ditolak lebih awal.
+    const photoUploads = new Map<
+      string,
+      ReturnType<typeof parseAvatarDataUrl>
+    >()
+    for (const [name, change] of Object.entries(data.variationPhotos)) {
+      if (change.action === 'replace') {
+        photoUploads.set(name.trim(), parseAvatarDataUrl(change.dataUrl))
+      }
+    }
+    // Foto yang dihapus dari storage SETELAH transaksi berhasil.
+    const photoIdsToDelete: Array<string> = []
+
+    const result = await db.transaction(async (tx) => {
       // Produk tanpa varian: cukup simpan harga. Data varian tidak disentuh.
       if (!data.hasVariants) {
         await tx
@@ -211,7 +254,10 @@ export const savePartnerProductVariants = createServerFn({ method: 'POST' })
       }
 
       // 1. Pastikan grup opsi ada (atau dihapus kalau kosong).
-      const groupFor = async (type: 'ukuran' | 'variasi', names: Array<string>) => {
+      const groupFor = async (
+        type: 'ukuran' | 'variasi',
+        names: Array<string>,
+      ) => {
         let group = await tx.query.partnerOptionGroups.findFirst({
           where: and(
             eq(partnerOptionGroups.partnerProductId, data.productId),
@@ -245,16 +291,23 @@ export const savePartnerProductVariants = createServerFn({ method: 'POST' })
         const removed = existing.filter((v) => !wanted.has(v.name))
         if (removed.length) {
           const used = await tx.query.partnerVariantValues.findFirst({
-            where: inArray(partnerVariantValues.optionValueId, removed.map((v) => v.id)),
+            where: inArray(
+              partnerVariantValues.optionValueId,
+              removed.map((v) => v.id),
+            ),
           })
           if (used) {
             throw new Error(
               `Nilai ${type} yang sudah dipakai varian tidak bisa dihapus: ${removed[0].name}. Nonaktifkan varian itu dulu.`,
             )
           }
-          await tx
-            .delete(partnerOptionValues)
-            .where(inArray(partnerOptionValues.id, removed.map((v) => v.id)))
+          await tx.delete(partnerOptionValues).where(
+            inArray(
+              partnerOptionValues.id,
+              removed.map((v) => v.id),
+            ),
+          )
+          for (const v of removed) if (v.imageUrl) photoIdsToDelete.push(v.id)
         }
         for (const [position, raw] of names.entries()) {
           const name = raw.trim()
@@ -277,6 +330,30 @@ export const savePartnerProductVariants = createServerFn({ method: 'POST' })
       await syncValues(sizeGroup, data.sizes, 'ukuran')
       await syncValues(variationGroup, data.variations, 'variasi')
 
+      // Foto per variasi. File diunggah dulu (key = id nilai opsi), lalu URL-nya
+      // dicatat; kalau transaksi gagal, file yang tertinggal tidak dirujuk siapa pun.
+      const { putPartnerVariantPhoto } = await import('./storage')
+      for (const [rawName, change] of Object.entries(data.variationPhotos)) {
+        const name = rawName.trim()
+        const valueId = valueIdByGroupName.get(`variasi|${name}`)
+        if (!valueId) continue
+        if (change.action === 'remove') {
+          await tx
+            .update(partnerOptionValues)
+            .set({ imageUrl: null })
+            .where(eq(partnerOptionValues.id, valueId))
+          photoIdsToDelete.push(valueId)
+          continue
+        }
+        const upload = photoUploads.get(name)
+        if (!upload) continue
+        await putPartnerVariantPhoto(valueId, upload.bytes, upload.contentType)
+        await tx
+          .update(partnerOptionValues)
+          .set({ imageUrl: partnerVariantPhotoUrl(valueId, new Date()) })
+          .where(eq(partnerOptionValues.id, valueId))
+      }
+
       // 3. Hitung rencana perubahan varian.
       const variantRows = await tx.query.partnerVariants.findMany({
         where: eq(partnerVariants.partnerProductId, data.productId),
@@ -298,7 +375,10 @@ export const savePartnerProductVariants = createServerFn({ method: 'POST' })
       const valueMeta = new Map(
         valueRows.map((v) => [
           v.id,
-          { name: v.name, type: v.optionGroupId === sizeGroup?.id ? 'ukuran' : 'variasi' },
+          {
+            name: v.name,
+            type: v.optionGroupId === sizeGroup?.id ? 'ukuran' : 'variasi',
+          },
         ]),
       )
       const nameOf = (variantId: string, type: 'ukuran' | 'variasi') => {
@@ -342,7 +422,9 @@ export const savePartnerProductVariants = createServerFn({ method: 'POST' })
       // angka dari layar bisa menimpa pengurangan yang sedang dilakukan.
       // Kunci per partner juga dipakai saat pengecekan dimulai.
       const { calendarEvents, stockCheckRuns } = await import('../db/schema')
-      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${partner.id}))`)
+      await tx.execute(
+        sql`select pg_advisory_xact_lock(hashtext(${partner.id}))`,
+      )
       const [activeRun] = await tx
         .select({ heartbeatAt: stockCheckRuns.heartbeatAt })
         .from(stockCheckRuns)
@@ -373,10 +455,15 @@ export const savePartnerProductVariants = createServerFn({ method: 'POST' })
           .where(eq(partnerVariants.id, u.id))
       }
       for (const id of plan.deactivate) {
-        await tx.update(partnerVariants).set({ isActive: false }).where(eq(partnerVariants.id, id))
+        await tx
+          .update(partnerVariants)
+          .set({ isActive: false })
+          .where(eq(partnerVariants.id, id))
       }
       if (plan.remove.length) {
-        await tx.delete(partnerVariants).where(inArray(partnerVariants.id, plan.remove))
+        await tx
+          .delete(partnerVariants)
+          .where(inArray(partnerVariants.id, plan.remove))
       }
       for (const want of plan.insert) {
         const [created] = await tx
@@ -390,10 +477,16 @@ export const savePartnerProductVariants = createServerFn({ method: 'POST' })
           .returning({ id: partnerVariants.id })
         const links: Array<{ variantId: string; optionValueId: string }> = []
         if (want.size) {
-          links.push({ variantId: created.id, optionValueId: valueIdByGroupName.get(`ukuran|${want.size}`)! })
+          links.push({
+            variantId: created.id,
+            optionValueId: valueIdByGroupName.get(`ukuran|${want.size}`)!,
+          })
         }
         if (want.variation) {
-          links.push({ variantId: created.id, optionValueId: valueIdByGroupName.get(`variasi|${want.variation}`)! })
+          links.push({
+            variantId: created.id,
+            optionValueId: valueIdByGroupName.get(`variasi|${want.variation}`)!,
+          })
         }
         if (links.length) await tx.insert(partnerVariantValues).values(links)
       }
@@ -401,9 +494,25 @@ export const savePartnerProductVariants = createServerFn({ method: 'POST' })
       // 5. Induk tidak lagi memakai harga sendiri; simpan flag-nya.
       await tx
         .update(partnerProducts)
-        .set({ hasVariants: true, price: data.price === null ? null : String(data.price) })
+        .set({
+          hasVariants: true,
+          price: data.price === null ? null : String(data.price),
+        })
         .where(eq(partnerProducts.id, data.productId))
 
       return { ok: true as const }
     })
+
+    if (photoIdsToDelete.length > 0) {
+      // Gagal hapus file tidak menggagalkan simpan: file yatim tidak dirujuk lagi.
+      const { deletePartnerVariantPhoto } = await import('./storage')
+      for (const id of photoIdsToDelete) {
+        try {
+          await deletePartnerVariantPhoto(id)
+        } catch (err) {
+          console.error('Gagal menghapus foto variasi dari storage:', err)
+        }
+      }
+    }
+    return result
   })

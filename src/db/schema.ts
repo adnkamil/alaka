@@ -226,17 +226,37 @@ export const brandInvitations = pgTable(
   ],
 )
 
-export const sessions = pgTable('sessions', {
-  id: uuid().primaryKey().defaultRandom(),
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  token: varchar().notNull().unique(),
-  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-})
+export const sessions = pgTable(
+  'sessions',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    // Hash sha256 dari token cookie (`lib/session-token.ts`), bukan token mentah.
+    token: varchar().notNull().unique(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index('sessions_expires_idx').on(table.expiresAt)],
+)
+
+// Percobaan login GAGAL, dipakai untuk membatasi tebak-tebak kata sandi
+// (`lib/login-throttle.ts`). `key` = "email:<email>" atau "ip:<alamat>". Baris
+// lama dihapus otomatis saat ada kegagalan baru.
+export const loginAttempts = pgTable(
+  'login_attempts',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    key: varchar().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index('login_attempts_key_created_idx').on(table.key, table.createdAt)],
+)
 
 // PASSWORD RESET
 // Yang disimpan cuma hash token (sha256), bukan token mentahnya — sama pola
@@ -1191,13 +1211,17 @@ export const partnerSessions = pgTable(
     partnerId: uuid('partner_id')
       .notNull()
       .references(() => partners.id, { onDelete: 'cascade' }),
+    // Hash sha256 dari token cookie (`lib/session-token.ts`), bukan token mentah.
     token: varchar().notNull().unique(),
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
   },
-  (table) => [index('partner_sessions_partner_idx').on(table.partnerId)],
+  (table) => [
+    index('partner_sessions_partner_idx').on(table.partnerId),
+    index('partner_sessions_expires_idx').on(table.expiresAt),
+  ],
 )
 
 // Token undangan partner: hanya hash sha256 yang disimpan (pola sama dengan

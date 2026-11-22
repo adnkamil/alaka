@@ -10,6 +10,7 @@ import {
   Plus,
 } from 'lucide-react'
 import PartnerEventStatusBadge from '../../../components/PartnerEventStatusBadge'
+import UnderlineTabs from '../../../components/ui/UnderlineTabs'
 import Pagination from '../../../components/ui/Pagination'
 import PartnerTableToolbar from '../../../components/ui/PartnerTableToolbar'
 import SortHeader, { ariaSortOf } from '../../../components/ui/SortHeader'
@@ -109,18 +110,12 @@ function PartnerEventListPage() {
       <main className="flex flex-col gap-3.5 px-5 pb-[150px] pt-4 lg:hidden">
         <h1 className="pm-display text-[22px] leading-tight">Event</h1>
 
-        <div className="flex flex-wrap gap-2">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => changeTab(t.key)}
-              className={`pm-chip ${tab === t.key ? 'pm-chip--active' : ''}`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+        <UnderlineTabs
+          ariaLabel="Status event"
+          items={TABS.map((t) => ({ ...t, count: counts[t.key] }))}
+          value={tab}
+          onChange={changeTab}
+        />
 
         {visible.length === 0 ? (
           <div className="app-card flex flex-col items-center gap-2 p-8 text-center">
@@ -292,18 +287,12 @@ function EventsDesktop({
         </Link>
       </header>
 
-      <div className="flex flex-wrap gap-2">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            onClick={() => onTab(t.key)}
-            className={`pm-chip ${tab === t.key ? 'pm-chip--active' : ''}`}
-          >
-            {t.label} {counts[t.key]}
-          </button>
-        ))}
-      </div>
+      <UnderlineTabs
+        ariaLabel="Status event"
+        items={TABS.map((t) => ({ ...t, count: counts[t.key] }))}
+        value={tab}
+        onChange={onTab}
+      />
 
       {visible.length === 0 && searching ? (
         <>

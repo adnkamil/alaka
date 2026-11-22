@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
+import UnderlineTabs from '../../components/ui/UnderlineTabs'
 import {
   approvePartnerSubscription,
   fetchAdminPartnerSubscriptions,
@@ -46,18 +47,12 @@ function AdminPartnerSubscriptionsPage() {
   return (
     <main className="flex flex-col gap-4 p-4 lg:p-6">
       <h1 className="pm-display text-[22px] leading-tight">Langganan PRO Partner</h1>
-      <div className="flex flex-wrap gap-2">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            onClick={() => setTab(t.key)}
-            className={`pm-chip ${tab === t.key ? 'pm-chip--active' : ''}`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <UnderlineTabs
+        ariaLabel="Status pengajuan"
+        items={TABS}
+        value={tab}
+        onChange={setTab}
+      />
       {error && <p role="alert" className="text-sm" style={{ color: '#b42318' }}>{error}</p>}
       {isLoading && <p className="text-sm">Memuat…</p>}
       {!isLoading && rows.length === 0 && (

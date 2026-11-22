@@ -1,4 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Loader2,
+  PackageSearch,
+  RotateCw,
+  X,
+} from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   cancelSubmittedRowBatch,
@@ -56,18 +64,34 @@ export default function PartnerSubmitReview({
 
   const [looping, setLooping] = useState(false)
   const [stockError, setStockError] = useState<string | null>(null)
+  /** Jumlah pengajuan yang baru selesai dicek di sesi ini, untuk pesan sukses. */
+  const [finishedCount, setFinishedCount] = useState<number | null>(null)
   const stock = stockQuery.data
-  const busy = looping || stock?.run?.status === 'running'
-  const processingId = stock?.run?.status === 'running'
-    ? stock.run.currentSubmissionId
-    : null
+  // Run yang macet (heartbeat basi) tidak dihitung sedang jalan.
+  const busy = looping || (stock?.run?.status === 'running' && !stock.isStale)
+  const processingId =
+    stock?.run?.status === 'running' ? stock.run.currentSubmissionId : null
 
+  // Selain daftar submit di komponen ini, segarkan juga daftar & jumlah per tab
+  // di halaman event supaya baris langsung pindah tab tanpa menunggu polling.
   const refreshSubmissions = () =>
-    queryClient.invalidateQueries({ queryKey: submissionsKey })
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: submissionsKey }),
+      queryClient.invalidateQueries({
+        queryKey: ['partner-submit-list', calendarEventId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ['partner-event-revenue', calendarEventId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ['partner-jastiper-detail', calendarEventId],
+      }),
+    ])
 
   async function runAutoCheck() {
     setLooping(true)
     setStockError(null)
+    setFinishedCount(null)
     try {
       queryClient.setQueryData(
         stockKey,
@@ -79,11 +103,16 @@ export default function PartnerSubmitReview({
         const next = await runAutoStockCheckStep({ data: { calendarEventId } })
         queryClient.setQueryData(stockKey, next)
         refreshSubmissions()
-        if (next.run?.status !== 'running') break
+        if (next.run?.status !== 'running') {
+          if (next.run?.status === 'done') setFinishedCount(next.run.total)
+          break
+        }
       }
     } catch (err) {
       setStockError(
-        err instanceof Error ? err.message : 'Pengecekan berhenti karena gangguan.',
+        err instanceof Error
+          ? err.message
+          : 'Pengecekan berhenti karena gangguan.',
       )
     } finally {
       setLooping(false)
@@ -116,85 +145,23 @@ export default function PartnerSubmitReview({
     : ''
 
   if (barOnly) {
-    const processed = stock?.run?.processed ?? 0
-    const total = stock?.run?.total ?? 0
-    const percent = busy
-      ? total > 0
-        ? Math.round((processed / total) * 100)
-        : 0
-      : stock?.run?.status === 'done' && pending === 0
-        ? 100
-        : 0
-    const label = busy
-      ? `Sedang mengecek ${processed} dari ${total} pengajuan`
-      : pending > 0
-        ? `${pending} pengajuan belum dicek`
-        : 'Semua pengajuan sudah dicek'
     return (
-      <div
-        className="flex flex-wrap items-center gap-5 rounded-2xl border p-5"
-        style={{ background: 'var(--app-card)', borderColor: 'var(--app-border)' }}
-      >
-        <div className="min-w-[220px] flex-1 space-y-3">
-          <div className="flex items-baseline justify-between gap-3">
-            <p className="text-sm font-semibold">{label}</p>
-            {busy && total > 0 && (
-              <p className="text-xs tabular-nums" style={{ color: 'var(--app-text-soft)' }}>
-                {percent}%
-              </p>
-            )}
-          </div>
-          <div
-            className="h-2 w-full overflow-hidden rounded-full"
-            style={{ background: 'var(--app-border)' }}
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={percent}
-          >
-            <div
-              className="h-full rounded-full transition-all duration-500"
-              style={{ width: `${percent}%`, background: 'var(--app-accent)' }}
-            />
-          </div>
-          {paused && !busy && (
-            <p className="text-xs" style={{ color: '#b45309' }}>
-              Berhenti di tengah. Lanjutkan untuk mengecek sisanya.
-            </p>
-          )}
-          {!busy && stock?.run?.status === 'done' && pending > 0 && (
-            <p className="text-xs" style={{ color: '#b45309' }}>
-              Ada {pending} pengajuan baru setelah pengecekan terakhir.
-            </p>
-          )}
-          {stockError && (
-            <p className="text-xs" style={{ color: 'var(--app-danger)' }}>
-              {stockError}
-            </p>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {busy && (
-            <button
-              type="button"
-              className="app-btn-outline"
-              style={{ minHeight: 44 }}
-              onClick={stopAutoCheck}
-            >
-              Hentikan
-            </button>
-          )}
-          <button
-            type="button"
-            disabled={busy || pending === 0}
-            onClick={runAutoCheck}
-            className="rounded-xl px-6 font-semibold text-white disabled:opacity-50"
-            style={{ minHeight: 44, background: 'var(--app-accent)' }}
-          >
-            {paused ? 'Lanjutkan cek otomatis' : 'Cek stok otomatis'}
-          </button>
-        </div>
-      </div>
+      <AutoCheckBar
+        status={stock?.run?.status ?? null}
+        stale={stock?.isStale ?? false}
+        busy={busy}
+        processed={stock?.run?.processed ?? 0}
+        total={stock?.run?.total ?? 0}
+        pending={pending}
+        error={stockError}
+        finishedCount={finishedCount}
+        onStart={runAutoCheck}
+        onStop={stopAutoCheck}
+        onDismiss={() => {
+          setFinishedCount(null)
+          setStockError(null)
+        }}
+      />
     )
   }
 
@@ -241,23 +208,217 @@ export default function PartnerSubmitReview({
         {stockError && <p className="text-sm text-red-600">{stockError}</p>}
       </div>
 
-      {!barOnly &&
-        (brands.length === 0 ? (
-          <p>Belum ada pengajuan dari jastiper.</p>
-        ) : (
-          brands.map((brand) => (
-            <BrandBlock
-              key={brand.eventId}
-              brand={brand}
-              calendarEventId={calendarEventId}
-              processingId={processingId}
-              onDone={() => {
-                refreshSubmissions()
-                queryClient.invalidateQueries({ queryKey: stockKey })
+      {brands.length === 0 ? (
+        <p>Belum ada pengajuan dari jastiper.</p>
+      ) : (
+        brands.map((brand) => (
+          <BrandBlock
+            key={brand.eventId}
+            brand={brand}
+            calendarEventId={calendarEventId}
+            processingId={processingId}
+            onDone={() => {
+              refreshSubmissions()
+              queryClient.invalidateQueries({ queryKey: stockKey })
+            }}
+          />
+        ))
+      )}
+    </div>
+  )
+}
+
+type BarTone = 'accent' | 'warning' | 'danger' | 'success'
+
+const toneStyle: Record<BarTone, { bg: string; fg: string }> = {
+  accent: { bg: 'var(--app-accent-soft)', fg: 'var(--app-accent)' },
+  warning: { bg: 'var(--app-warning-soft)', fg: '#b45309' },
+  danger: { bg: 'var(--app-danger-soft)', fg: 'var(--app-danger)' },
+  success: { bg: 'var(--app-success-soft)', fg: '#15803d' },
+}
+
+/**
+ * Bar cek stok otomatis. Hanya muncul kalau ada yang perlu dilakukan: ada
+ * pengajuan menunggu, sedang mengecek, berhenti di tengah, gagal, atau baru
+ * selesai (pesan sukses hilang sendiri). Kalau semua sudah dicek, bar disembunyikan.
+ */
+function AutoCheckBar({
+  status,
+  stale,
+  busy,
+  processed,
+  total,
+  pending,
+  error,
+  finishedCount,
+  onStart,
+  onStop,
+  onDismiss,
+}: {
+  status: string | null
+  stale: boolean
+  busy: boolean
+  processed: number
+  total: number
+  pending: number
+  error: string | null
+  finishedCount: number | null
+  onStart: () => void
+  onStop: () => void
+  onDismiss: () => void
+}) {
+  const [stopping, setStopping] = useState(false)
+  useEffect(() => {
+    if (!busy) setStopping(false)
+  }, [busy])
+  // Pesan sukses hilang sendiri setelah beberapa detik.
+  useEffect(() => {
+    if (finishedCount === null || pending > 0 || error) return
+    const t = setTimeout(onDismiss, 6_000)
+    return () => clearTimeout(t)
+  }, [finishedCount, pending, error])
+
+  const interrupted = !busy && (status === 'paused' || stale)
+  const percent = total > 0 ? Math.round((processed / total) * 100) : 0
+
+  let tone: BarTone
+  let Icon = PackageSearch
+  let title: string
+  let hint: string
+  if (busy) {
+    tone = 'accent'
+    Icon = Loader2
+    title = stopping
+      ? 'Menghentikan pengecekan…'
+      : `Mengecek ${processed} dari ${total} pengajuan`
+    hint = 'Halaman boleh tetap dibuka. Daftar jastiper ikut diperbarui.'
+  } else if (error) {
+    tone = 'danger'
+    Icon = AlertTriangle
+    title = 'Pengecekan berhenti karena gangguan'
+    hint = error
+  } else if (interrupted && pending > 0) {
+    tone = 'warning'
+    Icon = AlertTriangle
+    title = `Pengecekan berhenti di ${processed} dari ${total}`
+    hint = `${pending} pengajuan masih menunggu. Lanjutkan untuk mengecek sisanya.`
+  } else if (pending > 0) {
+    tone = 'accent'
+    title = `${pending} pengajuan menunggu dicek stok`
+    hint =
+      status === 'done'
+        ? 'Pengajuan baru masuk setelah pengecekan terakhir.'
+        : 'Sisa stok dibagi otomatis ke pengajuan sesuai urutan masuk.'
+  } else if (finishedCount !== null) {
+    tone = 'success'
+    Icon = CheckCircle2
+    title = 'Semua pengajuan sudah dicek'
+    hint = `${finishedCount} pengajuan selesai dicek otomatis.`
+  } else {
+    return null
+  }
+
+  const { bg, fg } = toneStyle[tone]
+  const showProgress = busy || (interrupted && pending > 0)
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="rounded-2xl border p-4 sm:p-5"
+      style={{
+        background: 'var(--app-card)',
+        borderColor: 'var(--app-border)',
+      }}
+    >
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+        <span
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-xl"
+          style={{ background: bg, color: fg }}
+          aria-hidden
+        >
+          <Icon size={20} className={busy ? 'animate-spin' : undefined} />
+        </span>
+        <div className="min-w-[200px] flex-1">
+          <p className="text-sm font-semibold">{title}</p>
+          <p
+            className="text-xs"
+            style={{ color: tone === 'danger' ? fg : 'var(--app-text-soft)' }}
+          >
+            {hint}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {busy ? (
+            <button
+              type="button"
+              className="app-btn-outline"
+              style={{ minHeight: 40 }}
+              disabled={stopping}
+              onClick={() => {
+                setStopping(true)
+                onStop()
+              }}
+            >
+              Hentikan
+            </button>
+          ) : tone === 'success' ? (
+            <button
+              type="button"
+              aria-label="Tutup"
+              className="grid h-9 w-9 place-items-center rounded-lg"
+              style={{ color: 'var(--app-text-soft)' }}
+              onClick={onDismiss}
+            >
+              <X size={18} />
+            </button>
+          ) : (
+            pending > 0 && (
+              <button
+                type="button"
+                className="app-btn-primary"
+                style={{ minHeight: 40 }}
+                onClick={onStart}
+              >
+                {error || interrupted ? (
+                  <>
+                    <RotateCw size={16} />
+                    {error ? 'Coba lagi' : 'Lanjutkan'}
+                  </>
+                ) : (
+                  'Cek stok otomatis'
+                )}
+              </button>
+            )
+          )}
+        </div>
+      </div>
+      {showProgress && (
+        <div className="mt-4 flex items-center gap-3">
+          <div
+            className="h-1.5 flex-1 overflow-hidden rounded-full"
+            style={{ background: 'var(--app-border)' }}
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={percent}
+          >
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{
+                width: `${percent}%`,
+                background: busy ? 'var(--app-accent)' : fg,
               }}
             />
-          ))
-        ))}
+          </div>
+          <span
+            className="w-10 text-right text-xs tabular-nums"
+            style={{ color: 'var(--app-text-soft)' }}
+          >
+            {percent}%
+          </span>
+        </div>
+      )}
     </div>
   )
 }
@@ -384,7 +545,11 @@ function SubmissionBlock({
     (r) => r.status === 'dibatalkan',
   )
 
-  const state = processing ? 'processing' : submission.checked ? 'checked' : 'waiting'
+  const state = processing
+    ? 'processing'
+    : submission.checked
+      ? 'checked'
+      : 'waiting'
 
   return (
     <div className="rounded-xl border p-4 space-y-3">
@@ -409,7 +574,9 @@ function SubmissionBlock({
           cancellable={row.status === 'disetujui' && submission.checked}
           cancelling={cancelMutation.isPending}
           onCancel={() => {
-            if (window.confirm('Batalkan item ini? Stok akan kembali ke katalog.')) {
+            if (
+              window.confirm('Batalkan item ini? Stok akan kembali ke katalog.')
+            ) {
               cancelMutation.mutate(row)
             }
           }}
@@ -419,7 +586,9 @@ function SubmissionBlock({
 
       {cancelledRows.length > 0 && (
         <div className="space-y-1 border-t pt-3">
-          <p className="text-xs font-semibold text-stone-500">Dibatalkan partner</p>
+          <p className="text-xs font-semibold text-stone-500">
+            Dibatalkan partner
+          </p>
           {cancelledRows.map((row) => (
             <RowLine
               key={row.id}
@@ -456,11 +625,7 @@ function SubmissionBlock({
   )
 }
 
-function CheckIcon({
-  state,
-}: {
-  state: 'checked' | 'processing' | 'waiting'
-}) {
+function CheckIcon({ state }: { state: 'checked' | 'processing' | 'waiting' }) {
   if (state === 'processing') {
     return (
       <span
@@ -532,9 +697,13 @@ function RowLine({
             max={row.stock === null ? row.qty : Math.min(row.qty, row.stock)}
             value={value ?? 0}
             onChange={(e) => {
-              const cap = row.stock === null ? row.qty : Math.min(row.qty, row.stock)
+              const cap =
+                row.stock === null ? row.qty : Math.min(row.qty, row.stock)
               onChange(
-                Math.min(cap, Math.max(0, Math.floor(Number(e.target.value)) || 0)),
+                Math.min(
+                  cap,
+                  Math.max(0, Math.floor(Number(e.target.value)) || 0),
+                ),
               )
             }}
             className="w-20 rounded border px-2 py-1"
