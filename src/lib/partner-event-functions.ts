@@ -13,12 +13,14 @@ import {
 } from './calendar-event-input'
 import { listCalendarEventParticipants } from './calendar-join-queries'
 import { pageParamsSchema } from './pagination'
+import { sortParamSchema } from './table-sort'
 import { requirePartner } from './partner-auth'
 import {
   CATALOG_URL_MAX_LENGTH,
   parseCatalogUrl,
 } from './partner-catalog-rules'
 import {
+  EVENT_SORT_KEYS,
   getPartnerEvent,
   insertPartnerEvent,
   listPartnerEvents,
@@ -95,11 +97,12 @@ export const fetchPartnerEventsPage = createServerFn({ method: 'GET' })
     pageParamsSchema.extend({
       tab: z.enum(['all', 'berjalan', 'mendatang', 'selesai']),
       search: z.string().max(100).default(''),
+      sort: sortParamSchema(EVENT_SORT_KEYS),
     }),
   )
   .handler(async ({ data }) => {
     const partner = await requirePartner()
-    return listPartnerEventsPage(partner.id, data)
+    return listPartnerEventsPage(partner.id, { ...data, sort: data.sort ?? null })
   })
 
 export const fetchPartnerEvent = createServerFn({ method: 'GET' })

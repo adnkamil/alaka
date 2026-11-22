@@ -98,14 +98,16 @@ function PartnerHomePage() {
     <>
       <main className="flex flex-col gap-[18px] px-5 pb-6 pt-2 lg:hidden">
         <header className="flex items-center gap-3 pt-2">
-          <PartnerLogo
-            name={partner.name}
-            logoUrl={partner.logoUrl}
-            size={44}
-            shape="circle"
-            initials={partnerInitials(partner.name)}
-            className="pm-display"
-          />
+          <Link to="/partner/profil" aria-label="Profil" className="shrink-0">
+            <PartnerLogo
+              name={partner.name}
+              logoUrl={partner.logoUrl}
+              size={44}
+              shape="circle"
+              initials={partnerInitials(partner.name)}
+              className="pm-display"
+            />
+          </Link>
           <div className="min-w-0 flex-1">
             <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
               Halo,

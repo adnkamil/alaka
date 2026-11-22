@@ -13,6 +13,7 @@ import { getErrorMessage } from '../../lib/error-message'
 import { formatDateTime } from '../../lib/format'
 import type { AdminUserRow } from '../../lib/admin-queries'
 import type { PlanKey } from '../../lib/subscription'
+import UnderlineTabs from '../../components/ui/UnderlineTabs'
 
 const adminUsersQuery = queryOptions({
   queryKey: ['admin-users'],
@@ -142,27 +143,13 @@ function AdminCustomersPage() {
           />
         </div>
 
-        <div className="mb-3 flex flex-wrap gap-2">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => setTab(t.key)}
-              className={`pm-chip ${tab === t.key ? 'pm-chip--active' : ''}`}
-            >
-              <span>{t.label}</span>
-              <span
-                className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-                  tab === t.key
-                    ? 'bg-white/20 text-white'
-                    : 'bg-[var(--app-accent-soft)] text-[var(--app-accent)]'
-                }`}
-              >
-                {counts[t.key]}
-              </span>
-            </button>
-          ))}
-        </div>
+        <UnderlineTabs
+          className="mb-3"
+          ariaLabel="Jenis customer"
+          items={TABS.map((t) => ({ ...t, count: counts[t.key] }))}
+          value={tab}
+          onChange={setTab}
+        />
 
         <div className="mb-4 flex items-center justify-between gap-2 text-xs">
           <span style={{ color: 'var(--app-text-mute)' }}>
@@ -217,19 +204,14 @@ function AdminCustomersPage() {
           </button>
         </header>
 
+        <UnderlineTabs
+          ariaLabel="Jenis customer"
+          items={TABS.map((t) => ({ ...t, count: counts[t.key] }))}
+          value={tab}
+          onChange={setTab}
+        />
+
         <div className="flex items-center justify-between gap-4">
-          <div className="flex flex-wrap gap-2">
-            {TABS.map((t) => (
-              <button
-                key={t.key}
-                type="button"
-                onClick={() => setTab(t.key)}
-                className={`pm-chip ${tab === t.key ? 'pm-chip--active' : ''}`}
-              >
-                {t.label} {counts[t.key]}
-              </button>
-            ))}
-          </div>
           <div className="relative w-full max-w-[336px]">
             <Search
               size={17}

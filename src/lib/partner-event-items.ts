@@ -140,6 +140,7 @@ export async function loadEventPartnerItemCatalog(
           variantId: partnerVariantValues.variantId,
           type: partnerOptionGroups.type,
           value: partnerOptionValues.name,
+          imageUrl: partnerOptionValues.imageUrl,
         })
         .from(partnerVariantValues)
         .innerJoin(
@@ -172,6 +173,18 @@ export async function loadEventPartnerItemCatalog(
     optionsByVariant.set(row.variantId, current)
   }
 
+  // Foto per variasi, dikelompokkan per produk: productId -> (nama variasi -> URL).
+  const productOfVariant = new Map(variantRows.map((v) => [v.id, v.productId]))
+  const variationPhotosByProduct = new Map<string, Record<string, string>>()
+  for (const row of valueRows) {
+    if (row.type !== 'variasi' || !row.imageUrl) continue
+    const productId = productOfVariant.get(row.variantId)
+    if (!productId) continue
+    const photos = variationPhotosByProduct.get(productId) ?? {}
+    photos[row.value] = row.imageUrl
+    variationPhotosByProduct.set(productId, photos)
+  }
+
   return {
     isPartnerEvent: true,
     rules: activeRules.map((r) => ({
@@ -186,6 +199,7 @@ export async function loadEventPartnerItemCatalog(
         id: product.id,
         name: product.name,
         photoUrl: partnerProductPhotoUrl(product.id, product.photoUpdatedAt),
+        variationPhotos: variationPhotosByProduct.get(product.id) ?? {},
         rules: rulesByProduct.get(product.id) ?? [],
         variants: variantRows
           .filter((v) => v.productId === product.id)

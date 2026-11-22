@@ -30,6 +30,7 @@ function EditPartnerProductPage() {
   const productRef = useRef<PartnerProductFormHandle>(null)
   const variantRef = useRef<PartnerVariantEditorHandle>(null)
   const ruleRef = useRef<PartnerProductRuleCardHandle>(null)
+  const [sizes, setSizes] = useState<Array<string>>([])
   const [saving, setSaving] = useState(false)
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(
     null,
@@ -41,7 +42,7 @@ function EditPartnerProductPage() {
         id,
         name: value.name,
         code: value.code,
-        price: value.price,
+        // Harga disimpan lewat kartu Informasi penjualan (PartnerVariantEditor).
         description: value.description,
         isActive: value.isActive,
         photo: value.photo,
@@ -56,6 +57,8 @@ function EditPartnerProductPage() {
     setSaving(true)
     setStatus(null)
     try {
+      const invalid = ruleRef.current?.validate()
+      if (invalid) throw new Error(invalid)
       await productRef.current?.save()
       await variantRef.current?.save()
       await ruleRef.current?.save()
@@ -131,9 +134,14 @@ function EditPartnerProductPage() {
         submitLabel="Simpan perubahan"
         onSubmit={handleProductSubmit}
         headerActions={actions}
+        hidePrice
       />
-      <PartnerVariantEditor ref={variantRef} productId={id} />
-      <PartnerProductRuleCard ref={ruleRef} productId={id} />
+      <PartnerVariantEditor
+        ref={variantRef}
+        productId={id}
+        onSizesChange={setSizes}
+      />
+      <PartnerProductRuleCard ref={ruleRef} productId={id} sizes={sizes} />
     </main>
   )
 }

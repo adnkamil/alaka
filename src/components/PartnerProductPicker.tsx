@@ -12,6 +12,7 @@ import {
   partnerProductPhotoUrl,
 } from '../lib/partner-product-rules'
 import type { PartnerProductRow } from '../lib/partner-product-queries'
+import UnderlineTabs from './ui/UnderlineTabs'
 import Pagination from './ui/Pagination'
 import { useClientPager } from '../lib/use-client-pager'
 
@@ -177,9 +178,9 @@ export function ProductChecklist({
     if (allRef.current) allRef.current.indeterminate = state === 'some'
   }, [state])
 
-  const scopes: Array<{ key: Scope; label: string }> = [
-    { key: 'semua', label: `Semua ${options.length}` },
-    { key: 'dipilih', label: `Dipilih ${selectedCount}` },
+  const scopes: Array<{ key: Scope; label: string; count: number }> = [
+    { key: 'semua', label: 'Semua', count: options.length },
+    { key: 'dipilih', label: 'Dipilih', count: selectedCount },
   ]
 
   return (
@@ -201,18 +202,12 @@ export function ProductChecklist({
             }}
           />
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {scopes.map((item) => (
-            <button
-              key={item.key}
-              type="button"
-              onClick={() => setScope(item.key)}
-              className={`pm-chip ${scope === item.key ? 'pm-chip--active' : ''}`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
+        <UnderlineTabs
+          ariaLabel="Tampilkan produk"
+          items={scopes}
+          value={scope}
+          onChange={setScope}
+        />
         {visible.length > 0 && (
           <label
             className="flex cursor-pointer items-center gap-3 rounded-xl border px-3.5 py-2.5"

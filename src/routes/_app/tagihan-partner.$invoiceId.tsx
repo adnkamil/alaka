@@ -8,6 +8,7 @@ import {
   Download,
   Upload,
 } from 'lucide-react'
+import InvoiceDocument from '../../components/InvoiceDocument'
 import InvoiceStatusBadge from '../../components/InvoiceStatusBadge'
 import PaymentProofViewer from '../../components/PaymentProofViewer'
 import { getErrorMessage } from '../../lib/error-message'
@@ -143,8 +144,13 @@ function PartnerInvoicePage() {
         </div>
       ) : (
         <>
+          {/* Saat dicetak / disimpan PDF: lembar invoice resmi, bukan halaman ini. */}
+          <div className="hidden print:block">
+            <InvoiceDocument invoice={d} />
+          </div>
+
           {/* ====== INVOICE CARD ====== */}
-          <div className="app-card mb-4 overflow-hidden">
+          <div className="app-card mb-4 overflow-hidden print:hidden">
             <div
               className="flex flex-col gap-1 p-5"
               style={{ background: 'var(--app-accent-soft)' }}
@@ -248,7 +254,7 @@ function PartnerInvoicePage() {
           {/* ====== REKENING ====== */}
           {d.status === 'ditagih' &&
             (d.partnerBank ? (
-              <div className="app-card mb-4 flex flex-col gap-1 p-5 text-[13px]">
+              <div className="app-card mb-4 flex flex-col gap-1 p-5 text-[13px] print:hidden">
                 <p
                   className="text-[11px] font-semibold uppercase tracking-wide"
                   style={{ color: 'var(--pm-gold)' }}

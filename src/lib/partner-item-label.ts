@@ -29,6 +29,8 @@ export interface PartnerItemProduct {
   name: string
   /** URL foto produk, null kalau belum ada foto. */
   photoUrl?: string | null
+  /** Foto per variasi (nama variasi -> URL). Variasi tanpa foto tidak punya entri. */
+  variationPhotos?: Record<string, string>
   /** Semua aturan paket yang memuat produk ini (kosong kalau tidak ada / bukan PRO). */
   rules?: Array<PartnerItemRule>
   variants: Array<PartnerItemVariant>
@@ -52,4 +54,31 @@ export function variantLabel(options: {
 /** Nama barang yang tersimpan: "Kana Longsleeve Set (S / Marine Cove)". */
 export function partnerItemName(productName: string, label: string): string {
   return label ? `${productName} (${label})` : productName
+}
+
+/** Ukuran yang umum: S, XL, 3XL, All size, atau angka seperti 39. */
+const SIZE_ONLY = /^(?:\d?x{0,3}[sl]|m|\d{1,2}(?:\.\d)?|all ?size|one ?size|free ?size)$/i
+
+/**
+ * Pecah nama barang tersimpan "Produk (Ukuran / Variasi)" jadi tiga bagian.
+ * Kalau hanya ada satu opsi di dalam kurung, ukuran dikenali dari bentuknya
+ * (S, XL, 39, All size); selain itu dianggap variasi.
+ */
+export function splitItemName(name: string): {
+  product: string
+  size: string | null
+  variation: string | null
+} {
+  const m = /^(.*?)\s*\(([^()]*)\)\s*$/.exec(name)
+  const parts = m ? m[2].split(' / ').map((p) => p.trim()).filter(Boolean) : []
+  if (!m || parts.length === 0) {
+    return { product: name, size: null, variation: null }
+  }
+  const product = m[1] || name
+  if (parts.length === 1) {
+    return SIZE_ONLY.test(parts[0])
+      ? { product, size: parts[0], variation: null }
+      : { product, size: null, variation: parts[0] }
+  }
+  return { product, size: parts[0], variation: parts.slice(1).join(' / ') }
 }

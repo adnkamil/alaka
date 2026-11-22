@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { eq } from 'drizzle-orm'
+import { eq, lt } from 'drizzle-orm'
 import bcrypt from 'bcryptjs'
 import {
   deleteCookie,
@@ -9,6 +9,7 @@ import {
 import { db } from '../db'
 import { brands, sessions, users } from '../db/schema'
 import { applyBrandIdentity } from './brand'
+import { hashSessionToken } from './session-token'
 
 export const SESSION_COOKIE_NAME = 'jastip_session'
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000 // 30 days
@@ -22,12 +23,24 @@ export async function verifyPassword(password: string, hash: string) {
 }
 
 // Only inserts the session row and returns the token — doesn't touch cookies.
+// Yang masuk DB cuma hash-nya (`hashSessionToken`); token mentah hanya dikembalikan
+// ke pemanggil untuk dipasang di cookie.
 // Used by raw API route handlers (e.g. Google OAuth callback) that build the
 // Set-Cookie header themselves via the Response object.
 export async function createSessionToken(userId: string) {
   const token = randomUUID()
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS)
-  await db.insert(sessions).values({ userId, token, expiresAt })
+  await db
+    .insert(sessions)
+    .values({ userId, token: hashSessionToken(token), expiresAt })
+
+  // Housekeeping: sesi kedaluwarsa tidak pernah dibaca lagi, jadi hapus saat
+  // ada login baru supaya tabel tidak membesar terus. Gagal bukan masalah.
+  await db
+    .delete(sessions)
+    .where(lt(sessions.expiresAt, new Date()))
+    .catch(() => {})
+
   return { token, expiresAt }
 }
 
@@ -72,7 +85,7 @@ async function getSessionUserByToken(token: string | undefined) {
     .from(sessions)
     .innerJoin(users, eq(sessions.userId, users.id))
     .innerJoin(brands, eq(users.brandId, brands.id))
-    .where(eq(sessions.token, token))
+    .where(eq(sessions.token, hashSessionToken(token)))
     .limit(1)
 
   if (rows.length === 0) return null
@@ -93,7 +106,7 @@ export async function revokeAllSessions(userId: string) {
 export async function destroySession() {
   const token = getCookie(SESSION_COOKIE_NAME)
   if (token) {
-    await db.delete(sessions).where(eq(sessions.token, token))
+    await db.delete(sessions).where(eq(sessions.token, hashSessionToken(token)))
   }
   deleteCookie(SESSION_COOKIE_NAME, { path: '/' })
 }

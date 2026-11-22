@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { getSessionUser } from './auth'
 import { brandIdOf } from './brand'
 import type { HoleStatus } from './submit-replacement'
+import { splitItemName } from './partner-item-label'
 
 type LineStatus = 'disetujui' | 'disanggah' | 'pengajuan' | 'dibatalkan' | null
 
@@ -23,6 +24,12 @@ export type SubmitDetailLine = {
   id: string
   kind: 'satuan' | 'komponen'
   name: string
+  /** Nama produk saja, untuk tampilan. */
+  product: string
+  /** "Ukuran / Variasi", kosong kalau tidak ada. */
+  variant: string
+  /** Isi paket (komponen), bukan barang satuan. */
+  inBundle: boolean
   qty: number
   status: LineStatus
   /**
@@ -168,11 +175,15 @@ export const getSubmitDetail = createServerFn({ method: 'GET' })
       customers.set(orderId, cur)
     }
     for (const row of satuan) {
+      const parts = splitItemName(row.name)
       add(row.orderId, row.customerName.trim(), {
         key: `s-${row.id}`,
         id: row.id,
         kind: 'satuan',
         name: row.name,
+        product: parts.product,
+        variant: [parts.size, parts.variation].filter(Boolean).join(' / '),
+        inBundle: false,
         qty: row.qty,
         status: row.status,
         ruleId: ruleOf(row, null),
@@ -188,6 +199,9 @@ export const getSubmitDetail = createServerFn({ method: 'GET' })
         id: row.id,
         kind: 'komponen',
         name: `${label} (paket)`,
+        product: row.productName,
+        variant: [row.size, row.variation].filter(Boolean).join(' / '),
+        inBundle: true,
         qty: row.componentQty * row.bundleQty,
         status: row.status,
         ruleId: ruleOf(row, row.ruleId),

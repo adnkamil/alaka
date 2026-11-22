@@ -82,7 +82,7 @@ export function openWhatsApp(phone: string, message: string) {
  * Ini cuma validasi FORMAT, bukan cek apakah nomornya beneran aktif/punya WA.
  */
 /**
- * Tanggal panjang bahasa Indonesia, mis. "12 Agustus 2026". Terima `Date`,
+ * Tanggal bahasa Indonesia dengan nama bulan singkat, mis. "12 Agu 2026". Terima `Date`,
  * string ISO (hasil serialisasi server function), atau null — null jadi string
  * kosong supaya aman dipakai langsung di JSX.
  *
@@ -100,7 +100,7 @@ export function formatDate(date: Date | string | null | undefined) {
 }
 
 /**
- * Tanggal + jam bahasa Indonesia, mis. "12 Agustus 2026, 14.35 WIB".
+ * Tanggal + jam bahasa Indonesia, mis. "12 Agu 2026, 14.35".
  * Zona waktu dipatok ke `APP_TIME_ZONE` (WIB), sama seperti `formatDate`.
  */
 export function formatDateTime(date: Date | string | null | undefined) {

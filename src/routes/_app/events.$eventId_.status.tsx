@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Check, Clock, Lock, Send } from 'lucide-react'
+import { ArrowLeft, Check, ChevronRight, Clock, Lock, Receipt, Send } from 'lucide-react'
 import ConfirmModal from '../../components/ui/ConfirmModal'
 import EventInvoicesSection, {
   useEventInvoices,
@@ -308,67 +308,12 @@ function EventStatusPage() {
             </section>
           )}
           {summary.submissions.map((h) => (
-            <Link
+            <SubmitCard
               key={h.submissionId}
-              to="/events/$eventId/submit/$submitNo"
-              params={{ eventId, submitNo: String(h.submitNo) }}
-              className="app-card block p-4 no-underline transition-colors"
-              style={{ color: 'var(--app-text)' }}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-base font-bold">Submit ke-{h.submitNo}</p>
-                  <p className="mt-0.5 text-xs" style={{ color: 'var(--app-text-soft)' }}>
-                    Dikirim {formatWibDateTime(h.submittedAt)}
-                  </p>
-                  {h.checkedAt && (
-                    <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
-                      Dicek {formatWibDateTime(h.checkedAt)}
-                    </p>
-                  )}
-                </div>
-                <span
-                  className="rounded-full px-2.5 py-1 text-[11px] font-semibold"
-                  style={
-                    h.pending > 0
-                      ? { background: 'var(--app-warning-soft)', color: '#b45309' }
-                      : { background: 'var(--app-success-soft)', color: '#15803d' }
-                  }
-                >
-                  {h.pending > 0 ? 'Menunggu' : 'Sudah dicek'}
-                </span>
-              </div>
-              {h.pending === 0 && (
-                <p className="mt-2 text-[11px] font-semibold" style={{ color: 'var(--app-text-soft)' }}>
-                  {invoiceBySubmitNo.has(h.submitNo)
-                    ? `Ditagih ${formatInvoiceNumber(invoiceBySubmitNo.get(h.submitNo)!)}`
-                    : 'Belum ditagih'}
-                </p>
-              )}
-              <div
-                className="mt-4 grid grid-cols-4 overflow-hidden rounded-xl border text-center"
-                style={{ borderColor: 'var(--app-border)' }}
-              >
-                {[
-                  { label: 'Pcs', value: h.pcs, color: undefined },
-                  { label: 'Disetujui', value: h.approved, color: '#15803d' },
-                  { label: 'Ditolak', value: h.rejected, color: h.rejected > 0 ? '#b91c1c' : undefined },
-                  { label: 'Menunggu', value: h.pending, color: undefined },
-                ].map((stat, i) => (
-                  <div
-                    key={stat.label}
-                    className="py-2.5"
-                    style={{ borderLeft: i === 0 ? undefined : '1px solid var(--app-border)' }}
-                  >
-                    <p className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>{stat.label}</p>
-                    <p className="text-lg font-bold" style={{ color: stat.color }}>{stat.value}</p>
-                  </div>
-                ))}
-              </div>
-              <p className="mt-3 text-right text-xs font-semibold" style={{ color: 'var(--app-accent)' }}>
-                Lihat detail →
-              </p>
-            </Link>
+              eventId={eventId}
+              submission={h}
+              invoiceNumber={invoiceBySubmitNo.get(h.submitNo)}
+            />
           ))}
         </div>
       )}
@@ -496,5 +441,140 @@ function EventStatusPage() {
         onCancel={() => setConfirm(false)}
       />
     </main>
+  )
+}
+
+interface SubmitCardData {
+  submitNo: number
+  submittedAt: Parameters<typeof formatWibDateTime>[0]
+  checkedAt: Parameters<typeof formatWibDateTime>[0] | null
+  pcs: number
+  approved: number
+  rejected: number
+  pending: number
+}
+
+/** Satu riwayat submit: nomor, waktu, progres pengecekan partner, dan status tagihan. */
+function SubmitCard({
+  eventId,
+  submission: h,
+  invoiceNumber,
+}: {
+  eventId: string
+  submission: SubmitCardData
+  invoiceNumber: Parameters<typeof formatInvoiceNumber>[0] | undefined
+}) {
+  const waiting = h.pending > 0
+  const total = Math.max(h.pcs, h.approved + h.rejected + h.pending, 1)
+  const segments = [
+    { key: 'approved', value: h.approved, color: '#15803d', label: 'disetujui' },
+    { key: 'rejected', value: h.rejected, color: '#b91c1c', label: 'ditolak' },
+    { key: 'pending', value: h.pending, color: '#d97706', label: 'menunggu' },
+  ]
+
+  return (
+    <Link
+      to="/events/$eventId/submit/$submitNo"
+      params={{ eventId, submitNo: String(h.submitNo) }}
+      className="app-card block p-4 no-underline transition-colors"
+      style={{ color: 'var(--app-text)' }}
+    >
+      <div className="flex items-center gap-3">
+        <span
+          className="flex h-11 w-11 flex-shrink-0 flex-col items-center justify-center rounded-xl leading-none"
+          style={
+            waiting
+              ? { background: 'var(--app-warning-soft)', color: '#b45309' }
+              : { background: 'var(--app-success-soft)', color: '#15803d' }
+          }
+        >
+          <span className="text-[9px] font-semibold uppercase tracking-wide">Ke</span>
+          <span className="text-lg font-bold">{h.submitNo}</span>
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <p className="truncate text-sm font-bold">Submit ke-{h.submitNo}</p>
+            <span
+              className="flex flex-shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+              style={
+                waiting
+                  ? { background: 'var(--app-warning-soft)', color: '#b45309' }
+                  : { background: 'var(--app-success-soft)', color: '#15803d' }
+              }
+            >
+              {waiting ? <Clock size={10} /> : <Check size={10} />}
+              {waiting ? 'Menunggu' : 'Sudah dicek'}
+            </span>
+          </div>
+          <p className="mt-0.5 truncate text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
+            Dikirim {formatWibDateTime(h.submittedAt)}
+          </p>
+          {h.checkedAt && (
+            <p className="truncate text-[11px]" style={{ color: 'var(--app-text-mute)' }}>
+              Dicek {formatWibDateTime(h.checkedAt)}
+            </p>
+          )}
+        </div>
+        <span className="flex-shrink-0 text-right leading-tight">
+          <span className="block text-xl font-bold">{h.pcs}</span>
+          <span className="block text-[10px]" style={{ color: 'var(--app-text-soft)' }}>pcs</span>
+        </span>
+      </div>
+
+      <div
+        className="mt-4 flex h-2 overflow-hidden rounded-full"
+        style={{ background: 'var(--app-border)' }}
+        role="img"
+        aria-label={segments.map((s) => `${s.value} ${s.label}`).join(', ')}
+      >
+        {segments.map((s) =>
+          s.value > 0 ? (
+            <span
+              key={s.key}
+              style={{ width: `${(s.value / total) * 100}%`, background: s.color }}
+            />
+          ) : null,
+        )}
+      </div>
+      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
+        {segments.map((s) => (
+          <span key={s.key} className="flex items-center gap-1" style={{ opacity: s.value > 0 ? 1 : 0.5 }}>
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: s.color }} />
+            <span className="font-semibold" style={{ color: 'var(--app-text)' }}>{s.value}</span>
+            {s.label}
+          </span>
+        ))}
+      </div>
+
+      <div
+        className="mt-3 flex items-center justify-between gap-2 border-t pt-3"
+        style={{ borderColor: 'var(--app-border)' }}
+      >
+        {waiting ? (
+          <span className="text-[11px]" style={{ color: 'var(--app-text-mute)' }}>
+            Tagihan dibuat setelah semua dicek
+          </span>
+        ) : invoiceNumber !== undefined ? (
+          <span
+            className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold"
+            style={{ background: 'var(--app-accent-soft)', color: 'var(--app-accent)' }}
+          >
+            <Receipt size={12} />
+            {formatInvoiceNumber(invoiceNumber)}
+          </span>
+        ) : (
+          <span
+            className="rounded-full border px-2.5 py-1 text-[11px] font-semibold"
+            style={{ borderColor: 'var(--app-border)', color: 'var(--app-text-soft)' }}
+          >
+            Belum ditagih
+          </span>
+        )}
+        <span className="flex items-center gap-0.5 text-xs font-semibold" style={{ color: 'var(--app-accent)' }}>
+          Detail
+          <ChevronRight size={14} />
+        </span>
+      </div>
+    </Link>
   )
 }

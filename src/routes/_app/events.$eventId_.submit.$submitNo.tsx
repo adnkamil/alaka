@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { ArrowLeft, Check, Minus, X } from 'lucide-react'
+import { ArrowLeft, Check, Clock, CornerDownRight, Minus, X } from 'lucide-react'
 import PartnerCatalogPicker from '../../components/PartnerCatalogPicker'
 import type { CatalogPick } from '../../components/PartnerCatalogPicker'
 import { formatWibDateTime } from '../../lib/event-slot'
@@ -20,33 +20,28 @@ export const Route = createFileRoute('/_app/events/$eventId_/submit/$submitNo')(
   component: SubmitDetailPage,
 })
 
-function StatusMark({ status }: { status: 'disetujui' | 'disanggah' | 'pengajuan' | 'dibatalkan' | null }) {
-  if (status === 'disetujui') {
-    return (
-      <span className="flex size-6 items-center justify-center rounded-full" style={{ background: 'var(--app-success-soft)', color: '#15803d' }} aria-label="Disetujui">
-        <Check size={14} strokeWidth={3} />
-      </span>
-    )
+type LineStatus = SubmitDetailLine['status']
+
+const GREEN = { background: 'var(--app-success-soft)', color: '#15803d' }
+const RED = { background: 'var(--app-danger-soft, #fee2e2)', color: '#b91c1c' }
+const AMBER = { background: 'var(--app-warning-soft)', color: '#b45309' }
+const MUTE = { background: 'var(--app-border)', color: 'var(--app-text-mute)' }
+
+/** Warna, ikon, dan label status satu barang. */
+function statusMeta(line: SubmitDetailLine & { partial?: boolean }) {
+  const status: LineStatus = line.status
+  switch (status) {
+    case 'disetujui':
+      return { tone: GREEN, Icon: Check, label: line.partial ? 'Sebagian disetujui' : 'Disetujui' }
+    case 'disanggah':
+      return { tone: RED, Icon: X, label: line.replaces ? 'Ditolak lagi' : 'Kurang' }
+    case 'dibatalkan':
+      return { tone: RED, Icon: X, label: 'Dibatalkan partner' }
+    case 'pengajuan':
+      return { tone: AMBER, Icon: Clock, label: 'Menunggu dicek' }
+    default:
+      return { tone: MUTE, Icon: Minus, label: 'Belum dikirim' }
   }
-  if (status === 'dibatalkan') {
-    return (
-      <span className="flex size-6 items-center justify-center rounded-full" style={{ background: 'var(--app-danger-soft, #fee2e2)', color: '#b91c1c' }} aria-label="Dibatalkan partner">
-        <X size={14} strokeWidth={3} />
-      </span>
-    )
-  }
-  if (status === 'disanggah') {
-    return (
-      <span className="flex size-6 items-center justify-center rounded-full" style={{ background: 'var(--app-danger-soft, #fee2e2)', color: '#b91c1c' }} aria-label="Ditolak">
-        <X size={14} strokeWidth={3} />
-      </span>
-    )
-  }
-  return (
-    <span className="flex size-6 items-center justify-center rounded-full" style={{ color: 'var(--app-text-mute)' }} aria-label="Menunggu">
-      <Minus size={14} />
-    </span>
-  )
 }
 
 /**
@@ -220,53 +215,82 @@ function SubmitDetailPage() {
     depth: number,
   ) {
     const kids = kidsOf.get(line.id) ?? []
+    const meta = statusMeta(line)
+    const struck = line.status === 'disanggah' && Boolean(line.replaces)
     return (
-      <li key={line.key} className={depth === 0 ? 'flex flex-col py-2.5' : 'flex flex-col'}>
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className={`truncate text-sm ${line.status === 'disanggah' && line.replaces ? 'line-through decoration-1' : ''}`}>
-              {line.name}
-            </p>
-            <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>{line.qty} pcs</p>
-            {line.replaces && (
-              <p className="text-xs font-semibold" style={{ color: 'var(--app-accent)' }}>
-                ↳ Pengganti untuk {line.replaces.name}
+      <li
+        key={line.key}
+        className={depth === 0 ? 'flex flex-col py-3' : 'flex flex-col pb-2.5 pt-1.5'}
+        style={depth === 0 ? { borderTop: '1px solid var(--app-border)' } : undefined}
+      >
+        <div className="flex items-start gap-3">
+          <span
+            className="flex size-8 flex-shrink-0 items-center justify-center rounded-lg"
+            style={meta.tone}
+            aria-hidden="true"
+          >
+            <meta.Icon size={15} strokeWidth={2.75} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-2">
+              <p
+                className={`min-w-0 truncate text-sm font-medium ${struck ? 'line-through decoration-1' : ''}`}
+                style={struck ? { color: 'var(--app-text-mute)' } : undefined}
+              >
+                {line.product}
               </p>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {line.partial && (
-              <span className="text-xs" style={{ color: '#15803d' }}>Sebagian disetujui</span>
-            )}
-            {line.status === 'pengajuan' && (
-              <span className="text-xs" style={{ color: 'var(--app-text-soft)' }}>Menunggu dicek</span>
-            )}
-            {line.status === 'disanggah' && (
-              <span className="text-xs" style={{ color: '#b91c1c' }}>
-                {line.replaces ? 'Ditolak lagi' : 'Kurang'}
+              <span
+                className="flex-shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                style={meta.tone}
+              >
+                {meta.label}
               </span>
-            )}
-            {line.status === 'dibatalkan' && (
-              <span className="text-xs" style={{ color: '#b91c1c' }}>Dibatalkan partner</span>
-            )}
-            <StatusMark status={line.status} />
+            </div>
+            <div
+              className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs"
+              style={{ color: 'var(--app-text-soft)' }}
+            >
+              {line.variant && <span>{line.variant}</span>}
+              {line.variant && <span aria-hidden="true">·</span>}
+              <span>{line.qty} pcs</span>
+              {line.inBundle && (
+                <span
+                  className="rounded px-1.5 py-px text-[10px] font-semibold"
+                  style={{ background: 'var(--app-accent-soft)', color: 'var(--app-accent)' }}
+                >
+                  Paket
+                </span>
+              )}
+            </div>
+            <HoleNote
+              line={line}
+              busy={busy}
+              onReplace={() => {
+                setMessage(null)
+                setReplacing(line)
+              }}
+              onWaive={() => void handleWaive(line)}
+            />
           </div>
         </div>
-        <HoleNote
-          line={line}
-          busy={busy}
-          onReplace={() => {
-            setMessage(null)
-            setReplacing(line)
-          }}
-          onWaive={() => void handleWaive(line)}
-        />
         {kids.length > 0 && (
-          <ul
-            className="ml-3 mt-2 flex flex-col gap-2 border-l-2 pl-3"
-            style={{ borderColor: 'var(--app-accent-soft)' }}
-          >
-            {kids.map((kid) => renderLine(kid, kidsOf, depth + 1))}
+          <ul className="ml-4 mt-3 flex flex-col gap-1">
+            {kids.map((kid) => (
+              <li
+                key={kid.key}
+                className="rounded-xl border px-3 pt-2"
+                style={{ borderColor: 'var(--app-accent-soft)', background: 'var(--app-card)' }}
+              >
+                <p
+                  className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide"
+                  style={{ color: 'var(--app-accent)' }}
+                >
+                  <CornerDownRight size={12} />
+                  Pengganti
+                </p>
+                <ul>{renderLine(kid, kidsOf, depth + 1)}</ul>
+              </li>
+            ))}
           </ul>
         )}
       </li>
@@ -360,10 +384,50 @@ function SubmitDetailPage() {
             roots.push(line)
           }
         }
+        // Ringkasan dihitung dari keadaan akhir: pcs yang sudah diganti dihitung
+        // dari penggantinya, bukan dari barang yang ditolak. Sisa yang belum
+        // diganti tetap dihitung dengan status barang aslinya.
+        const effectiveQty = (l: SubmitDetailLine) =>
+          Math.max(0, l.qty - (kidsOf.get(l.id) ?? []).reduce((sum, k) => sum + k.qty, 0))
+        const qtyWhere = (match: (l: SubmitDetailLine) => boolean) =>
+          c.lines.filter(match).reduce((sum, l) => sum + effectiveQty(l), 0)
+        const pcs = qtyWhere(() => true)
+        const approved = qtyWhere((l) => l.status === 'disetujui')
+        const rejected = qtyWhere((l) => l.status === 'disanggah' || l.status === 'dibatalkan')
+        const waiting = qtyWhere((l) => l.status === 'pengajuan')
+        const needsDecision = c.lines.some(
+          (l) => l.status === 'disanggah' && l.hole?.status === 'perlu_keputusan' && l.hole.openQty > 0,
+        )
         return (
-          <section key={c.customerName} className="app-card p-4">
-            <p className="text-sm font-semibold">{c.customerName}</p>
-            <ul className="mt-3 flex flex-col divide-y" style={{ borderColor: 'var(--app-border)' }}>
+          <section key={c.customerName} className="app-card px-4 pb-1 pt-4">
+            <div className="mb-3 flex items-center gap-3">
+              <span
+                className="flex size-9 flex-shrink-0 items-center justify-center rounded-full text-sm font-bold uppercase"
+                style={{ background: 'var(--app-accent-soft)', color: 'var(--app-accent)' }}
+                aria-hidden="true"
+              >
+                {c.customerName.charAt(0) || '?'}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold">{c.customerName}</p>
+                <p className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
+                  {[
+                    `${pcs} pcs`,
+                    approved > 0 && `${approved} disetujui`,
+                    rejected > 0 && `${rejected} ditolak`,
+                    waiting > 0 && `${waiting} menunggu`,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </p>
+              </div>
+              {needsDecision && (
+                <span className="flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold" style={RED}>
+                  Perlu keputusan
+                </span>
+              )}
+            </div>
+            <ul className="flex flex-col">
               {roots.map((line) => renderLine(line, kidsOf, 0))}
             </ul>
           </section>

@@ -77,7 +77,7 @@ sidebar + tabel di desktop.
   - ganti kata sandi.
 
   Fitur lain (event, pesanan, tagihan publik, Ikut Event) **tidak** menunggu verifikasi. Detail teknis: token di-hash SHA-256, berlaku **24 jam** (`TOKEN_TTL_HOURS`), maksimal **3 pengiriman per user per 15 menit**; halaman `/verifikasi-email/:token` memverifikasi lewat POST setelah halaman termuat (supaya pemindai link tidak menghanguskan token), dengan hasil `verified` / `already` / `expired` / `invalid`. Login Google yang email-nya diverifikasi Google, serta akun yang dibuat lewat undangan tim, otomatis terverifikasi.
-- **Login** (`/login`) — email + password. Mencoba akun jastiper dulu, kalau email tidak ada baru akun **partner** (halaman yang sama). Pesan gagal selalu generik ("Email atau password salah"). Tujuan setelah login: partner → `/partner`, admin ALAKA → `/admin`, selain itu `/`. Checkbox "Ingat saya" ada di form tetapi **belum berpengaruh** — sesi selalu 30 hari (cookie `jastip_session`, httpOnly, SameSite=lax, Secure di produksi).
+- **Login** (`/login`) — email + password. Mencoba akun jastiper dulu, kalau email tidak ada baru akun **partner** (halaman yang sama). Pesan gagal selalu generik ("Email atau password salah"). **Dibatasi**: setelah 5 percobaan gagal per email atau 30 per IP dalam 15 menit, login ditolak dengan "Terlalu banyak percobaan masuk…" (dicek sebelum bcrypt; login berhasil mereset hitungan email; lihat `lib/login-throttle.ts`). Token sesi di DB disimpan sebagai hash sha256, jadi kebocoran DB tidak membocorkan cookie login. Tujuan setelah login: partner → `/partner`, admin ALAKA → `/admin`, selain itu `/`. Checkbox "Ingat saya" ada di form tetapi **belum berpengaruh** — sesi selalu 30 hari (cookie `jastip_session`, httpOnly, SameSite=lax, Secure di produksi).
 - **Google OAuth 2.0** (`/api/auth/google` + `/api/auth/google/callback`) — dibuka di popup. Tiga kasus di callback: `googleId` sudah dikenal → login; email sudah terdaftar → akun ditautkan ke Google (kalau akun itu belum terverifikasi, password-nya dihapus dan semua sesinya dicabut sebagai pencegahan pembajakan); selain itu → brand + owner baru tanpa password. Ditolak kalau `email_verified` false atau email milik akun partner. Param `?invite=<token>` dipakai untuk menerima undangan tim lewat Google (lihat 4.16).
 - **Lupa Sandi** (`/lupa-sandi`) — user masukkan email, terima link reset via email. Berlaku **1 jam**, maksimal 3 permintaan per 15 menit.
 - **Reset Sandi** (`/reset-sandi/:token`) — halaman ganti password via token sekali pakai (SHA-256 hash, ada `expires_at` + `used_at`). Permintaan link baru menghanguskan token lama. Akun partner punya alur & tabel sendiri (`/reset-sandi-partner/:token`, lihat 4.21).
@@ -758,9 +758,11 @@ brand_invitations                          -- undangan admin brand lewat email
 sessions
   id                uuid primary key
   user_id           uuid → users.id (cascade delete)
-  token             varchar unique NOT NULL
-  expires_at        timestamptz NOT NULL
+  token             varchar unique NOT NULL  -- HASH sha256 dari token cookie (lib/session-token.ts), bukan token mentah
+  expires_at        timestamptz NOT NULL     -- indexed; sesi kedaluwarsa dihapus saat ada login baru
   created_at
+
+login_attempts                             -- id, key ("email:<email>" / "ip:<alamat>"), created_at; percobaan login GAGAL untuk pembatasan (lib/login-throttle.ts)
 
 password_reset_tokens
   id                uuid primary key
@@ -955,7 +957,7 @@ partners
   -- DEPRECATED (tidak dipakai): catalog_pdf_name, catalog_pdf_size, catalog_pdf_updated_at, catalog_url
   --   (digantikan calendar_event.catalog_url, migrasi 0031)
 
-partner_sessions                           -- id, partner_id (cascade), token unique, expires_at, created_at
+partner_sessions                           -- id, partner_id (cascade), token unique (hash sha256, sama seperti sessions), expires_at, created_at
 partner_invitation_tokens                  -- id, partner_id (cascade), token_hash unique, expires_at, used_at, created_at
 partner_password_reset_tokens              -- id, partner_id (cascade), token_hash unique, expires_at, used_at, created_at
 

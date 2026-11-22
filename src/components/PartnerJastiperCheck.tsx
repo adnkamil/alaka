@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Link } from '@tanstack/react-router'
 import { ChevronDown, Search } from 'lucide-react'
 import Pagination from './ui/Pagination'
 import PartnerRowChip from './PartnerRowChip'
@@ -10,13 +11,24 @@ import { buildWhatsAppLink, formatPhoneNumber } from '../lib/format'
 import { getPartnerJastiperDetail } from '../lib/partner-jastiper-detail'
 import { formatRupiah } from '../lib/partner-product-rules'
 import { useClientPager } from '../lib/use-client-pager'
+import SortHeader, { ariaSortOf } from './ui/SortHeader'
+import { sortRows } from '../lib/table-sort'
+import { useTableSort } from '../lib/use-table-sort'
 import { mergeReviewedRows } from '../lib/partner-review-merge'
-import { allocateApproved, overStockRowIds, buildDisplayEntries, splitApproved } from '../lib/partner-stock-review'
+import {
+  allocateApproved,
+  overStockRowIds,
+  buildDisplayEntries,
+  splitApproved,
+} from '../lib/partner-stock-review'
 import {
   getPartnerSubmissions,
   reviewSubmissionBatch,
 } from '../lib/submit-functions'
-import type { PartnerSubmitList, PartnerSubmitRow } from '../lib/partner-submit-list'
+import type {
+  PartnerSubmitList,
+  PartnerSubmitRow,
+} from '../lib/partner-submit-list'
 import type {
   ReplacementPair,
   ReviewBrand,
@@ -54,8 +66,7 @@ export default function PartnerJastiperCheck({
 
   const submitList = useQuery({
     queryKey: ['partner-submit-list', calendarEventId, brandId],
-    queryFn: () =>
-      getPartnerSubmitList({ data: { calendarEventId, brandId } }),
+    queryFn: () => getPartnerSubmitList({ data: { calendarEventId, brandId } }),
   })
 
   const brand: ReviewBrand | undefined = (subs.data ?? []).find(
@@ -84,7 +95,8 @@ export default function PartnerJastiperCheck({
     }
     return result
   }, [submissions])
-  const dapatOf = (r: ReviewRow) => approved[r.id] ?? defaultDapat[r.id] ?? r.qty
+  const dapatOf = (r: ReviewRow) =>
+    approved[r.id] ?? defaultDapat[r.id] ?? r.qty
   // Baris yang jumlah "Dapat"-nya (dijumlah per varian) melebihi stok.
   const { overRows, overSubs } = useMemo(() => {
     const overRows = new Set<string>()
@@ -92,7 +104,10 @@ export default function PartnerJastiperCheck({
     for (const sub of submissions) {
       const pending = allRows(sub).filter((r) => r.status === 'pengajuan')
       const values = Object.fromEntries(
-        pending.map((r) => [r.id, approved[r.id] ?? defaultDapat[r.id] ?? r.qty]),
+        pending.map((r) => [
+          r.id,
+          approved[r.id] ?? defaultDapat[r.id] ?? r.qty,
+        ]),
       )
       for (const id of overStockRowIds(pending, values)) {
         overRows.add(id)
@@ -144,12 +159,21 @@ export default function PartnerJastiperCheck({
     onSuccess: () => {
       setError(null)
       setApproved({})
-      queryClient.invalidateQueries({ queryKey: ['partner-submissions', calendarEventId] })
-      queryClient.invalidateQueries({ queryKey: ['partner-jastiper-detail', calendarEventId, brandId] })
-      queryClient.invalidateQueries({ queryKey: ['partner-submit-list', calendarEventId] })
-      queryClient.invalidateQueries({ queryKey: ['partner-event-revenue', calendarEventId] })
+      queryClient.invalidateQueries({
+        queryKey: ['partner-submissions', calendarEventId],
+      })
+      queryClient.invalidateQueries({
+        queryKey: ['partner-jastiper-detail', calendarEventId, brandId],
+      })
+      queryClient.invalidateQueries({
+        queryKey: ['partner-submit-list', calendarEventId],
+      })
+      queryClient.invalidateQueries({
+        queryKey: ['partner-event-revenue', calendarEventId],
+      })
     },
-    onError: (err) => setError(err instanceof Error ? err.message : 'Gagal menyimpan'),
+    onError: (err) =>
+      setError(err instanceof Error ? err.message : 'Gagal menyimpan'),
   })
 
   const d = detail.data
@@ -161,19 +185,33 @@ export default function PartnerJastiperCheck({
       )
     : null
 
-  if (subs.isLoading || detail.isLoading || submitList.isLoading) return <p className="text-sm">Memuat…</p>
+  if (subs.isLoading || detail.isLoading || submitList.isLoading)
+    return <p className="text-sm">Memuat…</p>
 
   const contactCard = d && (
     <section className="app-card p-4 text-[13px]">
-      <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--pm-gold)' }}>
+      <p
+        className="text-[11px] font-semibold uppercase tracking-wide"
+        style={{ color: 'var(--pm-gold)' }}
+      >
         Kontak jastiper
       </p>
       <p className="mt-2">
         {d.brandName}
-        {d.waNumber && <span style={{ color: 'var(--app-text-soft)' }}> · {formatPhoneNumber(d.waNumber)}</span>}
+        {d.waNumber && (
+          <span style={{ color: 'var(--app-text-soft)' }}>
+            {' '}
+            · {formatPhoneNumber(d.waNumber)}
+          </span>
+        )}
       </p>
       {waLink && (
-        <a href={waLink} target="_blank" rel="noreferrer" className="mt-3 block rounded-lg border px-4 py-2 text-center text-[13px] font-semibold">
+        <a
+          href={waLink}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-3 block rounded-lg border px-4 py-2 text-center text-[13px] font-semibold"
+        >
           Hubungi via WhatsApp
         </a>
       )}
@@ -185,19 +223,33 @@ export default function PartnerJastiperCheck({
     return (
       <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
         <section className="app-card flex min-h-[260px] flex-col items-center justify-center p-8 text-center">
-          <div className="flex size-14 items-center justify-center rounded-full text-[18px]" style={{ background: 'var(--pm-tint)' }}>
+          <div
+            className="flex size-14 items-center justify-center rounded-full text-[18px]"
+            style={{ background: 'var(--pm-tint)' }}
+          >
             …
           </div>
-          <h2 className="mt-4 text-[16px] font-semibold">Jastiper ini belum mengirim pesanan ke kamu.</h2>
-          <p className="mt-2 max-w-md text-[13px]" style={{ color: 'var(--app-text-soft)' }}>
-            Pesanan muncul di sini setelah jastiper menekan Submit saat slot dibuka. Sampai saat itu, daftar barang dan total belum bisa dilihat.
+          <h2 className="mt-4 text-[16px] font-semibold">
+            Jastiper ini belum mengirim pesanan ke kamu.
+          </h2>
+          <p
+            className="mt-2 max-w-md text-[13px]"
+            style={{ color: 'var(--app-text-soft)' }}
+          >
+            Pesanan muncul di sini setelah jastiper menekan Submit saat slot
+            dibuka. Sampai saat itu, daftar barang dan total belum bisa dilihat.
           </p>
         </section>
         <div className="flex flex-col gap-3">
           <section className="app-card p-4">
             <PartnerRowChip label="Draft" tone="neutral" />
-            <h3 className="mt-2 text-[16px] font-semibold">Menunggu jastiper</h3>
-            <p className="mt-1 text-[13px]" style={{ color: 'var(--app-text-soft)' }}>
+            <h3 className="mt-2 text-[16px] font-semibold">
+              Menunggu jastiper
+            </h3>
+            <p
+              className="mt-1 text-[13px]"
+              style={{ color: 'var(--app-text-soft)' }}
+            >
               Pesanan muncul setelah jastiper menekan Submit saat slot dibuka.
             </p>
           </section>
@@ -210,39 +262,51 @@ export default function PartnerJastiperCheck({
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
       <div className="flex min-w-0 flex-col gap-3">
-        <SummaryCard summary={summary} totalAmount={totalAmount} />
-
-        <div className="relative w-full max-w-[336px]">
-          <Search
-            size={17}
-            className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2"
-            style={{ color: 'var(--app-text-soft)' }}
-          />
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Cari nama produk"
-            aria-label="Cari nama produk"
-            className="app-input pl-10"
-            style={{ height: 42, borderRadius: 12 }}
-          />
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative w-full max-w-[336px] sm:w-[336px]">
+            <Search
+              size={17}
+              className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2"
+              style={{ color: 'var(--app-text-soft)' }}
+            />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cari nama produk"
+              aria-label="Cari nama produk"
+              className="app-input pl-10"
+              style={{ height: 42, borderRadius: 12 }}
+            />
+          </div>
         </div>
 
-        <div className="flex flex-wrap gap-2" role="tablist" aria-label="Pilih submit">
-          {([{ key: 'semua' as const, label: 'Semua' }, ...submissions.map((x) => ({ key: x.submitNo, label: `Submit ${x.submitNo}` }))]).map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              role="tab"
-              aria-selected={activeTab === t.key}
-              onClick={() => setTab(t.key)}
-              className={`pm-chip ${activeTab === t.key ? 'pm-chip--active' : ''}`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+        {submissions.length > 1 && (
+          <div
+            className="flex flex-wrap gap-2"
+            role="tablist"
+            aria-label="Pilih submit"
+          >
+            {[
+              { key: 'semua' as const, label: 'Semua' },
+              ...submissions.map((x) => ({
+                key: x.submitNo,
+                label: `Submit ${x.submitNo}`,
+              })),
+            ].map((t) => (
+              <button
+                key={t.key}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === t.key}
+                onClick={() => setTab(t.key)}
+                className={`pm-chip ${activeTab === t.key ? 'pm-chip--active' : ''}`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {shownSubmissions.map((sub) => (
           <SubmitBlock
@@ -259,12 +323,14 @@ export default function PartnerJastiperCheck({
                 [row.id]: Math.min(max, Math.max(0, Math.floor(value) || 0)),
               }))
             }
-            onSetDapat={(values) => setApproved((prev) => ({ ...prev, ...values }))}
+            onSetDapat={(values) =>
+              setApproved((prev) => ({ ...prev, ...values }))
+            }
           />
         ))}
       </div>
 
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3 lg:sticky lg:top-4 lg:self-start">
         <section className="app-card p-4">
           <PartnerRowChip
             label={pendingSubs.length > 0 ? 'Pengajuan' : 'Disetujui'}
@@ -272,18 +338,28 @@ export default function PartnerJastiperCheck({
           />
           {pendingSubs.length > 0 ? (
             <>
-              <h3 className="mt-2 text-[16px] font-semibold">Cek pesanan ini</h3>
-              <p className="mt-1 text-[13px]" style={{ color: 'var(--app-text-soft)' }}>
-                Isi jumlah yang dapat di tabel, lalu tekan Selesai dicek untuk tiap submit.
+              <h3 className="mt-2 text-[16px] font-semibold">
+                Cek pesanan ini
+              </h3>
+              <p
+                className="mt-1 text-[13px]"
+                style={{ color: 'var(--app-text-soft)' }}
+              >
+                Isi jumlah yang dapat di tabel, lalu tekan Selesai dicek untuk
+                tiap submit.
               </p>
-              {error && <p className="mt-2 text-[12px] text-red-600">{error}</p>}
+              {error && (
+                <p className="mt-2 text-[12px] text-red-600">{error}</p>
+              )}
               <div className="mt-3 flex flex-col gap-2">
                 {pendingSubs.map((sub) => (
                   <button
                     key={sub.submissionId}
                     type="button"
                     onClick={() => mutation.mutate(sub)}
-                    disabled={mutation.isPending || overSubs.has(sub.submissionId)}
+                    disabled={
+                      mutation.isPending || overSubs.has(sub.submissionId)
+                    }
                     className="w-full rounded-lg px-4 py-2 text-[14px] font-semibold text-white disabled:opacity-50"
                     style={{ background: 'var(--app-accent)' }}
                   >
@@ -295,15 +371,25 @@ export default function PartnerJastiperCheck({
           ) : (
             <>
               <h3 className="mt-2 text-[16px] font-semibold">Hasil final</h3>
-              <p className="mt-1 text-[13px]" style={{ color: 'var(--app-text-soft)' }}>
+              <p
+                className="mt-1 text-[13px]"
+                style={{ color: 'var(--app-text-soft)' }}
+              >
                 Semua barang sudah dicek. Yang tidak dapat tidak masuk tagihan.
               </p>
-              <p className="mt-2 text-[12px]" style={{ color: hasRejected ? '#b42318' : '#2f6b3f' }}>
-                {hasRejected ? 'Ada barang yang ditolak' : '✓ Semua barang sudah cukup'}
+              <p
+                className="mt-2 text-[12px]"
+                style={{ color: hasRejected ? '#b42318' : '#2f6b3f' }}
+              >
+                {hasRejected
+                  ? 'Ada barang yang ditolak'
+                  : '✓ Semua barang sudah cukup'}
               </p>
             </>
           )}
         </section>
+
+        <SummaryCard summary={summary} totalAmount={totalAmount} />
 
         {contactCard}
       </div>
@@ -343,36 +429,142 @@ function SummaryCard({
   /** Total tagihan per jastiper, paket dihitung dari semua pcs-nya. */
   totalAmount: number
 }) {
-  const stats = [
-    { label: 'Submit', value: String(summary.submitCount) },
-    { label: 'Dapat', value: `${summary.pcs.approved} pcs` },
-    { label: 'Ditolak', value: `${summary.pcs.rejected} pcs` },
-    { label: 'Dibatalkan', value: `${summary.pcs.cancelled} pcs` },
-    { label: 'Menunggu dicek', value: `${summary.pcs.pending} pcs` },
+  const { pcs } = summary
+  const segments = [
+    {
+      key: 'approved',
+      label: 'Dapat',
+      value: pcs.approved,
+      color: 'var(--app-success)',
+    },
+    {
+      key: 'rejected',
+      label: 'Ditolak',
+      value: pcs.rejected,
+      color: 'var(--app-danger)',
+    },
+    {
+      key: 'cancelled',
+      label: 'Dibatalkan',
+      value: pcs.cancelled,
+      color: 'var(--app-text-mute)',
+    },
+    {
+      key: 'pending',
+      label: 'Menunggu dicek',
+      value: pcs.pending,
+      color: 'var(--app-warning)',
+    },
   ]
+  const totalPcs = segments.reduce((sum, s) => sum + s.value, 0)
+  const checkedPcs = totalPcs - pcs.pending
+  const anyPending = pcs.pending > 0
+
   return (
     <section className="app-card p-4 text-[13px]">
-      <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--pm-gold)' }}>
-        Ringkasan
-      </p>
-      <div className="mt-2 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-        <div>
+      <div className="flex items-center justify-between gap-3">
+        <p
+          className="text-[11px] font-semibold uppercase tracking-wide"
+          style={{ color: 'var(--pm-gold)' }}
+        >
+          Ringkasan
+        </p>
+        <span className="text-[12px]" style={{ color: 'var(--app-text-soft)' }}>
+          {summary.submitCount} submit ·{' '}
+          <span className="pm-num">{totalPcs}</span> pcs
+        </span>
+      </div>
+
+      <div className="mt-3 flex flex-col gap-3">
+        <div className="min-w-0">
           <p style={{ color: 'var(--app-text-soft)' }}>Total tagihan</p>
-          <p className="pm-num text-[20px] font-bold">{formatRupiah(totalAmount)}</p>
-          <p className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
-            paket dihitung dari semua pcs jastiper ini
+          <p className="pm-num text-[22px] font-bold leading-tight">
+            {formatRupiah(totalAmount)}
+          </p>
+          <p
+            className="mt-0.5 text-[11px]"
+            style={{ color: 'var(--app-text-mute)' }}
+          >
+            Paket dihitung dari semua pcs jastiper ini
           </p>
         </div>
-        <div>
-          <p style={{ color: 'var(--app-text-soft)' }}>Menunggu cek</p>
-          <p className="pm-num text-[20px] font-bold">{formatRupiah(summary.pendingAmount)}</p>
+        {anyPending && (
+          <div
+            className="flex items-center justify-between gap-2 rounded-lg px-3 py-2"
+            style={{ background: 'var(--app-warning-soft)' }}
+          >
+            <p
+              className="text-[12px]"
+              style={{ color: 'var(--app-text-soft)' }}
+            >
+              Belum dicek · <span className="pm-num">{pcs.pending}</span> pcs
+            </p>
+            <p className="pm-num text-[13px] font-semibold">
+              +{formatRupiah(summary.pendingAmount)}
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-4">
+        <div className="mb-1.5 flex items-center justify-between text-[12px]">
+          <span style={{ color: 'var(--app-text-soft)' }}>Progres cek</span>
+          <span className="pm-num font-medium">
+            {checkedPcs}/{totalPcs} pcs dicek
+          </span>
+        </div>
+        <div
+          className="flex h-2 w-full overflow-hidden rounded-full"
+          style={{ background: 'var(--app-border)' }}
+          role="img"
+          aria-label={segments
+            .map((s) => `${s.label} ${s.value} pcs`)
+            .join(', ')}
+        >
+          {totalPcs > 0 &&
+            segments
+              .filter((s) => s.value > 0)
+              .map((s) => (
+                <div
+                  key={s.key}
+                  style={{
+                    width: `${(s.value / totalPcs) * 100}%`,
+                    background: s.color,
+                  }}
+                />
+              ))}
         </div>
       </div>
-      <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1.5 sm:grid-cols-5">
-        {stats.map((st) => (
-          <div key={st.label}>
-            <dt className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>{st.label}</dt>
-            <dd className="pm-num font-semibold">{st.value}</dd>
+
+      <dl className="mt-3 grid grid-cols-2 gap-2">
+        {segments.map((s) => (
+          <div
+            key={s.key}
+            className="rounded-lg border px-3 py-2"
+            style={{
+              borderColor: 'var(--app-border)',
+              opacity: s.value === 0 ? 0.55 : 1,
+            }}
+          >
+            <dt
+              className="flex items-center gap-1.5 text-[11px]"
+              style={{ color: 'var(--app-text-soft)' }}
+            >
+              <span
+                className="size-2 shrink-0 rounded-full"
+                style={{ background: s.color }}
+              />
+              {s.label}
+            </dt>
+            <dd className="pm-num mt-0.5 text-[15px] font-semibold">
+              {s.value}{' '}
+              <span
+                className="text-[11px] font-normal"
+                style={{ color: 'var(--app-text-soft)' }}
+              >
+                pcs
+              </span>
+            </dd>
           </div>
         ))}
       </dl>
@@ -419,13 +611,29 @@ function SubmitBlock({
           : null,
       )
   const rowPager = useClientPager(entries)
-  const mergedPager = useClientPager(merged ?? [])
+  const mergedSort = useTableSort<MergedSortKey>()
+  const mergedPager = useClientPager(
+    sortRows(merged ?? [], mergedSort.sort, {
+      productName: (m) => m.productName,
+      variation: (m) => m.variation,
+      size: (m) => m.size,
+      total: (m) => m.total,
+      priceType: (m) => m.priceType,
+      stock: (m) => m.stock,
+      requested: (m) => m.requested,
+      approved: (m) => m.approved,
+      status: (m) => MERGED_CHIP[m.status].label,
+    }),
+  )
   const pager = merged ? mergedPager : rowPager
   // Barang ditolak -> nama penggantinya, untuk keterangan di baris yang ditolak.
   const replacedBy = new Map(
     (sub.replacementPairs ?? [])
       .filter((p) => p.replacements.length > 0)
-      .map((p) => [p.rejected.id, p.replacements.map((r) => r.label).join(', ')]),
+      .map((p) => [
+        p.rejected.id,
+        p.replacements.map((r) => r.label).join(', '),
+      ]),
   )
   const pagedRows = rowPager.paged
   const pagedMerged = mergedPager.paged
@@ -433,17 +641,38 @@ function SubmitBlock({
     <section className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-1">
         <h2 className="text-[15px] font-bold">Submit ke-{sub.submitNo}</h2>
-        {sub.reopened && <PartnerRowChip label="Ada barang pengganti" tone="warn" />}
+        {sub.reopened && (
+          <PartnerRowChip label="Ada barang pengganti" tone="warn" />
+        )}
         <span className="text-[12px]" style={{ color: 'var(--app-text-soft)' }}>
           {formatWibDateTime(sub.submittedAt)}
         </span>
-        <SubmitStatusBadge
-          checked={sub.checked}
-          state={info?.invoiceState}
-          invoiceNumber={info?.invoice?.number}
-        />
+        {info?.invoice ? (
+          <Link
+            to="/partner/tagihan/$invoiceId"
+            params={{ invoiceId: info.invoice.id }}
+            className="no-underline"
+            title="Buka tagihan"
+          >
+            <SubmitStatusBadge
+              checked={sub.checked}
+              state={info.invoiceState}
+              invoiceNumber={info.invoice.number}
+              invoiceStatus={info.invoice.status}
+            />
+          </Link>
+        ) : (
+          <SubmitStatusBadge
+            checked={sub.checked}
+            state={info?.invoiceState}
+            invoiceNumber={info?.invoice?.number}
+          />
+        )}
         {info && (
-          <span className="text-[12px]" style={{ color: 'var(--app-text-soft)' }}>
+          <span
+            className="text-[12px]"
+            style={{ color: 'var(--app-text-soft)' }}
+          >
             {sub.checked
               ? `${info.pcs.approved} dapat`
               : `${info.pcs.pending} pcs menunggu`}
@@ -457,14 +686,35 @@ function SubmitBlock({
         <table className="w-full text-[13px]">
           <thead style={{ background: 'var(--pm-tint)' }}>
             <tr>
-              {['Produk', 'Variasi', 'Ukuran', 'Total harga', 'Tipe harga', 'Stok', 'Diminta', 'Dapat', 'Status'].map((h) => (
+              {MERGED_COLUMNS.map(([h, key]) => (
                 <th
                   key={h}
-                  title={h === 'Stok' ? 'Stok varian saat ini di katalog' : undefined}
+                  aria-sort={
+                    merged ? ariaSortOf(mergedSort.sort, key) : undefined
+                  }
                   className={`px-4 py-3 text-[11px] font-semibold uppercase tracking-wide ${['Total harga', 'Stok', 'Diminta', 'Dapat'].includes(h) ? 'text-right' : 'text-left'}`}
                   style={{ color: 'var(--pm-gold)' }}
                 >
-                  {h}
+                  {/* Sebelum dicek, baris digabung/berpasangan dan bisa diisi, jadi urutannya dikunci. */}
+                  <SortHeader
+                    label={h}
+                    sortKey={merged ? key : undefined}
+                    sort={mergedSort.sort}
+                    onSort={(k) => {
+                      mergedSort.toggle(k)
+                      mergedPager.resetPage()
+                    }}
+                    align={
+                      ['Total harga', 'Stok', 'Diminta', 'Dapat'].includes(h)
+                        ? 'right'
+                        : 'left'
+                    }
+                    title={
+                      h === 'Stok'
+                        ? 'Stok varian saat ini di katalog'
+                        : undefined
+                    }
+                  />
                 </th>
               ))}
             </tr>
@@ -473,7 +723,11 @@ function SubmitBlock({
             {pagedMerged.map((m) => {
               const chip = MERGED_CHIP[m.status]
               return (
-                <tr key={m.key} className="border-t" style={{ borderColor: 'var(--app-border)' }}>
+                <tr
+                  key={m.key}
+                  className="border-t"
+                  style={{ borderColor: 'var(--app-border)' }}
+                >
                   <td className="px-4 py-3 font-bold">{m.productName}</td>
                   <td className="px-4 py-3">{m.variation ?? '-'}</td>
                   <td className="px-4 py-3">{m.size ?? '-'}</td>
@@ -487,7 +741,9 @@ function SubmitBlock({
                         ? `Satuan ${formatRupiah(m.price)} / pcs`
                         : '-'}
                   </td>
-                  <td className="pm-num px-4 py-3 text-right">{m.stock ?? '-'}</td>
+                  <td className="pm-num px-4 py-3 text-right">
+                    {m.stock ?? '-'}
+                  </td>
                   <td className="pm-num px-4 py-3 text-right">{m.requested}</td>
                   <td className="pm-num px-4 py-3 text-right">{m.approved}</td>
                   <td className="px-4 py-3">
@@ -500,7 +756,10 @@ function SubmitBlock({
               if (entry.kind === 'group') {
                 const first = entry.rows[0]
                 const total = entry.rows.reduce((n, r) => n + r.qty, 0)
-                const dapatTotal = entry.rows.reduce((n, r) => n + dapatOf(r), 0)
+                const dapatTotal = entry.rows.reduce(
+                  (n, r) => n + dapatOf(r),
+                  0,
+                )
                 // Stok varian yang sama sudah dipakai baris lain di submit ini.
                 const usedElsewhere = rows
                   .filter(
@@ -523,7 +782,11 @@ function SubmitBlock({
                     : { label: `Kurang ${short}`, tone: 'danger' as const }
                 const stockShort = first.stock !== null && first.stock < total
                 return (
-                  <tr key={entry.key} className="border-t" style={{ borderColor: 'var(--app-border)' }}>
+                  <tr
+                    key={entry.key}
+                    className="border-t"
+                    style={{ borderColor: 'var(--app-border)' }}
+                  >
                     <td className="px-4 py-3 font-bold">{first.productName}</td>
                     <td className="px-4 py-3">{first.variation ?? '-'}</td>
                     <td className="px-4 py-3">{first.size ?? '-'}</td>
@@ -531,8 +794,16 @@ function SubmitBlock({
                     <td className="px-4 py-3">-</td>
                     <td
                       className="pm-num px-4 py-3 text-right"
-                      style={stockShort ? { color: 'var(--app-danger)', fontWeight: 700 } : undefined}
-                      title={stockShort ? 'Stok kurang dari jumlah yang diminta' : undefined}
+                      style={
+                        stockShort
+                          ? { color: 'var(--app-danger)', fontWeight: 700 }
+                          : undefined
+                      }
+                      title={
+                        stockShort
+                          ? 'Stok kurang dari jumlah yang diminta'
+                          : undefined
+                      }
                     >
                       {first.stock ?? '-'}
                     </td>
@@ -544,7 +815,13 @@ function SubmitBlock({
                         max={maxDapat}
                         value={dapatTotal}
                         onChange={(e) => {
-                          const value = Math.min(maxDapat, Math.max(0, Math.floor(Number(e.target.value)) || 0))
+                          const value = Math.min(
+                            maxDapat,
+                            Math.max(
+                              0,
+                              Math.floor(Number(e.target.value)) || 0,
+                            ),
+                          )
                           onSetDapat(splitApproved(entry.rows, value))
                         }}
                         className="w-16 rounded border px-2 py-1 text-right"
@@ -561,14 +838,15 @@ function SubmitBlock({
               const isPendingRow = row.status === 'pengajuan'
               const dapat = dapatOf(row)
               const short = isPendingRow ? row.qty - dapat : 0
-              const maxDapat = row.stock === null ? row.qty : Math.min(row.qty, row.stock)
+              const maxDapat =
+                row.stock === null ? row.qty : Math.min(row.qty, row.stock)
               const chip =
                 row.status === 'pengajuan'
                   ? overRows.has(row.id)
                     ? { label: 'Melebihi stok', tone: 'danger' as const }
                     : short <= 0
-                    ? { label: 'Cukup', tone: 'success' as const }
-                    : { label: `Kurang ${short}`, tone: 'danger' as const }
+                      ? { label: 'Cukup', tone: 'success' as const }
+                      : { label: `Kurang ${short}`, tone: 'danger' as const }
                   : row.status === 'disetujui'
                     ? { label: 'Disetujui', tone: 'success' as const }
                     : row.status === 'disanggah'
@@ -582,18 +860,26 @@ function SubmitBlock({
                   className="border-t"
                   style={{
                     borderColor: 'var(--app-border)',
-                    background: row.replaces ? 'var(--app-accent-soft)' : undefined,
+                    background: row.replaces
+                      ? 'var(--app-accent-soft)'
+                      : undefined,
                   }}
                 >
                   <td className="px-4 py-3 font-bold">
                     {row.productName}
                     {row.replaces && (
-                      <span className="mt-0.5 block text-[11px] font-semibold" style={{ color: '#9c463b' }}>
+                      <span
+                        className="mt-0.5 block text-[11px] font-semibold"
+                        style={{ color: '#9c463b' }}
+                      >
                         ↳ Pengganti untuk {row.replaces}
                       </span>
                     )}
                     {replacedBy.get(row.id) && (
-                      <span className="mt-0.5 block text-[11px] font-normal" style={{ color: 'var(--app-text-soft)' }}>
+                      <span
+                        className="mt-0.5 block text-[11px] font-normal"
+                        style={{ color: 'var(--app-text-soft)' }}
+                      >
                         Diganti dengan {replacedBy.get(row.id)}
                       </span>
                     )}
@@ -625,12 +911,16 @@ function SubmitBlock({
                         min={0}
                         max={maxDapat}
                         value={dapat}
-                        onChange={(e) => onChangeDapat(row, maxDapat, Number(e.target.value))}
+                        onChange={(e) =>
+                          onChangeDapat(row, maxDapat, Number(e.target.value))
+                        }
                         className="w-16 rounded border px-2 py-1 text-right"
                         aria-label={`Jumlah dapat untuk ${row.productName}`}
                       />
                     ) : (
-                      <span className="pm-num">{row.status === 'disetujui' ? row.qty : 0}</span>
+                      <span className="pm-num">
+                        {row.status === 'disetujui' ? row.qty : 0}
+                      </span>
                     )}
                   </td>
                   <td className="px-4 py-3">
@@ -641,7 +931,11 @@ function SubmitBlock({
             })}
             {pager.paged.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-6 text-center text-[13px]" style={{ color: 'var(--app-text-soft)' }}>
+                <td
+                  colSpan={9}
+                  className="px-4 py-6 text-center text-[13px]"
+                  style={{ color: 'var(--app-text-soft)' }}
+                >
                   Belum ada barang yang cocok.
                 </td>
               </tr>
@@ -696,7 +990,10 @@ function ReplacementPairs({ pairs }: { pairs: Array<ReplacementPair> }) {
           >
             Barang ditolak dan penggantinya
           </span>
-          <span className="pm-num text-[12px]" style={{ color: 'var(--app-text-soft)' }}>
+          <span
+            className="pm-num text-[12px]"
+            style={{ color: 'var(--app-text-soft)' }}
+          >
             ({roots.length} barang)
           </span>
           {waiting > 0 && (
@@ -714,7 +1011,10 @@ function ReplacementPairs({ pairs }: { pairs: Array<ReplacementPair> }) {
       <div
         aria-hidden={!open}
         className="grid transition-[grid-template-rows,opacity] duration-300 ease-out motion-reduce:transition-none"
-        style={{ gridTemplateRows: open ? '1fr' : '0fr', opacity: open ? 1 : 0 }}
+        style={{
+          gridTemplateRows: open ? '1fr' : '0fr',
+          opacity: open ? 1 : 0,
+        }}
       >
         <div className="min-h-0 overflow-hidden">
           <div className="flex flex-col gap-3 pt-3">
@@ -729,11 +1029,18 @@ function ReplacementPairs({ pairs }: { pairs: Array<ReplacementPair> }) {
                   <span className="font-semibold line-through decoration-1">
                     {root.rejected.label}
                   </span>
-                  <span className="pm-num" style={{ color: 'var(--app-text-soft)' }}>
+                  <span
+                    className="pm-num"
+                    style={{ color: 'var(--app-text-soft)' }}
+                  >
                     {root.rejected.qty} pcs
                   </span>
                 </div>
-                <ReplacementChain pair={root} byRejected={byRejected} depth={1} />
+                <ReplacementChain
+                  pair={root}
+                  byRejected={byRejected}
+                  depth={1}
+                />
               </div>
             ))}
           </div>
@@ -769,30 +1076,66 @@ function ReplacementChain({
               >
                 {r.label}
               </span>
-              <span className="pm-num" style={{ color: 'var(--app-text-soft)' }}>
+              <span
+                className="pm-num"
+                style={{ color: 'var(--app-text-soft)' }}
+              >
                 {r.qty} pcs
               </span>
               {chip && <PartnerRowChip label={chip.label} tone={chip.tone} />}
             </div>
             {next && (
-              <ReplacementChain pair={next} byRejected={byRejected} depth={depth + 1} />
+              <ReplacementChain
+                pair={next}
+                byRejected={byRejected}
+                depth={depth + 1}
+              />
             )}
           </div>
         )
       })}
       {pair.state === 'tidak_diganti' && (
-        <p className="text-[12px]" style={{ ...indent, color: 'var(--app-text-soft)' }}>
+        <p
+          className="text-[12px]"
+          style={{ ...indent, color: 'var(--app-text-soft)' }}
+        >
           Jastiper memutuskan tidak diganti.
         </p>
       )}
       {pair.state === 'perlu_keputusan' && pair.openQty > 0 && (
-        <p className="text-[12px]" style={{ ...indent, color: 'var(--app-text-soft)' }}>
+        <p
+          className="text-[12px]"
+          style={{ ...indent, color: 'var(--app-text-soft)' }}
+        >
           {pair.openQty} pcs belum diganti, jastiper belum memutuskan.
         </p>
       )}
     </>
   )
 }
+
+type MergedSortKey =
+  | 'productName'
+  | 'variation'
+  | 'size'
+  | 'total'
+  | 'priceType'
+  | 'stock'
+  | 'requested'
+  | 'approved'
+  | 'status'
+
+const MERGED_COLUMNS: ReadonlyArray<readonly [string, MergedSortKey]> = [
+  ['Produk', 'productName'],
+  ['Variasi', 'variation'],
+  ['Ukuran', 'size'],
+  ['Total harga', 'total'],
+  ['Tipe harga', 'priceType'],
+  ['Stok', 'stock'],
+  ['Diminta', 'requested'],
+  ['Dapat', 'approved'],
+  ['Status', 'status'],
+]
 
 const MERGED_CHIP = {
   disetujui: { label: 'Disetujui', tone: 'success' },

@@ -4,6 +4,10 @@ import {
   fetchCalendarEventParticipants,
 } from './calendar-events-admin-functions'
 import { fetchCurrentUser } from './auth-functions'
+import type { EventSortKey } from './partner-event-queries'
+import type { ProductSortKey } from './partner-product-queries'
+import type { RuleSortKey } from './partner-rule-sort'
+import type { SortState } from './table-sort'
 import { fetchPartnerDashboard } from './partner-dashboard-functions'
 import { listPartnerRulesPage } from './partner-rule-functions'
 import { fetchPartnerEventProducts } from './partner-event-product-functions'
@@ -67,6 +71,7 @@ export type PartnerProductsPageParams = {
   search: string
   page: number
   pageSize: number
+  sort?: SortState<ProductSortKey>
 }
 
 // Kunci diawali `['partner-products']` supaya `invalidateQueries` setelah
@@ -95,6 +100,7 @@ export type PartnerEventsPageParams = {
   page: number
   pageSize: number
   search?: string
+  sort?: SortState<EventSortKey>
 }
 
 export const partnerEventsPageQuery = (params: PartnerEventsPageParams) =>
@@ -133,6 +139,7 @@ export const partnerRulesPageQuery = (params: {
   page: number
   pageSize: number
   search?: string
+  sort?: SortState<RuleSortKey>
 }) =>
   queryOptions({
     queryKey: ['partner-rules', 'page', params],

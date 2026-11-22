@@ -89,6 +89,50 @@ export function validateInvoiceSelection(input: {
   return null
 }
 
+/**
+ * Pecah label baris paket ("80K / 2pcs: 2× Rok (XL) + Jaket (L)") jadi nama aturan
+ * dan isinya. Null kalau bentuknya tidak dikenali; tampilkan label apa adanya.
+ */
+export function parseBundleLabel(
+  label: string,
+): { ruleName: string; items: Array<{ qty: number; name: string }> } | null {
+  const at = label.indexOf(': ')
+  if (at <= 0) return null
+  const items = label
+    .slice(at + 2)
+    .split(' + ')
+    .map((part) => {
+      const m = /^(\d+)× (.+)$/.exec(part)
+      return m ? { qty: Number(m[1]), name: m[2] } : { qty: 1, name: part }
+    })
+    .filter((i) => i.name.trim() !== '')
+  if (items.length === 0) return null
+  return { ruleName: label.slice(0, at), items }
+}
+
+/**
+ * Daftar packing dari baris tagihan: paket dibongkar jadi isinya, item yang
+ * sama dari semua submit digabung, urut nama. Tanpa harga.
+ */
+export function buildPackingList(
+  lines: Array<{ kind: 'satuan' | 'paket'; label: string; qty: number }>,
+): Array<{ name: string; qty: number }> {
+  const totals = new Map<string, number>()
+  const add = (name: string, qty: number) =>
+    totals.set(name, (totals.get(name) ?? 0) + qty)
+  for (const line of lines) {
+    const bundle = line.kind === 'paket' ? parseBundleLabel(line.label) : null
+    if (bundle) {
+      for (const item of bundle.items) add(item.name, item.qty * line.qty)
+    } else {
+      add(line.label, line.qty)
+    }
+  }
+  return [...totals]
+    .map(([name, qty]) => ({ name, qty }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'id'))
+}
+
 /** Nomor tagihan untuk ditampilkan, mis. 123 → "INV-000123". */
 export function formatInvoiceNumber(n: number): string {
   return `INV-${String(n).padStart(6, '0')}`

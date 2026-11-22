@@ -1,13 +1,16 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import {
+  buildPackingList,
   formatInvoiceNumber,
+  parseBundleLabel,
   hasBankAccount,
   invoiceStatusMeta,
   nextInvoiceStatus,
   submitInvoiceState,
   validateInvoiceSelection,
 } from './invoice-rules'
+import { splitItemName } from './partner-item-label'
 import type { InvoiceCandidate } from './invoice-rules'
 
 describe('submitInvoiceState', () => {
@@ -210,5 +213,73 @@ describe('hasBankAccount', () => {
     assert.equal(hasBankAccount({ bankName: null, bankAccountNumber: null, bankAccountName: null }), false)
     assert.equal(hasBankAccount({ bankName: 'BCA', bankAccountNumber: '', bankAccountName: 'A' }), false)
     assert.equal(hasBankAccount({ bankName: 'BCA', bankAccountNumber: '123456', bankAccountName: null }), false)
+  })
+})
+
+describe('parseBundleLabel', () => {
+  it('memecah nama aturan dan isi paket', () => {
+    assert.deepEqual(parseBundleLabel('80K / 2pcs: Kemeja (L / Dark) + Jaket (L / Dark)'), {
+      ruleName: '80K / 2pcs',
+      items: [
+        { qty: 1, name: 'Kemeja (L / Dark)' },
+        { qty: 1, name: 'Jaket (L / Dark)' },
+      ],
+    })
+  })
+  it('membaca qty "2× ..."', () => {
+    assert.deepEqual(parseBundleLabel('90K / 2pcs: 2× Rok (XL)')?.items, [
+      { qty: 2, name: 'Rok (XL)' },
+    ])
+  })
+  it('label tanpa bentuk paket: null', () => {
+    assert.equal(parseBundleLabel('Jaket (L / Dark)'), null)
+  })
+})
+
+describe('buildPackingList', () => {
+  it('membongkar paket, menggabung item sama lintas submit, urut nama', () => {
+    assert.deepEqual(
+      buildPackingList([
+        { kind: 'paket', label: '80K / 2pcs: Kemeja (L) + Jaket (L)', qty: 1 },
+        { kind: 'paket', label: '90K / 2pcs: 2× Rok (XL)', qty: 1 },
+        { kind: 'satuan', label: 'Jaket (L)', qty: 2 },
+        { kind: 'satuan', label: 'Polo (M)', qty: 1 },
+      ]),
+      [
+        { name: 'Jaket (L)', qty: 3 },
+        { name: 'Kemeja (L)', qty: 1 },
+        { name: 'Polo (M)', qty: 1 },
+        { name: 'Rok (XL)', qty: 2 },
+      ],
+    )
+  })
+  it('total pcs sama dengan pcs di tagihan', () => {
+    const list = buildPackingList([
+      { kind: 'paket', label: '105K / 3pcs: A + B + C', qty: 1 },
+      { kind: 'satuan', label: 'D', qty: 2 },
+    ])
+    assert.equal(list.reduce((n, i) => n + i.qty, 0), 5)
+  })
+})
+
+describe('splitItemName', () => {
+  it('ukuran / variasi', () => {
+    assert.deepEqual(splitItemName('Kingu Basic Jacket (L / Dark)'), {
+      product: 'Kingu Basic Jacket',
+      size: 'L',
+      variation: 'Dark',
+    })
+  })
+  it('satu opsi: dikenali ukuran atau variasi dari bentuknya', () => {
+    assert.deepEqual(splitItemName('Tote Bag (XL)'), { product: 'Tote Bag', size: 'XL', variation: null })
+    assert.deepEqual(splitItemName('Tote Bag (Maroon)'), { product: 'Tote Bag', size: null, variation: 'Maroon' })
+  })
+  it('tanpa opsi atau nama berkurung di dalamnya', () => {
+    assert.deepEqual(splitItemName('Topi'), { product: 'Topi', size: null, variation: null })
+    assert.deepEqual(splitItemName('Tee (Limited) (M / Navy)'), {
+      product: 'Tee (Limited)',
+      size: 'M',
+      variation: 'Navy',
+    })
   })
 })

@@ -17,6 +17,12 @@ import { sendVerificationEmail } from './email-verification-queries'
 import { requireVerifiedEmail } from './email-verified'
 import { getUserEntitlements } from './entitlements'
 import { isValidIndonesianPhone, toLocalPhoneNumber } from './format'
+import {
+  assertLoginAllowed,
+  clearLoginFailures,
+  getClientIp,
+  recordLoginFailure,
+} from './login-throttle-queries'
 import { createPartnerSession } from './partner-auth'
 import { findPartnerByEmail, isPartnerEmail } from './partner-queries'
 import { partnerErrorMessage } from './partner-rules'
@@ -69,6 +75,15 @@ const loginSchema = z.object({
 export const loginUser = createServerFn({ method: 'POST' })
   .validator(loginSchema)
   .handler(async ({ data }) => {
+    // Batasi tebak-tebak kata sandi: dicek SEBELUM bcrypt jalan, dan hanya
+    // percobaan gagal yang dihitung (lihat `login-throttle.ts`).
+    const ip = getClientIp()
+    await assertLoginAllowed(data.email, ip)
+    const failLogin = async () => {
+      await recordLoginFailure(data.email, ip)
+      return new Error('Email atau password salah')
+    }
+
     const user = await db.query.users.findFirst({
       where: eq(users.email, data.email),
     })
@@ -90,6 +105,7 @@ export const loginUser = createServerFn({ method: 'POST' })
             throw new Error(partnerErrorMessage('DINONAKTIFKAN'))
           }
           await createPartnerSession(partner.id)
+          await clearLoginFailures(data.email)
           return {
             id: partner.id,
             name: partner.name,
@@ -99,18 +115,19 @@ export const loginUser = createServerFn({ method: 'POST' })
           }
         }
       }
-      throw new Error('Email atau password salah')
+      throw await failLogin()
     }
     if (!user.passwordHash) {
-      throw new Error('Email atau password salah')
+      throw await failLogin()
     }
 
     const valid = await verifyPassword(data.password, user.passwordHash)
     if (!valid) {
-      throw new Error('Email atau password salah')
+      throw await failLogin()
     }
 
     await createSession(user.id)
+    await clearLoginFailures(data.email)
     return {
       id: user.id,
       name: user.name,
