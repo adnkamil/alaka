@@ -76,6 +76,7 @@ import { Route as AppProfilFeeRulesFeeRuleIdRouteImport } from './routes/_app/pr
 import { Route as AppProfilFeeRulesNewRouteImport } from './routes/_app/profil/fee-rules/new'
 import { Route as ApiAuthGoogleIndexRouteImport } from './routes/api/auth/google/index'
 import { Route as ApiAuthGoogleCallbackRouteImport } from './routes/api/auth/google/callback'
+import { Route as PartnerEventAnalisaIdRouteImport } from './routes/partner/event/analisa.$id'
 import { Route as PartnerEventProdukIdRouteImport } from './routes/partner/event/produk.$id'
 import { Route as PartnerEventRekapIdRouteImport } from './routes/partner/event/rekap.$id'
 import { Route as PartnerEventUbahIdRouteImport } from './routes/partner/event/ubah.$id'
@@ -421,6 +422,11 @@ const ApiAuthGoogleCallbackRoute = ApiAuthGoogleCallbackRouteImport.update({
   path: '/api/auth/google/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PartnerEventAnalisaIdRoute = PartnerEventAnalisaIdRouteImport.update({
+  id: '/event/analisa/$id',
+  path: '/event/analisa/$id',
+  getParentRoute: () => PartnerRoute,
+} as any)
 const PartnerEventProdukIdRoute = PartnerEventProdukIdRouteImport.update({
   id: '/event/produk/$id',
   path: '/event/produk/$id',
@@ -513,6 +519,7 @@ export interface FileRoutesByFullPath {
   '/profil/fee-rules/$feeRuleId': typeof AppProfilFeeRulesFeeRuleIdRoute
   '/profil/fee-rules/new': typeof AppProfilFeeRulesNewRoute
   '/api/auth/google/callback': typeof ApiAuthGoogleCallbackRoute
+  '/partner/event/analisa/$id': typeof PartnerEventAnalisaIdRoute
   '/partner/event/produk/$id': typeof PartnerEventProdukIdRoute
   '/partner/event/rekap/$id': typeof PartnerEventRekapIdRoute
   '/partner/event/ubah/$id': typeof PartnerEventUbahIdRoute
@@ -584,6 +591,7 @@ export interface FileRoutesByTo {
   '/profil/fee-rules/$feeRuleId': typeof AppProfilFeeRulesFeeRuleIdRoute
   '/profil/fee-rules/new': typeof AppProfilFeeRulesNewRoute
   '/api/auth/google/callback': typeof ApiAuthGoogleCallbackRoute
+  '/partner/event/analisa/$id': typeof PartnerEventAnalisaIdRoute
   '/partner/event/produk/$id': typeof PartnerEventProdukIdRoute
   '/partner/event/rekap/$id': typeof PartnerEventRekapIdRoute
   '/partner/event/ubah/$id': typeof PartnerEventUbahIdRoute
@@ -659,6 +667,7 @@ export interface FileRoutesById {
   '/_app/profil/fee-rules/$feeRuleId': typeof AppProfilFeeRulesFeeRuleIdRoute
   '/_app/profil/fee-rules/new': typeof AppProfilFeeRulesNewRoute
   '/api/auth/google/callback': typeof ApiAuthGoogleCallbackRoute
+  '/partner/event/analisa/$id': typeof PartnerEventAnalisaIdRoute
   '/partner/event/produk/$id': typeof PartnerEventProdukIdRoute
   '/partner/event/rekap/$id': typeof PartnerEventRekapIdRoute
   '/partner/event/ubah/$id': typeof PartnerEventUbahIdRoute
@@ -734,6 +743,7 @@ export interface FileRouteTypes {
     | '/profil/fee-rules/$feeRuleId'
     | '/profil/fee-rules/new'
     | '/api/auth/google/callback'
+    | '/partner/event/analisa/$id'
     | '/partner/event/produk/$id'
     | '/partner/event/rekap/$id'
     | '/partner/event/ubah/$id'
@@ -805,6 +815,7 @@ export interface FileRouteTypes {
     | '/profil/fee-rules/$feeRuleId'
     | '/profil/fee-rules/new'
     | '/api/auth/google/callback'
+    | '/partner/event/analisa/$id'
     | '/partner/event/produk/$id'
     | '/partner/event/rekap/$id'
     | '/partner/event/ubah/$id'
@@ -879,6 +890,7 @@ export interface FileRouteTypes {
     | '/_app/profil/fee-rules/$feeRuleId'
     | '/_app/profil/fee-rules/new'
     | '/api/auth/google/callback'
+    | '/partner/event/analisa/$id'
     | '/partner/event/produk/$id'
     | '/partner/event/rekap/$id'
     | '/partner/event/ubah/$id'
@@ -1385,6 +1397,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthGoogleCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/partner/event/analisa/$id': {
+      id: '/partner/event/analisa/$id'
+      path: '/event/analisa/$id'
+      fullPath: '/partner/event/analisa/$id'
+      preLoaderRoute: typeof PartnerEventAnalisaIdRouteImport
+      parentRoute: typeof PartnerRoute
+    }
     '/partner/event/produk/$id': {
       id: '/partner/event/produk/$id'
       path: '/event/produk/$id'
@@ -1517,6 +1536,7 @@ interface PartnerRouteChildren {
   PartnerKatalogIndexRoute: typeof PartnerKatalogIndexRoute
   PartnerPaketIndexRoute: typeof PartnerPaketIndexRoute
   PartnerTagihanIndexRoute: typeof PartnerTagihanIndexRoute
+  PartnerEventAnalisaIdRoute: typeof PartnerEventAnalisaIdRoute
   PartnerEventProdukIdRoute: typeof PartnerEventProdukIdRoute
   PartnerEventRekapIdRoute: typeof PartnerEventRekapIdRoute
   PartnerEventUbahIdRoute: typeof PartnerEventUbahIdRoute
@@ -1539,6 +1559,7 @@ const PartnerRouteChildren: PartnerRouteChildren = {
   PartnerKatalogIndexRoute: PartnerKatalogIndexRoute,
   PartnerPaketIndexRoute: PartnerPaketIndexRoute,
   PartnerTagihanIndexRoute: PartnerTagihanIndexRoute,
+  PartnerEventAnalisaIdRoute: PartnerEventAnalisaIdRoute,
   PartnerEventProdukIdRoute: PartnerEventProdukIdRoute,
   PartnerEventRekapIdRoute: PartnerEventRekapIdRoute,
   PartnerEventUbahIdRoute: PartnerEventUbahIdRoute,

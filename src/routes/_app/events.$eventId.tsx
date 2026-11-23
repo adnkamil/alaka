@@ -89,6 +89,7 @@ import {
 } from '../../lib/order-export'
 import { getCustomerSuggestions } from '#/lib/customer-suggestions-functions'
 import { componentDisplayName } from '../../lib/order-item-groups'
+import { itemDisplayName } from '../../lib/partner-item-label'
 
 const searchSchema = z.object({
   addOrder: z.boolean().optional(),
@@ -103,7 +104,10 @@ const currentUserQuery = queryOptions({
 })
 
 /** Daftar barang untuk ringkasan kartu: paket dibuka jadi barangnya, satuan apa adanya. */
-function previewItemLines(items: Array<OrderItemView>): Array<{ name: string; qty: number }> {
+function previewItemLines(
+  items: Array<OrderItemView>,
+  partnerEvent: boolean,
+): Array<{ name: string; qty: number }> {
   const totals = new Map<string, number>()
   for (const item of items) {
     if (item.isBundle) {
@@ -112,7 +116,8 @@ function previewItemLines(items: Array<OrderItemView>): Array<{ name: string; qt
         totals.set(name, (totals.get(name) ?? 0) + c.qty)
       }
     } else {
-      totals.set(item.name, (totals.get(item.name) ?? 0) + item.qty)
+      const name = itemDisplayName(item, partnerEvent)
+      totals.set(name, (totals.get(name) ?? 0) + item.qty)
     }
   }
   return [...totals.entries()].map(([name, qty]) => ({ name, qty }))
@@ -209,6 +214,7 @@ type ItemGroup = {
 function summarizeItemQty(
   orders: Array<EventOrder>,
   keyword: string,
+  partnerEvent: boolean,
 ): ItemSummary[] {
   const query = keyword.trim().toLowerCase()
   const grouped = new Map<string, ItemGroup>()
@@ -232,7 +238,7 @@ function summarizeItemQty(
             obtained: item.obtained,
           }))
       }
-      return [{ id: item.id, name: item.name, qty: item.qty, obtained: item.obtained }]
+      return [{ id: item.id, name: itemDisplayName(item, partnerEvent), qty: item.qty, obtained: item.obtained }]
     })
 
     for (const line of lines) {
@@ -576,14 +582,14 @@ function EventDetailPage() {
   // Tab Per Item: checklist belanja dihitung dari SEMUA pesanan, nggak
   // dipengaruhi status pembayaran — yang dipakai cuma filter Dapat/Belum dapat.
   // Hitungan tab dalam pcs (bukan jumlah jenis barang): pcs yang belum dan sudah didapat.
-  const allItemSummary = summarizeItemQty(event.orders, '')
+  const allItemSummary = summarizeItemQty(event.orders, '', event.isPartnerEvent)
   const pendingItemCount = allItemSummary.reduce((sum, item) => sum + item.pendingQty, 0)
   const obtainedItemCount = allItemSummary.reduce(
     (sum, item) => sum + (item.qty - item.pendingQty),
     0,
   )
 
-  const itemSummary = summarizeItemQty(event.orders, search).filter((item) =>
+  const itemSummary = summarizeItemQty(event.orders, search, event.isPartnerEvent).filter((item) =>
     obtainedFilter === 'obtained'
       ? item.pendingCount === 0
       : obtainedFilter === 'pending'
@@ -1713,13 +1719,13 @@ function EventDetailPage() {
                     className="flex cursor-pointer flex-col gap-2"
                   >
                   <ul className="flex flex-col gap-1.5">
-                    {previewItemLines(order.items).slice(0, 3).map((line) => (
+                    {previewItemLines(order.items, event.isPartnerEvent).slice(0, 3).map((line) => (
                       <li key={line.name} className="flex items-center justify-between gap-2 text-sm">
                         <span className="min-w-0 truncate">{line.name}</span>
                         <span className="flex-shrink-0 font-semibold">×{line.qty}</span>
                       </li>
                     ))}
-                    {previewItemLines(order.items).length > 3 && (
+                    {previewItemLines(order.items, event.isPartnerEvent).length > 3 && (
                       <li
                         className="text-center text-lg font-bold leading-none"
                         style={{ color: 'var(--app-text-mute)' }}

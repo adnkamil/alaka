@@ -50,7 +50,7 @@ describe('pendingNoteText & componentDisplayName', () => {
   it('menggabungkan nama produk dan varian', () => {
     assert.equal(
       componentDisplayName({ productName: 'Kana Longsleeve Set', size: 'S', variation: 'Marine Cove' }),
-      'Kana Longsleeve Set (S / Marine Cove)',
+      'Kana Longsleeve Set (Marine Cove / S)',
     )
     assert.equal(
       componentDisplayName({ productName: 'Bib', size: null, variation: null }),

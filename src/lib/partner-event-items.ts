@@ -10,9 +10,9 @@ import {
   partnerVariants,
 } from '../db/schema'
 import {
+  displayItemName,
   partnerItemName,
-  variantLabel
-
+  variantLabel,
 } from './partner-item-label'
 import type { PartnerEventItemCatalog, PartnerItemRule } from './partner-item-label';
 import { partnerPricingRules, partnerRuleProducts, partnerRuleProductSizes } from '../db/schema';
@@ -23,6 +23,18 @@ import {
   findStockShortages,
   formatStockShortages,
 } from './partner-stock'
+
+/** True kalau event kalender ini milik partner (nama barang wajib dari katalog). */
+export async function isPartnerLinked(
+  calendarEventId: string | null,
+): Promise<boolean> {
+  if (!calendarEventId) return false
+  const calendarEvent = await db.query.calendarEvents.findFirst({
+    where: eq(calendarEvents.id, calendarEventId),
+    columns: { partnerId: true },
+  })
+  return Boolean(calendarEvent?.partnerId)
+}
 
 /**
  * Katalog produk partner yang dibawa ke satu event (produk aktif + varian aktif).
@@ -264,7 +276,7 @@ export async function resolveEventItems(
     new Map(
       [...variantById].map(([id, v]) => [
         id,
-        { name: partnerItemName(v.productName, v.label), stock: v.stock },
+        { name: displayItemName(partnerItemName(v.productName, v.label)), stock: v.stock },
       ]),
     ),
   )

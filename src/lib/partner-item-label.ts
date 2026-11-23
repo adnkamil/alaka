@@ -82,3 +82,51 @@ export function splitItemName(name: string): {
   }
   return { product, size: parts[0], variation: parts.slice(1).join(' / ') }
 }
+
+/**
+ * Label varian untuk ditampilkan: variasi dulu, baru ukuran, mis.
+ * "Marine Cove / S". `variantLabel` tetap ukuran dulu karena dipakai untuk
+ * menyusun nama barang yang disimpan.
+ */
+export function variantDisplayLabel(options: {
+  size: string | null
+  variation: string | null
+}): string {
+  return [options.variation, options.size].filter(Boolean).join(' / ')
+}
+
+/**
+ * Nama barang katalog partner untuk ditampilkan: variasi dulu, baru ukuran,
+ * mis. "Kana Longsleeve Set (Marine Cove / S)". Nama tersimpan tetap
+ * "Produk (Ukuran / Variasi)"; ini hanya mengubah tampilan. Hanya untuk nama
+ * yang dibuat `partnerItemName`; nama ketikan bebas pakai `itemDisplayName`.
+ */
+export function displayItemName(name: string): string {
+  const { product, size, variation } = splitItemName(name)
+  if (!size || !variation) return name
+  return partnerItemName(product, variantDisplayLabel({ size, variation }))
+}
+
+/**
+ * Nama barang pesanan untuk ditampilkan. Barang katalog partner diurutkan
+ * variasi dulu; nama ketikan bebas jastiper dibiarkan apa adanya. Di event
+ * yang terhubung ke partner semua nama berasal dari katalog, jadi barang yang
+ * variannya sudah dihapus partner (`partnerVariantId` null) tetap diurutkan.
+ */
+export function itemDisplayName(
+  item: { name: string; partnerVariantId?: string | null },
+  partnerEvent = false,
+): string {
+  return item.partnerVariantId || partnerEvent ? displayItemName(item.name) : item.name
+}
+
+/**
+ * Label baris paket di tagihan untuk ditampilkan, mis.
+ * "80K / 2pcs: 2× Rok (XL / Hitam) + Jaket (L)" -> isinya variasi dulu.
+ */
+export function displayBundleLabel(label: string): string {
+  const at = label.indexOf(': ')
+  if (at <= 0) return label
+  const items = label.slice(at + 2).split(' + ').map(displayItemName)
+  return `${label.slice(0, at + 2)}${items.join(' + ')}`
+}

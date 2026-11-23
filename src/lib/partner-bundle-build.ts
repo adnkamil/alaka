@@ -11,7 +11,7 @@ import {
   partnerVariantValues,
   partnerVariants,
 } from '../db/schema'
-import { partnerItemName, variantLabel } from './partner-item-label'
+import { partnerItemName, variantDisplayLabel } from './partner-item-label'
 import { productSizesForRule } from './partner-rule-sizes'
 import { aggregateStockDemand, findStockShortages, formatStockShortages } from './partner-stock'
 import {
@@ -150,7 +150,7 @@ export async function buildPartnerBundle(
         {
           name: partnerItemName(
             c.productName,
-            variantLabel({ size: c.size, variation: c.variation }),
+            variantDisplayLabel({ size: c.size, variation: c.variation }),
           ),
           stock: variantById.get(c.partnerVariantId)?.stockQty ?? 0,
         },

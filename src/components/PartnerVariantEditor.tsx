@@ -359,7 +359,7 @@ export default function PartnerVariantEditor({
             >
               {hasVariants
                 ? 'Varian aktif. Harga dan stok diisi per kombinasi di tabel.'
-                : 'Aktifkan varian kalau harga atau stok beda per ukuran/variasi.'}
+                : 'Aktifkan varian kalau harga atau stok beda per variasi/ukuran.'}
             </p>
           </div>
           <button
@@ -416,15 +416,6 @@ export default function PartnerVariantEditor({
         {hasVariants && (
           <>
             <ValueEditor
-              label="Ukuran"
-              placeholder="Mis. S, M, L, XL"
-              values={sizes}
-              draft={newSize}
-              onDraft={setNewSize}
-              onAdd={() => addValue('size')}
-              onRemove={(name) => removeValue('size', name)}
-            />
-            <ValueEditor
               label="Variasi"
               placeholder="Mis. Mocca, Cream, Black"
               values={variations}
@@ -432,6 +423,15 @@ export default function PartnerVariantEditor({
               onDraft={setNewVariation}
               onAdd={() => addValue('variation')}
               onRemove={(name) => removeValue('variation', name)}
+            />
+            <ValueEditor
+              label="Ukuran"
+              placeholder="Mis. S, M, L, XL"
+              values={sizes}
+              draft={newSize}
+              onDraft={setNewSize}
+              onAdd={() => addValue('size')}
+              onRemove={(name) => removeValue('size', name)}
             />
 
             <div className="flex flex-col gap-2">

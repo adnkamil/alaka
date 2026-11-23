@@ -26,6 +26,7 @@ import type {
 } from '../lib/submit-review-queries'
 import { pendingSubmitNotice } from '../lib/submit-status'
 import { allocateApproved, overStockRowIds } from '../lib/partner-stock-review'
+import { displayItemName } from '../lib/partner-item-label'
 
 /**
  * Cek partner per submit. Ada dua cara: cek stok otomatis untuk semua submit
@@ -680,7 +681,7 @@ function RowLine({
   return (
     <div className="flex items-center justify-between gap-3 text-sm">
       <span>
-        {row.label}
+        {displayItemName(row.label)}
         {row.kind === 'komponen' ? ' (paket)' : ''}
       </span>
       <span className="flex items-center gap-2">
@@ -707,7 +708,7 @@ function RowLine({
               )
             }}
             className="w-20 rounded border px-2 py-1"
-            aria-label={`Jumlah disetujui untuk ${row.label}`}
+            aria-label={`Jumlah disetujui untuk ${displayItemName(row.label)}`}
           />
         ) : (
           <span>{row.qty} pcs</span>

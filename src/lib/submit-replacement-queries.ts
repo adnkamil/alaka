@@ -26,6 +26,7 @@ import {
   variantItemName,
 } from './partner-paket-queries'
 import { ruleCoversVariant } from './partner-pricing'
+import { displayItemName } from './partner-item-label'
 import { productSizesForRule } from './partner-rule-sizes'
 import { feePerPcsOf } from './submit-queries'
 import {
@@ -276,13 +277,13 @@ export async function sendReplacementsTx(
         throw new Error('Varian pengganti tidak ditemukan atau nonaktif.')
       }
       if (!(await isProductInEvent(tx, input.calendarEventId, variant.productId))) {
-        throw new Error(`${variantItemName(variant)} tidak dijual di event ini.`)
+        throw new Error(`${displayItemName(variantItemName(variant))} tidak dijual di event ini.`)
       }
       if (variant.stock < (demand.get(req.partnerVariantId) ?? req.qty)) {
         throw new Error(
           variant.stock <= 0
-            ? `Stok ${variantItemName(variant)} habis.`
-            : `Stok ${variantItemName(variant)} tinggal ${variant.stock}.`,
+            ? `Stok ${displayItemName(variantItemName(variant))} habis.`
+            : `Stok ${displayItemName(variantItemName(variant))} tinggal ${variant.stock}.`,
         )
       }
 

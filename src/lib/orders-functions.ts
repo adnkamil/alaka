@@ -23,11 +23,12 @@ import { canUseFeature } from './subscription'
 import { EmailNotVerifiedError, isEmailVerified } from './email-verified'
 import { findCustomerForOrder } from './customer-matching'
 import { findMergeTarget, mergeItemLines, mergePaidAmount } from './order-merge'
-import { resolveEventItems } from './partner-event-items'
+import { isPartnerLinked, resolveEventItems } from './partner-event-items'
 import { derivePaymentStatus } from './order-totals'
 import { buildPartnerBundle } from './partner-bundle-build'
 import { lineTotal, partitionLockedItems } from './partner-bundle-lock'
 import { carryCreatedAt } from './item-created-at'
+import { itemDisplayName } from './partner-item-label'
 import {
   assertNoSubmittedRows,
   assertQtyEditable,
@@ -646,6 +647,8 @@ export const getPublicOrderInvoice = createServerFn({ method: 'GET' })
     ])
     if (!brand || !ownerUser) throw new Error('Invoice tidak ditemukan')
     const owner = applyBrandIdentity(ownerUser, brand)
+    // Event partner: nama barang dari katalog, ditampilkan variasi dulu.
+    const partnerEvent = await isPartnerLinked(order.event.calendarEventId)
 
     // Link publik bisa dibuka siapa saja atas nama brand, jadi baru aktif
     // setelah email pemilik terverifikasi (cegah akun spam/phishing). Pesannya
@@ -703,7 +706,8 @@ export const getPublicOrderInvoice = createServerFn({ method: 'GET' })
       },
       items: order.items.map((item) => ({
         id: item.id,
-        name: item.name,
+        // Barang katalog partner: variasi dulu, baru ukuran (hanya tampilan).
+        name: itemDisplayName(item, partnerEvent),
         originalPrice: item.originalPrice,
         fee: item.fee,
         qty: item.qty,
@@ -749,6 +753,8 @@ export const getOrderInvoice = createServerFn({ method: 'GET' })
 
     // Fitur PRO `billing`: halaman tagih + kirim invoice ke pelanggan.
     requireFeature(await getUserEntitlements(user), 'billing')
+    // Event partner: nama barang dari katalog, ditampilkan variasi dulu.
+    const partnerEvent = await isPartnerLinked(order.event.calendarEventId)
 
     // Cari data Customer yang tersimpan (no. HP + alamat kirim) dengan
     // mencocokkan no. HP pesanan ke daftar Customer milik user ini. Aturannya
@@ -787,7 +793,8 @@ export const getOrderInvoice = createServerFn({ method: 'GET' })
         .filter((item) => item.submitStatus !== 'disanggah')
         .map((item) => ({
         id: item.id,
-        name: item.name,
+        // Barang katalog partner: variasi dulu, baru ukuran (hanya tampilan).
+        name: itemDisplayName(item, partnerEvent),
         originalPrice: item.originalPrice,
         fee: item.fee,
         qty: item.qty,

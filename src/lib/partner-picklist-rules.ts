@@ -65,8 +65,8 @@ export function buildPicklist(
     .sort(
       (a, b) =>
         a.productName.localeCompare(b.productName) ||
-        (a.size ?? '').localeCompare(b.size ?? '', 'id') ||
         (a.variation ?? '').localeCompare(b.variation ?? '', 'id') ||
+        (a.size ?? '').localeCompare(b.size ?? '', 'id') ||
         (a.ruleName ?? '').localeCompare(b.ruleName ?? ''),
     )
 }

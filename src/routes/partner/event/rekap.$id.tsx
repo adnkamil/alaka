@@ -46,13 +46,13 @@ function PartnerEventRekapPage() {
     row.productName.toLowerCase().includes(search.trim().toLowerCase()),
   )
   const rekapSort = useTableSort<
-    'productName' | 'size' | 'variation' | 'source' | 'total'
+    'productName' | 'variation' | 'size' | 'source' | 'total'
   >()
   const rekapPager = useClientPager(
     sortRows(rekapRows, rekapSort.sort, {
       productName: (r) => r.productName,
-      size: (r) => r.size,
       variation: (r) => r.variation,
+      size: (r) => r.size,
       source: (r) => (r.ruleName ? `Paket: ${r.ruleName}` : 'Satuan'),
       total: (r) => r.total,
     }),
@@ -137,7 +137,7 @@ function PartnerEventRekapPage() {
                 <div className="min-w-0">
                   <p className="text-sm font-bold leading-snug">{row.productName}</p>
                   <p className="mt-0.5 text-[12px]" style={{ color: 'var(--app-text-soft)' }}>
-                    {[row.size, row.variation].filter(Boolean).join(' · ') || 'Standar'}
+                    {[row.variation, row.size].filter(Boolean).join(' · ') || 'Standar'}
                   </p>
                 </div>
                 <span className="pm-num shrink-0 text-lg font-bold" style={{ color: 'var(--app-accent)' }}>
@@ -163,8 +163,8 @@ function PartnerEventRekapPage() {
                 {(
                   [
                     ['Produk', 'productName'],
-                    ['Ukuran', 'size'],
                     ['Variasi', 'variation'],
+                    ['Ukuran', 'size'],
                     ['Sumber', 'source'],
                     ['Qty', 'total'],
                     ['Per jastiper', undefined],
@@ -198,8 +198,8 @@ function PartnerEventRekapPage() {
                   style={{ borderColor: 'var(--app-border)' }}
                 >
                   <td className="px-4 py-3 font-bold">{row.productName}</td>
-                  <td className="px-4 py-3">{row.size ?? '-'}</td>
                   <td className="px-4 py-3">{row.variation ?? '-'}</td>
+                  <td className="px-4 py-3">{row.size ?? '-'}</td>
                   <td className="px-4 py-3">
                     <span className="app-badge">{row.ruleName ? `Paket: ${row.ruleName}` : 'Satuan'}</span>
                   </td>

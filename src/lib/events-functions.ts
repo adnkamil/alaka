@@ -14,6 +14,7 @@ import {
 } from '../db/schema'
 import { inArray } from 'drizzle-orm'
 import { aggregateStockDemand, restoreVariantStock } from './partner-stock'
+import { isPartnerLinked } from './partner-event-items'
 import { computePendingRules, type PendingSingle } from './partner-paket-pending'
 import { brandIdOf } from './brand'
 import { getSessionUser } from './auth'
@@ -232,6 +233,9 @@ export const getEventDetail = createServerFn({ method: 'GET' })
 
     if (!event) throw new Error('Event tidak ditemukan')
 
+    // Event yang terhubung ke partner: semua nama barang berasal dari katalog.
+    const isPartnerEvent = await isPartnerLinked(event.calendarEventId)
+
     // Catatan "N pcs lagi untuk paket" per pesanan. Hanya untuk aturan dari partner PRO,
     // karena paket di luar itu tidak pernah terbentuk.
     const singleVariantIds = event.orders.flatMap((o) =>
@@ -242,6 +246,7 @@ export const getEventDetail = createServerFn({ method: 'GET' })
     if (singleVariantIds.length === 0) {
       return {
         ...event,
+        isPartnerEvent,
         orders: event.orders.map((o) => ({
           ...o,
           pendingRules: [],
@@ -275,6 +280,7 @@ export const getEventDetail = createServerFn({ method: 'GET' })
 
     return {
       ...event,
+      isPartnerEvent,
       orders: event.orders.map((order) => {
         const singles: Array<PendingSingle> = []
         // Nama aturan per barang satuan, untuk label kecil "masuk paket apa".

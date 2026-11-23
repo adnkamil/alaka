@@ -31,8 +31,8 @@ describe('buildInvoiceBlocks', () => {
     assert.equal(block.kind, 'bundle')
     if (block.kind !== 'bundle') return
     assert.deepEqual(block.lines.map((l) => l.text), [
-      '1× Set Piyama (Newborn / Pink)',
-      '1× Set Piyama (Newborn / Biru)',
+      '1× Set Piyama (Pink / Newborn)',
+      '1× Set Piyama (Biru / Newborn)',
       '2× Topi Bayi (Rajut)',
     ])
     for (const line of block.lines) {
