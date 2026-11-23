@@ -55,7 +55,7 @@ sidebar + tabel di desktop.
 | Auth                | Session-based, cookie httpOnly (30 hari); password di-hash (bcryptjs). Sesi jastiper/admin dan sesi partner di tabel & cookie terpisah |
 | OAuth               | Google OAuth 2.0 (OpenID Connect — login/register via Google; tidak untuk akun partner)                                          |
 | Email               | `src/lib/mailer.ts`, mode via `MAIL_MODE`: `console` (default, hanya di-log), `resend` (Resend HTTP API), atau `smtp` (`nodemailer`, dimuat dinamis). Dipakai verifikasi email, reset sandi, undangan tim, undangan partner |
-| Penyimpanan file    | Netlify Blobs (`@netlify/blobs`) lewat `src/lib/storage.ts`: foto brand, banner event, bukti transfer, logo & foto produk partner (lihat 8.1). Deploy ke Netlify |
+| Penyimpanan file    | Cloudflare R2 (`@aws-sdk/client-s3`) lewat `src/lib/storage.ts`, dua bucket privat: `R2_PUBLIC_BUCKET` (foto brand, banner event, logo & foto produk/variasi partner) dan `R2_PRIVATE_BUCKET` (bukti transfer langganan, tagihan, top up). Tata letak key di `src/lib/storage-keys.ts`. Selama transisi, baca jatuh ke Netlify Blobs / bucket R2 lama (lihat 8.1). Deploy ke Netlify |
 | QRIS                | `qrcode` (gambar QR dinamis di modal upgrade) dan `jsqr` (baca QR dari gambar yang diunggah admin) — lihat 4.14 & `lib/qris.ts` |
 | Validasi            | Zod (client & server)                                                                                                            |
 | Testing             | `node:test` (dijalankan via `tsx --test`, lihat `npm test`)                                                                      |

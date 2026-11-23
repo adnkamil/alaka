@@ -52,7 +52,7 @@ describe('pcsBucket', () => {
 })
 
 describe('buildEventAnalytics', () => {
-  it('menghitung pembeli, produk terlaris, dan peringkat jastiper', () => {
+  it('menghitung pcs, produk terlaris, dan peringkat jastiper', () => {
     const out = buildEventAnalytics(
       input({
         lines: [
@@ -64,7 +64,6 @@ describe('buildEventAnalytics', () => {
         ],
       }),
     )
-    assert.equal(out.buyers, 3)
     assert.deepEqual(out.pcs, { terjual: 4, menunggu: 5, ditolak: 4, draft: 0 })
     assert.deepEqual(out.kindSplit, { satuan: 3, paket: 1 })
     assert.equal(out.products[0].productName, 'Kana Pants')
@@ -72,7 +71,7 @@ describe('buildEventAnalytics', () => {
     assert.equal(out.products[0].ditolak, 4)
     assert.equal(out.products[0].jastiper, 2)
     assert.equal(out.jastiperRanking[0].brandName, 'Toko A')
-    assert.equal(out.jastiperRanking[0].buyers, 2)
+    assert.equal(out.jastiperRanking[0].terjual, 3)
     assert.equal(out.jastiperRanking[1].ditolak, 4)
     assert.deepEqual(out.unmetDemand, [{ label: 'Kana Pants — M', ditolak: 4 }])
   })

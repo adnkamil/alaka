@@ -8,7 +8,6 @@ import {
   Lightbulb,
   Package,
   PackageX,
-  ShoppingBag,
   TriangleAlert,
   Users,
   Wallet,
@@ -133,7 +132,7 @@ function AnalyticsBody({ id, data }: { id: string; data: EventAnalytics }) {
     <>
       <Insights data={data} />
 
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-6" aria-label="Ringkasan">
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-5" aria-label="Ringkasan">
         <StatTile
           icon={<Users size={18} />}
           label="Jastiper ikut"
@@ -143,12 +142,6 @@ function AnalyticsBody({ id, data }: { id: string; data: EventAnalytics }) {
               ? `${data.jastiper.submitted} sudah submit`
               : `${data.jastiper.active} ada pesanan`
           }
-        />
-        <StatTile
-          icon={<ShoppingBag size={18} />}
-          label="Total pembeli"
-          value={fmt(data.buyers)}
-          hint={`± ${data.avgPcsPerBuyer.toLocaleString('id-ID', { maximumFractionDigits: 1 })} pcs / pembeli`}
         />
         <StatTile
           icon={<Package size={18} />}
@@ -293,14 +286,14 @@ function Insights({ data }: { data: EventAnalytics }) {
   if (top && top.terjual > 0) {
     tips.push(
       <>
-        <b>{top.productName}</b> paling laku: {fmt(top.terjual)} pcs ke {fmt(top.buyers)} pembeli.
+        <b>{top.productName}</b> paling laku: {fmt(top.terjual)} pcs lewat {fmt(top.jastiper)} jastiper.
       </>,
     )
   }
-  if (topJ && topJ.buyers > 0) {
+  if (topJ && topJ.terjual > 0) {
     tips.push(
       <>
-        <b>{topJ.brandName}</b> membawa pembeli terbanyak ({fmt(topJ.buyers)} pembeli, {fmt(topJ.terjual)} pcs).
+        <b>{topJ.brandName}</b> menjual pcs terbanyak ({fmt(topJ.terjual)} pcs).
       </>,
     )
   }
@@ -489,7 +482,7 @@ function TopProducts({ products }: { products: Array<ProductStat> }) {
                       </div>
                       <Bar max={max} value={p.terjual} rejected={p.ditolak} />
                       <p className="text-[11px]" style={soft}>
-                        {fmt(p.buyers)} pembeli · {fmt(p.jastiper)} jastiper
+                        {fmt(p.jastiper)} jastiper
                         {p.ditolak > 0 && <span style={{ color: COLOR.ditolak }}> · {fmt(p.ditolak)} ditolak</span>}
                       </p>
                     </div>
@@ -544,13 +537,13 @@ function Bar({ max, value, rejected = 0 }: { max: number; value: number; rejecte
 function TopJastiper({ id, data }: { id: string; data: EventAnalytics }) {
   const [expanded, setExpanded] = useState(false)
   const ranking = data.jastiperRanking
-  const max = Math.max(1, ...ranking.map((j) => j.buyers))
+  const max = Math.max(1, ...ranking.map((j) => j.terjual + j.ditolak))
   const list = expanded ? ranking : ranking.slice(0, LIST_LIMIT)
   const top = ranking.at(0)
 
   return (
-    <Card title="Jastiper teratas" subtitle="Urut jumlah pembeli">
-      {top && top.buyers > 0 && (
+    <Card title="Jastiper teratas" subtitle="Urut pcs terjual">
+      {top && top.terjual > 0 && (
         <div className="flex items-center gap-3 rounded-xl p-3" style={{ background: 'linear-gradient(135deg, #fbf3e6, #f3dfd9)' }}>
           <span className="relative">
             <span
@@ -566,16 +559,15 @@ function TopJastiper({ id, data }: { id: string; data: EventAnalytics }) {
             <p className="truncate text-sm font-bold">{top.brandName}</p>
           </div>
           <div className="text-right">
-            <p className="pm-num text-lg font-bold leading-none">{fmt(top.buyers)}</p>
-            <p className="text-[11px]" style={soft}>pembeli</p>
+            <p className="pm-num text-lg font-bold leading-none">{fmt(top.terjual)}</p>
+            <p className="text-[11px]" style={soft}>pcs</p>
           </div>
         </div>
       )}
       <ol className="flex flex-col">
-        <li className="grid grid-cols-[28px_minmax(0,1fr)_56px_56px] gap-3 px-2 pb-2 text-[11px] font-semibold sm:grid-cols-[28px_minmax(0,1fr)_56px_56px_110px]" style={soft}>
+        <li className="grid grid-cols-[28px_minmax(0,1fr)_56px] gap-3 px-2 pb-2 text-[11px] font-semibold sm:grid-cols-[28px_minmax(0,1fr)_56px_110px]" style={soft}>
           <span />
           <span>Jastiper</span>
-          <span className="text-right">Pembeli</span>
           <span className="text-right">Pcs</span>
           <span className="hidden text-right sm:block">Ditagih</span>
         </li>
@@ -584,16 +576,15 @@ function TopJastiper({ id, data }: { id: string; data: EventAnalytics }) {
             <Link
               to="/partner/event/jastiper/$id/$brandId"
               params={{ id, brandId: j.brandId }}
-              className="grid grid-cols-[28px_minmax(0,1fr)_56px_56px] items-center gap-3 rounded-lg px-2 py-2.5 no-underline sm:grid-cols-[28px_minmax(0,1fr)_56px_56px_110px]"
+              className="grid grid-cols-[28px_minmax(0,1fr)_56px] items-center gap-3 rounded-lg px-2 py-2.5 no-underline sm:grid-cols-[28px_minmax(0,1fr)_56px_110px]"
               style={{ color: 'inherit' }}
             >
               <RankBadge rank={i + 1} />
               <div className="flex min-w-0 flex-col gap-1.5">
                 <p className="truncate text-[13px] font-bold">{j.brandName}</p>
-                <Bar max={max} value={j.buyers} />
+                <Bar max={max} value={j.terjual} rejected={j.ditolak} />
               </div>
-              <span className="pm-num text-right text-[13px] font-bold">{fmt(j.buyers)}</span>
-              <span className="pm-num text-right text-[13px]">
+              <span className="pm-num text-right text-[13px] font-bold">
                 {fmt(j.terjual)}
                 {j.ditolak > 0 && (
                   <span className="block text-[10px]" style={{ color: COLOR.ditolak }}>
