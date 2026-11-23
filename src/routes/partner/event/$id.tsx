@@ -381,6 +381,14 @@ function PartnerEventDetailPage() {
     ditagih: submitRows.filter((r) => matchesFilter(r, 'ditagih')).length,
     review: submitRows.filter((r) => matchesFilter(r, 'review')).length,
   }
+  // Ringkasan pcs untuk kartu pendapatan, dihitung dari baris yang sama dengan
+  // tab "Siap ditagih" dan "Menunggu" supaya angkanya selalu cocok.
+  const readyPcs = submitRows
+    .filter((r) => matchesFilter(r, 'siap'))
+    .reduce((n, r) => n + r.pcs.approved, 0)
+  const waitingPcs = submitRows
+    .filter((r) => matchesFilter(r, 'menunggu'))
+    .reduce((n, r) => n + r.pcs.pending, 0)
   const searchKey = participantSearch.trim().toLowerCase()
   const filteredSubmits = submitRows.filter(
     (r) =>
@@ -981,8 +989,11 @@ function PartnerEventDetailPage() {
             <PartnerRevenueCard
               slotEnabled={revenue?.slotEnabled ?? false}
               totalAmount={revenue?.totalAmount ?? 0}
-              approvedAmount={revenue?.approvedAmount ?? 0}
-              waitingAmount={revenue?.waitingAmount ?? 0}
+              invoiced={revenue?.invoiced}
+              readyPcs={readyPcs}
+              readySubmitCount={submitCounts.siap}
+              waitingPcs={waitingPcs}
+              waitingSubmitCount={submitCounts.menunggu}
             />
 
             <section className="app-card flex flex-col gap-4 p-5">
