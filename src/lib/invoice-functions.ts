@@ -66,6 +66,12 @@ export type InvoiceDetail = InvoiceSummary & {
    * untuk partner (jastiper tidak melihatnya). Null = belum lunas / tidak dipotong.
    */
   adminFee: { percent: number; amount: number } | null
+  /**
+   * Perkiraan biaya admin kalau tagihan ditandai lunas sekarang (persen saat
+   * ini). Hanya diisi untuk partner saat status menunggu review; dipakai modal
+   * persetujuan. Null = bukan konteksnya.
+   */
+  pendingAdminFee: { percent: number; amount: number } | null
   /** Snapshot saat tagihan dibuat, bukan hitung ulang dari harga katalog. */
   lines: Array<{
     id: string
@@ -225,6 +231,21 @@ async function loadInvoiceDetail(invoiceId: string, scope: {
     .where(eq(invoiceSubmissions.invoiceId, invoiceId))
     .orderBy(asc(eventSubmissions.submitNo))
   const submitNoById = new Map(subs.map((s) => [s.id, s.submitNo]))
+  let pendingAdminFee: { percent: number; amount: number } | null = null
+  if (scope.partnerId && invoice.status === 'menunggu_review') {
+    const { subscriptionSettings } = await import('../db/schema')
+    const { computeAdminFee } = await import('./partner-credit')
+    const settings = await db
+      .select({ adminFeePercent: subscriptionSettings.adminFeePercent })
+      .from(subscriptionSettings)
+      .limit(1)
+      .then((rows) => rows.at(0))
+    const percent = settings?.adminFeePercent ?? '0'
+    pendingAdminFee = {
+      percent: Number(percent),
+      amount: computeAdminFee(invoice.totalAmount, percent),
+    }
+  }
   const lines = await db
     .select()
     .from(invoiceLines)
@@ -266,6 +287,7 @@ async function loadInvoiceDetail(invoiceId: string, scope: {
             amount: Number(invoice.adminFeeAmount),
           }
         : null,
+    pendingAdminFee,
     lines: lines
       .map((l) => ({
         id: l.id,
@@ -474,6 +496,10 @@ export const claimInvoicePayment = createServerFn({ method: 'POST' })
           putInvoiceProof(data.invoiceId, proof.bytes, proof.contentType),
       }),
     )
+    const { notifyPartnerPaymentClaimed } = await import(
+      './partner-notification-queries'
+    )
+    await notifyPartnerPaymentClaimed(data.invoiceId)
   })
 
 /** Partner menandai tagihan lunas setelah mengecek bukti bayar. */

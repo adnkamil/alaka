@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
+import PaymentProofViewer from '../../components/PaymentProofViewer'
 import UnderlineTabs from '../../components/ui/UnderlineTabs'
 import {
   adjustPartnerCredit,
@@ -37,7 +38,7 @@ const CREDITS_KEY = 'admin-partner-credits'
 function AdminPartnerTopupPage() {
   const [tab, setTab] = useState<Tab>('pending')
   return (
-    <main className="flex flex-col gap-4 p-4 lg:p-6">
+    <main className="pm-wide flex flex-col gap-4 px-4 pb-6 pt-6">
       <header>
         <h1 className="pm-display text-[22px] leading-tight">Top Up Partner</h1>
         <p className="mt-1 text-xs" style={{ color: 'var(--app-text-soft)' }}>
@@ -93,29 +94,34 @@ function TopupList({ status }: { status: AdminPartnerTopupRow['status'] }) {
           Tidak ada top up di tab ini.
         </div>
       )}
-      <div className="grid gap-3 lg:grid-cols-2">
+      <div className="flex flex-col gap-3 lg:hidden">
         {rows.map((row) => (
           <article key={row.id} className="app-card flex flex-col gap-3 p-4">
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <p className="truncate text-sm font-bold">{row.partnerName}</p>
-                <p className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
+                <p className="truncate text-[15px] font-bold">{row.partnerName}</p>
+                <p className="mt-0.5 text-xs" style={{ color: 'var(--app-text-soft)' }}>
                   Diajukan {formatWibDateTime(row.createdAt)}
-                  {row.reviewedAt ? ` · Ditinjau ${formatWibDateTime(row.reviewedAt)}` : ''}
                 </p>
+                {row.reviewedAt && (
+                  <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
+                    Ditinjau {formatWibDateTime(row.reviewedAt)}
+                  </p>
+                )}
               </div>
-              <span className="pm-num text-sm font-bold" style={{ color: 'var(--app-accent)' }}>
+              <span
+                className="pm-num shrink-0 whitespace-nowrap text-lg font-bold"
+                style={{ color: 'var(--app-accent)' }}
+              >
                 {formatRupiah(row.amount)}
               </span>
             </div>
             {row.hasProof && row.status === 'pending' && (
-              <a href={`/api/partner-topup-proof/${row.id}`} target="_blank" rel="noreferrer">
-                <img
-                  src={`/api/partner-topup-proof/${row.id}`}
-                  alt={`Bukti transfer top up ${row.partnerName}`}
-                  className="max-h-72 w-full rounded-xl border bg-white object-contain"
-                />
-              </a>
+              <PaymentProofViewer
+                src={`/api/partner-topup-proof/${row.id}`}
+                label="Lihat bukti transfer"
+                className="flex items-center gap-1.5 text-xs font-semibold"
+              />
             )}
             {row.status === 'rejected' && row.reviewNote && (
               <p className="text-sm">Alasan: {row.reviewNote}</p>
@@ -135,7 +141,7 @@ function TopupList({ status }: { status: AdminPartnerTopupRow['status'] }) {
                 <div className="flex justify-end gap-2">
                   <button
                     type="button"
-                    className="app-btn-outline"
+                    className="app-btn-outline whitespace-nowrap"
                     style={{ minHeight: 40, fontSize: 13 }}
                     disabled={busyId === row.id}
                     onClick={() => setRejectingId(null)}
@@ -144,7 +150,7 @@ function TopupList({ status }: { status: AdminPartnerTopupRow['status'] }) {
                   </button>
                   <button
                     type="button"
-                    className="app-btn-outline"
+                    className="app-btn-outline whitespace-nowrap"
                     style={{ minHeight: 40, fontSize: 13, color: 'var(--app-danger)' }}
                     disabled={busyId === row.id}
                     onClick={() =>
@@ -161,11 +167,11 @@ function TopupList({ status }: { status: AdminPartnerTopupRow['status'] }) {
               </div>
             )}
             {row.status === 'pending' && rejectingId !== row.id && (
-              <div className="flex justify-end gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
                 <button
                   type="button"
-                  className="app-btn-outline"
-                  style={{ minHeight: 40, fontSize: 13 }}
+                  className="app-btn-outline whitespace-nowrap sm:min-w-28"
+                  style={{ minHeight: 42, fontSize: 13, color: 'var(--app-danger)' }}
                   disabled={busyId === row.id}
                   onClick={() => {
                     setRejectingId(row.id)
@@ -176,17 +182,150 @@ function TopupList({ status }: { status: AdminPartnerTopupRow['status'] }) {
                 </button>
                 <button
                   type="button"
-                  className="app-btn-primary"
-                  style={{ minHeight: 40, fontSize: 13 }}
+                  className="app-btn-primary whitespace-nowrap sm:min-w-40"
+                  style={{ minHeight: 42, fontSize: 13 }}
                   disabled={busyId === row.id}
                   onClick={() => run(row.id, () => approvePartnerTopup({ data: { id: row.id } }))}
                 >
-                  Setujui · tambah saldo
+                  {busyId === row.id ? 'Memproses…' : 'Setujui & tambah saldo'}
                 </button>
               </div>
             )}
           </article>
         ))}
+      </div>
+      <div className={`app-card overflow-x-auto p-0 ${rows.length === 0 ? 'hidden' : 'hidden lg:block'}`}>
+        <table className="w-full min-w-[820px] text-[13px]">
+          <thead style={{ background: 'var(--pm-tint)' }}>
+            <tr>
+              {[
+                ['Partner', 'left'],
+                ['Diajukan', 'left'],
+                ...(status === 'pending' ? [] : [['Ditinjau', 'left']]),
+                ['Nominal', 'right'],
+                ...(status === 'rejected' ? [['Alasan', 'left']] : []),
+                ...(status === 'pending' ? [['Bukti', 'left'], ['Aksi', 'right']] : []),
+              ].map(([label, align]) => (
+                <th
+                  key={label}
+                  className={`px-4 py-3 text-[11px] font-bold uppercase tracking-wide ${align === 'right' ? 'text-right' : 'text-left'}`}
+                  style={{ color: 'var(--pm-gold)' }}
+                >
+                  {label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <Fragment key={row.id}>
+                <tr className="border-t align-middle" style={{ borderColor: 'var(--app-border)' }}>
+                  <td className="px-4 py-3 font-semibold">{row.partnerName}</td>
+                  <td className="whitespace-nowrap px-4 py-3" style={{ color: 'var(--app-text-soft)' }}>
+                    {formatWibDateTime(row.createdAt)}
+                  </td>
+                  {status !== 'pending' && (
+                    <td className="whitespace-nowrap px-4 py-3" style={{ color: 'var(--app-text-soft)' }}>
+                      {row.reviewedAt ? formatWibDateTime(row.reviewedAt) : '—'}
+                    </td>
+                  )}
+                  <td className="pm-num whitespace-nowrap px-4 py-3 text-right font-bold">
+                    {formatRupiah(row.amount)}
+                  </td>
+                  {status === 'rejected' && (
+                    <td className="px-4 py-3" style={{ color: 'var(--app-text-soft)' }}>
+                      {row.reviewNote || '—'}
+                    </td>
+                  )}
+                  {status === 'pending' && (
+                    <>
+                      <td className="px-4 py-3">
+                        {row.hasProof ? (
+                          <PaymentProofViewer
+                            src={`/api/partner-topup-proof/${row.id}`}
+                            label="Lihat bukti"
+                            className="flex items-center gap-1.5 text-xs font-semibold"
+                          />
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            className="app-btn-outline whitespace-nowrap"
+                            style={{ minHeight: 36, fontSize: 12, color: 'var(--app-danger)' }}
+                            disabled={busyId === row.id}
+                            onClick={() => {
+                              setRejectingId(row.id)
+                              setNote('')
+                            }}
+                          >
+                            Tolak
+                          </button>
+                          <button
+                            type="button"
+                            className="app-btn-primary whitespace-nowrap"
+                            style={{ minHeight: 36, fontSize: 12 }}
+                            disabled={busyId === row.id}
+                            onClick={() =>
+                              run(row.id, () => approvePartnerTopup({ data: { id: row.id } }))
+                            }
+                          >
+                            {busyId === row.id ? 'Memproses…' : 'Setujui & tambah saldo'}
+                          </button>
+                        </div>
+                      </td>
+                    </>
+                  )}
+                </tr>
+                {status === 'pending' && rejectingId === row.id && (
+                  <tr style={{ background: 'var(--app-accent-soft)' }}>
+                    <td colSpan={5} className="px-4 py-3">
+                      <div className="flex items-end gap-3">
+                        <label className="flex min-w-0 flex-1 flex-col gap-1">
+                          <span className="text-xs font-semibold">Alasan penolakan (opsional)</span>
+                          <input
+                            className="app-input"
+                            value={note}
+                            maxLength={500}
+                            onChange={(e) => setNote(e.target.value)}
+                            placeholder="Mis. nominal transfer tidak sesuai"
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          className="app-btn-outline whitespace-nowrap"
+                          style={{ minHeight: 40, fontSize: 13 }}
+                          disabled={busyId === row.id}
+                          onClick={() => setRejectingId(null)}
+                        >
+                          Batal
+                        </button>
+                        <button
+                          type="button"
+                          className="app-btn-outline whitespace-nowrap"
+                          style={{ minHeight: 40, fontSize: 13, color: 'var(--app-danger)' }}
+                          disabled={busyId === row.id}
+                          onClick={() =>
+                            run(row.id, () =>
+                              rejectPartnerTopup({
+                                data: { id: row.id, note: note.trim() || undefined },
+                              }),
+                            )
+                          }
+                        >
+                          Tolak top up
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            ))}
+          </tbody>
+        </table>
       </div>
     </>
   )
@@ -234,7 +373,7 @@ function CreditList() {
                   className="pm-num text-sm font-bold"
                   style={{ color: row.balance < 0 ? 'var(--app-danger)' : 'var(--app-text)' }}
                 >
-                  {row.balance < 0 ? `Tunggakan ${formatRupiah(-row.balance)}` : formatRupiah(row.balance)}
+                  {formatRupiah(row.balance)}
                 </span>
                 {adjustingId !== row.id && (
                   <button

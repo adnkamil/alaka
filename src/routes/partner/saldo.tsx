@@ -7,7 +7,6 @@ import Toast from '../../components/ui/Toast'
 import UnderlineTabs from '../../components/ui/UnderlineTabs'
 import { formatWibDateTime } from '../../lib/event-slot'
 import { formatInvoiceNumber } from '../../lib/invoice-rules'
-import { creditBalanceState } from '../../lib/partner-credit'
 import {
   fetchPartnerCreditOverview,
   submitPartnerTopup,
@@ -57,7 +56,7 @@ function PartnerCreditPage() {
     setToast('Bukti top up terkirim. Saldo bertambah setelah admin memverifikasi.')
   }
 
-  const state = data ? creditBalanceState(data.balance) : null
+  const balance = data ? Number(data.balance) : null
 
   return (
     <main className="pm-wide flex flex-col gap-4 px-5 pb-8 pt-4 lg:max-w-[760px]! lg:gap-5">
@@ -76,7 +75,7 @@ function PartnerCreditPage() {
         </p>
       )}
 
-      {data && state && (
+      {data && balance !== null && (
         <>
           <section className="app-card flex flex-col gap-3 p-4 lg:p-5">
             <div className="flex items-center gap-3">
@@ -85,13 +84,13 @@ function PartnerCreditPage() {
               </span>
               <div className="min-w-0 flex-1">
                 <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
-                  {state.arrears > 0 ? 'Tunggakan biaya admin' : 'Saldo'}
+                  Saldo
                 </p>
                 <p
                   className="pm-num text-2xl font-bold"
-                  style={{ color: state.arrears > 0 ? 'var(--app-danger)' : 'var(--app-text)' }}
+                  style={{ color: balance < 0 ? 'var(--app-danger)' : 'var(--app-text)' }}
                 >
-                  {formatRupiah(state.arrears > 0 ? state.arrears : state.balance)}
+                  {formatRupiah(balance)}
                 </p>
               </div>
               <button
@@ -105,9 +104,9 @@ function PartnerCreditPage() {
                 Top up
               </button>
             </div>
-            {state.arrears > 0 && (
+            {balance < 0 && (
               <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
-                Tunggakan tertutup otomatis dari top up berikutnya.
+                Saldo minus tertutup otomatis dari top up berikutnya.
               </p>
             )}
             {data.pendingTopup && (

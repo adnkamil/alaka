@@ -400,6 +400,13 @@
       "when": 1795363106809,
       "tag": "0056_saldo_kredit_partner",
       "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1795408348081,
+      "tag": "0057_notifikasi_partner",
+      "breakpoints": true
     }
   ]
 }

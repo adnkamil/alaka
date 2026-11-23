@@ -30,7 +30,6 @@ import {
   normalizePartnerProfile,
 } from '../../lib/partner-profile-rules'
 import { currentPartnerQuery } from '../../lib/queries'
-import { creditBalanceState } from '../../lib/partner-credit'
 import { fetchPartnerCreditOverview } from '../../lib/partner-credit-functions'
 import { formatRupiah } from '../../lib/partner-product-rules'
 
@@ -316,7 +315,7 @@ function CreditCard() {
     queryKey: ['partner-credit'],
     queryFn: () => fetchPartnerCreditOverview(),
   })
-  const state = data ? creditBalanceState(data.balance) : null
+  const balance = data ? Number(data.balance) : null
   return (
     <Link
       to="/partner/saldo"
@@ -330,14 +329,12 @@ function CreditCard() {
         <span
           className="pm-num block text-xs"
           style={{
-            color: state && state.arrears > 0 ? 'var(--app-danger)' : 'var(--app-text-soft)',
+            color: balance !== null && balance < 0 ? 'var(--app-danger)' : 'var(--app-text-soft)',
           }}
         >
-          {!state
+          {balance === null
             ? 'Untuk biaya admin ALAKA'
-            : state.arrears > 0
-              ? `Tunggakan ${formatRupiah(state.arrears)}`
-              : formatRupiah(state.balance)}
+            : formatRupiah(balance)}
         </span>
       </span>
       <ChevronRight size={18} style={{ color: 'var(--app-text-mute)' }} />

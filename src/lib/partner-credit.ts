@@ -53,17 +53,3 @@ export function computeAdminFee(
   const scale = 1_000_000n
   return Number((totalCents * percentHundredths + scale / 2n) / scale)
 }
-
-/**
- * Tampilan saldo: saldo negatif ditampilkan sebagai tunggakan biaya admin
- * (positif), bukan "saldo minus".
- */
-export function creditBalanceState(balance: string | number): {
-  balance: number
-  arrears: number
-} {
-  const cents = toCents(balance)
-  return cents < 0
-    ? { balance: 0, arrears: -cents / 100 }
-    : { balance: cents / 100, arrears: 0 }
-}

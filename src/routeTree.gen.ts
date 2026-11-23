@@ -25,6 +25,7 @@ import { Route as AdminPartnerRouteImport } from './routes/admin/partner'
 import { Route as AdminPengaturanRouteImport } from './routes/admin/pengaturan'
 import { Route as AdminTopupPartnerRouteImport } from './routes/admin/topup-partner'
 import { Route as PartnerIndexRouteImport } from './routes/partner/index'
+import { Route as PartnerNotifikasiRouteImport } from './routes/partner/notifikasi'
 import { Route as PartnerProfilRouteImport } from './routes/partner/profil'
 import { Route as PartnerSaldoRouteImport } from './routes/partner/saldo'
 import { Route as ResetSandiPartnerTokenRouteImport } from './routes/reset-sandi-partner.$token'
@@ -158,6 +159,11 @@ const AdminTopupPartnerRoute = AdminTopupPartnerRouteImport.update({
 const PartnerIndexRoute = PartnerIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => PartnerRoute,
+} as any)
+const PartnerNotifikasiRoute = PartnerNotifikasiRouteImport.update({
+  id: '/notifikasi',
+  path: '/notifikasi',
   getParentRoute: () => PartnerRoute,
 } as any)
 const PartnerProfilRoute = PartnerProfilRouteImport.update({
@@ -457,6 +463,7 @@ export interface FileRoutesByFullPath {
   '/admin/partner': typeof AdminPartnerRoute
   '/admin/pengaturan': typeof AdminPengaturanRoute
   '/admin/topup-partner': typeof AdminTopupPartnerRoute
+  '/partner/notifikasi': typeof PartnerNotifikasiRoute
   '/partner/profil': typeof PartnerProfilRoute
   '/partner/saldo': typeof PartnerSaldoRoute
   '/reset-sandi-partner/$token': typeof ResetSandiPartnerTokenRoute
@@ -526,6 +533,7 @@ export interface FileRoutesByTo {
   '/admin/partner': typeof AdminPartnerRoute
   '/admin/pengaturan': typeof AdminPengaturanRoute
   '/admin/topup-partner': typeof AdminTopupPartnerRoute
+  '/partner/notifikasi': typeof PartnerNotifikasiRoute
   '/partner/profil': typeof PartnerProfilRoute
   '/partner/saldo': typeof PartnerSaldoRoute
   '/reset-sandi-partner/$token': typeof ResetSandiPartnerTokenRoute
@@ -600,6 +608,7 @@ export interface FileRoutesById {
   '/admin/partner': typeof AdminPartnerRoute
   '/admin/pengaturan': typeof AdminPengaturanRoute
   '/admin/topup-partner': typeof AdminTopupPartnerRoute
+  '/partner/notifikasi': typeof PartnerNotifikasiRoute
   '/partner/profil': typeof PartnerProfilRoute
   '/partner/saldo': typeof PartnerSaldoRoute
   '/reset-sandi-partner/$token': typeof ResetSandiPartnerTokenRoute
@@ -675,6 +684,7 @@ export interface FileRouteTypes {
     | '/admin/partner'
     | '/admin/pengaturan'
     | '/admin/topup-partner'
+    | '/partner/notifikasi'
     | '/partner/profil'
     | '/partner/saldo'
     | '/reset-sandi-partner/$token'
@@ -744,6 +754,7 @@ export interface FileRouteTypes {
     | '/admin/partner'
     | '/admin/pengaturan'
     | '/admin/topup-partner'
+    | '/partner/notifikasi'
     | '/partner/profil'
     | '/partner/saldo'
     | '/reset-sandi-partner/$token'
@@ -817,6 +828,7 @@ export interface FileRouteTypes {
     | '/admin/partner'
     | '/admin/pengaturan'
     | '/admin/topup-partner'
+    | '/partner/notifikasi'
     | '/partner/profil'
     | '/partner/saldo'
     | '/reset-sandi-partner/$token'
@@ -1014,6 +1026,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/partner/'
       preLoaderRoute: typeof PartnerIndexRouteImport
+      parentRoute: typeof PartnerRoute
+    }
+    '/partner/notifikasi': {
+      id: '/partner/notifikasi'
+      path: '/notifikasi'
+      fullPath: '/partner/notifikasi'
+      preLoaderRoute: typeof PartnerNotifikasiRouteImport
       parentRoute: typeof PartnerRoute
     }
     '/partner/profil': {
@@ -1483,6 +1502,7 @@ const AdminRouteChildren: AdminRouteChildren = {
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface PartnerRouteChildren {
+  PartnerNotifikasiRoute: typeof PartnerNotifikasiRoute
   PartnerProfilRoute: typeof PartnerProfilRoute
   PartnerSaldoRoute: typeof PartnerSaldoRoute
   PartnerIndexRoute: typeof PartnerIndexRoute
@@ -1504,6 +1524,7 @@ interface PartnerRouteChildren {
 }
 
 const PartnerRouteChildren: PartnerRouteChildren = {
+  PartnerNotifikasiRoute: PartnerNotifikasiRoute,
   PartnerProfilRoute: PartnerProfilRoute,
   PartnerSaldoRoute: PartnerSaldoRoute,
   PartnerIndexRoute: PartnerIndexRoute,

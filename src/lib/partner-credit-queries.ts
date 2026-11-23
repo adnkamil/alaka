@@ -107,7 +107,7 @@ export async function approvePartnerTopupTx(
 export async function rejectPartnerTopupTx(
   tx: OrderTx,
   input: { topupId: string; adminId: string; note: string | null },
-): Promise<void> {
+): Promise<{ partnerId: string }> {
   const topup = await lockPendingTopup(tx, input.topupId)
   const now = new Date()
   await tx
@@ -120,4 +120,5 @@ export async function rejectPartnerTopupTx(
       updatedAt: now,
     })
     .where(eq(partnerTopups.id, topup.id))
+  return { partnerId: topup.partnerId }
 }

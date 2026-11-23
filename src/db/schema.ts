@@ -1800,3 +1800,31 @@ export const partnerCreditLedger = pgTable(
     ),
   ],
 )
+
+// NOTIFIKASI PARTNER
+// Satu baris = satu notifikasi untuk satu partner (tanpa broadcast), jadi status
+// dibaca cukup satu kolom `read_at` (null = belum dibaca). `link` = path
+// Partner Portal tujuan saat diklik (null = tidak bisa diklik).
+export const partnerNotifications = pgTable(
+  'partner_notifications',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    partnerId: uuid('partner_id')
+      .notNull()
+      .references(() => partners.id, { onDelete: 'cascade' }),
+    kind: varchar().notNull(), // 'jastiper_ikut' | 'bukti_bayar' | 'topup_disetujui' | 'topup_ditolak'
+    title: varchar().notNull(),
+    body: text(),
+    link: varchar(),
+    readAt: timestamp('read_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('partner_notifications_partner_created_idx').on(
+      table.partnerId,
+      table.createdAt,
+    ),
+  ],
+)

@@ -4,7 +4,6 @@ import {
   PARTNER_TOPUP_AMOUNTS,
   centsToDecimal,
   computeAdminFee,
-  creditBalanceState,
   isPartnerTopupAmount,
   nextBalance,
   toCents,
@@ -65,17 +64,5 @@ describe('computeAdminFee', () => {
   })
   it('total besar tidak overflow', () => {
     assert.equal(computeAdminFee('999999999999.99', '100'), 1_000_000_000_000)
-  })
-})
-
-describe('creditBalanceState', () => {
-  it('saldo positif', () => {
-    assert.deepEqual(creditBalanceState('8000.00'), { balance: 8000, arrears: 0 })
-  })
-  it('saldo negatif jadi tunggakan', () => {
-    assert.deepEqual(creditBalanceState('-2000.00'), { balance: 0, arrears: 2000 })
-  })
-  it('nol', () => {
-    assert.deepEqual(creditBalanceState('0'), { balance: 0, arrears: 0 })
   })
 })

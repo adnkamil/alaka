@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { CalendarDays, Package, Search } from 'lucide-react'
 import PartnerLogo from './PartnerLogo'
+import PartnerNotificationBell from './PartnerNotificationBell'
 import { matchesSearch } from '../lib/partner-dashboard-rules'
 import { partnerInitials } from '../lib/partner-logo-rules'
 import { getPartnerJastiperDetail } from '../lib/partner-jastiper-detail'
@@ -188,6 +189,8 @@ export default function PartnerTopbar({ name, logoUrl }: PartnerTopbarProps) {
       </div>
       )}
 
+      <div className="flex items-center gap-2">
+      <PartnerNotificationBell />
       <Link
         to="/partner/profil"
         aria-label="Profil"
@@ -204,6 +207,7 @@ export default function PartnerTopbar({ name, logoUrl }: PartnerTopbarProps) {
         />
         <span className="text-[13px] font-bold">{name}</span>
       </Link>
+      </div>
     </header>
   )
 }

@@ -59,9 +59,17 @@ export const approvePartnerTopup = createServerFn({ method: 'POST' })
     const admin = await requireAdminUser()
     const { db } = await import('../db')
     const { approvePartnerTopupTx } = await import('./partner-credit-queries')
-    await db.transaction((tx) =>
+    const { partnerId } = await db.transaction((tx) =>
       approvePartnerTopupTx(tx, { topupId: data.id, adminId: admin.id }),
     )
+    const { notifyPartner } = await import('./partner-notification-queries')
+    await notifyPartner({
+      partnerId,
+      kind: 'topup_disetujui',
+      title: 'Top up saldo disetujui',
+      body: 'Saldo kredit kamu sudah bertambah.',
+      link: '/partner/saldo',
+    })
     return { ok: true as const }
   })
 
@@ -77,13 +85,21 @@ export const rejectPartnerTopup = createServerFn({ method: 'POST' })
     const admin = await requireAdminUser()
     const { db } = await import('../db')
     const { rejectPartnerTopupTx } = await import('./partner-credit-queries')
-    await db.transaction((tx) =>
+    const { partnerId } = await db.transaction((tx) =>
       rejectPartnerTopupTx(tx, {
         topupId: data.id,
         adminId: admin.id,
         note: data.note ? data.note : null,
       }),
     )
+    const { notifyPartner } = await import('./partner-notification-queries')
+    await notifyPartner({
+      partnerId,
+      kind: 'topup_ditolak',
+      title: 'Top up saldo ditolak',
+      body: data.note ? data.note : 'Bukti transfer tidak valid. Ajukan ulang.',
+      link: '/partner/saldo',
+    })
     return { ok: true as const }
   })
 
