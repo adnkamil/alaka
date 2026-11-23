@@ -9,8 +9,11 @@ import {
   invoices,
   notifications,
   partners,
+  subscriptionSettings,
 } from '../db/schema'
 import { chunk } from './chunk'
+import { centsToDecimal, computeAdminFee } from './partner-credit'
+import { postCreditEntry } from './partner-credit-queries'
 import { poolInvoiceBilling } from './invoice-pooling-queries'
 import { analyzeSubmits } from './submit-replacement-groups'
 import { waiveHolesTx } from './submit-replacement-queries'
@@ -494,10 +497,35 @@ export async function confirmInvoicePaidTx(
   })
   const next = nextInvoiceStatus(invoice.status, 'confirm_paid')
   const now = new Date()
+
+  // Biaya admin ALAKA: persen saat ini di-snapshot ke tagihan, lalu dipotong
+  // dari saldo kredit partner. Saldo boleh minus (tunggakan sampai top up).
+  // Lunas tidak bisa dibatalkan, jadi potongan ini tidak pernah perlu dibalik.
+  const settings = await tx
+    .select({ adminFeePercent: subscriptionSettings.adminFeePercent })
+    .from(subscriptionSettings)
+    .limit(1)
+    .then((rows) => rows.at(0))
+  const adminFeePercent = settings?.adminFeePercent ?? '0'
+  const adminFee = computeAdminFee(invoice.totalAmount, adminFeePercent)
+
   await tx
     .update(invoices)
-    .set({ status: next, paidConfirmedAt: now, updatedAt: now })
+    .set({
+      status: next,
+      paidConfirmedAt: now,
+      adminFeePercent,
+      adminFeeAmount: centsToDecimal(adminFee * 100),
+      updatedAt: now,
+    })
     .where(eq(invoices.id, invoice.id))
+  if (adminFee > 0) {
+    await postCreditEntry(tx, invoice.partnerId, {
+      type: 'admin_fee',
+      amount: -adminFee,
+      invoiceId: invoice.id,
+    })
+  }
   await tx.insert(notifications).values({
     brandId: invoice.brandId,
     kind: 'tagihan',

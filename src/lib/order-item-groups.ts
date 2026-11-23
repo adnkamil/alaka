@@ -1,6 +1,6 @@
 // Pembagian dan label item pesanan untuk tampilan "barang satuan" dan "paket".
 // Logika murni, tanpa db dan tanpa React.
-import { partnerItemName, variantLabel } from './partner-item-label'
+import { partnerItemName, variantDisplayLabel } from './partner-item-label'
 
 export type OrderItemLike = {
   isBundle: boolean
@@ -32,7 +32,7 @@ export function pendingNoteText(p: { pcsShort: number; ruleName: string }): stri
   return `${p.pcsShort} pcs lagi untuk ${p.ruleName}`
 }
 
-/** Nama komponen paket, misalnya "Kana Longsleeve Set (S / Marine Cove)". */
+/** Nama komponen paket untuk ditampilkan, misalnya "Kana Longsleeve Set (Marine Cove / S)". */
 export function componentDisplayName(c: {
   productName: string
   size: string | null
@@ -40,6 +40,6 @@ export function componentDisplayName(c: {
 }): string {
   return partnerItemName(
     c.productName,
-    variantLabel({ size: c.size, variation: c.variation }),
+    variantDisplayLabel({ size: c.size, variation: c.variation }),
   )
 }

@@ -228,8 +228,8 @@ export default function PartnerCatalogPicker({
             sizes.length === 0 && variations.length === 0
               ? 'Tanpa varian'
               : [
-                  sizes.length ? `${sizes.length} ukuran` : null,
                   variations.length ? `${variations.length} variasi` : null,
+                  sizes.length ? `${sizes.length} ukuran` : null,
                 ]
                   .filter(Boolean)
                   .join(' · ')
@@ -430,16 +430,6 @@ function VariantSheet({
           </div>
         )}
 
-        {sizes.length > 0 && (
-          <div>
-            <p className="mb-2 text-xs" style={{ color: 'var(--app-text-soft)' }}>Ukuran</p>
-            <div className="flex flex-wrap gap-2">
-              {sizes.map((s) => (
-                <Chip key={s} label={s} selected={size === s} disabled={!available('size', s)} onClick={() => setSize(s)} />
-              ))}
-            </div>
-          </div>
-        )}
         {variations.length > 0 && (
           <div>
             <p className="mb-2 text-xs" style={{ color: 'var(--app-text-soft)' }}>Variasi</p>
@@ -457,11 +447,21 @@ function VariantSheet({
             </div>
           </div>
         )}
+        {sizes.length > 0 && (
+          <div>
+            <p className="mb-2 text-xs" style={{ color: 'var(--app-text-soft)' }}>Ukuran</p>
+            <div className="flex flex-wrap gap-2">
+              {sizes.map((s) => (
+                <Chip key={s} label={s} selected={size === s} disabled={!available('size', s)} onClick={() => setSize(s)} />
+              ))}
+            </div>
+          </div>
+        )}
         {variant === null && (sizes.length > 0 || variations.length > 0) && (
           <p className="text-xs" style={{ color: PINK }}>
             {size && variation === null && variations.length > 0
               ? `${label} tidak dijual. Pilih variasi lain.`
-              : 'Pilih ukuran dan variasi dulu.'}
+              : 'Pilih variasi dan ukuran dulu.'}
           </p>
         )}
 

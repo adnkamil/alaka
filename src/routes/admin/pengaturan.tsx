@@ -11,11 +11,13 @@ import {
   LogOut,
   Megaphone,
   Pencil,
+  Percent,
   QrCode,
 } from 'lucide-react'
 import UpdateQrisModal from '../../components/UpdateQrisModal'
 import {
   fetchSubscriptionSettingsAdmin,
+  updateAdminFeePercent,
   updateSubscriptionPrice,
   updateSubscriptionQris,
 } from '../../lib/admin-functions'
@@ -320,6 +322,10 @@ function AdminSettingsPage() {
         </div>
       </section>
 
+      <AdminFeeSection
+        savedPercent={Number(subscriptionSettings?.adminFeePercent ?? '0')}
+      />
+
       <button
         type="button"
         onClick={handleLogout}
@@ -341,6 +347,130 @@ function AdminSettingsPage() {
         />
       )}
     </main>
+  )
+}
+
+/** Ubah "2,5" / "2.5" jadi 2.5; null kalau bukan angka. */
+function parsePercentInput(raw: string): number | null {
+  const cleaned = raw.trim().replace(',', '.')
+  if (!/^\d{1,3}(\.\d{1,2})?$/.test(cleaned)) return null
+  return Number(cleaned)
+}
+
+/**
+ * Biaya admin partner: persen dari harga produk di tagihan partner yang lunas,
+ * dipotong dari saldo kredit partner. Hanya berlaku untuk tagihan yang lunas
+ * setelah diubah.
+ */
+function AdminFeeSection({ savedPercent }: { savedPercent: number }) {
+  const queryClient = useQueryClient()
+  const [editing, setEditing] = useState(false)
+  const [input, setInput] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const display = savedPercent.toLocaleString('id-ID', { maximumFractionDigits: 2 })
+
+  async function handleSave() {
+    const percent = parsePercentInput(input)
+    if (percent === null || percent > 100) {
+      setError('Isi persen 0–100, maksimal 2 angka di belakang koma.')
+      return
+    }
+    setSaving(true)
+    setError(null)
+    try {
+      await updateAdminFeePercent({ data: { percent } })
+      await queryClient.invalidateQueries({ queryKey: ['admin-subscription-settings'] })
+      setEditing(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Gagal menyimpan persen')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <section className="app-card mb-6 p-4">
+      <p className="mb-3 text-xs font-semibold uppercase" style={{ color: 'var(--app-text-mute)' }}>
+        Biaya Admin Partner
+      </p>
+      <div className="flex items-center gap-3">
+        <span
+          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg"
+          style={{ background: 'var(--app-accent-soft)', color: 'var(--app-accent)' }}
+        >
+          <Percent size={22} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold">Persen dari harga produk</p>
+          <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
+            Dipotong dari saldo kredit partner saat tagihan ke jastiper lunas. Perubahan
+            hanya berlaku untuk tagihan yang lunas berikutnya.
+          </p>
+          {!editing && <p className="mt-1 pm-num text-base font-bold">{display}%</p>}
+        </div>
+        {!editing && (
+          <button
+            type="button"
+            onClick={() => {
+              setInput(display)
+              setError(null)
+              setEditing(true)
+            }}
+            className="app-btn-outline flex shrink-0 items-center gap-1.5 text-xs"
+          >
+            <Pencil size={13} />
+            Ubah
+          </button>
+        )}
+      </div>
+      {editing && (
+        <div className="mt-3 flex flex-col gap-3">
+          <div
+            className="flex items-center overflow-hidden rounded-xl border"
+            style={{ borderColor: 'var(--app-border)' }}
+          >
+            <input
+              autoFocus
+              inputMode="decimal"
+              aria-label="Persen biaya admin"
+              value={input}
+              onChange={(e) => setInput(e.target.value.replace(/[^\d.,]/g, ''))}
+              className="app-input min-w-0 flex-1 border-0"
+              placeholder="2,5"
+            />
+            <span className="shrink-0 px-3 text-sm" style={{ color: 'var(--app-text-soft)' }}>
+              %
+            </span>
+          </div>
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => setEditing(false)}
+              className="shrink-0 rounded-xl px-3 py-2 text-xs font-semibold disabled:opacity-50"
+              style={{ border: '1px solid var(--app-border)', color: 'var(--app-text-soft)' }}
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              disabled={saving}
+              onClick={handleSave}
+              className="shrink-0 rounded-xl px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+              style={{ background: 'var(--app-accent)' }}
+            >
+              {saving ? 'Menyimpan...' : 'Simpan'}
+            </button>
+          </div>
+        </div>
+      )}
+      {error && (
+        <p role="alert" className="mt-2 text-xs" style={{ color: 'var(--app-danger)' }}>
+          {error}
+        </p>
+      )}
+    </section>
   )
 }
 

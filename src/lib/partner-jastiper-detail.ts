@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, eq, inArray } from 'drizzle-orm'
+import { and, eq, inArray, ne, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { requirePartner } from './partner-auth'
 import { partnerOwnsEvent } from './partner-event-queries'
@@ -432,7 +432,45 @@ export const getPartnerEventRevenue = createServerFn({ method: 'GET' })
     // Hitungan per barang (bukan per status event): brand yang sudah submit
     // tetap menghitung barang yang sudah disetujui, walau sebagian masih menunggu.
     const counted = perBrand.filter((b) => b.bucket !== 'draft')
+
+    // Nominal yang ditampilkan hanya dari tagihan (snapshot harga), supaya angka
+    // tidak ikut berubah kalau partner mengubah harga katalog. Tagihan yang
+    // dibatalkan tidak dihitung: submitnya kembali bebas ditagih.
+    const { invoices } = await import('../db/schema')
+    const invoiceRows = await db
+      .select({
+        status: invoices.status,
+        amount: sql<string>`coalesce(sum(${invoices.totalAmount}), 0)`,
+        pcs: sql<string>`coalesce(sum(${invoices.totalPcs}), 0)`,
+        count: sql<string>`count(*)`,
+      })
+      .from(invoices)
+      .where(
+        and(
+          eq(invoices.calendarEventId, data.calendarEventId),
+          eq(invoices.partnerId, partner.id),
+          ne(invoices.status, 'dibatalkan'),
+        ),
+      )
+      .groupBy(invoices.status)
+    const emptyBucket = { amount: 0, pcs: 0, count: 0 }
+    const invoiced = {
+      lunas: { ...emptyBucket },
+      menunggu_review: { ...emptyBucket },
+      ditagih: { ...emptyBucket },
+    }
+    for (const r of invoiceRows) {
+      if (r.status === 'dibatalkan') continue
+      invoiced[r.status] = {
+        amount: Number(r.amount),
+        pcs: Number(r.pcs),
+        count: Number(r.count),
+      }
+    }
+
     return {
+      /** Tagihan aktif per status. Nominal dari snapshot tagihan, tidak berubah. */
+      invoiced,
       slotEnabled,
       totalAmount: perBrand.reduce((s, b) => s + b.totalAmount, 0),
       totalPcs: perBrand.reduce((s, b) => s + b.totalPcs, 0),

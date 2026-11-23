@@ -52,7 +52,7 @@ function rupiah(n: number) {
 }
 
 function variantLabel(v: CatalogVariant) {
-  return [v.size, v.variation].filter(Boolean).join(' · ') || 'Standar'
+  return [v.variation, v.size].filter(Boolean).join(' · ') || 'Standar'
 }
 
 /**

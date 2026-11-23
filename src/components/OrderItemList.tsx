@@ -5,6 +5,7 @@ import RupiahInput from './ui/RupiahInput'
 import { lineTotal } from '../lib/order-totals'
 import type { SubmitStatus } from '../lib/submit-status'
 import type { PendingRuleInfo } from '../lib/partner-paket-pending'
+import { itemDisplayName, variantDisplayLabel } from '../lib/partner-item-label'
 import {
   bundleRuleLabel,
   componentDisplayName,
@@ -55,6 +56,8 @@ interface OrderItemListProps {
   onChangeComponent?: (componentId: string, partnerVariantId: string) => Promise<void>
   /** Pesanan sudah dikirim ke partner: isi paket tidak bisa dihapus dari sini. */
   locked?: boolean
+  /** Event terhubung ke partner: semua nama barang dari katalog (tampil variasi dulu). */
+  partnerEvent?: boolean
 }
 
 type ComponentView = OrderItemView['components'][number]
@@ -114,7 +117,7 @@ function mergeComponents(groupItems: Array<OrderItemView>): Array<MergedLine> {
 
 /** Satu komponen dengan tampilan yang sama seperti barang satuan: nama, varian di bawahnya. */
 function ComponentLine({ component }: { component: ComponentView }) {
-  const label = [component.size, component.variation].filter(Boolean).join(' / ')
+  const label = variantDisplayLabel(component)
   return (
     <div className="min-w-0 flex-1">
       <p className="truncate text-sm">{component.productName}</p>
@@ -135,6 +138,7 @@ export default function OrderItemList({
   onSaveBundlePrice,
   onRemoveComponent,
   locked = false,
+  partnerEvent = false,
 }: OrderItemListProps) {
   const { singles: rawSingles, bundles } = splitOrderItems(items)
   // Barang satuan yang sama (varian, harga, fee) ditampilkan sebagai satu baris dengan qty.
@@ -253,7 +257,7 @@ export default function OrderItemList({
           {singles.map((item) => (
             <div key={item.id} className="flex items-start justify-between gap-3 text-sm">
               <div className="min-w-0 flex-1">
-                <p className="break-words">{item.name}</p>
+                <p className="break-words">{itemDisplayName(item, partnerEvent)}</p>
                 {item.groupLabel && (
                   <p className="text-[11px]" style={{ color: 'var(--app-text-mute)' }}>
                     {item.groupLabel}

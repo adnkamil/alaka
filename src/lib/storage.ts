@@ -164,6 +164,42 @@ export async function deleteInvoiceProof(invoiceId: string): Promise<void> {
   await paymentProofStore().delete(invoiceProofKey(invoiceId))
 }
 
+// --- Bukti transfer top up saldo partner ----------------------------------
+//
+// PRIVAT: hanya admin ALAKA yang boleh melihat (route
+// `/api/partner-topup-proof/$id`). Store yang sama, key diberi awalan `topup-`.
+
+const topupProofKey = (topupId: string) => `topup-${topupId}`
+
+export async function putTopupProof(
+  topupId: string,
+  bytes: Uint8Array,
+  contentType: PaymentProofContentType,
+): Promise<void> {
+  const body = new Blob([new Uint8Array(bytes)], { type: contentType })
+  await paymentProofStore().set(topupProofKey(topupId), body, {
+    metadata: { contentType },
+  })
+}
+
+export async function getTopupProof(
+  topupId: string,
+): Promise<{ data: ArrayBuffer; contentType: PaymentProofContentType } | null> {
+  const result = await paymentProofStore().getWithMetadata(
+    topupProofKey(topupId),
+    { type: 'blob' },
+  )
+  if (!result) return null
+  const data = await result.data.arrayBuffer()
+  const contentType = detectPaymentProofContentType(new Uint8Array(data))
+  if (!contentType) return null
+  return { data, contentType }
+}
+
+export async function deleteTopupProof(topupId: string): Promise<void> {
+  await paymentProofStore().delete(topupProofKey(topupId))
+}
+
 // --- Banner event kalender ----------------------------------------------
 //
 // Sama dengan avatar: publik (cuma gambar banner, id event berupa UUID acak),

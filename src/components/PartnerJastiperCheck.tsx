@@ -15,6 +15,7 @@ import SortHeader, { ariaSortOf } from './ui/SortHeader'
 import { sortRows } from '../lib/table-sort'
 import { useTableSort } from '../lib/use-table-sort'
 import { mergeReviewedRows } from '../lib/partner-review-merge'
+import { displayItemName } from '../lib/partner-item-label'
 import {
   allocateApproved,
   overStockRowIds,
@@ -632,7 +633,7 @@ function SubmitBlock({
       .filter((p) => p.replacements.length > 0)
       .map((p) => [
         p.rejected.id,
-        p.replacements.map((r) => r.label).join(', '),
+        p.replacements.map((r) => displayItemName(r.label)).join(', '),
       ]),
   )
   const pagedRows = rowPager.paged
@@ -872,7 +873,7 @@ function SubmitBlock({
                         className="mt-0.5 block text-[11px] font-semibold"
                         style={{ color: '#9c463b' }}
                       >
-                        ↳ Pengganti untuk {row.replaces}
+                        ↳ Pengganti untuk {displayItemName(row.replaces)}
                       </span>
                     )}
                     {replacedBy.get(row.id) && (
@@ -1027,7 +1028,7 @@ function ReplacementPairs({ pairs }: { pairs: Array<ReplacementPair> }) {
                 <div className="flex flex-wrap items-center gap-2">
                   <PartnerRowChip label="Ditolak" tone="danger" />
                   <span className="font-semibold line-through decoration-1">
-                    {root.rejected.label}
+                    {displayItemName(root.rejected.label)}
                   </span>
                   <span
                     className="pm-num"
@@ -1074,7 +1075,7 @@ function ReplacementChain({
               <span
                 className={`font-semibold ${r.status === 'disanggah' ? 'line-through decoration-1' : ''}`}
               >
-                {r.label}
+                {displayItemName(r.label)}
               </span>
               <span
                 className="pm-num"

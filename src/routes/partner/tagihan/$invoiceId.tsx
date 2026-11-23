@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
 import { ArrowLeft, MessageCircle, Printer } from 'lucide-react'
+import ConfirmPaidModal from '../../../components/ConfirmPaidModal'
 import { BankInfo } from '../../../components/InvoiceDetailModal'
 import UnderlineTabs from '../../../components/ui/UnderlineTabs'
 import InvoiceDocument from '../../../components/InvoiceDocument'
@@ -41,6 +42,7 @@ function PartnerInvoiceDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [proofKey, setProofKey] = useState(0)
   const [view, setView] = useState<View>('tagihan')
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
   const detail = useQuery({
     queryKey: ['invoice-detail', 'partner', invoiceId],
@@ -56,10 +58,13 @@ function PartnerInvoiceDetailPage() {
         'partner-submit-list',
         'partner-event-revenue',
         'partner-jastiper-detail',
+        // Lunas memotong biaya admin dari saldo kredit.
+        'partner-credit',
       ].map((key) => queryClient.invalidateQueries({ queryKey: [key] })),
     )
     setProofKey((k) => k + 1)
     setStep(null)
+    setConfirmOpen(false)
     setReason('')
     setError(null)
   }
@@ -187,75 +192,6 @@ function PartnerInvoiceDetailPage() {
                   <InvoiceDocument invoice={d} />
                 </div>
                 <div className="flex flex-col gap-4 print:hidden">
-            <section className="app-card flex flex-col gap-3 p-4 text-[13px]">
-              <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-5">
-                <Info label="Jastiper">
-                  <Link
-                    to="/partner/event/jastiper/$id/$brandId"
-                    params={{ id: d.calendarEventId, brandId: d.brandId }}
-                    search={{ submit: undefined }}
-                    className="font-semibold no-underline"
-                    style={{ color: 'var(--app-accent)' }}
-                  >
-                    {d.brandName}
-                  </Link>
-                </Info>
-                <Info label="Event">
-                  <Link
-                    to="/partner/event/$id"
-                    params={{ id: d.calendarEventId }}
-                    className="font-semibold no-underline"
-                    style={{ color: 'var(--app-accent)' }}
-                  >
-                    {d.eventName}
-                  </Link>
-                </Info>
-                <Info label="Jumlah barang">
-                  <span className="pm-num font-semibold">{d.totalPcs} pcs</span>
-                </Info>
-                <Info label="Total invoice">
-                  <span className="pm-num font-bold">{formatRupiah(d.totalAmount)}</span>
-                </Info>
-                <Info label="Submit">
-                  <span className="flex flex-wrap gap-x-2">
-                    {d.submitNos.map((n) => (
-                      <Link
-                        key={n}
-                        to="/partner/event/jastiper/$id/$brandId"
-                        params={{ id: d.calendarEventId, brandId: d.brandId }}
-                        search={{ submit: n }}
-                        className="pm-num font-semibold no-underline"
-                        style={{ color: 'var(--app-accent)' }}
-                      >
-                        #{n}
-                      </Link>
-                    ))}
-                  </span>
-                </Info>
-              </dl>
-              {d.status === 'dibatalkan' && (
-                <p style={{ color: 'var(--app-text-soft)' }}>
-                  Dibatalkan {d.cancelledAt ? formatWibDateTime(d.cancelledAt) : ''}
-                  {d.cancelReason ? ` · ${d.cancelReason}` : ''}
-                </p>
-              )}
-              {d.status === 'menunggu_review' && d.paidClaimedAt && (
-                <p style={{ color: 'var(--app-text-soft)' }}>
-                  Jastiper mengaku sudah bayar {formatWibDateTime(d.paidClaimedAt)}
-                </p>
-              )}
-              {d.status === 'lunas' && d.paidConfirmedAt && !d.hasProof && (
-                <p style={{ color: 'var(--app-text-soft)' }}>
-                  Lunas {formatWibDateTime(d.paidConfirmedAt)}
-                </p>
-              )}
-              {d.status === 'ditagih' && d.paymentRejectReason && (
-                <p style={{ color: 'var(--app-text-soft)' }}>
-                  Bukti bayar terakhir ditolak: {d.paymentRejectReason}
-                </p>
-              )}
-            </section>
-
             <section className="app-card overflow-hidden">
               <InvoiceLinesBySubmit lines={d.lines} />
               <div
@@ -274,49 +210,145 @@ function PartnerInvoiceDetailPage() {
           </div>
 
           <aside className="flex flex-col gap-3 print:hidden">
+            <section className="app-card flex flex-col p-4 text-[13px]">
+              <dl className="flex flex-col gap-2.5">
+                <Row label="Jastiper">
+                  <Link
+                    to="/partner/event/jastiper/$id/$brandId"
+                    params={{ id: d.calendarEventId, brandId: d.brandId }}
+                    search={{ submit: undefined }}
+                    className="font-semibold no-underline"
+                    style={{ color: 'var(--app-accent)' }}
+                  >
+                    {d.brandName}
+                  </Link>
+                </Row>
+                <Row label="Event">
+                  <Link
+                    to="/partner/event/$id"
+                    params={{ id: d.calendarEventId }}
+                    className="font-semibold no-underline"
+                    style={{ color: 'var(--app-accent)' }}
+                  >
+                    {d.eventName}
+                  </Link>
+                </Row>
+                <Row label="Submit">
+                  <span className="flex flex-wrap justify-end gap-x-2">
+                    {d.submitNos.map((n) => (
+                      <Link
+                        key={n}
+                        to="/partner/event/jastiper/$id/$brandId"
+                        params={{ id: d.calendarEventId, brandId: d.brandId }}
+                        search={{ submit: n }}
+                        className="pm-num font-semibold no-underline"
+                        style={{ color: 'var(--app-accent)' }}
+                      >
+                        #{n}
+                      </Link>
+                    ))}
+                  </span>
+                </Row>
+                <Row label="Jumlah barang">
+                  <span className="pm-num font-semibold">{d.totalPcs} pcs</span>
+                </Row>
+              </dl>
+              <dl
+                className="mt-3 flex flex-col gap-2.5 border-t pt-3"
+                style={{ borderColor: 'var(--app-border)' }}
+              >
+                <Row label="Total invoice">
+                  <span className="pm-num text-base font-bold">
+                    {formatRupiah(d.totalAmount)}
+                  </span>
+                </Row>
+                {d.adminFee && d.adminFee.amount > 0 && (
+                  <Row
+                    label={`Biaya admin ALAKA (${d.adminFee.percent.toLocaleString('id-ID', { maximumFractionDigits: 2 })}%)`}
+                  >
+                    <Link
+                      to="/partner/saldo"
+                      className="pm-num font-semibold no-underline"
+                      style={{ color: 'var(--app-accent)' }}
+                    >
+                      −{formatRupiah(d.adminFee.amount)}
+                    </Link>
+                  </Row>
+                )}
+              </dl>
+            </section>
             {d.status === 'ditagih' && (
               <BankInfo bank={d.partnerBank} forPartner totalAmount={d.totalAmount} />
             )}
-            {d.hasProof && (
-              <div className="app-card flex flex-wrap items-center justify-between gap-x-3 gap-y-1 p-4">
-                <PaymentProofViewer
-                  src={`/api/invoice-proof/${invoiceId}?v=${proofKey}`}
-                  label="Lihat bukti bayar"
-                  className="flex items-center gap-1.5 text-xs font-semibold"
-                />
-                {d.status === 'lunas' && d.paidConfirmedAt && (
-                  <span
-                    className="text-xs"
-                    style={{ color: 'var(--app-text-soft)' }}
-                  >
-                    Lunas {formatWibDateTime(d.paidConfirmedAt)}
-                  </span>
+            {(d.status === 'dibatalkan' ||
+              d.hasProof ||
+              (d.status === 'menunggu_review' && d.paidClaimedAt) ||
+              (d.status === 'lunas' && d.paidConfirmedAt) ||
+              (d.status === 'ditagih' && d.paymentRejectReason)) && (
+              <section className="app-card flex flex-col gap-3 p-4 text-[13px]">
+                {d.status === 'dibatalkan' && (
+                  <p style={{ color: 'var(--app-text-soft)' }}>
+                    Dibatalkan {d.cancelledAt ? formatWibDateTime(d.cancelledAt) : ''}
+                    {d.cancelReason ? ` · ${d.cancelReason}` : ''}
+                  </p>
                 )}
-              </div>
+                {d.status === 'menunggu_review' && d.paidClaimedAt && (
+                  <p style={{ color: 'var(--app-text-soft)' }}>
+                    Jastiper mengaku sudah bayar {formatWibDateTime(d.paidClaimedAt)}
+                  </p>
+                )}
+                {d.status === 'ditagih' && d.paymentRejectReason && (
+                  <p style={{ color: 'var(--app-text-soft)' }}>
+                    Bukti bayar terakhir ditolak: {d.paymentRejectReason}
+                  </p>
+                )}
+                {(d.hasProof || d.status === 'lunas') && (
+                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                    {d.hasProof && (
+                      <PaymentProofViewer
+                        src={`/api/invoice-proof/${invoiceId}?v=${proofKey}`}
+                        label="Lihat bukti bayar"
+                        className="flex items-center gap-1.5 text-xs font-semibold"
+                      />
+                    )}
+                    {d.status === 'lunas' && d.paidConfirmedAt && (
+                      <span className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
+                        Lunas {formatWibDateTime(d.paidConfirmedAt)}
+                      </span>
+                    )}
+                  </div>
+                )}
+                {d.status === 'menunggu_review' && step === null && (
+                  <div
+                    className="flex flex-wrap justify-end gap-2 border-t pt-3"
+                    style={{ borderColor: 'var(--app-border)' }}
+                  >
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => setStep('reject')}
+                      className="app-btn-outline"
+                      style={{ color: 'var(--app-danger)', minHeight: 40, fontSize: 13 }}
+                    >
+                      Tolak bukti
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => {
+                        setError(null)
+                        setConfirmOpen(true)
+                      }}
+                      className="app-btn-primary"
+                      style={{ minHeight: 40, fontSize: 13 }}
+                    >
+                      Tandai lunas
+                    </button>
+                  </div>
+                )}
+              </section>
             )}
 
-            {d.status === 'menunggu_review' && step === null && (
-              <div className="flex flex-wrap justify-end gap-2">
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => setStep('reject')}
-                  className="app-btn-outline"
-                  style={{ color: 'var(--app-danger)', minHeight: 40, fontSize: 13 }}
-                >
-                  Tolak bukti
-                </button>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => confirmMutation.mutate()}
-                  className="app-btn-primary"
-                  style={{ minHeight: 40, fontSize: 13 }}
-                >
-                  {confirmMutation.isPending ? 'Menyimpan…' : 'Tandai lunas'}
-                </button>
-              </div>
-            )}
             {d.status === 'ditagih' && step === null && (
               <button
                 type="button"
@@ -385,6 +417,20 @@ function PartnerInvoiceDetailPage() {
           </aside>
         </div>
       )}
+      {d && confirmOpen && (
+        <ConfirmPaidModal
+          invoiceNumber={d.number}
+          totalAmount={d.totalAmount}
+          adminFee={d.pendingAdminFee}
+          busy={confirmMutation.isPending}
+          error={error}
+          onConfirm={() => confirmMutation.mutate()}
+          onClose={() => {
+            setConfirmOpen(false)
+            setError(null)
+          }}
+        />
+      )}
     </main>
   )
 }
@@ -401,7 +447,8 @@ function printInvoice(number: number) {
   window.print()
 }
 
-function Info({
+/** Satu baris ringkasan: label di kiri, nilai di kanan (rata kanan, boleh membungkus). */
+function Row({
   label,
   children,
 }: {
@@ -409,11 +456,11 @@ function Info({
   children: React.ReactNode
 }) {
   return (
-    <div className="min-w-0">
-      <dt className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
+    <div className="flex items-baseline justify-between gap-4">
+      <dt className="shrink-0" style={{ color: 'var(--app-text-soft)' }}>
         {label}
       </dt>
-      <dd className="truncate">{children}</dd>
+      <dd className="min-w-0 text-right">{children}</dd>
     </div>
   )
 }

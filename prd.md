@@ -20,14 +20,14 @@ Ada **tiga jenis pengguna**, masing-masing dengan area dan login sendiri
 | Pengguna                          | Area       | Keterangan                                                                                                                                                                      |
 | --------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Jastiper** (owner / admin brand) | `/` (shell member) | Mengelola event belanja, pesanan, tagihan, keuangan, dan ikut event kalender. Satu-satunya yang bisa daftar sendiri (self-service).                                       |
-| **Admin ALAKA**                   | `/admin`   | Ditandai `users.is_admin` (default `false`, diaktifkan manual lewat DB). Memverifikasi langganan PRO jastiper & partner, melihat customer, mengelola event kalender dan akun partner (lihat 4.13–4.15, 4.18–4.20). |
+| **Admin ALAKA**                   | `/admin`   | Ditandai `users.is_admin` (default `false`, diaktifkan manual lewat DB). Memverifikasi langganan PRO jastiper, melihat customer, mengelola event kalender dan akun partner (lihat 4.13–4.15, 4.18–4.20). |
 | **Partner**                       | `/partner` | Brand/penyelenggara event yang memamerkan produknya di kalender. Akun dibuat admin ALAKA lewat undangan, tabel & sesi terpisah dari jastiper (lihat 4.21).                    |
 
 Model bisnisnya langganan (lihat 5): setiap **brand** baru otomatis dapat **trial
 30 hari** dengan semua fitur terbuka, lalu turun ke paket **FREE** (fitur
 dasar tetap jalan, fitur PRO terkunci) dan bisa naik ke **PRO** lewat
-pembayaran manual yang diverifikasi admin. Partner punya langganan PRO sendiri
-(lihat 5.8).
+pembayaran manual yang diverifikasi admin. Partner tidak berlangganan: semua
+fitur partner gratis (lihat 5.8).
 
 Selain alur belanja, ada **Kalender Event** global (bazar/pameran/PO) yang diisi
 admin ALAKA dan partner; jastiper bisa menekan **Ikut Event** untuk otomatis
@@ -179,9 +179,9 @@ Buat jastiper yang butuh rekap pesanan satu event di luar aplikasi (mis. dikirim
 
 Khusus event yang berasal dari **event kalender milik partner** (lihat 4.17 & 4.21): jastiper bisa memasukkan **paket** yang aturannya dibuat partner (mis. "3 pcs Rp100.000") langsung ke pesanan.
 
-- **Tombol "Pakai paket"** di Detail Event / form pesanan membuka `PartnerBundleSheet`: pilih aturan paket → isi komponen (varian + qty per komponen) → harga jual ke pelanggan, fee, dan jumlah paket. Aturan & produk yang bisa dipilih datang dari `getEventPartnerCatalog`: hanya aturan **aktif** yang punya produk di antara produk yang dipilih partner untuk event itu, dan **hanya kalau partner-nya PRO** (lihat 5.8). Kalau PRO partner habis, paket baru tidak ditawarkan lagi.
+- **Tombol "Pakai paket"** di Detail Event / form pesanan membuka `PartnerBundleSheet`: pilih aturan paket → isi komponen (varian + qty per komponen) → harga jual ke pelanggan, fee, dan jumlah paket. Aturan & produk yang bisa dipilih datang dari `getEventPartnerCatalog`: hanya aturan **aktif** yang punya produk di antara produk yang dipilih partner untuk event itu.
 - **Aturan paket = "N pcs untuk Rp X"** (mix-and-match): jumlah qty semua komponen harus **tepat** `min_qty` aturan. Harga paket dari partner adalah **HPP** (modal jastiper), bukan harga ke pelanggan; harga jual default = harga paket dan boleh diubah jastiper.
-- **Disimpan sebagai satu baris `items`** (`is_bundle = true`, `partner_rule_id`, `hpp` snapshot, nama "A + B + C") plus baris `item_components` (nama produk, ukuran, variasi, qty — snapshot). Semua HPP & komponen **dibaca ulang dari DB** oleh server (`buildPartnerBundle`), tidak pernah dipercaya dari client. Server menolak kalau: event bukan milik brand, event nonaktif, event tidak terhubung ke event kalender, aturan nonaktif, partner tidak PRO, atau varian tidak aktif / tidak dijual di event itu. Penambahan paket ikut aturan **gabung pesanan** (4.4): pelanggan yang sudah punya pesanan belum lunas/DP digabungkan.
+- **Disimpan sebagai satu baris `items`** (`is_bundle = true`, `partner_rule_id`, `hpp` snapshot, nama "A + B + C") plus baris `item_components` (nama produk, ukuran, variasi, qty — snapshot). Semua HPP & komponen **dibaca ulang dari DB** oleh server (`buildPartnerBundle`), tidak pernah dipercaya dari client. Server menolak kalau: event bukan milik brand, event nonaktif, event tidak terhubung ke event kalender, aturan nonaktif, atau varian tidak aktif / tidak dijual di event itu. Penambahan paket ikut aturan **gabung pesanan** (4.4): pelanggan yang sudah punya pesanan belum lunas/DP digabungkan.
 - **Barang terkunci**: baris dengan `partner_rule_id` terisi tidak bisa diubah isi/qty-nya lewat form edit biasa dan tidak ikut digabung atau dihapus oleh `updateOrder` (`partner-bundle-lock.ts`: `isLockedBundle`, `partitionLockedItems`). Yang masih boleh diubah hanya **harga jual dan fee** lewat aksi khusus (`updatePartnerBundlePricing`). Form edit menampilkan total & fee paket terkunci ("Termasuk N baris paket partner…").
 - **Total** memakai rumus yang sama dengan barang biasa: `(harga jual + fee) × qty`. HPP tidak pernah memengaruhi tagihan pelanggan; saat ini HPP hanya **disimpan sebagai snapshot** (`items.hpp`) — belum dipakai di dashboard Keuangan (4.7) maupun rekap partner (4.21.6). Helper `lineProfit` di `lib/partner-pricing.ts` sudah ada (`(harga jual − HPP + fee) × qty`) tetapi belum dipanggil dari UI.
 - Barang satuan dari produk partner juga menyimpan `partner_variant_id` dan `hpp` (harga varian) sebagai snapshot.
@@ -354,7 +354,7 @@ meniru `BottomNav.tsx` member: fixed, aman dari safe-area) dan `AdminSidebar` (d
 | Customer    | `/admin/customers`         | Daftar semua customer/brand (4.15)                   |
 | Event       | `/admin/event`             | Event kalender (4.18)                                |
 | Partner     | `/admin/partner`           | Akun partner (4.19)                                  |
-| PRO Partner | `/admin/langganan-partner` | Verifikasi langganan PRO partner (4.20)              |
+| Top Up      | `/admin/topup-partner`     | Verifikasi top up, saldo & koreksi partner (5.9)     |
 | Pengaturan  | `/admin/pengaturan`        | Harga & QRIS PRO + tombol Keluar (4.14)              |
 
 Halaman aktif ditentukan dari `pathname` yang trailing slash-nya dirapikan (`isAdminTabActive`), bukan
@@ -524,13 +524,9 @@ Mengelola akun Partner (4.21). Semua fungsi di `lib/partner-functions.ts` (`*Adm
 - **Nonaktifkan / aktifkan** (`setAdminPartnerDisabled`): nonaktif = tidak bisa login / atur ulang kata sandi / menerima undangan dan **semua sesinya dimatikan**; data (produk, event) tetap utuh dan bisa diaktifkan lagi.
 - **Hapus** (`deleteAdminPartner`): konfirmasi menyebut jumlah produk; menghapus akun, produk, dan file di Blobs (foto produk, logo, serta PDF katalog lama bila ada) **permanen**. Event kalender milik partner **tidak ikut terhapus** — `calendar_event.partner_id` menjadi `NULL` sehingga event menjadi event admin dan jastiper yang sudah ikut tetap utuh.
 
-### 4.20 Admin: Langganan Partner — `/admin/langganan-partner`
+### 4.20 Admin: Langganan Partner (dihapus)
 
-Verifikasi langganan PRO partner (alur paralel dengan 4.13, tabel `partner_subscriptions`; fungsi di `lib/admin-partner-subscription-functions.ts`).
-
-- Tab **Pending** (default) / **Aktif** / **Ditolak**; tiap baris menampilkan pengajuan beserta bukti transfer (disajikan lewat `/api/partner-subscription-proof/:id`). Baris aktif menampilkan `ends_at`, baris ditolak menampilkan catatan review.
-- **Setujui** (`approvePartnerSubscription`, hanya dari `pending`): baris menjadi `active` dengan jendela dari `nextProWindow(activeRows, durationDays)` (perpanjangan menyambung dari masa aktif yang berlaku, sama seperti 5.6).
-- **Tolak** (`rejectPartnerSubscription`, hanya dari `pending`): status `rejected` + catatan review.
+Langganan PRO partner sudah dihapus (migrasi `0055`, tabel `partner_subscriptions` di-drop). Lihat 5.8.
 
 ### 4.21 Partner Portal — `/partner`
 
@@ -556,16 +552,15 @@ Semua angka terbatas pada partner yang login. Jastiper = brand yang menekan **Ik
 #### 4.21.3 Katalog produk — `/partner/katalog`
 
 - **Produk** (`partner_products`): nama (maks 120), kode/SKU (opsional, maks 40, tidak harus unik), deskripsi (maks 1000), harga (maks 999.999.999; `parseRupiah` menerima `189000`, `189.000`, `Rp189.000`, menolak desimal/negatif), foto (480×480, WebP/JPEG, ≤ 100 KB; `/api/partner-product-photo/:id?v=…`), dan `is_active`. Produk **tidak dihapus**, cukup dinonaktifkan, karena bisa sudah terpakai di event.
-- **Varian** (toggle "Buat varian", **PRO**): grup opsi bertipe `ukuran` dan/atau `variasi` (maks satu grup per tipe per produk), nilai bebas per grup (variasi boleh berfoto motif), dan satu baris `partner_variants` per kombinasi yang benar-benar dijual dengan harga sendiri. Validasi `partner-variant-plan.ts`: nama dobel (tanpa membedakan huruf besar/kecil), ukuran di luar grup, kombinasi dobel, dan harga negatif ditolak; kombinasi tidak lengkap boleh. Varian yang pernah dipesan **dinonaktifkan** (bukan dihapus). Kolom stok & pre-order sudah ada tetapi belum dipakai.
+- **Varian** (toggle "Buat varian"): grup opsi bertipe `ukuran` dan/atau `variasi` (maks satu grup per tipe per produk), nilai bebas per grup (variasi boleh berfoto motif), dan satu baris `partner_variants` per kombinasi yang benar-benar dijual dengan harga sendiri. Validasi `partner-variant-plan.ts`: nama dobel (tanpa membedakan huruf besar/kecil), ukuran di luar grup, kombinasi dobel, dan harga negatif ditolak; kombinasi tidak lengkap boleh. Varian yang pernah dipesan **dinonaktifkan** (bukan dihapus). Kolom stok & pre-order sudah ada tetapi belum dipakai.
 - **Varian "Standar" otomatis**: produk tanpa varian tetap punya satu varian "Standar" berharga sama dengan harga induk (`syncDefaultVariant`), supaya paket dan item pesanan selalu menunjuk varian. Kalau `has_variants = false`, harga wajib diisi.
 - Daftar punya tab (`PARTNER_PRODUCT_TABS`) dan jumlah event per produk di tabel desktop.
 
-#### 4.21.4 Paket / aturan harga — `/partner/paket` (PRO)
+#### 4.21.4 Paket / aturan harga — `/partner/paket`
 
 - **Aturan paket** (`partner_pricing_rules`): nama (maks 80), `min_qty` (≥ 1), `bundle_price` (≥ 0), aktif/nonaktif. Artinya "**N pcs untuk Rp X**" — `bundle_price` adalah **HPP per paket** (harga beli jastiper dari partner), bukan harga jual ke pelanggan.
 - **Produk dalam aturan** (`partner_rule_products`): satu produk hanya boleh di **satu** aturan (unique pada `partner_product_id`); `selectableProducts` menyembunyikan produk yang sudah di aturan lain.
 - **Cara pakai oleh jastiper**: paket "mix-and-match" — jumlah qty komponen harus **tepat** `min_qty` (4.4.1). Helper `lineProfit` = `(harga jual − HPP + fee) × qty` tersedia, tetapi belum dipakai di UI; HPP tidak pernah memengaruhi tagihan.
-- **PRO**: membuat/mengubah aturan dan memindahkan produk **ke dalam** aturan butuh PRO partner (`assertPro`: "Aturan paket membutuhkan langganan PRO partner."); mengeluarkan produk dari aturan tidak.
 
 #### 4.21.5 Event partner — `/partner/event`
 
@@ -583,10 +578,6 @@ Daftar packing: seberapa banyak tiap produk dipesan jastiper di event partner (`
 - Qty dijumlah per **produk + ukuran + variasi + sumber** (satuan atau aturan paket tertentu); baris qty ≤ 0 diabaikan; urut nama produk → ukuran → variasi → aturan. Setiap baris juga memuat **rincian per jastiper** (`byJastiper`: nama brand + qty).
 - Filter chip: **Semua**, **Satuan**, dan satu chip per aturan paket.
 - **Catatan privasi**: rekap menampilkan **nama brand + qty produk partner itu sendiri** per jastiper. Teks keterbukaan di sheet Ikut Event (4.17.1) menyebut hanya jumlah pesanan yang dibagikan dan "isi pesanan … tidak ikut dibagikan"; rekap ini sedikit lebih rinci daripada janji teks itu (hanya untuk produk/paket partner sendiri). Selaraskan teks atau cakupan rekap kalau ingin konsisten.
-
-#### 4.21.7 Langganan PRO partner
-
-Aturannya ada di 5.8; pengajuan lewat kartu `PartnerSubscriptionCard` di profil partner (bukti transfer PNG/JPEG/WEBP ≤ 1 MB → Blobs), diverifikasi admin di 4.20.
 
 ### 4.22 Paginasi
 
@@ -656,18 +647,32 @@ Saran pesanan, saran fee, dan saran pelanggan adalah fitur dasar yang terbuka un
 
 ### 5.7 Pengaturan pembayaran PRO (admin)
 
-- Harga membership PRO **bukan konstanta di kode**: disimpan di tabel singleton `subscription_settings` (`pro_price`, plus `original_price` opsional untuk harga coret — murni tampilan) dan diubah admin dari `/admin/pengaturan` (lihat 4.14). Durasi PRO tetap konstanta `PRO_DURATION_DAYS` (30 hari). Harga yang sama dipakai untuk langganan PRO **partner** (5.8).
+- Harga membership PRO **bukan konstanta di kode**: disimpan di tabel singleton `subscription_settings` (`pro_price`, plus `original_price` opsional untuk harga coret — murni tampilan) dan diubah admin dari `/admin/pengaturan` (lihat 4.14). Durasi PRO tetap konstanta `PRO_DURATION_DAYS` (30 hari).
 - QRIS pembayaran ada di tabel yang sama: gambar statis (`qris_image`, data URL base64, maks 1MB) dan payload mentah (`qris_string`, untuk membuat QRIS dinamis bernominal di client) — dibaca member lewat `fetchSubscriptionPaymentInfo()` dan ditulis admin lewat `updateSubscriptionQris()`. Barisnya cuma satu: `getSubscriptionSettings()` ambil baris pertama dan update-nya selalu upsert.
 - `subscriptions.amount` di-snapshot dari harga tersebut **saat pengajuan dibuat**, jadi mengubah harga tidak mengubah nominal pengajuan yang sudah masuk (dan sebaliknya, nominal lama tidak berubah walau harga dinaikkan).
 
-### 5.8 Langganan PRO Partner
+### 5.8 Partner tanpa langganan
 
-Partner (4.21) punya langganan sendiri, **terpisah** dari langganan brand jastiper: tabel `partner_subscriptions`, entitlement di `lib/partner-entitlement.ts`.
+Langganan PRO partner **sudah dihapus** (migrasi `0055_hapus_pro_partner`: tabel `partner_subscriptions` di-drop, beserta `partner-entitlement.ts`, kartu langganan di profil partner, halaman admin `/admin/langganan-partner`, dan `/api/partner-subscription-proof`).
 
-- **Tidak ada trial dan tidak ada batas jumlah produk/event/aturan.** Semua fitur partner gratis kecuali yang tercantum di `PARTNER_PRO_FEATURES` (sekarang satu kunci: `partner_variants`). `hasPartnerPro(subs)` benar kalau ada langganan `active` yang masa berlakunya masih berjalan.
-- **Terkunci tanpa PRO**: membuat **varian produk** (`savePartnerProductVariants`: "Fitur varian membutuhkan langganan PRO partner.") dan **aturan paket** (`assertPro`: "Aturan paket membutuhkan langganan PRO partner."; memindahkan produk ke dalam aturan juga, mengeluarkannya tidak).
-- **Dampak di sisi jastiper**: `getEventPartnerCatalog` hanya menampilkan aturan paket kalau partner-nya PRO, dan `buildPartnerBundle` menolak ("Fitur paket belum aktif untuk partner ini."). Jadi ketika PRO partner habis, paket yang sudah terlanjur dipesan tetap ada, tetapi paket baru tidak bisa ditambahkan.
-- **Alur pengajuan** (`partner-subscription-functions.ts`, `PartnerSubscriptionCard`): `submitPartnerSubscriptionRequest` mengunggah bukti transfer (PNG/JPEG/WEBP, maks 1 MB) ke Blobs dan membuat baris `pending` (`plan_code = PRO_PLAN_CODE`, `duration_days = PRO_DURATION_DAYS`, `amount` = snapshot `subscription_settings.pro_price`). Maksimal satu `pending` per partner ("Kamu masih punya pengajuan yang menunggu verifikasi."). `fetchPartnerSubscriptionPaymentInfo` memakai pengaturan harga/QRIS yang **sama** dengan langganan jastiper; verifikasi admin di 4.20.
+- Semua fitur partner **gratis** untuk semua partner: varian produk, aturan paket, paket di sisi jastiper (`getEventPartnerCatalog`, `buildPartnerBundle`, pembentukan paket FIFO), dan pemaketan di tagihan partner (`poolInvoiceBilling`).
+- Pengganti model bisnisnya: **biaya admin** berupa persentase dari harga produk di tagihan partner yang lunas, dibayar dari **saldo kredit partner** yang diisi lewat top up (5.9).
+
+### 5.9 Saldo kredit & biaya admin partner
+
+Skema ada sejak migrasi `0056_saldo_kredit_partner`. Server function partner di `lib/partner-credit-functions.ts`, admin di `lib/admin-partner-credit-functions.ts`, transaksi di `lib/partner-credit-queries.ts`, aturan murni di `lib/partner-credit.ts`.
+
+- **Persen biaya admin**: `subscription_settings.admin_fee_percent` (0–100, default 0), diatur admin ALAKA. Dasar hitungnya `invoices.total_amount` (harga produk partner, tanpa fee jastiper), dibulatkan ke rupiah penuh, setengah ke atas (`computeAdminFee` di `lib/partner-credit.ts`, hitungan BigInt).
+- **Kapan dipotong**: saat partner menandai tagihan **lunas** (`confirmInvoicePaidTx`, satu transaksi dengan perubahan status; urutan kunci: tagihan lalu partner). Persen dan nominal di-snapshot (termasuk `0` / `0.00` kalau persen 0; entri ledger hanya dibuat kalau fee > 0) ke `invoices.admin_fee_percent` / `admin_fee_amount` (keduanya null bersama = tidak dipotong, termasuk tagihan yang lunas sebelum fitur ini ada). Tagihan lunas tidak bisa dibatalkan, jadi tidak ada refund fee.
+- **Saldo**: `partners.credit_balance` = cache `SUM(amount)` dari `partner_credit_ledger` (append-only; `type` `topup` / `admin_fee` / `adjustment`, `balance_after` per baris). Saldo **boleh negatif** = tunggakan, tertutup otomatis oleh top up berikutnya; tidak ada blokir. Saldo **tidak bisa ditarik**. Satu-satunya jalan menulis saldo: `postCreditEntry()` di `lib/partner-credit-queries.ts` (kunci baris partner `FOR UPDATE`). Unique `topup_id` / `invoice_id` di ledger mencegah top up atau fee tercatat dua kali.
+- **Top up** (`partner_topups`): nominal pilihan `PARTNER_TOPUP_AMOUNTS` (10rb / 20rb / 50rb / 100rb; check db ≥ 10rb), `method` `manual_qris` (QRIS admin + bukti transfer, diverifikasi admin) atau `midtrans` (disiapkan, `external_id` unique). Maksimal satu top up manual `pending` per partner.
+- **Koreksi admin**: entri `adjustment` ± dengan catatan wajib (`adjustPartnerCredit`, rupiah penuh, maks ±Rp100.000.000).
+- **Halaman partner `/partner/saldo`**: saldo atau tunggakan, tombol **Top up** (nonaktif selama ada top up `pending`), tab **Mutasi saldo** (50 entri terakhir; biaya admin menautkan ke tagihannya) dan **Riwayat top up** (20 terakhir, alasan tolak). Kartu ringkas "Saldo kredit" di `/partner/profil` menautkan ke sini. Tidak masuk `PARTNER_TABS`.
+- **Alur top up manual** (`PartnerTopupModal`): pilih nominal → QRIS dinamis bernominal dari `subscription_settings.qris_string` (`buildDynamicQrisPayload`; fallback gambar `qris_image`) → upload bukti (PNG/JPEG/WEBP ≤ 1 MB, diperkecil otomatis di client, divalidasi ulang di server) → `submitPartnerTopup` menyimpan bukti di Blobs (store `payment-proofs`, key `topup-<id>`) dan membuat baris `pending`. Dua kiriman bersamaan dijaga partial unique index.
+- **Admin `/admin/topup-partner`** (menu **Top Up**): tab **Menunggu / Disetujui / Ditolak** — bukti dilihat lewat `/api/partner-topup-proof/:id` (admin saja, `private, no-store`); **Setujui** (`approvePartnerTopupTx`: status `approved` + entri ledger `topup`, satu transaksi; kunci top up lalu partner) atau **Tolak** dengan alasan opsional. Tab **Saldo partner**: semua partner urut saldo terkecil (penunggak di atas), cari nama/email, tombol **Koreksi**.
+- **Persen biaya admin** diubah di `/admin/pengaturan` kartu **Biaya Admin Partner** (`updateAdminFeePercent`, 0–100, maks 2 desimal; input menerima koma).
+- **Tampilan fee**: detail tagihan partner (`/partner/tagihan/:id`) menampilkan "Biaya admin ALAKA (x%) −Rp… dari saldo" setelah lunas. `InvoiceDetail.adminFee` hanya diisi untuk partner; jastiper tidak pernah melihatnya.
+- **Belum ada**: Midtrans (webhook, `method = 'midtrans'`), notifikasi ke partner saat top up disetujui/ditolak atau fee dipotong, dan riwayat ledger per partner di sisi admin.
 
 ## 6. Navigasi
 
@@ -816,7 +821,7 @@ subscription_settings
   updated_at        timestamptz
   updated_by        uuid → users.id (set null) (nullable)
   -- singleton: cukup satu baris, dibaca getSubscriptionSettings() (ambil baris pertama)
-  -- pro_price di-snapshot ke subscriptions.amount / partner_subscriptions.amount tiap ada pengajuan baru
+  -- pro_price di-snapshot ke subscriptions.amount tiap ada pengajuan baru
 ```
 
 ```sql
@@ -961,13 +966,6 @@ partner_sessions                           -- id, partner_id (cascade), token un
 partner_invitation_tokens                  -- id, partner_id (cascade), token_hash unique, expires_at, used_at, created_at
 partner_password_reset_tokens              -- id, partner_id (cascade), token_hash unique, expires_at, used_at, created_at
 
-partner_subscriptions                      -- langganan PRO partner; kolom = subscriptions (tanpa user_id/brand_id/payment_proof_image)
-  id, partner_id (cascade), plan_code, status, duration_days, started_at, ends_at,
-  amount, payment_method, payment_provider, payment_sender_name, payment_reference,
-  payment_proof_stored (bukti di Blobs), payment_note, paid_at,
-  reviewed_by, reviewed_at, review_note, created_at, updated_at
-  -- index: (partner_id, created_at), status
-
 partner_products                           -- katalog produk partner (dinonaktifkan, tidak dihapus)
   id                uuid primary key
   partner_id        uuid → partners.id (cascade delete)
@@ -1023,10 +1021,10 @@ partner_rule_products                      -- produk yang masuk aturan
 - **`password_hash` nullable**: user yang hanya mendaftar via Google tidak punya password; tampilan Profil menyesuaikan. `partners.password_hash` null = undangan belum diterima.
 - **`wa_message_template` di `brands`**: template default ada di `src/lib/message-template.ts`. Jika null, dipakai template default.
 - **Status langganan tidak disimpan sebagai flag**: tidak ada kolom `is_pro`. Masa trial ada di `brands.trial_started_at` / `brands.trial_ends_at`, sedangkan status PRO dihitung dari baris `subscriptions` (per `brand_id`) berstatus `active` yang `ends_at`-nya belum lewat (lihat 5.1).
-- **`subscriptions` bersifat histori, bukan state**: satu baris = satu pengajuan/pembelian, riwayat pembayaran selalu bisa diaudit. Verifikasi admin mengubah baris `pending` itu sendiri jadi `active` dan **menggeser jendelanya** (`started_at` / `ends_at` dihitung `nextProWindow()`: perpanjangan menyambung dari `ends_at` yang masih berlaku), jadi tidak ada baris tambahan saat perpanjangan. Status `expired` sudah ada di enum tapi belum pernah ditulis otomatis oleh kode mana pun — masa habis cukup dideteksi dari `ends_at` saat menghitung entitlement. `partner_subscriptions` mengikuti pola yang sama untuk partner.
+- **`subscriptions` bersifat histori, bukan state**: satu baris = satu pengajuan/pembelian, riwayat pembayaran selalu bisa diaudit. Verifikasi admin mengubah baris `pending` itu sendiri jadi `active` dan **menggeser jendelanya** (`started_at` / `ends_at` dihitung `nextProWindow()`: perpanjangan menyambung dari `ends_at` yang masih berlaku), jadi tidak ada baris tambahan saat perpanjangan. Status `expired` sudah ada di enum tapi belum pernah ditulis otomatis oleh kode mana pun — masa habis cukup dideteksi dari `ends_at` saat menghitung entitlement.
 - **Kolom `payment_*` di `subscriptions`**: info pembayaran disimpan di tabel yang sama supaya admin bisa mencocokkan transfer tanpa tabel tambahan. **Bukti transfer baru disimpan di Netlify Blobs** (`payment_proof_stored = true`, maks 1MB); kolom `payment_proof_image` (base64) hanya untuk bukti lama. `payment_methods.qris_image` dan `subscription_settings.qris_image` masih berupa data URL base64.
 - **`is_admin` ditandai di DB, bukan di UI**: kolom `users.is_admin` (default `false`) cuma diaktifkan manual lewat `pnpm db:studio` oleh pemilik aplikasi — sengaja tidak ada jalur self-service dari aplikasi supaya tidak ada yang bisa mengangkat dirinya jadi admin. Nilainya dipakai `requireAdminUser()` (`src/lib/admin.ts`) di server dan `fetchCurrentUser()` di client. Ini **terpisah** dari `users.brand_role` (owner/admin brand).
-- **`subscription_settings` = baris tunggal**: harga membership PRO, harga coret, dan QRIS pembayaran sengaja tidak jadi konstanta di kode supaya admin bisa mengubahnya tanpa deploy. Harga di-snapshot ke `subscriptions.amount` (dan `partner_subscriptions.amount`) saat pengajuan dibuat (lihat 5.7).
+- **`subscription_settings` = baris tunggal**: harga membership PRO, harga coret, dan QRIS pembayaran sengaja tidak jadi konstanta di kode supaya admin bisa mengubahnya tanpa deploy. Harga di-snapshot ke `subscriptions.amount` saat pengajuan dibuat (lihat 5.7).
 - **Default trial ada di level database (tabel `brands`)**: `trial_started_at DEFAULT now()` dan `trial_ends_at DEFAULT now() + interval '30 days'` — semua jalur pembuatan brand otomatis kebagian trial. Kolom brand/trial lama di `users` dibuang di migrasi `0020_drop_users_brand_columns.sql`. Skrip `scripts/backfill-brands.ts` dan `scripts/backfill-trial.ts` masih ada di repo sebagai sisa migrasi (tidak punya alias npm; dijalankan manual lewat `tsx`) dan sudah tidak relevan untuk operasi normal.
 - **Perubahan skema wajib lewat migrasi Drizzle** (`pnpm db:generate` + `pnpm db:migrate`, file di `drizzle/` ikut di-commit) — jangan pakai `pnpm db:push` supaya setiap perubahan DB ke-track di git. Langkahnya di 7.1.
 
@@ -1163,8 +1161,8 @@ src/
 │   │   calendar.ts, calendar-events-functions.ts, calendar-events-admin-functions.ts, calendar-event-input.ts,
 │   │   calendar-banner*.ts, calendar-join*.ts, join-disclosure.ts
 │   ├── # Admin: admin.ts (requireAdminUser), admin-functions.ts, admin-queries.ts,
-│   │   admin-partner-subscription-functions.ts, partner-admin-queries.ts
-│   ├── # Partner Portal: partner-*.ts (auth, functions, queries, rules, mail, entitlement, pricing,
+│   │   partner-admin-queries.ts
+│   ├── # Partner Portal: partner-*.ts (auth, functions, queries, rules, mail, pricing,
 │   │   bundle-build/-functions/-lock, catalog/dashboard/event/picklist/product/profile/variant rules,
 │   │   subscription, showcase, password-reset-*)
 │   └── # UI/infra: back-to-close.ts (useBackToClose), theme.ts, new-feature.ts, error-message.ts,
@@ -1199,7 +1197,6 @@ src/
 │   │   ├── customers.tsx      # Daftar semua brand (plan, aktivitas, revenue, hapus permanen)
 │   │   ├── event/{index,new,$eventId}.tsx  # Event kalender + peserta
 │   │   ├── partner.tsx        # Akun partner
-│   │   ├── langganan-partner.tsx  # Verifikasi langganan PRO partner
 │   │   └── pengaturan.tsx     # Pengaturan pembayaran PRO (QRIS + harga/harga coret) + tombol Keluar
 │   ├── partner.tsx            # Layout Partner Portal (guard sesi partner)
 │   ├── partner/
@@ -1239,7 +1236,7 @@ Semua akses Blobs lewat `src/lib/storage.ts` (hanya boleh dipanggil dari handler
 | `calendar-banners`      | id event      | `calendar_event.banner_updated_at`           | `GET /api/event-banner/:eventId`       | Publik                                        |
 | `partner-logos`         | id partner    | `partners.logo_updated_at`                   | `GET /api/partner-logo/:partnerId`     | Publik                                        |
 | `partner-product-photos`| id produk     | `partner_products.photo_updated_at`          | `GET /api/partner-product-photo/:id`   | Publik                                        |
-| `payment-proofs`        | id pengajuan  | `subscriptions.payment_proof_stored` / `partner_subscriptions.payment_proof_stored` | `GET /api/subscription-proof/:id`, `GET /api/partner-subscription-proof/:id` | Login; bukti brand hanya untuk pemilik brand/admin ALAKA (`subscription-proof-access.ts`); bukti partner hanya admin ALAKA. `Cache-Control: private, no-store` |
+| `payment-proofs`        | id pengajuan  | `subscriptions.payment_proof_stored` | `GET /api/subscription-proof/:id` | Login; bukti brand hanya untuk pemilik brand/admin ALAKA (`subscription-proof-access.ts`). `Cache-Control: private, no-store` |
 | `partner-catalog-pdfs`  | id partner    | `partners.catalog_pdf_*` (deprecated)        | —                                      | Tidak dipakai lagi (dibersihkan saat partner dihapus) |
 
 Endpoint publik memakai `Cache-Control` ber-versi (`?v=` → `max-age=31536000, immutable`; tanpa `?v=` atau 404 → `max-age=60`), id wajib UUID, dan `X-Content-Type-Options: nosniff`. Tipe & ukuran selalu divalidasi ulang di server (magic bytes), bukan dipercaya dari client. Batas ukuran: foto brand & logo & foto produk ≤ 100 KB, banner ≤ 300 KB, bukti transfer ≤ 1 MB.
@@ -1259,7 +1256,7 @@ Route auth Google: `GET /api/auth/google` (mulai OAuth) dan `GET /api/auth/googl
 
 **Belum ada / belum selesai:**
 
-- **Penyempurnaan alur PRO**: job yang menandai baris `subscriptions` / `partner_subscriptions` jadi `expired` saat `ends_at` lewat (sekarang masa habis hanya dideteksi dari `ends_at`), pengingat perpanjangan, notifikasi email saat pengajuan disetujui/ditolak, serta tindakan admin lanjutan (beri/cabut PRO manual tanpa pengajuan, ubah durasi per brand).
+- **Penyempurnaan alur PRO**: job yang menandai baris `subscriptions` jadi `expired` saat `ends_at` lewat (sekarang masa habis hanya dideteksi dari `ends_at`), pengingat perpanjangan, notifikasi email saat pengajuan disetujui/ditolak, serta tindakan admin lanjutan (beri/cabut PRO manual tanpa pengajuan, ubah durasi per brand).
 - **Selaraskan klaim paket PRO dengan kode**: daftar fitur PRO di halaman langganan (4.12) menyebut autocomplete customer, foto brand, dan admin tim, padahal yang digerbang server hanya `billing` dan `payment_methods` (5.2). Batas admin tim saat ini 1 per brand untuk semua paket (`getMaxAdmins()`), belum dikaitkan paket.
 - **Selaraskan privasi rekap partner** dengan teks keterbukaan di sheet Ikut Event (4.21.6).
 - **Memakai HPP paket partner** (`items.hpp`) di laporan: sekarang hanya disimpan; belum ada laporan untung/rugi per paket untuk jastiper (4.4.1).

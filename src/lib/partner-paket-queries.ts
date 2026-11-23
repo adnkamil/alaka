@@ -13,11 +13,9 @@ import {
   partnerProducts,
   partnerRuleProducts,
   partnerRuleProductSizes,
-  partnerSubscriptions,
   partnerVariantValues,
   partnerVariants,
 } from '../db/schema'
-import { hasPartnerPro } from './partner-entitlement'
 import { formBundles } from './partner-bundle-fifo'
 import { ruleCoversVariant } from './partner-pricing'
 import { productSizesForRule } from './partner-rule-sizes'
@@ -163,16 +161,6 @@ export async function regroupRuleInOrder(
     .where(eq(partnerPricingRules.id, ruleId))
     .for('update')
   if (!rule || !rule.isActive) return
-  // Fitur paket hanya untuk partner PRO. Di luar itu, barang tetap satuan.
-  const subs = await tx
-    .select({
-      status: partnerSubscriptions.status,
-      startedAt: partnerSubscriptions.startedAt,
-      endsAt: partnerSubscriptions.endsAt,
-    })
-    .from(partnerSubscriptions)
-    .where(eq(partnerSubscriptions.partnerId, rule.partnerId))
-  if (!hasPartnerPro(subs)) return
 
   const ruleProductRows = await tx
     .select({ productId: partnerRuleProducts.partnerProductId })

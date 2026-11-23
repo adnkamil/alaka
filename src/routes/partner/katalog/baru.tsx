@@ -23,7 +23,7 @@ function NewPartnerProductPage() {
   const variantRef = useRef<PartnerVariantEditorHandle>(null)
   const ruleRef = useRef<PartnerProductRuleCardHandle>(null)
   const [sizes, setSizes] = useState<Array<string>>([])
-  // Id produk yang sudah terbuat. Kalau simpan varian gagal (mis. belum PRO),
+  // Id produk yang sudah terbuat. Kalau simpan varian gagal,
   // simpan ulang memperbarui produk ini, bukan membuat duplikat.
   const createdId = useRef<string | null>(null)
 

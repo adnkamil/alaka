@@ -20,12 +20,14 @@ import { Route as AppKeuanganRouteImport } from './routes/_app/keuangan'
 import { Route as AppNotifikasiRouteImport } from './routes/_app/notifikasi'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminCustomersRouteImport } from './routes/admin/customers'
-import { Route as AdminLanggananPartnerRouteImport } from './routes/admin/langganan-partner'
 import { Route as AdminNotifikasiRouteImport } from './routes/admin/notifikasi'
 import { Route as AdminPartnerRouteImport } from './routes/admin/partner'
 import { Route as AdminPengaturanRouteImport } from './routes/admin/pengaturan'
+import { Route as AdminTopupPartnerRouteImport } from './routes/admin/topup-partner'
 import { Route as PartnerIndexRouteImport } from './routes/partner/index'
+import { Route as PartnerNotifikasiRouteImport } from './routes/partner/notifikasi'
 import { Route as PartnerProfilRouteImport } from './routes/partner/profil'
+import { Route as PartnerSaldoRouteImport } from './routes/partner/saldo'
 import { Route as ResetSandiPartnerTokenRouteImport } from './routes/reset-sandi-partner.$token'
 import { Route as ResetSandiTokenRouteImport } from './routes/reset-sandi.$token'
 import { Route as UndanganPartnerTokenRouteImport } from './routes/undangan-partner.$token'
@@ -51,7 +53,7 @@ import { Route as ApiEventBannerEventIdRouteImport } from './routes/api/event-ba
 import { Route as ApiInvoiceProofIdRouteImport } from './routes/api/invoice-proof/$id'
 import { Route as ApiPartnerLogoPartnerIdRouteImport } from './routes/api/partner-logo/$partnerId'
 import { Route as ApiPartnerProductPhotoIdRouteImport } from './routes/api/partner-product-photo/$id'
-import { Route as ApiPartnerSubscriptionProofIdRouteImport } from './routes/api/partner-subscription-proof/$id'
+import { Route as ApiPartnerTopupProofIdRouteImport } from './routes/api/partner-topup-proof/$id'
 import { Route as ApiPartnerVariantPhotoIdRouteImport } from './routes/api/partner-variant-photo/$id'
 import { Route as ApiSubscriptionProofIdRouteImport } from './routes/api/subscription-proof/$id'
 import { Route as PartnerEventIndexRouteImport } from './routes/partner/event/index'
@@ -74,6 +76,7 @@ import { Route as AppProfilFeeRulesFeeRuleIdRouteImport } from './routes/_app/pr
 import { Route as AppProfilFeeRulesNewRouteImport } from './routes/_app/profil/fee-rules/new'
 import { Route as ApiAuthGoogleIndexRouteImport } from './routes/api/auth/google/index'
 import { Route as ApiAuthGoogleCallbackRouteImport } from './routes/api/auth/google/callback'
+import { Route as PartnerEventAnalisaIdRouteImport } from './routes/partner/event/analisa.$id'
 import { Route as PartnerEventProdukIdRouteImport } from './routes/partner/event/produk.$id'
 import { Route as PartnerEventRekapIdRouteImport } from './routes/partner/event/rekap.$id'
 import { Route as PartnerEventUbahIdRouteImport } from './routes/partner/event/ubah.$id'
@@ -134,11 +137,6 @@ const AdminCustomersRoute = AdminCustomersRouteImport.update({
   path: '/customers',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminLanggananPartnerRoute = AdminLanggananPartnerRouteImport.update({
-  id: '/langganan-partner',
-  path: '/langganan-partner',
-  getParentRoute: () => AdminRoute,
-} as any)
 const AdminNotifikasiRoute = AdminNotifikasiRouteImport.update({
   id: '/notifikasi',
   path: '/notifikasi',
@@ -154,14 +152,29 @@ const AdminPengaturanRoute = AdminPengaturanRouteImport.update({
   path: '/pengaturan',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminTopupPartnerRoute = AdminTopupPartnerRouteImport.update({
+  id: '/topup-partner',
+  path: '/topup-partner',
+  getParentRoute: () => AdminRoute,
+} as any)
 const PartnerIndexRoute = PartnerIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => PartnerRoute,
 } as any)
+const PartnerNotifikasiRoute = PartnerNotifikasiRouteImport.update({
+  id: '/notifikasi',
+  path: '/notifikasi',
+  getParentRoute: () => PartnerRoute,
+} as any)
 const PartnerProfilRoute = PartnerProfilRouteImport.update({
   id: '/profil',
   path: '/profil',
+  getParentRoute: () => PartnerRoute,
+} as any)
+const PartnerSaldoRoute = PartnerSaldoRouteImport.update({
+  id: '/saldo',
+  path: '/saldo',
   getParentRoute: () => PartnerRoute,
 } as any)
 const ResetSandiPartnerTokenRoute = ResetSandiPartnerTokenRouteImport.update({
@@ -291,12 +304,11 @@ const ApiPartnerProductPhotoIdRoute =
     path: '/api/partner-product-photo/$id',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPartnerSubscriptionProofIdRoute =
-  ApiPartnerSubscriptionProofIdRouteImport.update({
-    id: '/api/partner-subscription-proof/$id',
-    path: '/api/partner-subscription-proof/$id',
-    getParentRoute: () => rootRouteImport,
-  } as any)
+const ApiPartnerTopupProofIdRoute = ApiPartnerTopupProofIdRouteImport.update({
+  id: '/api/partner-topup-proof/$id',
+  path: '/api/partner-topup-proof/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPartnerVariantPhotoIdRoute =
   ApiPartnerVariantPhotoIdRouteImport.update({
     id: '/api/partner-variant-photo/$id',
@@ -410,6 +422,11 @@ const ApiAuthGoogleCallbackRoute = ApiAuthGoogleCallbackRouteImport.update({
   path: '/api/auth/google/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PartnerEventAnalisaIdRoute = PartnerEventAnalisaIdRouteImport.update({
+  id: '/event/analisa/$id',
+  path: '/event/analisa/$id',
+  getParentRoute: () => PartnerRoute,
+} as any)
 const PartnerEventProdukIdRoute = PartnerEventProdukIdRouteImport.update({
   id: '/event/produk/$id',
   path: '/event/produk/$id',
@@ -448,11 +465,13 @@ export interface FileRoutesByFullPath {
   '/keuangan': typeof AppKeuanganRoute
   '/notifikasi': typeof AppNotifikasiRoute
   '/admin/customers': typeof AdminCustomersRoute
-  '/admin/langganan-partner': typeof AdminLanggananPartnerRoute
   '/admin/notifikasi': typeof AdminNotifikasiRoute
   '/admin/partner': typeof AdminPartnerRoute
   '/admin/pengaturan': typeof AdminPengaturanRoute
+  '/admin/topup-partner': typeof AdminTopupPartnerRoute
+  '/partner/notifikasi': typeof PartnerNotifikasiRoute
   '/partner/profil': typeof PartnerProfilRoute
+  '/partner/saldo': typeof PartnerSaldoRoute
   '/reset-sandi-partner/$token': typeof ResetSandiPartnerTokenRoute
   '/reset-sandi/$token': typeof ResetSandiTokenRoute
   '/undangan-partner/$token': typeof UndanganPartnerTokenRoute
@@ -477,7 +496,7 @@ export interface FileRoutesByFullPath {
   '/api/invoice-proof/$id': typeof ApiInvoiceProofIdRoute
   '/api/partner-logo/$partnerId': typeof ApiPartnerLogoPartnerIdRoute
   '/api/partner-product-photo/$id': typeof ApiPartnerProductPhotoIdRoute
-  '/api/partner-subscription-proof/$id': typeof ApiPartnerSubscriptionProofIdRoute
+  '/api/partner-topup-proof/$id': typeof ApiPartnerTopupProofIdRoute
   '/api/partner-variant-photo/$id': typeof ApiPartnerVariantPhotoIdRoute
   '/api/subscription-proof/$id': typeof ApiSubscriptionProofIdRoute
   '/partner/event/$id': typeof PartnerEventIdRoute
@@ -500,6 +519,7 @@ export interface FileRoutesByFullPath {
   '/profil/fee-rules/$feeRuleId': typeof AppProfilFeeRulesFeeRuleIdRoute
   '/profil/fee-rules/new': typeof AppProfilFeeRulesNewRoute
   '/api/auth/google/callback': typeof ApiAuthGoogleCallbackRoute
+  '/partner/event/analisa/$id': typeof PartnerEventAnalisaIdRoute
   '/partner/event/produk/$id': typeof PartnerEventProdukIdRoute
   '/partner/event/rekap/$id': typeof PartnerEventRekapIdRoute
   '/partner/event/ubah/$id': typeof PartnerEventUbahIdRoute
@@ -516,11 +536,13 @@ export interface FileRoutesByTo {
   '/keuangan': typeof AppKeuanganRoute
   '/notifikasi': typeof AppNotifikasiRoute
   '/admin/customers': typeof AdminCustomersRoute
-  '/admin/langganan-partner': typeof AdminLanggananPartnerRoute
   '/admin/notifikasi': typeof AdminNotifikasiRoute
   '/admin/partner': typeof AdminPartnerRoute
   '/admin/pengaturan': typeof AdminPengaturanRoute
+  '/admin/topup-partner': typeof AdminTopupPartnerRoute
+  '/partner/notifikasi': typeof PartnerNotifikasiRoute
   '/partner/profil': typeof PartnerProfilRoute
+  '/partner/saldo': typeof PartnerSaldoRoute
   '/reset-sandi-partner/$token': typeof ResetSandiPartnerTokenRoute
   '/reset-sandi/$token': typeof ResetSandiTokenRoute
   '/undangan-partner/$token': typeof UndanganPartnerTokenRoute
@@ -546,7 +568,7 @@ export interface FileRoutesByTo {
   '/api/invoice-proof/$id': typeof ApiInvoiceProofIdRoute
   '/api/partner-logo/$partnerId': typeof ApiPartnerLogoPartnerIdRoute
   '/api/partner-product-photo/$id': typeof ApiPartnerProductPhotoIdRoute
-  '/api/partner-subscription-proof/$id': typeof ApiPartnerSubscriptionProofIdRoute
+  '/api/partner-topup-proof/$id': typeof ApiPartnerTopupProofIdRoute
   '/api/partner-variant-photo/$id': typeof ApiPartnerVariantPhotoIdRoute
   '/api/subscription-proof/$id': typeof ApiSubscriptionProofIdRoute
   '/partner/event/$id': typeof PartnerEventIdRoute
@@ -569,6 +591,7 @@ export interface FileRoutesByTo {
   '/profil/fee-rules/$feeRuleId': typeof AppProfilFeeRulesFeeRuleIdRoute
   '/profil/fee-rules/new': typeof AppProfilFeeRulesNewRoute
   '/api/auth/google/callback': typeof ApiAuthGoogleCallbackRoute
+  '/partner/event/analisa/$id': typeof PartnerEventAnalisaIdRoute
   '/partner/event/produk/$id': typeof PartnerEventProdukIdRoute
   '/partner/event/rekap/$id': typeof PartnerEventRekapIdRoute
   '/partner/event/ubah/$id': typeof PartnerEventUbahIdRoute
@@ -589,11 +612,13 @@ export interface FileRoutesById {
   '/_app/keuangan': typeof AppKeuanganRoute
   '/_app/notifikasi': typeof AppNotifikasiRoute
   '/admin/customers': typeof AdminCustomersRoute
-  '/admin/langganan-partner': typeof AdminLanggananPartnerRoute
   '/admin/notifikasi': typeof AdminNotifikasiRoute
   '/admin/partner': typeof AdminPartnerRoute
   '/admin/pengaturan': typeof AdminPengaturanRoute
+  '/admin/topup-partner': typeof AdminTopupPartnerRoute
+  '/partner/notifikasi': typeof PartnerNotifikasiRoute
   '/partner/profil': typeof PartnerProfilRoute
+  '/partner/saldo': typeof PartnerSaldoRoute
   '/reset-sandi-partner/$token': typeof ResetSandiPartnerTokenRoute
   '/reset-sandi/$token': typeof ResetSandiTokenRoute
   '/undangan-partner/$token': typeof UndanganPartnerTokenRoute
@@ -619,7 +644,7 @@ export interface FileRoutesById {
   '/api/invoice-proof/$id': typeof ApiInvoiceProofIdRoute
   '/api/partner-logo/$partnerId': typeof ApiPartnerLogoPartnerIdRoute
   '/api/partner-product-photo/$id': typeof ApiPartnerProductPhotoIdRoute
-  '/api/partner-subscription-proof/$id': typeof ApiPartnerSubscriptionProofIdRoute
+  '/api/partner-topup-proof/$id': typeof ApiPartnerTopupProofIdRoute
   '/api/partner-variant-photo/$id': typeof ApiPartnerVariantPhotoIdRoute
   '/api/subscription-proof/$id': typeof ApiSubscriptionProofIdRoute
   '/partner/event/$id': typeof PartnerEventIdRoute
@@ -642,6 +667,7 @@ export interface FileRoutesById {
   '/_app/profil/fee-rules/$feeRuleId': typeof AppProfilFeeRulesFeeRuleIdRoute
   '/_app/profil/fee-rules/new': typeof AppProfilFeeRulesNewRoute
   '/api/auth/google/callback': typeof ApiAuthGoogleCallbackRoute
+  '/partner/event/analisa/$id': typeof PartnerEventAnalisaIdRoute
   '/partner/event/produk/$id': typeof PartnerEventProdukIdRoute
   '/partner/event/rekap/$id': typeof PartnerEventRekapIdRoute
   '/partner/event/ubah/$id': typeof PartnerEventUbahIdRoute
@@ -663,11 +689,13 @@ export interface FileRouteTypes {
     | '/keuangan'
     | '/notifikasi'
     | '/admin/customers'
-    | '/admin/langganan-partner'
     | '/admin/notifikasi'
     | '/admin/partner'
     | '/admin/pengaturan'
+    | '/admin/topup-partner'
+    | '/partner/notifikasi'
     | '/partner/profil'
+    | '/partner/saldo'
     | '/reset-sandi-partner/$token'
     | '/reset-sandi/$token'
     | '/undangan-partner/$token'
@@ -692,7 +720,7 @@ export interface FileRouteTypes {
     | '/api/invoice-proof/$id'
     | '/api/partner-logo/$partnerId'
     | '/api/partner-product-photo/$id'
-    | '/api/partner-subscription-proof/$id'
+    | '/api/partner-topup-proof/$id'
     | '/api/partner-variant-photo/$id'
     | '/api/subscription-proof/$id'
     | '/partner/event/$id'
@@ -715,6 +743,7 @@ export interface FileRouteTypes {
     | '/profil/fee-rules/$feeRuleId'
     | '/profil/fee-rules/new'
     | '/api/auth/google/callback'
+    | '/partner/event/analisa/$id'
     | '/partner/event/produk/$id'
     | '/partner/event/rekap/$id'
     | '/partner/event/ubah/$id'
@@ -731,11 +760,13 @@ export interface FileRouteTypes {
     | '/keuangan'
     | '/notifikasi'
     | '/admin/customers'
-    | '/admin/langganan-partner'
     | '/admin/notifikasi'
     | '/admin/partner'
     | '/admin/pengaturan'
+    | '/admin/topup-partner'
+    | '/partner/notifikasi'
     | '/partner/profil'
+    | '/partner/saldo'
     | '/reset-sandi-partner/$token'
     | '/reset-sandi/$token'
     | '/undangan-partner/$token'
@@ -761,7 +792,7 @@ export interface FileRouteTypes {
     | '/api/invoice-proof/$id'
     | '/api/partner-logo/$partnerId'
     | '/api/partner-product-photo/$id'
-    | '/api/partner-subscription-proof/$id'
+    | '/api/partner-topup-proof/$id'
     | '/api/partner-variant-photo/$id'
     | '/api/subscription-proof/$id'
     | '/partner/event/$id'
@@ -784,6 +815,7 @@ export interface FileRouteTypes {
     | '/profil/fee-rules/$feeRuleId'
     | '/profil/fee-rules/new'
     | '/api/auth/google/callback'
+    | '/partner/event/analisa/$id'
     | '/partner/event/produk/$id'
     | '/partner/event/rekap/$id'
     | '/partner/event/ubah/$id'
@@ -803,11 +835,13 @@ export interface FileRouteTypes {
     | '/_app/keuangan'
     | '/_app/notifikasi'
     | '/admin/customers'
-    | '/admin/langganan-partner'
     | '/admin/notifikasi'
     | '/admin/partner'
     | '/admin/pengaturan'
+    | '/admin/topup-partner'
+    | '/partner/notifikasi'
     | '/partner/profil'
+    | '/partner/saldo'
     | '/reset-sandi-partner/$token'
     | '/reset-sandi/$token'
     | '/undangan-partner/$token'
@@ -833,7 +867,7 @@ export interface FileRouteTypes {
     | '/api/invoice-proof/$id'
     | '/api/partner-logo/$partnerId'
     | '/api/partner-product-photo/$id'
-    | '/api/partner-subscription-proof/$id'
+    | '/api/partner-topup-proof/$id'
     | '/api/partner-variant-photo/$id'
     | '/api/subscription-proof/$id'
     | '/partner/event/$id'
@@ -856,6 +890,7 @@ export interface FileRouteTypes {
     | '/_app/profil/fee-rules/$feeRuleId'
     | '/_app/profil/fee-rules/new'
     | '/api/auth/google/callback'
+    | '/partner/event/analisa/$id'
     | '/partner/event/produk/$id'
     | '/partner/event/rekap/$id'
     | '/partner/event/ubah/$id'
@@ -883,7 +918,7 @@ export interface RootRouteChildren {
   ApiInvoiceProofIdRoute: typeof ApiInvoiceProofIdRoute
   ApiPartnerLogoPartnerIdRoute: typeof ApiPartnerLogoPartnerIdRoute
   ApiPartnerProductPhotoIdRoute: typeof ApiPartnerProductPhotoIdRoute
-  ApiPartnerSubscriptionProofIdRoute: typeof ApiPartnerSubscriptionProofIdRoute
+  ApiPartnerTopupProofIdRoute: typeof ApiPartnerTopupProofIdRoute
   ApiPartnerVariantPhotoIdRoute: typeof ApiPartnerVariantPhotoIdRoute
   ApiSubscriptionProofIdRoute: typeof ApiSubscriptionProofIdRoute
   TagihanEventIdOrderIdRoute: typeof TagihanEventIdOrderIdRoute
@@ -970,13 +1005,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCustomersRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/admin/langganan-partner': {
-      id: '/admin/langganan-partner'
-      path: '/langganan-partner'
-      fullPath: '/admin/langganan-partner'
-      preLoaderRoute: typeof AdminLanggananPartnerRouteImport
-      parentRoute: typeof AdminRoute
-    }
     '/admin/notifikasi': {
       id: '/admin/notifikasi'
       path: '/notifikasi'
@@ -998,6 +1026,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPengaturanRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/topup-partner': {
+      id: '/admin/topup-partner'
+      path: '/topup-partner'
+      fullPath: '/admin/topup-partner'
+      preLoaderRoute: typeof AdminTopupPartnerRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/partner/': {
       id: '/partner/'
       path: '/'
@@ -1005,11 +1040,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PartnerIndexRouteImport
       parentRoute: typeof PartnerRoute
     }
+    '/partner/notifikasi': {
+      id: '/partner/notifikasi'
+      path: '/notifikasi'
+      fullPath: '/partner/notifikasi'
+      preLoaderRoute: typeof PartnerNotifikasiRouteImport
+      parentRoute: typeof PartnerRoute
+    }
     '/partner/profil': {
       id: '/partner/profil'
       path: '/profil'
       fullPath: '/partner/profil'
       preLoaderRoute: typeof PartnerProfilRouteImport
+      parentRoute: typeof PartnerRoute
+    }
+    '/partner/saldo': {
+      id: '/partner/saldo'
+      path: '/saldo'
+      fullPath: '/partner/saldo'
+      preLoaderRoute: typeof PartnerSaldoRouteImport
       parentRoute: typeof PartnerRoute
     }
     '/reset-sandi-partner/$token': {
@@ -1187,11 +1236,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPartnerProductPhotoIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/partner-subscription-proof/$id': {
-      id: '/api/partner-subscription-proof/$id'
-      path: '/api/partner-subscription-proof/$id'
-      fullPath: '/api/partner-subscription-proof/$id'
-      preLoaderRoute: typeof ApiPartnerSubscriptionProofIdRouteImport
+    '/api/partner-topup-proof/$id': {
+      id: '/api/partner-topup-proof/$id'
+      path: '/api/partner-topup-proof/$id'
+      fullPath: '/api/partner-topup-proof/$id'
+      preLoaderRoute: typeof ApiPartnerTopupProofIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/partner-variant-photo/$id': {
@@ -1348,6 +1397,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthGoogleCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/partner/event/analisa/$id': {
+      id: '/partner/event/analisa/$id'
+      path: '/event/analisa/$id'
+      fullPath: '/partner/event/analisa/$id'
+      preLoaderRoute: typeof PartnerEventAnalisaIdRouteImport
+      parentRoute: typeof PartnerRoute
+    }
     '/partner/event/produk/$id': {
       id: '/partner/event/produk/$id'
       path: '/event/produk/$id'
@@ -1440,10 +1496,10 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 interface AdminRouteChildren {
   AdminCustomersRoute: typeof AdminCustomersRoute
-  AdminLanggananPartnerRoute: typeof AdminLanggananPartnerRoute
   AdminNotifikasiRoute: typeof AdminNotifikasiRoute
   AdminPartnerRoute: typeof AdminPartnerRoute
   AdminPengaturanRoute: typeof AdminPengaturanRoute
+  AdminTopupPartnerRoute: typeof AdminTopupPartnerRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AdminEventEventIdRoute: typeof AdminEventEventIdRoute
   AdminEventNewRoute: typeof AdminEventNewRoute
@@ -1452,10 +1508,10 @@ interface AdminRouteChildren {
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminCustomersRoute: AdminCustomersRoute,
-  AdminLanggananPartnerRoute: AdminLanggananPartnerRoute,
   AdminNotifikasiRoute: AdminNotifikasiRoute,
   AdminPartnerRoute: AdminPartnerRoute,
   AdminPengaturanRoute: AdminPengaturanRoute,
+  AdminTopupPartnerRoute: AdminTopupPartnerRoute,
   AdminIndexRoute: AdminIndexRoute,
   AdminEventEventIdRoute: AdminEventEventIdRoute,
   AdminEventNewRoute: AdminEventNewRoute,
@@ -1465,7 +1521,9 @@ const AdminRouteChildren: AdminRouteChildren = {
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface PartnerRouteChildren {
+  PartnerNotifikasiRoute: typeof PartnerNotifikasiRoute
   PartnerProfilRoute: typeof PartnerProfilRoute
+  PartnerSaldoRoute: typeof PartnerSaldoRoute
   PartnerIndexRoute: typeof PartnerIndexRoute
   PartnerEventIdRoute: typeof PartnerEventIdRoute
   PartnerEventBaruRoute: typeof PartnerEventBaruRoute
@@ -1478,6 +1536,7 @@ interface PartnerRouteChildren {
   PartnerKatalogIndexRoute: typeof PartnerKatalogIndexRoute
   PartnerPaketIndexRoute: typeof PartnerPaketIndexRoute
   PartnerTagihanIndexRoute: typeof PartnerTagihanIndexRoute
+  PartnerEventAnalisaIdRoute: typeof PartnerEventAnalisaIdRoute
   PartnerEventProdukIdRoute: typeof PartnerEventProdukIdRoute
   PartnerEventRekapIdRoute: typeof PartnerEventRekapIdRoute
   PartnerEventUbahIdRoute: typeof PartnerEventUbahIdRoute
@@ -1485,7 +1544,9 @@ interface PartnerRouteChildren {
 }
 
 const PartnerRouteChildren: PartnerRouteChildren = {
+  PartnerNotifikasiRoute: PartnerNotifikasiRoute,
   PartnerProfilRoute: PartnerProfilRoute,
+  PartnerSaldoRoute: PartnerSaldoRoute,
   PartnerIndexRoute: PartnerIndexRoute,
   PartnerEventIdRoute: PartnerEventIdRoute,
   PartnerEventBaruRoute: PartnerEventBaruRoute,
@@ -1498,6 +1559,7 @@ const PartnerRouteChildren: PartnerRouteChildren = {
   PartnerKatalogIndexRoute: PartnerKatalogIndexRoute,
   PartnerPaketIndexRoute: PartnerPaketIndexRoute,
   PartnerTagihanIndexRoute: PartnerTagihanIndexRoute,
+  PartnerEventAnalisaIdRoute: PartnerEventAnalisaIdRoute,
   PartnerEventProdukIdRoute: PartnerEventProdukIdRoute,
   PartnerEventRekapIdRoute: PartnerEventRekapIdRoute,
   PartnerEventUbahIdRoute: PartnerEventUbahIdRoute,
@@ -1524,7 +1586,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiInvoiceProofIdRoute: ApiInvoiceProofIdRoute,
   ApiPartnerLogoPartnerIdRoute: ApiPartnerLogoPartnerIdRoute,
   ApiPartnerProductPhotoIdRoute: ApiPartnerProductPhotoIdRoute,
-  ApiPartnerSubscriptionProofIdRoute: ApiPartnerSubscriptionProofIdRoute,
+  ApiPartnerTopupProofIdRoute: ApiPartnerTopupProofIdRoute,
   ApiPartnerVariantPhotoIdRoute: ApiPartnerVariantPhotoIdRoute,
   ApiSubscriptionProofIdRoute: ApiSubscriptionProofIdRoute,
   TagihanEventIdOrderIdRoute: TagihanEventIdOrderIdRoute,

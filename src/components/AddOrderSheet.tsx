@@ -17,7 +17,7 @@ import {
   openIndexAfterRemove,
 } from '../lib/order-sheet-items'
 import { lineTotal, summarizeItems } from '../lib/order-totals'
-import { partnerItemName, splitItemName } from '../lib/partner-item-label'
+import { displayItemName, partnerItemName, splitItemName } from '../lib/partner-item-label'
 import type {PartnerEventItemCatalog} from '../lib/partner-item-label';
 import PartnerCatalogPicker, {type CatalogPick} from './PartnerCatalogPicker';
 import OrderItemList, { SubmitStatusBadge, type OrderItemView } from './OrderItemList'
@@ -437,7 +437,7 @@ export default function AddOrderSheet({
   }
 
   // Pratinjau paket: dihitung dari barang di form, sama dengan aturan server.
-  // Hanya untuk partner PRO (katalog enabled).
+  // Hanya kalau event punya katalog paket partner (katalog enabled).
   const bundlePreview = useMemo(() => {
     if (!partnerCatalog?.enabled) return { bundles: [], pending: [] }
     return previewPartnerBundles(
@@ -480,7 +480,7 @@ export default function AddOrderSheet({
       const product = partnerCatalog.products.find((p) => p.id === v.productId)
       map.set(v.id, {
         productName: product?.name ?? '',
-        variantLabel: [v.size, v.variation].filter(Boolean).join(' / '),
+        variantLabel: [v.variation, v.size].filter(Boolean).join(' / '),
       })
     }
     return map
@@ -508,7 +508,7 @@ export default function AddOrderSheet({
         .filter((v) => ruleCoversVariant(rule, v.productId, v.size ?? null))
         .map((v) => {
           const product = partnerCatalog.products.find((p) => p.id === v.productId)
-          const label = [v.size, v.variation].filter(Boolean).join(' / ')
+          const label = [v.variation, v.size].filter(Boolean).join(' / ')
           return {
             id: v.id,
             label: label ? `${product?.name ?? ''} (${label})` : (product?.name ?? ''),
@@ -995,7 +995,7 @@ export default function AddOrderSheet({
                                 const parts = splitItemName(item.name)
                                 return {
                                   productName: parts.product,
-                                  variantLabel: [parts.size, parts.variation].filter(Boolean).join(' / '),
+                                  variantLabel: [parts.variation, parts.size].filter(Boolean).join(' / '),
                                 }
                               })()
                             const ruleName = item.partnerVariantId
@@ -1120,7 +1120,7 @@ export default function AddOrderSheet({
 
                         {partnerMode ? (
                           <div className="flex flex-col gap-2 text-xs">
-                            <p className="font-semibold">{item.name}</p>
+                            <p className="font-semibold">{displayItemName(item.name)}</p>
                             <button
                               type="button"
                               onClick={() => setCatalogTarget({ mode: 'replace', index })}
@@ -1404,6 +1404,7 @@ export default function AddOrderSheet({
               {((lockedBundles && lockedBundles.length > 0) || bundlePreview.bundles.length > 0) && (
                 <div className="flex flex-col gap-2">
                   <OrderItemList
+                    partnerEvent={partnerMode}
                     items={[
                       ...(lockedBundles ?? []).map((bundle) => ({
                         id: bundle.id,

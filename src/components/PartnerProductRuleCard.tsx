@@ -236,7 +236,7 @@ export default function PartnerProductRuleCard({
         <div>
           <h2 className="pm-display text-base">Paket</h2>
           <p className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
-            Paket harga yang berlaku untuk produk ini (PRO).
+            Paket harga yang berlaku untuk produk ini.
             {sizes.length > 0 && ' Satu ukuran hanya bisa ikut satu paket.'}
           </p>
         </div>

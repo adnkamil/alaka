@@ -7,6 +7,7 @@ import {
   isCalendarEventJoinable,
 } from './calendar-join'
 import { todayIsoDateInAppTimeZone } from './timezone'
+import { notifyPartnerJastiperJoined } from './partner-notification-queries'
 
 /**
  * Query server-only untuk "Ikut Event" (jastiper ikut event kalender) dan
@@ -105,7 +106,13 @@ export async function joinCalendarEventForBrand(input: {
     .returning({ id: events.id })
 
   const insertedRow = inserted.at(0)
-  if (insertedRow) return { eventId: insertedRow.id, created: true }
+  if (insertedRow) {
+    await notifyPartnerJastiperJoined({
+      calendarEventId: calendarEvent.id,
+      brandId: input.brandId,
+    })
+    return { eventId: insertedRow.id, created: true }
+  }
 
   // Kalah balapan dengan permintaan lain: pakai event yang sudah terbentuk.
   const winner = await findJoinedEventId(input.brandId, input.calendarEventId)

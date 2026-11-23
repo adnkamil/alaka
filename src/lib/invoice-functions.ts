@@ -61,6 +61,17 @@ export type InvoiceDetail = InvoiceSummary & {
   partnerBank: PartnerBankInfo | null
   /** Nomor submit yang masuk tagihan ini. */
   submitNos: Array<number>
+  /**
+   * Biaya admin ALAKA yang dipotong dari saldo partner saat lunas. Hanya diisi
+   * untuk partner (jastiper tidak melihatnya). Null = belum lunas / tidak dipotong.
+   */
+  adminFee: { percent: number; amount: number } | null
+  /**
+   * Perkiraan biaya admin kalau tagihan ditandai lunas sekarang (persen saat
+   * ini). Hanya diisi untuk partner saat status menunggu review; dipakai modal
+   * persetujuan. Null = bukan konteksnya.
+   */
+  pendingAdminFee: { percent: number; amount: number } | null
   /** Snapshot saat tagihan dibuat, bukan hitung ulang dari harga katalog. */
   lines: Array<{
     id: string
@@ -179,6 +190,8 @@ async function loadInvoiceDetail(invoiceId: string, scope: {
       paidConfirmedAt: invoices.paidConfirmedAt,
       paymentProofStored: invoices.paymentProofStored,
       paymentRejectReason: invoices.paymentRejectReason,
+      adminFeePercent: invoices.adminFeePercent,
+      adminFeeAmount: invoices.adminFeeAmount,
       brandName: brands.name,
       brandId: invoices.brandId,
       calendarEventId: invoices.calendarEventId,
@@ -218,6 +231,21 @@ async function loadInvoiceDetail(invoiceId: string, scope: {
     .where(eq(invoiceSubmissions.invoiceId, invoiceId))
     .orderBy(asc(eventSubmissions.submitNo))
   const submitNoById = new Map(subs.map((s) => [s.id, s.submitNo]))
+  let pendingAdminFee: { percent: number; amount: number } | null = null
+  if (scope.partnerId && invoice.status === 'menunggu_review') {
+    const { subscriptionSettings } = await import('../db/schema')
+    const { computeAdminFee } = await import('./partner-credit')
+    const settings = await db
+      .select({ adminFeePercent: subscriptionSettings.adminFeePercent })
+      .from(subscriptionSettings)
+      .limit(1)
+      .then((rows) => rows.at(0))
+    const percent = settings?.adminFeePercent ?? '0'
+    pendingAdminFee = {
+      percent: Number(percent),
+      amount: computeAdminFee(invoice.totalAmount, percent),
+    }
+  }
   const lines = await db
     .select()
     .from(invoiceLines)
@@ -252,6 +280,14 @@ async function loadInvoiceDetail(invoiceId: string, scope: {
           }
         : null,
     submitNos: subs.map((s) => s.submitNo),
+    adminFee:
+      scope.partnerId && invoice.adminFeePercent !== null && invoice.adminFeeAmount !== null
+        ? {
+            percent: Number(invoice.adminFeePercent),
+            amount: Number(invoice.adminFeeAmount),
+          }
+        : null,
+    pendingAdminFee,
     lines: lines
       .map((l) => ({
         id: l.id,
@@ -460,6 +496,10 @@ export const claimInvoicePayment = createServerFn({ method: 'POST' })
           putInvoiceProof(data.invoiceId, proof.bytes, proof.contentType),
       }),
     )
+    const { notifyPartnerPaymentClaimed } = await import(
+      './partner-notification-queries'
+    )
+    await notifyPartnerPaymentClaimed(data.invoiceId)
   })
 
 /** Partner menandai tagihan lunas setelah mengecek bukti bayar. */

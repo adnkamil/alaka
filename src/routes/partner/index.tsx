@@ -2,6 +2,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { CalendarDays, Package, Plus, ShoppingBag, Users } from 'lucide-react'
 import PartnerLogo from '../../components/PartnerLogo'
+import PartnerNotificationBell from '../../components/PartnerNotificationBell'
 import { formatDate, formatPhoneNumber } from '../../lib/format'
 import { gainHint, relativeDayLabel } from '../../lib/partner-dashboard-rules'
 import { partnerInitials } from '../../lib/partner-logo-rules'
@@ -120,6 +121,7 @@ function PartnerHomePage() {
           >
             PARTNER
           </span>
+          <PartnerNotificationBell />
         </header>
 
         <div className="flex flex-col gap-2.5">

@@ -10,20 +10,31 @@ import {
   partnerVariants,
 } from '../db/schema'
 import {
+  displayItemName,
   partnerItemName,
-  variantLabel
-
+  variantLabel,
 } from './partner-item-label'
 import type { PartnerEventItemCatalog, PartnerItemRule } from './partner-item-label';
-import { partnerPricingRules, partnerRuleProducts, partnerRuleProductSizes, partnerSubscriptions } from '../db/schema';
+import { partnerPricingRules, partnerRuleProducts, partnerRuleProductSizes } from '../db/schema';
 import { productSizesForRule } from './partner-rule-sizes';
-import { hasPartnerPro } from './partner-entitlement';
 import { partnerProductPhotoUrl } from './partner-product-rules';
 import {
   aggregateStockDemand,
   findStockShortages,
   formatStockShortages,
 } from './partner-stock'
+
+/** True kalau event kalender ini milik partner (nama barang wajib dari katalog). */
+export async function isPartnerLinked(
+  calendarEventId: string | null,
+): Promise<boolean> {
+  if (!calendarEventId) return false
+  const calendarEvent = await db.query.calendarEvents.findFirst({
+    where: eq(calendarEvents.id, calendarEventId),
+    columns: { partnerId: true },
+  })
+  return Boolean(calendarEvent?.partnerId)
+}
 
 /**
  * Katalog produk partner yang dibawa ke satu event (produk aktif + varian aktif).
@@ -75,8 +86,7 @@ export async function loadEventPartnerItemCatalog(
       ),
     )
 
-  // Aturan paket aktif untuk produk di event ini. Hanya untuk partner PRO,
-  // karena paket di luar itu tidak pernah terbentuk.
+  // Aturan paket aktif untuk produk di event ini.
   const productIds = productRows.map((p) => p.id)
   const ruleProductRows = await db
     .select({ ruleId: partnerRuleProducts.ruleId, productId: partnerRuleProducts.partnerProductId })
@@ -99,16 +109,7 @@ export async function loadEventPartnerItemCatalog(
           ),
         )
     : []
-  const subRows = await db
-    .select({
-      status: partnerSubscriptions.status,
-      startedAt: partnerSubscriptions.startedAt,
-      endsAt: partnerSubscriptions.endsAt,
-    })
-    .from(partnerSubscriptions)
-    .where(eq(partnerSubscriptions.partnerId, calendarEvent.partnerId))
-  const isPro = hasPartnerPro(subRows)
-  const activeRules = isPro ? ruleRows.filter((r) => r.isActive) : []
+  const activeRules = ruleRows.filter((r) => r.isActive)
   const activeRuleIds = new Set(activeRules.map((r) => r.id))
   // Satu produk bisa masuk beberapa aturan; semua ikut ditampilkan.
   const sizeRows = activeRuleIds.size
@@ -275,7 +276,7 @@ export async function resolveEventItems(
     new Map(
       [...variantById].map(([id, v]) => [
         id,
-        { name: partnerItemName(v.productName, v.label), stock: v.stock },
+        { name: displayItemName(partnerItemName(v.productName, v.label)), stock: v.stock },
       ]),
     ),
   )

@@ -9,6 +9,8 @@ import { Link, createFileRoute } from '@tanstack/react-router'
 import {
   ArrowLeft,
   CalendarDays,
+  ChartColumn,
+  ChevronDown,
   Image as ImageIcon,
   MapPin,
   Package,
@@ -22,6 +24,11 @@ import { hasBankAccount } from '../../../lib/invoice-rules'
 import type { PartnerSubmitRow } from '../../../lib/partner-submit-list'
 import PartnerSlotSection from '../../../components/PartnerSlotSection'
 import PartnerRevenueCard from '../../../components/PartnerRevenueCard'
+import PartnerProductVariantStock, {
+  hasVariantOptions,
+  stockSummary,
+} from '../../../components/PartnerProductVariantStock'
+import { fetchPartnerEventProductStock } from '../../../lib/partner-event-product-functions'
 import UnderlineTabs from '../../../components/ui/UnderlineTabs'
 import Pagination from '../../../components/ui/Pagination'
 import { formatWibDateTime } from '../../../lib/event-slot'
@@ -32,6 +39,7 @@ import PartnerEventStatusBadge from '../../../components/PartnerEventStatusBadge
 import ConfirmModal from '../../../components/ui/ConfirmModal'
 import Toast from '../../../components/ui/Toast'
 import { formatDateRange } from '../../../lib/calendar'
+import { displayBundleLabel, displayItemName } from '../../../lib/partner-item-label'
 import {
   buildWhatsAppLink,
   formatDate,
@@ -208,7 +216,7 @@ function InvoicePreviewTable({
             className="border-t"
             style={{ borderColor: 'var(--app-border)' }}
           >
-            <td className="py-1.5">{l.label}</td>
+            <td className="py-1.5">{displayBundleLabel(l.label)}</td>
             <td className="pm-num py-1.5 text-right">{l.qty}</td>
             <td className="pm-num py-1.5 text-right">{formatRupiah(l.unitPrice)}</td>
             <td className="pm-num py-1.5 text-right font-semibold">{formatRupiah(l.amount)}</td>
@@ -222,7 +230,7 @@ function InvoicePreviewTable({
             style={{ borderColor: 'var(--app-border)' }}
           >
             <td className="py-1.5">
-              {l.label}
+              {displayItemName(l.label)}
               {l.note && (
                 <span className="block" style={{ color: 'var(--app-text-soft)' }}>
                   {l.note}
@@ -355,6 +363,15 @@ function PartnerEventDetailPage() {
   })
   const search = Route.useSearch()
   const [tab, setTab] = useState<Tab>(search.tab ?? 'jastiper')
+  // Varian dan stok per produk, dimuat saat tab Produk dibuka.
+  const { data: productStock } = useQuery({
+    queryKey: ['partner-event-product-stock', id],
+    queryFn: () => fetchPartnerEventProductStock({ data: { id } }),
+    enabled: tab === 'produk',
+  })
+  const variantsByProduct = new Map(
+    (productStock ?? []).map((p) => [p.productId, p.variants]),
+  )
   const [confirmEnd, setConfirmEnd] = useState(false)
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
@@ -381,6 +398,14 @@ function PartnerEventDetailPage() {
     ditagih: submitRows.filter((r) => matchesFilter(r, 'ditagih')).length,
     review: submitRows.filter((r) => matchesFilter(r, 'review')).length,
   }
+  // Ringkasan pcs untuk kartu pendapatan, dihitung dari baris yang sama dengan
+  // tab "Siap ditagih" dan "Menunggu" supaya angkanya selalu cocok.
+  const readyPcs = submitRows
+    .filter((r) => matchesFilter(r, 'siap'))
+    .reduce((n, r) => n + r.pcs.approved, 0)
+  const waitingPcs = submitRows
+    .filter((r) => matchesFilter(r, 'menunggu'))
+    .reduce((n, r) => n + r.pcs.pending, 0)
   const searchKey = participantSearch.trim().toLowerCase()
   const filteredSubmits = submitRows.filter(
     (r) =>
@@ -497,6 +522,8 @@ function PartnerEventDetailPage() {
     ? SUBMIT_FILTER_REKAP[submitFilter]
     : 'semua'
   const [productSearch, setProductSearch] = useState('')
+  // Kartu produk yang sedang dibuka (menampilkan daftar varian).
+  const [openProducts, setOpenProducts] = useState<Set<string>>(new Set())
   const filteredProducts = products.filter((product) =>
     product.name.toLowerCase().includes(productSearch.trim().toLowerCase()),
   )
@@ -628,15 +655,26 @@ function PartnerEventDetailPage() {
           <PartnerEventStatusBadge status={status} />
         </header>
 
-        <Link
-          to="/partner/event/rekap/$id"
-          params={{ id }}
-          search={{ status: rekapStatus }}
-          className="app-btn-outline self-start no-underline"
-          style={{ minHeight: 40, fontSize: 13 }}
-        >
-          Rekap Orderan
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            to="/partner/event/rekap/$id"
+            params={{ id }}
+            search={{ status: rekapStatus }}
+            className="app-btn-outline no-underline"
+            style={{ minHeight: 40, fontSize: 13 }}
+          >
+            Rekap Orderan
+          </Link>
+          <Link
+            to="/partner/event/analisa/$id"
+            params={{ id }}
+            className="app-btn-outline inline-flex items-center gap-1.5 no-underline"
+            style={{ minHeight: 40, fontSize: 13 }}
+          >
+            <ChartColumn size={15} />
+            Analisa Event
+          </Link>
+        </div>
 
         <div
           className="flex h-[112px] w-full items-center justify-center overflow-hidden rounded-2xl"
@@ -760,40 +798,105 @@ function PartnerEventDetailPage() {
                   product.id,
                   product.photoUpdatedAt,
                 )
+                const variants = variantsByProduct.get(product.id) ?? []
+                const stock = stockSummary(variants)
+                const expandable = hasVariantOptions(variants)
+                const open = expandable && openProducts.has(product.id)
+                const toggle = () =>
+                  setOpenProducts((prev) => {
+                    const next = new Set(prev)
+                    if (next.has(product.id)) next.delete(product.id)
+                    else next.add(product.id)
+                    return next
+                  })
                 return (
                   <div
                     key={product.id}
-                    className="app-card flex items-center gap-3 p-3"
+                    className="app-card flex flex-col p-3"
                   >
-                    <div
-                      className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-xl"
-                      style={{
-                        background: 'var(--pm-tint)',
-                        color: 'var(--app-text-mute)',
-                      }}
+                    <button
+                      type="button"
+                      onClick={expandable ? toggle : undefined}
+                      disabled={!expandable}
+                      aria-expanded={expandable ? open : undefined}
+                      className="flex w-full items-center gap-3 text-left disabled:cursor-default"
                     >
-                      {photoUrl ? (
-                        <img
-                          src={photoUrl}
-                          alt=""
-                          loading="lazy"
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <Package size={20} />
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-bold">
-                        {product.name}
-                      </p>
-                      <p
-                        className="pm-num text-sm"
-                        style={{ color: 'var(--app-accent)' }}
+                      <div
+                        className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-xl"
+                        style={{
+                          background: 'var(--pm-tint)',
+                          color: 'var(--app-text-mute)',
+                        }}
                       >
-                        {formatRupiah(product.price)}
-                      </p>
-                    </div>
+                        {photoUrl ? (
+                          <img
+                            src={photoUrl}
+                            alt=""
+                            loading="lazy"
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <Package size={20} />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-bold">
+                          {product.name}
+                        </p>
+                        <p
+                          className="pm-num text-sm"
+                          style={{ color: 'var(--app-accent)' }}
+                        >
+                          {formatRupiah(product.price)}
+                        </p>
+                        {expandable && (
+                          <p className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
+                            {variants.length} varian
+                          </p>
+                        )}
+                      </div>
+                      {productStock && (
+                        <div className="shrink-0 text-right">
+                          <p className="pm-num text-sm font-bold">
+                            {variants.length === 0 ? '–' : stock.total}
+                          </p>
+                          <p className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
+                            {variants.length === 0 ? 'tidak aktif' : 'stok'}
+                          </p>
+                          {stock.habis > 0 && (
+                            <p className="text-[11px] font-semibold" style={{ color: '#b42318' }}>
+                              {stock.habis} habis
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      {expandable && (
+                        <ChevronDown
+                          size={18}
+                          aria-hidden="true"
+                          className={`shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
+                          style={{ color: 'var(--app-text-soft)' }}
+                        />
+                      )}
+                    </button>
+                    {/* Isi tetap dirender supaya buka-tutupnya beranimasi mulus (tinggi 0fr <-> 1fr). */}
+                    {expandable && (
+                      <div
+                        aria-hidden={!open}
+                        inert={!open}
+                        className="grid transition-[grid-template-rows,opacity] duration-300 ease-out motion-reduce:transition-none"
+                        style={{
+                          gridTemplateRows: open ? '1fr' : '0fr',
+                          opacity: open ? 1 : 0,
+                        }}
+                      >
+                        <div className="min-h-0 overflow-hidden">
+                          <div className="pt-2.5">
+                            <PartnerProductVariantStock variants={variants} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )
               })
@@ -968,21 +1071,35 @@ function PartnerEventDetailPage() {
 
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
           <aside className="flex flex-col gap-5 lg:order-last lg:sticky lg:top-6">
-            <Link
-              to="/partner/event/rekap/$id"
-              params={{ id }}
-              search={{ status: rekapStatus }}
-              className="app-btn-outline w-full no-underline"
-              style={{ minHeight: 44, fontSize: 14 }}
-            >
-              Rekap Orderan
-            </Link>
+            <div className="grid grid-cols-2 gap-3">
+              <Link
+                to="/partner/event/rekap/$id"
+                params={{ id }}
+                search={{ status: rekapStatus }}
+                className="app-btn-outline w-full no-underline"
+                style={{ minHeight: 44, fontSize: 14, padding: '0 12px' }}
+              >
+                Rekap Orderan
+              </Link>
+              <Link
+                to="/partner/event/analisa/$id"
+                params={{ id }}
+                className="app-btn-outline inline-flex w-full items-center justify-center gap-1.5 no-underline"
+                style={{ minHeight: 44, fontSize: 14, padding: '0 12px' }}
+              >
+                <ChartColumn size={16} />
+                Analisa Event
+              </Link>
+            </div>
 
             <PartnerRevenueCard
               slotEnabled={revenue?.slotEnabled ?? false}
               totalAmount={revenue?.totalAmount ?? 0}
-              approvedAmount={revenue?.approvedAmount ?? 0}
-              waitingAmount={revenue?.waitingAmount ?? 0}
+              invoiced={revenue?.invoiced}
+              readyPcs={readyPcs}
+              readySubmitCount={submitCounts.siap}
+              waitingPcs={waitingPcs}
+              waitingSubmitCount={submitCounts.menunggu}
             />
 
             <section className="app-card flex flex-col gap-4 p-5">

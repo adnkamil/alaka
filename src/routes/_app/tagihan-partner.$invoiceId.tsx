@@ -20,6 +20,7 @@ import {
 import { formatInvoiceNumber } from '../../lib/invoice-rules'
 import { formatRupiah } from '../../lib/partner-product-rules'
 import { fileToPaymentProofBlob } from '../../lib/payment-proof-image'
+import { displayItemName } from '../../lib/partner-item-label'
 
 export const Route = createFileRoute('/_app/tagihan-partner/$invoiceId')({
   component: PartnerInvoicePage,
@@ -214,7 +215,7 @@ function PartnerInvoicePage() {
                           {kind === 'paket' ? (
                             <PaketLine label={l.label} />
                           ) : (
-                            <p className="text-sm font-medium">{l.label}</p>
+                            <p className="text-sm font-medium">{displayItemName(l.label)}</p>
                           )}
                           <p
                             className="pm-num mt-0.5 text-xs"
@@ -390,7 +391,7 @@ function PaketLine({ label }: { label: string }) {
           style={{ color: 'var(--app-text-soft)' }}
         >
           {items.map((item, i) => (
-            <li key={i}>• {item}</li>
+            <li key={i}>• {displayItemName(item)}</li>
           ))}
         </ul>
       )}

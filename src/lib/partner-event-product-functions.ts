@@ -2,6 +2,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { requirePartner } from './partner-auth'
 import { partnerOwnsEvent } from './partner-event-queries'
+import { loadEventPartnerItemCatalog } from './partner-event-items'
 import {
   listPartnerEventProducts,
   replacePartnerEventProducts,
@@ -37,4 +38,28 @@ export const setPartnerEventProducts = createServerFn({ method: 'POST' })
     const partner = await requirePartner()
     await replacePartnerEventProducts(partner.id, data.id, data.productIds)
     return { count: new Set(data.productIds).size }
+  })
+
+/**
+ * Varian dan stok saat ini per produk event (tab Produk di detail event).
+ * Hanya produk dan varian aktif, sama dengan yang bisa dipesan jastiper.
+ */
+export const fetchPartnerEventProductStock = createServerFn({ method: 'GET' })
+  .validator(eventIdSchema)
+  .handler(async ({ data }) => {
+    const partner = await requirePartner()
+    if (!(await partnerOwnsEvent(partner.id, data.id))) {
+      throw new Error('Event tidak ditemukan')
+    }
+    const catalog = await loadEventPartnerItemCatalog(data.id)
+    return catalog.products.map((p) => ({
+      productId: p.id,
+      variants: p.variants.map((v) => ({
+        id: v.id,
+        size: v.size,
+        variation: v.variation,
+        price: v.price,
+        stock: v.stock,
+      })),
+    }))
   })

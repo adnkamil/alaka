@@ -21,7 +21,7 @@ import type { OrderTx } from './order-status-queries'
 import { recalculateOrderStatus } from './order-status-queries'
 import { chunk } from './chunk'
 import { INVOICED_MESSAGE, isSubmissionInvoiced } from './invoice-queries'
-import { partnerItemName, variantLabel } from './partner-item-label'
+import { partnerItemName, variantDisplayLabel, variantLabel } from './partner-item-label'
 import {
   aggregateStockDemand,
   deductVariantStock,
@@ -290,7 +290,7 @@ export async function reviewSubmission(
     return info
       ? partnerItemName(
           info.productName,
-          variantLabel({ size: info.size, variation: info.variation }),
+          variantDisplayLabel({ size: info.size, variation: info.variation }),
         )
       : 'Barang'
   })

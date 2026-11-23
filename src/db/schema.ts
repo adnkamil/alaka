@@ -871,52 +871,6 @@ export const usersRelations = relations(users, ({ many }) => ({
 // Histori langganan milik user. Admin yang memverifikasi (`reviewedBy`) sengaja
 // tidak dibuatkan relation supaya relasi user <-> subscriptions tetap satu arah
 // dan tidak ambigu waktu dipakai di `db.query`.
-// Langganan PRO untuk akun partner. Terpisah dari `subscriptions` (milik brand
-// jastiper). Kolomnya mengikuti `subscriptions`, dengan bukti transfer disimpan
-// di Blobs dan hanya ditandai lewat `payment_proof_stored`.
-export const partnerSubscriptions = pgTable(
-  'partner_subscriptions',
-  {
-    id: uuid().primaryKey().defaultRandom(),
-    partnerId: uuid('partner_id')
-      .notNull()
-      .references(() => partners.id, { onDelete: 'cascade' }),
-    planCode: varchar('plan_code').notNull().default(PRO_PLAN_CODE),
-    status: subscriptionStatusEnum().notNull().default('pending'),
-    durationDays: integer('duration_days').notNull().default(PRO_DURATION_DAYS),
-    startedAt: timestamp('started_at', { withTimezone: true }),
-    endsAt: timestamp('ends_at', { withTimezone: true }),
-    amount: decimal({ precision: 12, scale: 2 }).notNull().default('0'),
-    paymentMethod: paymentMethodTypeEnum('payment_method'),
-    paymentProvider: varchar('payment_provider'),
-    paymentSenderName: varchar('payment_sender_name'),
-    paymentReference: varchar('payment_reference'),
-    paymentProofStored: boolean('payment_proof_stored')
-      .notNull()
-      .default(false),
-    paymentNote: text('payment_note'),
-    paidAt: timestamp('paid_at', { withTimezone: true }),
-    reviewedBy: uuid('reviewed_by').references(() => users.id, {
-      onDelete: 'set null',
-    }),
-    reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
-    reviewNote: text('review_note'),
-    createdAt: timestamp('created_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (table) => [
-    index('partner_subscriptions_partner_created_idx').on(
-      table.partnerId,
-      table.createdAt,
-    ),
-    index('partner_subscriptions_status_idx').on(table.status),
-  ],
-)
-
 export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
   user: one(users, {
     fields: [subscriptions.userId],
@@ -1096,13 +1050,26 @@ export const subscriptionSettings = pgTable('subscription_settings', {
    * nominal yang ditransfer tetap `proPrice`. Null = tidak ada harga coret.
    */
   originalPrice: decimal('original_price', { precision: 12, scale: 2 }),
+  /**
+   * Biaya admin ALAKA untuk partner, dalam persen dari harga produk di tagihan
+   * partner yang lunas. Di-snapshot ke `invoices.admin_fee_percent` saat fee
+   * dipotong, jadi mengubahnya tidak memengaruhi tagihan yang sudah lunas.
+   */
+  adminFeePercent: decimal('admin_fee_percent', { precision: 5, scale: 2 })
+    .notNull()
+    .default('0'),
   updatedAt: timestamp('updated_at', { withTimezone: true })
     .notNull()
     .defaultNow(),
   updatedBy: uuid('updated_by').references(() => users.id, {
     onDelete: 'set null',
   }),
-})
+}, (table) => [
+  check(
+    'subscription_settings_admin_fee_percent_range',
+    sql`${table.adminFeePercent} >= 0 and ${table.adminFeePercent} <= 100`,
+  ),
+])
 
 export const subscriptionSettingsRelations = relations(
   subscriptionSettings,
@@ -1184,6 +1151,15 @@ export const partners = pgTable(
      * Blobs dengan key = id partner; nilai ini dipakai sebagai `?v=` URL logo.
      */
     logoUpdatedAt: timestamp('logo_updated_at', { withTimezone: true }),
+    /**
+     * Saldo kredit partner (cache dari `partner_credit_ledger`). Bertambah lewat
+     * top up, berkurang saat biaya admin dipotong. Boleh negatif: negatif =
+     * tunggakan biaya admin yang tertutup otomatis oleh top up berikutnya.
+     * Hanya diubah bersama insert ledger di transaksi yang sama.
+     */
+    creditBalance: decimal('credit_balance', { precision: 14, scale: 2 })
+      .notNull()
+      .default('0'),
     /** Admin ALAKA yang mendaftarkan. Dikosongkan kalau akunnya dihapus. */
     createdBy: uuid('created_by').references(() => users.id, {
       onDelete: 'set null',
@@ -1620,6 +1596,12 @@ export const invoices = pgTable(
     paymentProofStored: boolean('payment_proof_stored').notNull().default(false),
     /** Alasan partner menolak bukti terakhir; dikosongkan saat jastiper klaim lagi. */
     paymentRejectReason: text('payment_reject_reason'),
+    /**
+     * Snapshot biaya admin ALAKA, diisi saat tagihan ditandai lunas. Null =
+     * belum lunas, atau lunas sebelum fitur biaya admin ada (tidak dipotong).
+     */
+    adminFeePercent: decimal('admin_fee_percent', { precision: 5, scale: 2 }),
+    adminFeeAmount: decimal('admin_fee_amount', { precision: 14, scale: 2 }),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -1631,6 +1613,10 @@ export const invoices = pgTable(
     uniqueIndex('invoices_number_unique').on(table.number),
     index('invoices_calendar_event_idx').on(table.calendarEventId),
     index('invoices_brand_event_idx').on(table.brandId, table.eventId),
+    check(
+      'invoices_admin_fee_pair',
+      sql`(${table.adminFeePercent} is null) = (${table.adminFeeAmount} is null)`,
+    ),
   ],
 )
 
@@ -1679,4 +1665,166 @@ export const invoiceLines = pgTable(
     amount: decimal({ precision: 14, scale: 2 }).notNull(),
   },
   (table) => [index('invoice_lines_invoice_idx').on(table.invoiceId)],
+)
+
+// ---------------------------------------------------------------------------
+// SALDO KREDIT PARTNER
+// Partner top up saldo (sekarang QRIS manual yang diverifikasi admin, nanti
+// payment gateway). Saldo dipakai membayar biaya admin ALAKA yang dipotong
+// saat tagihan partner lunas. Saldo tidak bisa ditarik.
+// ---------------------------------------------------------------------------
+
+/** Cara top up. `midtrans` disiapkan untuk payment gateway, belum dipakai. */
+export const partnerTopupMethodEnum = pgEnum('partner_topup_method', [
+  'manual_qris',
+  'midtrans',
+])
+
+/**
+ * - pending  : menunggu verifikasi admin (manual) / pembayaran (gateway)
+ * - approved : uang diterima, saldo sudah ditambah lewat ledger
+ * - rejected : ditolak admin (bukti tidak valid) / gagal di gateway
+ */
+export const partnerTopupStatusEnum = pgEnum('partner_topup_status', [
+  'pending',
+  'approved',
+  'rejected',
+])
+
+/** Pengajuan top up saldo partner. Satu baris = satu pembayaran. */
+export const partnerTopups = pgTable(
+  'partner_topups',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    partnerId: uuid('partner_id')
+      .notNull()
+      .references(() => partners.id, { onDelete: 'cascade' }),
+    /** Nominal top up (salah satu `PARTNER_TOPUP_AMOUNTS`). */
+    amount: decimal({ precision: 14, scale: 2 }).notNull(),
+    method: partnerTopupMethodEnum().notNull().default('manual_qris'),
+    status: partnerTopupStatusEnum().notNull().default('pending'),
+    /** Id transaksi di payment gateway (order_id Midtrans). Null untuk manual. */
+    externalId: varchar('external_id'),
+    /** Bukti transfer ada di Blobs (store `payment-proofs`, key = id top up). */
+    paymentProofStored: boolean('payment_proof_stored')
+      .notNull()
+      .default(false),
+    /** Kapan partner mengaku sudah bayar (manual) / gateway melaporkan lunas. */
+    paidAt: timestamp('paid_at', { withTimezone: true }),
+    reviewedBy: uuid('reviewed_by').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
+    reviewNote: text('review_note'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('partner_topups_partner_created_idx').on(
+      table.partnerId,
+      table.createdAt,
+    ),
+    index('partner_topups_status_idx').on(table.status),
+    uniqueIndex('partner_topups_external_id_unique').on(table.externalId),
+    // Top up manual: maksimal satu yang menunggu verifikasi per partner.
+    uniqueIndex('partner_topups_pending_manual_unique')
+      .on(table.partnerId)
+      .where(sql`status = 'pending' and method = 'manual_qris'`),
+    check('partner_topups_amount_min', sql`${table.amount} >= 10000`),
+  ],
+)
+
+/**
+ * - topup      : + nominal top up yang disetujui (`topup_id` wajib)
+ * - admin_fee  : − biaya admin dari tagihan lunas (`invoice_id` wajib)
+ * - adjustment : ± koreksi manual admin ALAKA (`note` wajib)
+ */
+export const partnerCreditEntryTypeEnum = pgEnum('partner_credit_entry_type', [
+  'topup',
+  'admin_fee',
+  'adjustment',
+])
+
+/**
+ * Buku besar saldo partner, append-only (tidak pernah diubah/dihapus).
+ * `SUM(amount)` per partner = `partners.credit_balance`; `balance_after`
+ * menyimpan saldo setelah baris ini supaya riwayat mudah dibaca dan diaudit.
+ */
+export const partnerCreditLedger = pgTable(
+  'partner_credit_ledger',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    partnerId: uuid('partner_id')
+      .notNull()
+      .references(() => partners.id, { onDelete: 'cascade' }),
+    type: partnerCreditEntryTypeEnum().notNull(),
+    /** Bertanda: positif menambah saldo, negatif mengurangi. */
+    amount: decimal({ precision: 14, scale: 2 }).notNull(),
+    balanceAfter: decimal('balance_after', { precision: 14, scale: 2 }).notNull(),
+    topupId: uuid('topup_id').references(() => partnerTopups.id, {
+      // no action (dicek di akhir statement) supaya cascade hapus partner
+      // yang menghapus top up dan ledger bersamaan tidak gagal.
+      onDelete: 'no action',
+    }),
+    /** Tagihan tidak boleh hilang selama fee-nya tercatat. */
+    invoiceId: uuid('invoice_id').references(() => invoices.id, {
+      onDelete: 'no action',
+    }),
+    note: text(),
+    /** Admin ALAKA yang menyetujui top up / membuat koreksi. */
+    createdBy: uuid('created_by').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('partner_credit_ledger_partner_created_idx').on(
+      table.partnerId,
+      table.createdAt,
+    ),
+    // Satu top up hanya sekali masuk saldo; satu tagihan hanya sekali kena fee.
+    uniqueIndex('partner_credit_ledger_topup_unique').on(table.topupId),
+    uniqueIndex('partner_credit_ledger_invoice_unique').on(table.invoiceId),
+    check('partner_credit_ledger_amount_nonzero', sql`${table.amount} <> 0`),
+    check(
+      'partner_credit_ledger_type_refs',
+      sql`(${table.type} = 'topup' and ${table.topupId} is not null and ${table.invoiceId} is null and ${table.amount} > 0)
+        or (${table.type} = 'admin_fee' and ${table.invoiceId} is not null and ${table.topupId} is null and ${table.amount} < 0)
+        or (${table.type} = 'adjustment' and ${table.topupId} is null and ${table.invoiceId} is null and ${table.note} is not null)`,
+    ),
+  ],
+)
+
+// NOTIFIKASI PARTNER
+// Satu baris = satu notifikasi untuk satu partner (tanpa broadcast), jadi status
+// dibaca cukup satu kolom `read_at` (null = belum dibaca). `link` = path
+// Partner Portal tujuan saat diklik (null = tidak bisa diklik).
+export const partnerNotifications = pgTable(
+  'partner_notifications',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    partnerId: uuid('partner_id')
+      .notNull()
+      .references(() => partners.id, { onDelete: 'cascade' }),
+    kind: varchar().notNull(), // 'jastiper_ikut' | 'bukti_bayar' | 'topup_disetujui' | 'topup_ditolak'
+    title: varchar().notNull(),
+    body: text(),
+    link: varchar(),
+    readAt: timestamp('read_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('partner_notifications_partner_created_idx').on(
+      table.partnerId,
+      table.createdAt,
+    ),
+  ],
 )

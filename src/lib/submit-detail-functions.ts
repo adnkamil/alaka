@@ -59,7 +59,7 @@ export const getSubmitDetail = createServerFn({ method: 'GET' })
     const { eventSubmissions, events, items, itemComponents, orders } = await import('../db/schema')
     const { and, eq } = await import('drizzle-orm')
     const { analyzeSubmits } = await import('./submit-replacement-groups')
-    const { partnerItemName, variantLabel } = await import('./partner-item-label')
+    const { displayItemName, partnerItemName, variantDisplayLabel } = await import('./partner-item-label')
 
     const event = await db
       .select({ id: events.id, brandId: events.brandId })
@@ -120,10 +120,10 @@ export const getSubmitDetail = createServerFn({ method: 'GET' })
 
     // Nama barang di submit ini, untuk menyebut pengganti dan yang digantikan.
     const nameById = new Map<string, string>([
-      ...satuan.map((r): [string, string] => [r.id, r.name]),
+      ...satuan.map((r): [string, string] => [r.id, displayItemName(r.name)]),
       ...komponen.map((r): [string, string] => [
         r.id,
-        partnerItemName(r.productName, variantLabel({ size: r.size, variation: r.variation })),
+        partnerItemName(r.productName, variantDisplayLabel({ size: r.size, variation: r.variation })),
       ]),
     ])
 
@@ -180,9 +180,9 @@ export const getSubmitDetail = createServerFn({ method: 'GET' })
         key: `s-${row.id}`,
         id: row.id,
         kind: 'satuan',
-        name: row.name,
+        name: displayItemName(row.name),
         product: parts.product,
-        variant: [parts.size, parts.variation].filter(Boolean).join(' / '),
+        variant: variantDisplayLabel(parts),
         inBundle: false,
         qty: row.qty,
         status: row.status,
@@ -193,14 +193,14 @@ export const getSubmitDetail = createServerFn({ method: 'GET' })
       })
     }
     for (const row of komponen) {
-      const label = [row.productName, row.size, row.variation].filter(Boolean).join(' / ')
+      const label = [row.productName, row.variation, row.size].filter(Boolean).join(' / ')
       add(row.orderId, row.customerName.trim(), {
         key: `k-${row.id}`,
         id: row.id,
         kind: 'komponen',
         name: `${label} (paket)`,
         product: row.productName,
-        variant: [row.size, row.variation].filter(Boolean).join(' / '),
+        variant: variantDisplayLabel(row),
         inBundle: true,
         qty: row.componentQty * row.bundleQty,
         status: row.status,

@@ -1,0 +1,1 @@
+DROP TABLE "partner_subscriptions" CASCADE;

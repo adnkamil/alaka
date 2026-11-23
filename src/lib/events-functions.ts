@@ -10,12 +10,11 @@ import {
   orders,
   partnerPricingRules,
   partnerRuleProducts,
-  partnerSubscriptions,
   partnerVariants,
 } from '../db/schema'
 import { inArray } from 'drizzle-orm'
-import { hasPartnerPro } from './partner-entitlement'
 import { aggregateStockDemand, restoreVariantStock } from './partner-stock'
+import { isPartnerLinked } from './partner-event-items'
 import { computePendingRules, type PendingSingle } from './partner-paket-pending'
 import { brandIdOf } from './brand'
 import { getSessionUser } from './auth'
@@ -234,6 +233,9 @@ export const getEventDetail = createServerFn({ method: 'GET' })
 
     if (!event) throw new Error('Event tidak ditemukan')
 
+    // Event yang terhubung ke partner: semua nama barang berasal dari katalog.
+    const isPartnerEvent = await isPartnerLinked(event.calendarEventId)
+
     // Catatan "N pcs lagi untuk paket" per pesanan. Hanya untuk aturan dari partner PRO,
     // karena paket di luar itu tidak pernah terbentuk.
     const singleVariantIds = event.orders.flatMap((o) =>
@@ -244,6 +246,7 @@ export const getEventDetail = createServerFn({ method: 'GET' })
     if (singleVariantIds.length === 0) {
       return {
         ...event,
+        isPartnerEvent,
         orders: event.orders.map((o) => ({
           ...o,
           pendingRules: [],
@@ -269,33 +272,15 @@ export const getEventDetail = createServerFn({ method: 'GET' })
         id: partnerPricingRules.id,
         name: partnerPricingRules.name,
         minQty: partnerPricingRules.minQty,
-        partnerId: partnerPricingRules.partnerId,
         isActive: partnerPricingRules.isActive,
       })
       .from(partnerPricingRules)
       .where(inArray(partnerPricingRules.id, [...new Set(ruleByProduct.values())]))
     const ruleById = new Map(ruleRows.map((r) => [r.id, r]))
 
-    const partnerIds = [...new Set(ruleRows.map((r) => r.partnerId))]
-    const subRows = partnerIds.length
-      ? await db
-          .select({
-            partnerId: partnerSubscriptions.partnerId,
-            status: partnerSubscriptions.status,
-            startedAt: partnerSubscriptions.startedAt,
-            endsAt: partnerSubscriptions.endsAt,
-          })
-          .from(partnerSubscriptions)
-          .where(inArray(partnerSubscriptions.partnerId, partnerIds))
-      : []
-    const proPartners = new Set(
-      partnerIds.filter((pid) =>
-        hasPartnerPro(subRows.filter((s) => s.partnerId === pid)),
-      ),
-    )
-
     return {
       ...event,
+      isPartnerEvent,
       orders: event.orders.map((order) => {
         const singles: Array<PendingSingle> = []
         // Nama aturan per barang satuan, untuk label kecil "masuk paket apa".
@@ -305,7 +290,7 @@ export const getEventDetail = createServerFn({ method: 'GET' })
           const productId = productByVariant.get(item.partnerVariantId)
           const ruleId = productId ? ruleByProduct.get(productId) : undefined
           const rule = ruleId ? ruleById.get(ruleId) : undefined
-          if (!rule || !rule.isActive || !proPartners.has(rule.partnerId)) continue
+          if (!rule || !rule.isActive) continue
           groupLabelByItem.set(item.id, rule.name)
           // Pengajuan menunggu cek partner dan disanggah tinggal riwayat: keduanya
           // tidak membentuk paket, jadi tidak dihitung sebagai "N pcs lagi".
