@@ -5,6 +5,7 @@ import { listEvents } from '../../lib/events-functions'
 import { fetchCurrentUser } from '../../lib/auth-functions'
 import { APP_TIME_ZONE } from '../../lib/timezone'
 import NotificationBell from '../../components/NotificationBell'
+import { publicPricingQuery } from '../../lib/queries'
 
 const eventsQuery = queryOptions({
   queryKey: ['events'],
@@ -17,11 +18,31 @@ const currentUserQuery = queryOptions({
 })
 
 export const Route = createFileRoute('/_app/')({
-  loader: ({ context }) =>
-    Promise.all([
+  loader: async ({ context }) => {
+    // Pengunjung belum login: layout `_app` merender landing page, jadi jangan
+    // panggil server function privat (pasti gagal) — cukup muat harga publik.
+    if (context.showLanding) {
+      await context.queryClient.ensureQueryData(publicPricingQuery)
+      return
+    }
+    await Promise.all([
       context.queryClient.ensureQueryData(eventsQuery),
       context.queryClient.ensureQueryData(currentUserQuery),
-    ]),
+    ])
+  },
+  head: ({ match }) =>
+    match.context.showLanding
+      ? {
+          meta: [
+            { title: 'ALAKA — Aplikasi Manajemen Jastip' },
+            {
+              name: 'description',
+              content:
+                'Kelola event belanja, pesanan pelanggan, fee jastip, tagihan WhatsApp, dan keuangan dalam satu aplikasi. Coba gratis.',
+            },
+          ],
+        }
+      : {},
   component: BerandaPage,
 })
 
