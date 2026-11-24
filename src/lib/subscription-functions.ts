@@ -117,6 +117,20 @@ export const fetchSubscriptionPaymentInfo = createServerFn({
   }
 })
 
+/**
+ * Harga membership PRO untuk landing page publik — TANPA login.
+ * Sengaja hanya mengembalikan harga (bukan QRIS atau pengaturan lain).
+ */
+export const fetchPublicPricing = createServerFn({
+  method: 'GET',
+}).handler(async () => {
+  const settings = await getSubscriptionSettings()
+  return {
+    proPrice: settings?.proPrice ?? '0',
+    originalPrice: settings?.originalPrice ?? null,
+  }
+})
+
 /** Status akses + pengajuan pending + riwayat langganan milik user yang login. */
 export const fetchMySubscriptionState = createServerFn({
   method: 'GET',

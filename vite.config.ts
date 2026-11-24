@@ -35,7 +35,13 @@ const config = defineConfig({
         theme_color: '#b6584b',
         background_color: '#fdf9ef',
         display: 'standalone',
-        start_url: '/',
+        // `id` dikunci ke '/' (= identitas lama yang dulu diturunkan dari
+        // start_url '/') supaya mengganti start_url tidak membuat browser
+        // menganggapnya app baru — PWA yang sudah terinstal tetap ter-update.
+        id: '/',
+        // `?source=pwa` menandai pembukaan dari ikon app terinstal: user yang
+        // belum login diarahkan ke /login, bukan ke landing page publik.
+        start_url: '/?source=pwa',
         scope: '/',
         icons: [
           { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },

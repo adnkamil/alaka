@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Manrope:wght@400;500;600;700;800&family=Roboto:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Manrope:wght@400;500;600;700;800&family=Figtree:wght@400;500;600;700;800&family=Roboto:wght@400;500;700&display=swap');
 @import 'tailwindcss';
 @plugin "@tailwindcss/typography";
 
@@ -1115,4 +1115,230 @@ a {
     background: #fff !important; display: block !important;
   }
   .pm-wide { padding: 0 !important; max-width: none !important; }
+}
+
+/* Landing page publik (components/LandingPage.tsx): warna band gelap &
+   footer. Mode terang = ink brand; mode gelap = lebih gelap dari latar
+   supaya band tetap terlihat sebagai "band". */
+:root {
+  --landing-dark: var(--brand-ink);
+  --landing-dark-accent: #f2a68f;
+}
+
+:root[data-theme='dark'] {
+  --landing-dark: #0a0706;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --landing-dark: #0a0706;
+  }
+}
+
+/* ── Landing: token tambahan & utilitas (design.md) ───────────────────
+   Teks di atas coral: putih di mode terang, ink gelap di mode gelap
+   (coral mode gelap terlalu terang untuk teks putih, kontras < 4.5:1). */
+:root {
+  --landing-dark-fg: #fff;
+  --lp-on-accent: #fff;
+  --lp-card-shadow: 0 10px 20px 0 rgba(33, 51, 47, 0.06);
+  --lp-card-shadow-hover: 0 16px 32px -8px rgba(33, 51, 47, 0.12);
+  --lp-float-shadow: 0 30px 60px -30px rgba(0, 0, 0, 0.35);
+  --lp-slant-h: 2.5rem;
+}
+
+:root[data-theme='dark'] {
+  --lp-on-accent: #1c1512;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --lp-on-accent: #1c1512;
+  }
+}
+
+@media (min-width: 768px) {
+  :root {
+    --lp-slant-h: 4.5rem;
+  }
+}
+
+.lp a[href],
+.lp button {
+  cursor: pointer;
+}
+
+.lp :focus-visible {
+  outline: 3px solid var(--app-accent);
+  outline-offset: 3px;
+}
+
+.lp-dark :focus-visible {
+  outline-color: var(--landing-dark-accent);
+}
+
+.lp-onaccent :focus-visible {
+  outline-color: var(--lp-on-accent);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html:has(.lp) {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Tombol: radius 22px, tinggi sentuh 44px. */
+.lp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0.6rem 1.4rem;
+  border: 1px solid transparent;
+  border-radius: 22px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: none;
+  transition:
+    background-color 200ms ease-out,
+    border-color 200ms ease-out,
+    color 200ms ease-out,
+    transform 200ms ease-out;
+}
+
+.lp-btn:active {
+  transform: translateY(1px);
+}
+
+.lp-btn-sm {
+  padding: 0.45rem 1rem;
+  font-size: 0.875rem;
+}
+
+.lp-btn-primary {
+  background: var(--app-accent);
+  color: var(--lp-on-accent);
+}
+
+.lp-btn-primary:hover {
+  background: var(--app-accent-strong);
+  color: var(--lp-on-accent);
+}
+
+.lp-btn-glow {
+  box-shadow: 0 12px 28px -10px color-mix(in oklab, var(--app-accent) 55%, transparent);
+}
+
+.lp-btn-outline {
+  border-color: var(--app-text-mute);
+  background: transparent;
+  color: var(--app-text);
+}
+
+.lp-btn-outline:hover {
+  border-color: var(--app-accent);
+  background: var(--app-accent-soft);
+  color: var(--app-text);
+}
+
+/* Tombol terang di atas panel coral / band gelap. */
+.lp-btn-light {
+  background: var(--lp-on-accent);
+  color: var(--app-accent-strong);
+}
+
+.lp-btn-light:hover {
+  background: color-mix(in oklab, var(--lp-on-accent) 90%, transparent);
+  color: var(--app-accent-strong);
+}
+
+.lp-btn-ghost-light {
+  border-color: color-mix(in oklab, var(--lp-on-accent) 65%, transparent);
+  background: transparent;
+  color: var(--lp-on-accent);
+}
+
+.lp-btn-ghost-light:hover {
+  background: color-mix(in oklab, var(--lp-on-accent) 14%, transparent);
+  color: var(--lp-on-accent);
+}
+
+.lp-btn-inverse {
+  background: var(--landing-dark-fg);
+  color: var(--landing-dark);
+}
+
+.lp-btn-inverse:hover {
+  background: color-mix(in oklab, var(--landing-dark-fg) 88%, transparent);
+  color: var(--landing-dark);
+}
+
+/* Kartu: bayangan halus, naik 4px saat hover. */
+.lp-card {
+  border: 1px solid var(--app-border);
+  border-radius: 20px;
+  background: var(--app-card);
+  box-shadow: var(--lp-card-shadow);
+  transition:
+    transform 200ms ease-out,
+    box-shadow 200ms ease-out;
+}
+
+.lp-card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--lp-card-shadow-hover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-card-hover:hover,
+  .lp-btn:active {
+    transform: none;
+  }
+}
+
+/* Kapsul dekoratif (motif identitas landing). */
+.lp-capsule {
+  position: absolute;
+  border-radius: 100px;
+  pointer-events: none;
+}
+
+/* Transisi miring: segitiga warna section ini naik ke section sebelumnya.
+   Set --lp-slant-bg pada section; tambah .lp-slant-rev untuk arah sebaliknya. */
+.lp-slant {
+  position: relative;
+}
+
+.lp-slant::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--lp-slant-h) * -1 + 1px);
+  height: var(--lp-slant-h);
+  background: var(--lp-slant-bg);
+  clip-path: polygon(0 100%, 100% 0, 100% 100%);
+  pointer-events: none;
+}
+
+.lp-slant-rev::before {
+  clip-path: polygon(0 0, 100% 100%, 0 100%);
+}
+
+/* Font landing: Figtree, pengganti gratis yang proporsinya dekat Proxima Nova
+   (font acuan, berlisensi). Kalau lisensi Proxima Nova sudah ada, daftarkan
+   lewat @font-face dan taruh di depan daftar ini. Hanya landing; aplikasi
+   tetap Manrope. */
+.lp {
+  font-family: 'Figtree', ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Skala landing: setara zoom browser 110% (font, komponen, jarak, dan lebar
+   kontainer ikut membesar). Hanya layar >= 768px; HP tetap 100% supaya tidak
+   mengecilkan lebar efektif di layar 360px. */
+@media (min-width: 768px) {
+  .lp {
+    zoom: 1.1;
+  }
 }

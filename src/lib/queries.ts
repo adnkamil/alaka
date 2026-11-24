@@ -4,6 +4,7 @@ import {
   fetchCalendarEventParticipants,
 } from './calendar-events-admin-functions'
 import { fetchCurrentUser } from './auth-functions'
+import { fetchPublicPricing } from './subscription-functions'
 import type { EventSortKey } from './partner-event-queries'
 import type { ProductSortKey } from './partner-product-queries'
 import type { RuleSortKey } from './partner-rule-sort'
@@ -145,3 +146,10 @@ export const partnerRulesPageQuery = (params: {
     queryKey: ['partner-rules', 'page', params],
     queryFn: () => listPartnerRulesPage({ data: params }),
   })
+
+/** Harga PRO untuk landing page publik (tanpa login). */
+export const publicPricingQuery = queryOptions({
+  queryKey: ['public-pricing'],
+  queryFn: () => fetchPublicPricing(),
+  staleTime: 5 * 60 * 1000,
+})

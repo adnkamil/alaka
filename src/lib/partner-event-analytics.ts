@@ -89,7 +89,6 @@ export type ProductStat = {
   productName: string
   terjual: number
   ditolak: number
-  buyers: number
   jastiper: number
   variants: Array<{
     label: string
@@ -101,7 +100,6 @@ export type ProductStat = {
 export type JastiperStat = {
   brandId: string
   brandName: string
-  buyers: number
   terjual: number
   ditolak: number
   submitCount: number
@@ -123,10 +121,8 @@ export type TimelineBucket = { key: string; label: string; pcs: number; submits:
 export type EventAnalytics = {
   slotEnabled: boolean
   jastiper: { joined: number; active: number; submitted: number }
-  buyers: number
   pcs: PcsSplit
   kindSplit: { satuan: number; paket: number }
-  avgPcsPerBuyer: number
   billed: { total: number; lunas: number; count: number }
   products: Array<ProductStat>
   sizes: Array<{ size: string; terjual: number }>
@@ -195,13 +191,11 @@ export function buildEventAnalytics(input: AnalyticsInput): EventAnalytics {
 
   const pcs = emptySplit()
   const kindSplit = { satuan: 0, paket: 0 }
-  const buyerOrders = new Set<string>()
   const productMap = new Map<
     string,
     {
       terjual: number
       ditolak: number
-      buyers: Set<string>
       brands: Set<string>
       variants: Map<string, { terjual: number; ditolak: number }>
     }
@@ -211,7 +205,7 @@ export function buildEventAnalytics(input: AnalyticsInput): EventAnalytics {
   const unmet = new Map<string, number>()
   const brandStats = new Map<
     string,
-    { buyers: Set<string>; terjual: number; ditolak: number }
+    { terjual: number; ditolak: number }
   >()
   const pcsBySubmission = new Map<string, number>()
 
@@ -234,7 +228,6 @@ export function buildEventAnalytics(input: AnalyticsInput): EventAnalytics {
       product = {
         terjual: 0,
         ditolak: 0,
-        buyers: new Set(),
         brands: new Set(),
         variants: new Map(),
       }
@@ -247,7 +240,7 @@ export function buildEventAnalytics(input: AnalyticsInput): EventAnalytics {
     }
     let brand = brandId ? brandStats.get(brandId) : undefined
     if (brandId && !brand) {
-      brand = { buyers: new Set(), terjual: 0, ditolak: 0 }
+      brand = { terjual: 0, ditolak: 0 }
       brandStats.set(brandId, brand)
     }
     if (line.variantId) {
@@ -259,14 +252,9 @@ export function buildEventAnalytics(input: AnalyticsInput): EventAnalytics {
     if (bucket === 'terjual') {
       product.terjual += line.qty
       variant.terjual += line.qty
-      product.buyers.add(line.orderId)
       if (brandId) product.brands.add(brandId)
       kindSplit[line.kind] += line.qty
-      buyerOrders.add(line.orderId)
-      if (brand) {
-        brand.terjual += line.qty
-        brand.buyers.add(line.orderId)
-      }
+      if (brand) brand.terjual += line.qty
       if (line.size) sizeMap.set(line.size, (sizeMap.get(line.size) ?? 0) + line.qty)
     } else {
       product.ditolak += line.qty
@@ -282,7 +270,6 @@ export function buildEventAnalytics(input: AnalyticsInput): EventAnalytics {
       productName,
       terjual: p.terjual,
       ditolak: p.ditolak,
-      buyers: p.buyers.size,
       jastiper: p.brands.size,
       variants: [...p.variants.entries()]
         .map(([label, v]) => ({ label, ...v }))
@@ -314,7 +301,6 @@ export function buildEventAnalytics(input: AnalyticsInput): EventAnalytics {
       return {
         brandId: j.brandId,
         brandName: j.brandName,
-        buyers: s?.buyers.size ?? 0,
         terjual: s?.terjual ?? 0,
         ditolak: s?.ditolak ?? 0,
         submitCount: submitCountByEvent.get(j.eventId) ?? 0,
@@ -324,8 +310,8 @@ export function buildEventAnalytics(input: AnalyticsInput): EventAnalytics {
     })
     .sort(
       (a, b) =>
-        b.buyers - a.buyers ||
         b.terjual - a.terjual ||
+        a.ditolak - b.ditolak ||
         a.brandName.localeCompare(b.brandName),
     )
 
@@ -367,10 +353,8 @@ export function buildEventAnalytics(input: AnalyticsInput): EventAnalytics {
       active: jastiperRanking.filter((j) => j.terjual > 0).length,
       submitted: input.jastiper.filter((j) => submitCountByEvent.has(j.eventId)).length,
     },
-    buyers: buyerOrders.size,
     pcs,
     kindSplit,
-    avgPcsPerBuyer: buyerOrders.size ? pcs.terjual / buyerOrders.size : 0,
     billed,
     products,
     sizes: [...sizeMap.entries()]

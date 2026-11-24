@@ -6,8 +6,9 @@ import { buildEventAnalytics } from './partner-event-analytics'
 import type { AnalyticsLine } from './partner-event-analytics'
 
 /**
- * Analisa satu event partner: jastiper, pembeli, pcs terjual, produk terlaris,
- * stok habis, dan peringkat jastiper. Nominal hanya dari tagihan (snapshot).
+ * Analisa satu event partner: jastiper, pcs terjual, produk terlaris, stok
+ * habis, dan peringkat jastiper. Nominal hanya dari tagihan (snapshot).
+ * Jumlah pembeli/customer jastiper sengaja TIDAK dibuka ke partner.
  */
 export const getPartnerEventAnalytics = createServerFn({ method: 'GET' })
   .validator(z.object({ calendarEventId: z.uuid() }))

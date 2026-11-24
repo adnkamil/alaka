@@ -8,255 +8,37 @@ import {
 } from '@aws-sdk/client-s3'
 import { detectAvatarContentType } from './avatar-validation'
 import { detectPaymentProofContentType } from './payment-proof'
+import {
+  LEGACY_BLOB_STORES,
+  LEGACY_PAYMENT_PROOF_KEYS,
+  R2_KEYS,
+} from './storage-keys'
 import type { AvatarContentType } from './avatar-validation'
 import type { PaymentProofContentType } from './payment-proof'
+import type { R2BucketKind } from './storage-keys'
 
 /**
- * Penyimpanan file (server-only). SEMUA akses ke Netlify Blobs lewat file ini,
- * dan app lain cuma memanggil `putAvatar` / `getAvatar` / `deleteAvatar` dan
- * `putPaymentProof` / `getPaymentProof` / `deletePaymentProof`.
- * Kalau nanti pindah ke S3-compatible (R2, SumoPod, dst.), cukup tulis ulang
- * isi file ini — pemanggilnya tidak berubah.
+ * Penyimpanan file (server-only). SEMUA akses ke storage lewat file ini;
+ * pemanggil cuma memakai fungsi `put*` / `get*` / `delete*` di bawah.
+ *
+ * Semua file disimpan di Cloudflare R2 (S3-compatible), dua bucket privat:
+ * - R2_PUBLIC_BUCKET : foto brand, banner event, logo partner, foto produk
+ *   & variasi partner. Isinya boleh publik, tapi bucket tetap privat dan
+ *   file disajikan lewat route `/api/...`.
+ * - R2_PRIVATE_BUCKET: bukti transfer langganan, bukti bayar tagihan, bukti
+ *   top up. Hanya lewat route yang cek login + kepemilikan.
+ * Tata letak key ada di `storage-keys.ts`.
+ *
+ * MASA TRANSISI: file lama masih ada di Netlify Blobs (dan foto produk lama
+ * di bucket R2_BUCKET lama). Baca jatuh ke lokasi lama kalau file belum ada di
+ * R2; hapus membersihkan keduanya. Setelah `scripts/migrate-storage-to-r2.ts`
+ * dijalankan, hapus bagian LEGACY di bawah beserta `@netlify/blobs`.
  *
  * JANGAN di-import dari komponen/halaman: cuma dari handler server function
  * (`*-functions.ts`) dan route `src/routes/api/*`.
  */
 
-const AVATAR_STORE = 'avatars'
-
-function avatarStore() {
-  return getStore({
-    name: AVATAR_STORE,
-    // Foto yang baru diganti harus langsung terbaca. Mode default (eventual)
-    // bisa menyajikan foto lama sampai 60 detik setelah ditimpa.
-    consistency: 'strong',
-    // Samakan dengan region Functions (cmh, Ohio) dan Neon (us-east-2, Ohio)
-    // supaya jarak function -> storage paling dekat. us-east-2 juga default
-    // Netlify untuk store site-wide, jadi store ini tampil di dashboard Blobs.
-    // PENTING: data TIDAK ikut pindah kalau region diganti. Store di region
-    // lain akan terlihat kosong oleh app ini; salin dulu datanya (lihat
-    // scripts/list-blobs.mjs untuk melihat isinya) sebelum mengganti.
-    region: 'us-east-2',
-  })
-}
-
-/** Simpan/timpa foto milik brand. Key = brandId, jadi tidak ada file yatim. */
-export async function putAvatar(
-  brandId: string,
-  bytes: Uint8Array,
-  contentType: AvatarContentType,
-): Promise<void> {
-  // Salin ke Uint8Array baru supaya buffer-nya pasti ArrayBuffer biasa
-  // (bukan SharedArrayBuffer) dan diterima sebagai BlobPart.
-  const body = new Blob([new Uint8Array(bytes)], { type: contentType })
-  await avatarStore().set(brandId, body, { metadata: { contentType } })
-}
-
-export async function getAvatar(
-  brandId: string,
-): Promise<{ data: ArrayBuffer; contentType: AvatarContentType } | null> {
-  // Overload `type: 'blob'` dipakai karena tipe `arrayBuffer`-nya tidak
-  // mencantumkan `null`, padahal key yang tidak ada mengembalikan null.
-  const result = await avatarStore().getWithMetadata(brandId, { type: 'blob' })
-  if (!result) return null
-
-  const data = await result.data.arrayBuffer()
-
-  // Tipe dikenali dari isi file, bukan dari metadata, supaya yang disajikan
-  // ke browser selalu gambar yang valid.
-  const contentType = detectAvatarContentType(new Uint8Array(data))
-  if (!contentType) return null
-
-  return { data, contentType }
-}
-
-export async function deleteAvatar(brandId: string): Promise<void> {
-  await avatarStore().delete(brandId)
-}
-
-// --- Bukti transfer langganan PRO ---------------------------------------
-//
-// BEDA dengan avatar: file ini PRIVAT. Jangan pernah disajikan tanpa cek login
-// + kepemilikan (lihat `subscription-proof-queries.ts` dan route
-// `/api/subscription-proof/$id`). Key = id baris `subscriptions`, bukan userId,
-// karena satu user bisa punya beberapa pengajuan.
-
-const PAYMENT_PROOF_STORE = 'payment-proofs'
-
-function paymentProofStore() {
-  // Opsi sama dengan `avatarStore()` (consistency strong, region us-east-2).
-  return getStore({
-    name: PAYMENT_PROOF_STORE,
-    consistency: 'strong',
-    region: 'us-east-2',
-  })
-}
-
-export async function putPaymentProof(
-  subscriptionId: string,
-  bytes: Uint8Array,
-  contentType: PaymentProofContentType,
-): Promise<void> {
-  const body = new Blob([new Uint8Array(bytes)], { type: contentType })
-  await paymentProofStore().set(subscriptionId, body, {
-    metadata: { contentType },
-  })
-}
-
-export async function getPaymentProof(
-  subscriptionId: string,
-): Promise<{ data: ArrayBuffer; contentType: PaymentProofContentType } | null> {
-  const result = await paymentProofStore().getWithMetadata(subscriptionId, {
-    type: 'blob',
-  })
-  if (!result) return null
-
-  const data = await result.data.arrayBuffer()
-  // Tipe dikenali dari isi file, bukan dari metadata.
-  const contentType = detectPaymentProofContentType(new Uint8Array(data))
-  if (!contentType) return null
-
-  return { data, contentType }
-}
-
-export async function deletePaymentProof(
-  subscriptionId: string,
-): Promise<void> {
-  await paymentProofStore().delete(subscriptionId)
-}
-
-// --- Bukti bayar tagihan partner ----------------------------------------
-//
-// PRIVAT, sama seperti bukti transfer langganan: hanya partner pemilik tagihan
-// dan jastiper yang ditagih yang boleh melihat (lihat route
-// `/api/invoice-proof/$id`). Store yang sama, key diberi awalan `invoice-`
-// supaya tidak bertabrakan dengan id langganan.
-
-const invoiceProofKey = (invoiceId: string) => `invoice-${invoiceId}`
-
-export async function putInvoiceProof(
-  invoiceId: string,
-  bytes: Uint8Array,
-  contentType: PaymentProofContentType,
-): Promise<void> {
-  const body = new Blob([new Uint8Array(bytes)], { type: contentType })
-  await paymentProofStore().set(invoiceProofKey(invoiceId), body, {
-    metadata: { contentType },
-  })
-}
-
-export async function getInvoiceProof(
-  invoiceId: string,
-): Promise<{ data: ArrayBuffer; contentType: PaymentProofContentType } | null> {
-  const result = await paymentProofStore().getWithMetadata(
-    invoiceProofKey(invoiceId),
-    { type: 'blob' },
-  )
-  if (!result) return null
-  const data = await result.data.arrayBuffer()
-  // Tipe dikenali dari isi file, bukan dari metadata.
-  const contentType = detectPaymentProofContentType(new Uint8Array(data))
-  if (!contentType) return null
-  return { data, contentType }
-}
-
-export async function deleteInvoiceProof(invoiceId: string): Promise<void> {
-  await paymentProofStore().delete(invoiceProofKey(invoiceId))
-}
-
-// --- Bukti transfer top up saldo partner ----------------------------------
-//
-// PRIVAT: hanya admin ALAKA yang boleh melihat (route
-// `/api/partner-topup-proof/$id`). Store yang sama, key diberi awalan `topup-`.
-
-const topupProofKey = (topupId: string) => `topup-${topupId}`
-
-export async function putTopupProof(
-  topupId: string,
-  bytes: Uint8Array,
-  contentType: PaymentProofContentType,
-): Promise<void> {
-  const body = new Blob([new Uint8Array(bytes)], { type: contentType })
-  await paymentProofStore().set(topupProofKey(topupId), body, {
-    metadata: { contentType },
-  })
-}
-
-export async function getTopupProof(
-  topupId: string,
-): Promise<{ data: ArrayBuffer; contentType: PaymentProofContentType } | null> {
-  const result = await paymentProofStore().getWithMetadata(
-    topupProofKey(topupId),
-    { type: 'blob' },
-  )
-  if (!result) return null
-  const data = await result.data.arrayBuffer()
-  const contentType = detectPaymentProofContentType(new Uint8Array(data))
-  if (!contentType) return null
-  return { data, contentType }
-}
-
-export async function deleteTopupProof(topupId: string): Promise<void> {
-  await paymentProofStore().delete(topupProofKey(topupId))
-}
-
-// --- Banner event kalender ----------------------------------------------
-//
-// Sama dengan avatar: publik (cuma gambar banner, id event berupa UUID acak),
-// key = id event di tabel `calendar_event`. Format yang diterima sama dengan
-// avatar (WebP/JPEG), jadi deteksi tipenya memakai fungsi yang sama.
-
-const CALENDAR_BANNER_STORE = 'calendar-banners'
-
-function calendarBannerStore() {
-  // Opsi sama dengan `avatarStore()` (consistency strong, region us-east-2).
-  return getStore({
-    name: CALENDAR_BANNER_STORE,
-    consistency: 'strong',
-    region: 'us-east-2',
-  })
-}
-
-/** Simpan/timpa banner satu event. Key = eventId, jadi tidak ada file yatim. */
-export async function putCalendarBanner(
-  eventId: string,
-  bytes: Uint8Array,
-  contentType: AvatarContentType,
-): Promise<void> {
-  const body = new Blob([new Uint8Array(bytes)], { type: contentType })
-  await calendarBannerStore().set(eventId, body, { metadata: { contentType } })
-}
-
-export async function getCalendarBanner(
-  eventId: string,
-): Promise<{ data: ArrayBuffer; contentType: AvatarContentType } | null> {
-  const result = await calendarBannerStore().getWithMetadata(eventId, {
-    type: 'blob',
-  })
-  if (!result) return null
-
-  const data = await result.data.arrayBuffer()
-  // Tipe dikenali dari isi file, bukan dari metadata.
-  const contentType = detectAvatarContentType(new Uint8Array(data))
-  if (!contentType) return null
-
-  return { data, contentType }
-}
-
-export async function deleteCalendarBanner(eventId: string): Promise<void> {
-  await calendarBannerStore().delete(eventId)
-}
-
-// --- Foto produk partner -------------------------------------------------
-//
-// Publik seperti avatar/banner (cuma gambar produk, id berupa UUID acak),
-// key = id baris `partner_products`. Format sama dengan avatar (WebP/JPEG).
-//
-// Disimpan di Cloudflare R2 (S3-compatible). Bucket dibuat privat; file hanya
-// disajikan lewat route `/api/partner-product-photo/$id`, jadi URL dan header
-// cache tetap sama dengan sebelumnya.
-
-const PARTNER_PRODUCT_PHOTO_PREFIX = 'partner-product-photos/'
+// --- Klien R2 --------------------------------------------------------------
 
 let r2Client: S3Client | null = null
 
@@ -264,13 +46,23 @@ function r2Config() {
   const endpoint = process.env.R2_ENDPOINT
   const accessKeyId = process.env.R2_ACCESS_KEY_ID
   const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY
-  const bucket = process.env.R2_BUCKET
-  if (!endpoint || !accessKeyId || !secretAccessKey || !bucket) {
+  const publicBucket = process.env.R2_PUBLIC_BUCKET
+  const privateBucket = process.env.R2_PRIVATE_BUCKET
+  if (
+    !endpoint ||
+    !accessKeyId ||
+    !secretAccessKey ||
+    !publicBucket ||
+    !privateBucket
+  ) {
     throw new Error(
-      'Konfigurasi R2 belum lengkap (R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET).',
+      'Konfigurasi R2 belum lengkap (R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_PUBLIC_BUCKET, R2_PRIVATE_BUCKET).',
     )
   }
-  return { endpoint, accessKeyId, secretAccessKey, bucket }
+  if (publicBucket === privateBucket) {
+    throw new Error('R2_PUBLIC_BUCKET dan R2_PRIVATE_BUCKET harus berbeda.')
+  }
+  return { endpoint, accessKeyId, secretAccessKey, publicBucket, privateBucket }
 }
 
 function r2() {
@@ -288,25 +80,20 @@ function r2() {
   return r2Client
 }
 
-function partnerProductPhotoKey(productId: string): string {
-  return `${PARTNER_PRODUCT_PHOTO_PREFIX}${productId}`
+function bucketName(kind: R2BucketKind): string {
+  const cfg = r2Config()
+  return kind === 'public' ? cfg.publicBucket : cfg.privateBucket
 }
 
-/** Foto per variasi (warna/motif). Key = id nilai opsi variasi. */
-const PARTNER_VARIANT_PHOTO_PREFIX = 'partner-variant-photos/'
-
-function partnerVariantPhotoKey(optionValueId: string): string {
-  return `${PARTNER_VARIANT_PHOTO_PREFIX}${optionValueId}`
-}
-
-async function putR2Photo(
+async function r2Put(
+  bucket: string,
   key: string,
   bytes: Uint8Array,
-  contentType: AvatarContentType,
+  contentType: string,
 ): Promise<void> {
   await r2().send(
     new PutObjectCommand({
-      Bucket: r2Config().bucket,
+      Bucket: bucket,
       Key: key,
       Body: bytes,
       ContentType: contentType,
@@ -314,25 +101,33 @@ async function putR2Photo(
   )
 }
 
-async function getR2Photo(
+async function r2GetBytes(
+  bucket: string,
   key: string,
-): Promise<{ data: ArrayBuffer; contentType: AvatarContentType } | null> {
+): Promise<Uint8Array | null> {
   let res
   try {
-    res = await r2().send(
-      new GetObjectCommand({ Bucket: r2Config().bucket, Key: key }),
-    )
+    res = await r2().send(new GetObjectCommand({ Bucket: bucket, Key: key }))
   } catch (err) {
     if (err instanceof NoSuchKey) return null
     throw err
   }
   if (!res.Body) return null
+  return res.Body.transformToByteArray()
+}
 
-  const bytes = await res.Body.transformToByteArray()
-  // Tipe dikenali dari isi file, bukan dari metadata.
-  const contentType = detectAvatarContentType(bytes)
+async function r2Delete(bucket: string, key: string): Promise<void> {
+  await r2().send(new DeleteObjectCommand({ Bucket: bucket, Key: key }))
+}
+
+/** Ubah byte jadi hasil siap saji; tipe dikenali dari isi file, bukan metadata. */
+function toFile<T extends string>(
+  bytes: Uint8Array | null,
+  detect: (bytes: Uint8Array) => T | null,
+): { data: ArrayBuffer; contentType: T } | null {
+  if (!bytes) return null
+  const contentType = detect(bytes)
   if (!contentType) return null
-
   const data = bytes.buffer.slice(
     bytes.byteOffset,
     bytes.byteOffset + bytes.byteLength,
@@ -340,30 +135,306 @@ async function getR2Photo(
   return { data, contentType }
 }
 
-async function deleteR2Photo(key: string): Promise<void> {
-  await r2().send(
-    new DeleteObjectCommand({ Bucket: r2Config().bucket, Key: key }),
+// --- LEGACY: lokasi lama (hapus setelah migrasi) ---------------------------
+
+function legacyBlobStore(name: string) {
+  return getStore({ name, consistency: 'strong', region: 'us-east-2' })
+}
+
+async function legacyBlobGet(
+  store: string,
+  key: string,
+): Promise<Uint8Array | null> {
+  // Overload `type: 'blob'` dipakai karena tipe `arrayBuffer`-nya tidak
+  // mencantumkan `null`, padahal key yang tidak ada mengembalikan null.
+  const result = await legacyBlobStore(store).getWithMetadata(key, {
+    type: 'blob',
+  })
+  if (!result) return null
+  return new Uint8Array(await result.data.arrayBuffer())
+}
+
+async function legacyBlobDelete(store: string, key: string): Promise<void> {
+  await legacyBlobStore(store).delete(key)
+}
+
+/** Bucket R2 lama untuk foto produk/variasi, kalau masih diset dan berbeda. */
+function legacyR2Bucket(): string | null {
+  const legacy = process.env.R2_BUCKET
+  if (!legacy) return null
+  const cfg = r2Config()
+  if (legacy === cfg.publicBucket || legacy === cfg.privateBucket) return null
+  return legacy
+}
+
+type Legacy =
+  { kind: 'blob'; store: string; key: string } | { kind: 'r2'; key: string }
+
+async function legacyGet(legacy: Legacy): Promise<Uint8Array | null> {
+  if (legacy.kind === 'blob') return legacyBlobGet(legacy.store, legacy.key)
+  const bucket = legacyR2Bucket()
+  return bucket ? r2GetBytes(bucket, legacy.key) : null
+}
+
+async function legacyDelete(legacy: Legacy): Promise<void> {
+  if (legacy.kind === 'blob') {
+    await legacyBlobDelete(legacy.store, legacy.key)
+    return
+  }
+  const bucket = legacyR2Bucket()
+  if (bucket) await r2Delete(bucket, legacy.key)
+}
+
+// --- Operasi umum ----------------------------------------------------------
+
+async function putFile(
+  kind: R2BucketKind,
+  key: string,
+  bytes: Uint8Array,
+  contentType: string,
+): Promise<void> {
+  await r2Put(bucketName(kind), key, bytes, contentType)
+}
+
+async function getFileBytes(
+  kind: R2BucketKind,
+  key: string,
+  legacy: Legacy,
+): Promise<Uint8Array | null> {
+  const bytes = await r2GetBytes(bucketName(kind), key)
+  if (bytes) return bytes
+  return legacyGet(legacy)
+}
+
+async function deleteFile(
+  kind: R2BucketKind,
+  key: string,
+  legacy: Legacy,
+): Promise<void> {
+  await r2Delete(bucketName(kind), key)
+  // Hapus juga salinan lama supaya script migrasi tidak menghidupkannya lagi.
+  await legacyDelete(legacy)
+}
+
+// --- Foto brand (publik) ---------------------------------------------------
+// Key = brandId, jadi menimpa foto tidak meninggalkan file yatim.
+
+const avatarLegacy = (brandId: string): Legacy => ({
+  kind: 'blob',
+  store: LEGACY_BLOB_STORES.avatars,
+  key: brandId,
+})
+
+export async function putAvatar(
+  brandId: string,
+  bytes: Uint8Array,
+  contentType: AvatarContentType,
+): Promise<void> {
+  await putFile('public', R2_KEYS.avatar(brandId), bytes, contentType)
+}
+
+export async function getAvatar(
+  brandId: string,
+): Promise<{ data: ArrayBuffer; contentType: AvatarContentType } | null> {
+  const bytes = await getFileBytes(
+    'public',
+    R2_KEYS.avatar(brandId),
+    avatarLegacy(brandId),
+  )
+  return toFile(bytes, detectAvatarContentType)
+}
+
+export async function deleteAvatar(brandId: string): Promise<void> {
+  await deleteFile('public', R2_KEYS.avatar(brandId), avatarLegacy(brandId))
+}
+
+// --- Bukti transfer langganan PRO (PRIVAT) ---------------------------------
+//
+// JANGAN pernah disajikan tanpa cek login + kepemilikan (lihat
+// `subscription-proof-queries.ts` dan route `/api/subscription-proof/$id`).
+// Key = id baris `subscriptions`, karena satu user bisa punya beberapa pengajuan.
+
+const subscriptionProofLegacy = (subscriptionId: string): Legacy => ({
+  kind: 'blob',
+  store: LEGACY_BLOB_STORES.paymentProofs,
+  key: LEGACY_PAYMENT_PROOF_KEYS.subscription(subscriptionId),
+})
+
+export async function putPaymentProof(
+  subscriptionId: string,
+  bytes: Uint8Array,
+  contentType: PaymentProofContentType,
+): Promise<void> {
+  await putFile(
+    'private',
+    R2_KEYS.subscriptionProof(subscriptionId),
+    bytes,
+    contentType,
   )
 }
+
+export async function getPaymentProof(
+  subscriptionId: string,
+): Promise<{ data: ArrayBuffer; contentType: PaymentProofContentType } | null> {
+  const bytes = await getFileBytes(
+    'private',
+    R2_KEYS.subscriptionProof(subscriptionId),
+    subscriptionProofLegacy(subscriptionId),
+  )
+  return toFile(bytes, detectPaymentProofContentType)
+}
+
+export async function deletePaymentProof(
+  subscriptionId: string,
+): Promise<void> {
+  await deleteFile(
+    'private',
+    R2_KEYS.subscriptionProof(subscriptionId),
+    subscriptionProofLegacy(subscriptionId),
+  )
+}
+
+// --- Bukti bayar tagihan partner (PRIVAT) ----------------------------------
+//
+// Hanya partner pemilik tagihan dan jastiper yang ditagih yang boleh melihat
+// (route `/api/invoice-proof/$id`).
+
+const invoiceProofLegacy = (invoiceId: string): Legacy => ({
+  kind: 'blob',
+  store: LEGACY_BLOB_STORES.paymentProofs,
+  key: LEGACY_PAYMENT_PROOF_KEYS.invoice(invoiceId),
+})
+
+export async function putInvoiceProof(
+  invoiceId: string,
+  bytes: Uint8Array,
+  contentType: PaymentProofContentType,
+): Promise<void> {
+  await putFile('private', R2_KEYS.invoiceProof(invoiceId), bytes, contentType)
+}
+
+export async function getInvoiceProof(
+  invoiceId: string,
+): Promise<{ data: ArrayBuffer; contentType: PaymentProofContentType } | null> {
+  const bytes = await getFileBytes(
+    'private',
+    R2_KEYS.invoiceProof(invoiceId),
+    invoiceProofLegacy(invoiceId),
+  )
+  return toFile(bytes, detectPaymentProofContentType)
+}
+
+export async function deleteInvoiceProof(invoiceId: string): Promise<void> {
+  await deleteFile(
+    'private',
+    R2_KEYS.invoiceProof(invoiceId),
+    invoiceProofLegacy(invoiceId),
+  )
+}
+
+// --- Bukti transfer top up saldo partner (PRIVAT) --------------------------
+//
+// Hanya admin ALAKA yang boleh melihat (route `/api/partner-topup-proof/$id`).
+
+const topupProofLegacy = (topupId: string): Legacy => ({
+  kind: 'blob',
+  store: LEGACY_BLOB_STORES.paymentProofs,
+  key: LEGACY_PAYMENT_PROOF_KEYS.topup(topupId),
+})
+
+export async function putTopupProof(
+  topupId: string,
+  bytes: Uint8Array,
+  contentType: PaymentProofContentType,
+): Promise<void> {
+  await putFile('private', R2_KEYS.topupProof(topupId), bytes, contentType)
+}
+
+export async function getTopupProof(
+  topupId: string,
+): Promise<{ data: ArrayBuffer; contentType: PaymentProofContentType } | null> {
+  const bytes = await getFileBytes(
+    'private',
+    R2_KEYS.topupProof(topupId),
+    topupProofLegacy(topupId),
+  )
+  return toFile(bytes, detectPaymentProofContentType)
+}
+
+export async function deleteTopupProof(topupId: string): Promise<void> {
+  await deleteFile(
+    'private',
+    R2_KEYS.topupProof(topupId),
+    topupProofLegacy(topupId),
+  )
+}
+
+// --- Banner event kalender (publik) ----------------------------------------
+// Key = id event di tabel `calendar_event`. Format sama dengan avatar.
+
+const calendarBannerLegacy = (eventId: string): Legacy => ({
+  kind: 'blob',
+  store: LEGACY_BLOB_STORES.calendarBanners,
+  key: eventId,
+})
+
+export async function putCalendarBanner(
+  eventId: string,
+  bytes: Uint8Array,
+  contentType: AvatarContentType,
+): Promise<void> {
+  await putFile('public', R2_KEYS.calendarBanner(eventId), bytes, contentType)
+}
+
+export async function getCalendarBanner(
+  eventId: string,
+): Promise<{ data: ArrayBuffer; contentType: AvatarContentType } | null> {
+  const bytes = await getFileBytes(
+    'public',
+    R2_KEYS.calendarBanner(eventId),
+    calendarBannerLegacy(eventId),
+  )
+  return toFile(bytes, detectAvatarContentType)
+}
+
+export async function deleteCalendarBanner(eventId: string): Promise<void> {
+  await deleteFile(
+    'public',
+    R2_KEYS.calendarBanner(eventId),
+    calendarBannerLegacy(eventId),
+  )
+}
+
+// --- Foto produk & variasi partner (publik) --------------------------------
+// Key = id baris `partner_products` / id nilai opsi variasi. Lokasi lama:
+// bucket R2_BUCKET dengan key yang sama.
 
 export async function putPartnerProductPhoto(
   productId: string,
   bytes: Uint8Array,
   contentType: AvatarContentType,
 ): Promise<void> {
-  await putR2Photo(partnerProductPhotoKey(productId), bytes, contentType)
+  await putFile(
+    'public',
+    R2_KEYS.partnerProductPhoto(productId),
+    bytes,
+    contentType,
+  )
 }
 
 export async function getPartnerProductPhoto(
   productId: string,
 ): Promise<{ data: ArrayBuffer; contentType: AvatarContentType } | null> {
-  return getR2Photo(partnerProductPhotoKey(productId))
+  const key = R2_KEYS.partnerProductPhoto(productId)
+  const bytes = await getFileBytes('public', key, { kind: 'r2', key })
+  return toFile(bytes, detectAvatarContentType)
 }
 
 export async function deletePartnerProductPhoto(
   productId: string,
 ): Promise<void> {
-  await deleteR2Photo(partnerProductPhotoKey(productId))
+  const key = R2_KEYS.partnerProductPhoto(productId)
+  await deleteFile('public', key, { kind: 'r2', key })
 }
 
 export async function putPartnerVariantPhoto(
@@ -371,83 +442,73 @@ export async function putPartnerVariantPhoto(
   bytes: Uint8Array,
   contentType: AvatarContentType,
 ): Promise<void> {
-  await putR2Photo(partnerVariantPhotoKey(optionValueId), bytes, contentType)
+  await putFile(
+    'public',
+    R2_KEYS.partnerVariantPhoto(optionValueId),
+    bytes,
+    contentType,
+  )
 }
 
 export async function getPartnerVariantPhoto(
   optionValueId: string,
 ): Promise<{ data: ArrayBuffer; contentType: AvatarContentType } | null> {
-  return getR2Photo(partnerVariantPhotoKey(optionValueId))
+  const key = R2_KEYS.partnerVariantPhoto(optionValueId)
+  const bytes = await getFileBytes('public', key, { kind: 'r2', key })
+  return toFile(bytes, detectAvatarContentType)
 }
 
 export async function deletePartnerVariantPhoto(
   optionValueId: string,
 ): Promise<void> {
-  await deleteR2Photo(partnerVariantPhotoKey(optionValueId))
+  const key = R2_KEYS.partnerVariantPhoto(optionValueId)
+  await deleteFile('public', key, { kind: 'r2', key })
 }
 
-// --- Katalog PDF partner (LEGACY) ---------------------------------------
-//
-// Unggah PDF sudah diganti link katalog (`partners.catalog_url`). Hanya fungsi
-// hapus yang dipertahankan, untuk membersihkan berkas lama di Blobs (key = id
-// partner) saat partner dihapus. Berkas lama itu tidak lagi disajikan di mana pun.
+// --- Logo partner (publik) -------------------------------------------------
+// Key = id partner. Format sama dengan avatar (WebP/JPEG persegi).
 
-const PARTNER_CATALOG_STORE = 'partner-catalog-pdfs'
-
-function partnerCatalogStore() {
-  return getStore({
-    name: PARTNER_CATALOG_STORE,
-    consistency: 'strong',
-    region: 'us-east-2',
-  })
-}
-
-export async function deletePartnerCatalogPdf(
-  partnerId: string,
-): Promise<void> {
-  await partnerCatalogStore().delete(partnerId)
-}
-
-// --- Logo partner --------------------------------------------------------
-//
-// Publik seperti avatar brand (cuma gambar logo, id berupa UUID acak), key = id
-// partner. Format sama dengan avatar (WebP/JPEG persegi hasil resize di client).
-
-const PARTNER_LOGO_STORE = 'partner-logos'
-
-function partnerLogoStore() {
-  return getStore({
-    name: PARTNER_LOGO_STORE,
-    consistency: 'strong',
-    region: 'us-east-2',
-  })
-}
+const partnerLogoLegacy = (partnerId: string): Legacy => ({
+  kind: 'blob',
+  store: LEGACY_BLOB_STORES.partnerLogos,
+  key: partnerId,
+})
 
 export async function putPartnerLogo(
   partnerId: string,
   bytes: Uint8Array,
   contentType: AvatarContentType,
 ): Promise<void> {
-  const body = new Blob([new Uint8Array(bytes)], { type: contentType })
-  await partnerLogoStore().set(partnerId, body, { metadata: { contentType } })
+  await putFile('public', R2_KEYS.partnerLogo(partnerId), bytes, contentType)
 }
 
 export async function getPartnerLogo(
   partnerId: string,
 ): Promise<{ data: ArrayBuffer; contentType: AvatarContentType } | null> {
-  const result = await partnerLogoStore().getWithMetadata(partnerId, {
-    type: 'blob',
-  })
-  if (!result) return null
-
-  const data = await result.data.arrayBuffer()
-  // Tipe dikenali dari isi file, bukan dari metadata.
-  const contentType = detectAvatarContentType(new Uint8Array(data))
-  if (!contentType) return null
-
-  return { data, contentType }
+  const bytes = await getFileBytes(
+    'public',
+    R2_KEYS.partnerLogo(partnerId),
+    partnerLogoLegacy(partnerId),
+  )
+  return toFile(bytes, detectAvatarContentType)
 }
 
 export async function deletePartnerLogo(partnerId: string): Promise<void> {
-  await partnerLogoStore().delete(partnerId)
+  await deleteFile(
+    'public',
+    R2_KEYS.partnerLogo(partnerId),
+    partnerLogoLegacy(partnerId),
+  )
+}
+
+// --- Katalog PDF partner (LEGACY, tidak dipindah ke R2) --------------------
+//
+// Unggah PDF sudah diganti link katalog (`partners.catalog_url`). Hanya fungsi
+// hapus yang dipertahankan, untuk membersihkan berkas lama di Blobs (key = id
+// partner) saat partner dihapus. Hapus fungsi ini bersama bagian LEGACY.
+
+export async function deletePartnerCatalogPdf(
+  partnerId: string,
+): Promise<void> {
+  await legacyBlobDelete(LEGACY_BLOB_STORES.partnerCatalogPdfs, partnerId)
 }

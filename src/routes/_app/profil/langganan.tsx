@@ -13,6 +13,7 @@ import type { SubmitSubscriptionValue } from '../../../components/SubmitSubscrip
 import { fetchCurrentUser } from '../../../lib/auth-functions'
 import { formatDate } from '../../../lib/format'
 import { paymentProofUrl } from '../../../lib/payment-proof'
+import { FREE_FEATURES, PRO_FEATURES_LIST } from '../../../lib/plan-features'
 import { discountPercent } from '../../../lib/price-discount'
 import {
   fetchMySubscriptionState,
@@ -99,20 +100,6 @@ const STATUS_LABEL: Record<
     fg: 'var(--app-danger)',
   },
 }
-
-/** Fitur yang sudah termasuk di paket FREE. */
-const FREE_FEATURES = [
-  'Event dan pesanan tanpa batas',
-  'Laporan keuangan dasar',
-]
-
-/** Fitur tambahan di paket PRO. */
-const PRO_FEATURES_LIST = [
-  'Link tagihan publik untuk pelanggan',
-  'Autocomplete nama dan no. HP customer',
-  'Upload foto brand dan catatan',
-  'Tambah admin tim',
-]
 
 type Tab = 'paket' | 'riwayat'
 
