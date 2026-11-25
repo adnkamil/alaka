@@ -1,5 +1,6 @@
 import { Search } from 'lucide-react'
 import Pagination from './Pagination'
+import { usePartnerT } from '../PartnerI18n'
 
 type PagerProps = React.ComponentProps<typeof Pagination>
 
@@ -20,11 +21,12 @@ interface PartnerTableToolbarProps {
 export default function PartnerTableToolbar({
   search,
   onSearchChange,
-  placeholder = 'Cari',
-  label = 'Cari',
+  placeholder,
+  label,
   pager,
   filter,
 }: PartnerTableToolbarProps) {
+  const t = usePartnerT()
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
@@ -38,8 +40,8 @@ export default function PartnerTableToolbar({
             type="search"
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder={placeholder}
-            aria-label={label}
+            placeholder={placeholder ?? t.shell.tableSearch}
+            aria-label={label ?? placeholder ?? t.shell.tableSearch}
             className="app-input pl-10"
             style={{ height: 42, borderRadius: 12 }}
           />

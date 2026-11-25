@@ -1,5 +1,6 @@
 import { invoiceStatusMeta } from '../lib/invoice-rules'
 import type { InvoiceStatus } from '../lib/invoice-rules'
+import { useOptionalPartnerI18n } from './PartnerI18n'
 
 const STYLE = {
   info: { background: 'var(--app-info-soft)', color: 'var(--app-info)' },
@@ -17,7 +18,9 @@ export default function InvoiceStatusBadge({
 }: {
   status: InvoiceStatus
 }) {
-  const { label, tone } = invoiceStatusMeta(status)
+  const { tone } = invoiceStatusMeta(status)
+  // Di Partner Portal ikut bahasa partner; di luar portal tetap Indonesia.
+  const label = useOptionalPartnerI18n().t.invoice.status[status]
   return (
     <span
       className="inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold"

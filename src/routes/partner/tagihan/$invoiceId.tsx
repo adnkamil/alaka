@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, createFileRoute, useRouter } from '@tanstack/react-router'
 import { ArrowLeft, MessageCircle, Printer } from 'lucide-react'
 import ConfirmPaidModal from '../../../components/ConfirmPaidModal'
+import { usePartnerI18n } from '../../../components/PartnerI18n'
 import { BankInfo } from '../../../components/InvoiceDetailModal'
 import UnderlineTabs from '../../../components/ui/UnderlineTabs'
 import InvoiceDocument from '../../../components/InvoiceDocument'
@@ -43,6 +44,9 @@ function PartnerInvoiceDetailPage() {
   const [proofKey, setProofKey] = useState(0)
   const [view, setView] = useState<View>('tagihan')
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const { t, intlLocale } = usePartnerI18n()
+  const iv = t.invoice
+  const when = (date: Date | string) => formatWibDateTime(date, intlLocale)
 
   const detail = useQuery({
     queryKey: ['invoice-detail', 'partner', invoiceId],
@@ -75,12 +79,12 @@ function PartnerInvoiceDetailPage() {
     mutationFn: () =>
       cancelInvoice({ data: { invoiceId, reason: reason.trim() || undefined } }),
     onSuccess: afterChange,
-    onError: fail('Gagal membatalkan tagihan'),
+    onError: fail(iv.cancelFailed),
   })
   const confirmMutation = useMutation({
     mutationFn: () => confirmInvoicePaid({ data: { invoiceId } }),
     onSuccess: afterChange,
-    onError: fail('Gagal menandai lunas'),
+    onError: fail(iv.markPaidFailed),
   })
   const rejectMutation = useMutation({
     mutationFn: () =>
@@ -88,7 +92,7 @@ function PartnerInvoiceDetailPage() {
         data: { invoiceId, reason: reason.trim() || undefined },
       }),
     onSuccess: afterChange,
-    onError: fail('Gagal menolak bukti bayar'),
+    onError: fail(iv.rejectFailed),
   })
   const busy =
     cancelMutation.isPending ||
@@ -109,7 +113,7 @@ function PartnerInvoiceDetailPage() {
           <button
             type="button"
             onClick={goBack}
-            aria-label="Kembali"
+            aria-label={t.common.back}
             className="-ml-1 flex size-8 shrink-0 items-center justify-center lg:hidden"
             style={{ color: 'var(--app-text)' }}
           >
@@ -118,13 +122,13 @@ function PartnerInvoiceDetailPage() {
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="pm-display pm-num text-[22px] leading-tight lg:text-[26px]">
-                {d ? formatInvoiceNumber(d.number) : 'Tagihan'}
+                {d ? formatInvoiceNumber(d.number) : iv.fallbackTitle}
               </h1>
               {d && <InvoiceStatusBadge status={d.status} />}
             </div>
             {d && (
               <p className="mt-1 text-[13px]" style={{ color: 'var(--app-text-soft)' }}>
-                Dikirim {formatWibDateTime(d.sentAt)}
+                {iv.sentAt(when(d.sentAt))}
               </p>
             )}
           </div>
@@ -134,25 +138,25 @@ function PartnerInvoiceDetailPage() {
           className="app-btn-outline hidden lg:inline-flex"
           style={{ minHeight: 40, fontSize: 13 }}
         >
-          Kembali ke tagihan
+          {iv.backToInvoices}
         </Link>
       </header>
 
       {!d ? (
         <p className="py-10 text-center text-sm">
           {detail.isError
-            ? getErrorMessage(detail.error, 'Gagal memuat tagihan')
-            : 'Memuat…'}
+            ? getErrorMessage(detail.error, iv.loadFailed)
+            : t.common.loading}
         </p>
       ) : (
         <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-5">
           <div className="flex flex-col gap-4">
             <UnderlineTabs
               className="print:hidden"
-              ariaLabel="Tampilan tagihan"
+              ariaLabel={iv.viewLabel}
               items={[
-                { key: 'tagihan', label: 'Tagihan' },
-                { key: 'packing', label: 'Daftar packing' },
+                { key: 'tagihan', label: iv.viewInvoice },
+                { key: 'packing', label: iv.viewPacking },
               ]}
               value={view}
               onChange={setView}
@@ -166,7 +170,13 @@ function PartnerInvoiceDetailPage() {
                     <a
                       href={buildWhatsAppLink(
                         d.brandWa,
-                        `Halo ${d.brandName}, berikut tagihan ${formatInvoiceNumber(d.number)} dari ${d.partnerName} sebesar ${formatRupiah(d.totalAmount)}. Rincian dan info transfer bisa dilihat di sini: ${window.location.origin}/tagihan-partner/${d.id}`,
+                        iv.waMessage({
+                          brand: d.brandName,
+                          number: formatInvoiceNumber(d.number),
+                          partner: d.partnerName,
+                          amount: formatRupiah(d.totalAmount),
+                          url: `${window.location.origin}/tagihan-partner/${d.id}`,
+                        }),
                       )}
                       target="_blank"
                       rel="noreferrer"
@@ -174,7 +184,7 @@ function PartnerInvoiceDetailPage() {
                       style={{ minHeight: 36, fontSize: 12 }}
                     >
                       <MessageCircle size={14} />
-                      Kirim ke jastiper via WhatsApp
+                      {iv.sendWa}
                     </a>
                   )}
                   <button
@@ -184,7 +194,7 @@ function PartnerInvoiceDetailPage() {
                     style={{ minHeight: 36, fontSize: 12 }}
                   >
                     <Printer size={14} />
-                    Cetak invoice
+                    {iv.print}
                   </button>
                 </div>
                 {/* Lembar invoice: hanya muncul saat dicetak. */}
@@ -199,7 +209,7 @@ function PartnerInvoiceDetailPage() {
                 style={{ borderColor: 'var(--app-border)' }}
               >
                 <span className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
-                  Total · {d.totalPcs} pcs
+                  {iv.totalPcs(d.totalPcs)}
                 </span>
                 <span className="pm-num text-base font-bold">{formatRupiah(d.totalAmount)}</span>
               </div>
@@ -212,7 +222,7 @@ function PartnerInvoiceDetailPage() {
           <aside className="flex flex-col gap-3 print:hidden">
             <section className="app-card flex flex-col p-4 text-[13px]">
               <dl className="flex flex-col gap-2.5">
-                <Row label="Jastiper">
+                <Row label={iv.rowJastiper}>
                   <Link
                     to="/partner/event/jastiper/$id/$brandId"
                     params={{ id: d.calendarEventId, brandId: d.brandId }}
@@ -223,7 +233,7 @@ function PartnerInvoiceDetailPage() {
                     {d.brandName}
                   </Link>
                 </Row>
-                <Row label="Event">
+                <Row label={iv.rowEvent}>
                   <Link
                     to="/partner/event/$id"
                     params={{ id: d.calendarEventId }}
@@ -233,7 +243,7 @@ function PartnerInvoiceDetailPage() {
                     {d.eventName}
                   </Link>
                 </Row>
-                <Row label="Submit">
+                <Row label={iv.rowSubmit}>
                   <span className="flex flex-wrap justify-end gap-x-2">
                     {d.submitNos.map((n) => (
                       <Link
@@ -249,7 +259,7 @@ function PartnerInvoiceDetailPage() {
                     ))}
                   </span>
                 </Row>
-                <Row label="Jumlah barang">
+                <Row label={iv.rowItems}>
                   <span className="pm-num font-semibold">{d.totalPcs} pcs</span>
                 </Row>
               </dl>
@@ -257,14 +267,18 @@ function PartnerInvoiceDetailPage() {
                 className="mt-3 flex flex-col gap-2.5 border-t pt-3"
                 style={{ borderColor: 'var(--app-border)' }}
               >
-                <Row label="Total invoice">
+                <Row label={iv.rowTotal}>
                   <span className="pm-num text-base font-bold">
                     {formatRupiah(d.totalAmount)}
                   </span>
                 </Row>
                 {d.adminFee && d.adminFee.amount > 0 && (
                   <Row
-                    label={`Biaya admin ALAKA (${d.adminFee.percent.toLocaleString('id-ID', { maximumFractionDigits: 2 })}%)`}
+                    label={iv.adminFee(
+                      d.adminFee.percent.toLocaleString(intlLocale, {
+                        maximumFractionDigits: 2,
+                      }),
+                    )}
                   >
                     <Link
                       to="/partner/saldo"
@@ -288,18 +302,18 @@ function PartnerInvoiceDetailPage() {
               <section className="app-card flex flex-col gap-3 p-4 text-[13px]">
                 {d.status === 'dibatalkan' && (
                   <p style={{ color: 'var(--app-text-soft)' }}>
-                    Dibatalkan {d.cancelledAt ? formatWibDateTime(d.cancelledAt) : ''}
+                    {iv.cancelledAt(d.cancelledAt ? when(d.cancelledAt) : '')}
                     {d.cancelReason ? ` · ${d.cancelReason}` : ''}
                   </p>
                 )}
                 {d.status === 'menunggu_review' && d.paidClaimedAt && (
                   <p style={{ color: 'var(--app-text-soft)' }}>
-                    Jastiper mengaku sudah bayar {formatWibDateTime(d.paidClaimedAt)}
+                    {iv.claimedAt(when(d.paidClaimedAt))}
                   </p>
                 )}
                 {d.status === 'ditagih' && d.paymentRejectReason && (
                   <p style={{ color: 'var(--app-text-soft)' }}>
-                    Bukti bayar terakhir ditolak: {d.paymentRejectReason}
+                    {iv.lastProofRejected(d.paymentRejectReason)}
                   </p>
                 )}
                 {(d.hasProof || d.status === 'lunas') && (
@@ -307,13 +321,13 @@ function PartnerInvoiceDetailPage() {
                     {d.hasProof && (
                       <PaymentProofViewer
                         src={`/api/invoice-proof/${invoiceId}?v=${proofKey}`}
-                        label="Lihat bukti bayar"
+                        label={iv.viewProof}
                         className="flex items-center gap-1.5 text-xs font-semibold"
                       />
                     )}
                     {d.status === 'lunas' && d.paidConfirmedAt && (
                       <span className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
-                        Lunas {formatWibDateTime(d.paidConfirmedAt)}
+                        {iv.paidAt(when(d.paidConfirmedAt))}
                       </span>
                     )}
                   </div>
@@ -330,7 +344,7 @@ function PartnerInvoiceDetailPage() {
                       className="app-btn-outline"
                       style={{ color: 'var(--app-danger)', minHeight: 40, fontSize: 13 }}
                     >
-                      Tolak bukti
+                      {iv.rejectProof}
                     </button>
                     <button
                       type="button"
@@ -342,7 +356,7 @@ function PartnerInvoiceDetailPage() {
                       className="app-btn-primary"
                       style={{ minHeight: 40, fontSize: 13 }}
                     >
-                      Tandai lunas
+                      {iv.markPaid}
                     </button>
                   </div>
                 )}
@@ -356,7 +370,7 @@ function PartnerInvoiceDetailPage() {
                 className="app-btn-outline self-end"
                 style={{ color: 'var(--app-danger)', minHeight: 40, fontSize: 13 }}
               >
-                Batalkan tagihan
+                {iv.cancelInvoice}
               </button>
             )}
             {step === null && error && (
@@ -366,17 +380,15 @@ function PartnerInvoiceDetailPage() {
             {step !== null && (
               <div className="app-card flex flex-col gap-2 p-4">
                 <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
-                  {step === 'cancel'
-                    ? 'Submit di tagihan ini kembali ke "Siap ditagih" dan barangnya bisa dibatalkan lagi. Jastiper menerima notifikasi.'
-                    : 'Tagihan kembali ke "Ditagih" dan jastiper perlu mengirim bukti bayar lagi. Jastiper menerima notifikasi.'}
+                  {step === 'cancel' ? iv.cancelExplain : iv.rejectExplain}
                 </p>
                 <input
                   type="text"
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                   maxLength={500}
-                  placeholder="Alasan (opsional)"
-                  aria-label="Alasan"
+                  placeholder={iv.reasonPlaceholder}
+                  aria-label={iv.reasonLabel}
                   className="app-input"
                   style={{ height: 42, borderRadius: 12 }}
                 />
@@ -392,7 +404,7 @@ function PartnerInvoiceDetailPage() {
                     className="app-btn-outline"
                     style={{ minHeight: 40, fontSize: 13 }}
                   >
-                    Kembali
+                    {iv.back}
                   </button>
                   <button
                     type="button"
@@ -406,10 +418,10 @@ function PartnerInvoiceDetailPage() {
                     style={{ background: 'var(--app-danger)' }}
                   >
                     {busy
-                      ? 'Memproses…'
+                      ? iv.processing
                       : step === 'cancel'
-                        ? 'Ya, batalkan tagihan'
-                        : 'Ya, tolak bukti'}
+                        ? iv.confirmCancel
+                        : iv.confirmReject}
                   </button>
                 </div>
               </div>

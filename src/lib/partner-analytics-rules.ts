@@ -35,15 +35,6 @@ export const ANALYTICS_PRESETS = [
 ] as const
 export type AnalyticsPreset = (typeof ANALYTICS_PRESETS)[number]
 
-export const PRESET_LABELS: Record<AnalyticsPreset, string> = {
-  '7d': '7 hari terakhir',
-  '30d': '30 hari terakhir',
-  this_month: 'Bulan ini',
-  last_month: 'Bulan lalu',
-  this_year: 'Tahun ini',
-  custom: 'Custom',
-}
-
 export type Granularity = 'day' | 'week' | 'month'
 
 /** Rentang tanggal kalender WIB, inklusif, format `YYYY-MM-DD`. */
@@ -516,12 +507,6 @@ export function sortEvents(
   )
 }
 
-export const EVENT_STATUS_LABELS: Record<PartnerEventStatus, string> = {
-  mendatang: 'Upcoming',
-  berjalan: 'Ongoing',
-  selesai: 'Completed',
-}
-
 // ---------------------------------------------------------------------------
 // Insight
 // ---------------------------------------------------------------------------
@@ -535,11 +520,43 @@ export type Insight = {
 /** Perubahan di bawah ini dianggap stabil, bukan naik/turun. */
 const FLAT_THRESHOLD = 1
 
-function pct(n: number): string {
+/**
+ * Kalimat insight per bahasa. Default-nya Indonesia (`INSIGHT_COPY_ID`);
+ * Partner Portal mengirim versi bahasa aktif dari kamus `t.analytics`.
+ */
+export type InsightCopy = {
+  trendFlat: (comparison: string) => string
+  trendChange: (up: boolean, pct: string, comparison: string) => string
+  topEvent: (name: string, money: string, pct: string) => string
+  topProduct: (name: string, units: string) => string
+  concentration: (pct: string, name: string) => string
+  aov: (up: boolean, pct: string, money: string) => string
+  /** Pemisah desimal untuk persen, mis. ',' (id) atau '.' (en). */
+  decimalSeparator: string
+  /** Locale `Intl` untuk angka pcs. */
+  numberLocale: string
+}
+
+export const INSIGHT_COPY_ID: InsightCopy = {
+  trendFlat: (comparison) => `Penjualan stabil dibandingkan ${comparison}.`,
+  trendChange: (up, pct, comparison) =>
+    `Penjualan ${up ? 'naik' : 'turun'} ${pct} dibandingkan ${comparison}.`,
+  topEvent: (name, money, pct) =>
+    `${name} menghasilkan omzet tertinggi: ${money} (${pct} dari total).`,
+  topProduct: (name, units) => `${name} paling laris dengan ${units} pcs ditagih.`,
+  concentration: (pct, name) =>
+    `${pct} omzet produk berasal dari ${name}. Penjualan masih bertumpu pada satu produk.`,
+  aov: (up, pct, money) =>
+    `Rata-rata nilai per tagihan ${up ? 'naik' : 'turun'} ${pct} menjadi ${money}.`,
+  decimalSeparator: ',',
+  numberLocale: 'id-ID',
+}
+
+function formatPct(n: number, decimalSeparator: string): string {
   const abs = Math.abs(n)
   return `${abs >= 10 ? Math.round(abs) : Math.round(abs * 10) / 10}%`.replace(
     '.',
-    ',',
+    decimalSeparator,
   )
 }
 
@@ -556,8 +573,11 @@ export function buildInsights(input: {
   allEvents: boolean
   products: Array<{ name: string; units: number; revenue: number }>
   formatMoney: (n: number) => string
+  copy?: InsightCopy
 }): Array<Insight> {
   const { current, previous, formatMoney } = input
+  const copy = input.copy ?? INSIGHT_COPY_ID
+  const pct = (n: number) => formatPct(n, copy.decimalSeparator)
   if (current.orders === 0) return []
   const out: Array<Insight> = []
 
@@ -567,13 +587,13 @@ export function buildInsights(input: {
       out.push({
         key: 'trend',
         tone: 'neutral',
-        text: `Penjualan stabil dibandingkan ${input.comparisonLabel}.`,
+        text: copy.trendFlat(input.comparisonLabel),
       })
     } else {
       out.push({
         key: 'trend',
         tone: change > 0 ? 'up' : 'down',
-        text: `Penjualan ${change > 0 ? 'naik' : 'turun'} ${pct(change)} dibandingkan ${input.comparisonLabel}.`,
+        text: copy.trendChange(change > 0, pct(change), input.comparisonLabel),
       })
     }
   }
@@ -585,7 +605,7 @@ export function buildInsights(input: {
     out.push({
       key: 'top-event',
       tone: 'neutral',
-      text: `${top.name} menghasilkan omzet tertinggi: ${formatMoney(top.revenue)} (${pct(share)} dari total).`,
+      text: copy.topEvent(top.name, formatMoney(top.revenue), pct(share)),
     })
   }
 
@@ -595,7 +615,10 @@ export function buildInsights(input: {
     out.push({
       key: 'top-product',
       tone: 'neutral',
-      text: `${top.name} paling laris dengan ${top.units.toLocaleString('id-ID')} pcs ditagih.`,
+      text: copy.topProduct(
+        top.name,
+        top.units.toLocaleString(copy.numberLocale),
+      ),
     })
   }
   if (sold.length >= 3) {
@@ -606,7 +629,7 @@ export function buildInsights(input: {
       out.push({
         key: 'concentration',
         tone: 'neutral',
-        text: `${pct(share)} omzet produk berasal dari ${lead.name}. Penjualan masih bertumpu pada satu produk.`,
+        text: copy.concentration(pct(share), lead.name),
       })
     }
   }
@@ -617,7 +640,7 @@ export function buildInsights(input: {
       out.push({
         key: 'aov',
         tone: aovChange > 0 ? 'up' : 'down',
-        text: `Rata-rata nilai per tagihan ${aovChange > 0 ? 'naik' : 'turun'} ${pct(aovChange)} menjadi ${formatMoney(current.aov)}.`,
+        text: copy.aov(aovChange > 0, pct(aovChange), formatMoney(current.aov)),
       })
     }
   }

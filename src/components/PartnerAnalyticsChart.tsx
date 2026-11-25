@@ -10,6 +10,7 @@ import {
   formatIsoDate,
   formatBucketRange,
 } from './PartnerAnalyticsFormat'
+import { usePartnerI18n } from './PartnerI18n'
 
 const PAD = { top: 12, right: 12, bottom: 28, left: 60 }
 
@@ -39,11 +40,15 @@ function niceMax(value: number): number {
   return 10 * exp
 }
 
-function axisLabel(bucket: ComparedBucket, granularity: Granularity): string {
+function axisLabel(
+  bucket: ComparedBucket,
+  granularity: Granularity,
+  locale: string,
+): string {
   if (granularity === 'month') {
-    return formatIsoDate(bucket.from, { month: 'short', year: '2-digit' })
+    return formatIsoDate(bucket.from, { month: 'short', year: '2-digit' }, locale)
   }
-  return formatIsoDate(bucket.from, { day: 'numeric', month: 'short' })
+  return formatIsoDate(bucket.from, { day: 'numeric', month: 'short' }, locale)
 }
 
 /**
@@ -63,6 +68,7 @@ export default function PartnerAnalyticsChart({
   comparisonLabel: string
 }) {
   const [wrapRef, width] = useElementWidth<HTMLDivElement>()
+  const { t, intlLocale } = usePartnerI18n()
   const [active, setActive] = useState<number | null>(null)
   const height = width > 0 && width < 520 ? 220 : 280
 
@@ -94,15 +100,15 @@ export default function PartnerAnalyticsChart({
         ? `${current} L${x(n - 1).toFixed(1)},${y(0)} L${x(0).toFixed(1)},${y(0)} Z`
         : ''
     const previous = showPrevious ? line(buckets.map((b) => b.previous)) : ''
-    const ticks = [0, 0.25, 0.5, 0.75, 1].map((t) => t * yMax)
+    const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => f * yMax)
     // Label sumbu X secukupnya: kira-kira satu tiap 84px.
     const maxLabels = Math.max(2, Math.floor(innerW / 84))
     const step = Math.max(1, Math.ceil(n / maxLabels))
     const xLabels = buckets
-      .map((b, i) => ({ i, text: axisLabel(b, granularity) }))
+      .map((b, i) => ({ i, text: axisLabel(b, granularity, intlLocale) }))
       .filter(({ i }) => i % step === 0)
     return { innerW, innerH, x, y, current, area, previous, ticks, xLabels }
-  }, [width, height, buckets, showPrevious, granularity])
+  }, [width, height, buckets, showPrevious, granularity, intlLocale])
 
   const allZero = buckets.every((b) => b.amount === 0)
 
@@ -145,7 +151,7 @@ export default function PartnerAnalyticsChart({
                 strokeWidth="2"
               />
             </svg>
-            Periode ini
+            {t.analytics.chartThisPeriod}
           </span>
           <span className="inline-flex items-center gap-1.5">
             <svg width="16" height="4" aria-hidden="true">
@@ -169,7 +175,7 @@ export default function PartnerAnalyticsChart({
             width={width}
             height={height}
             role="img"
-            aria-label="Grafik revenue per periode. Gunakan tombol panah untuk membaca nilai."
+            aria-label={t.analytics.chartAria}
             tabIndex={0}
             className="pa-focus block touch-pan-y select-none rounded-md"
             onPointerMove={pick}
@@ -178,26 +184,26 @@ export default function PartnerAnalyticsChart({
             onKeyDown={onKey}
             onBlur={() => setActive(null)}
           >
-            {geometry.ticks.map((t) => (
-              <g key={t}>
+            {geometry.ticks.map((tick) => (
+              <g key={tick}>
                 <line
                   x1={PAD.left}
                   x2={PAD.left + geometry.innerW}
-                  y1={geometry.y(t)}
-                  y2={geometry.y(t)}
+                  y1={geometry.y(tick)}
+                  y2={geometry.y(tick)}
                   stroke="var(--pa-grid)"
                   strokeWidth={1}
                 />
                 <text
                   x={PAD.left - 8}
-                  y={geometry.y(t)}
+                  y={geometry.y(tick)}
                   textAnchor="end"
                   dominantBaseline="middle"
                   fontSize={11}
                   fill="var(--app-text-mute)"
                   className="pa-num"
                 >
-                  {formatCompactRupiah(t)}
+                  {formatCompactRupiah(tick, intlLocale)}
                 </text>
               </g>
             ))}
@@ -283,7 +289,7 @@ export default function PartnerAnalyticsChart({
             className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm"
             style={{ color: 'var(--app-text-soft)', paddingLeft: PAD.left }}
           >
-            Belum ada penjualan pada periode ini.
+            {t.analytics.chartNoSales}
           </div>
         )}
         {geometry && active !== null && activeBucket && (
@@ -306,6 +312,7 @@ export default function PartnerAnalyticsChart({
                 activeBucket.from,
                 activeBucket.to,
                 granularity,
+                intlLocale,
               )}
             </p>
             <p className="flex items-center gap-2">
@@ -340,6 +347,7 @@ export default function PartnerAnalyticsChart({
                       activeBucket.previousFrom,
                       activeBucket.previousTo ?? activeBucket.previousFrom,
                       granularity,
+                      intlLocale,
                     )}
                   </span>
                 </p>
@@ -348,19 +356,19 @@ export default function PartnerAnalyticsChart({
         )}
       </div>
       <table className="sr-only">
-        <caption>Revenue per periode</caption>
+        <caption>{t.analytics.chartCaption}</caption>
         <thead>
           <tr>
-            <th scope="col">Periode</th>
-            <th scope="col">Revenue</th>
-            {showPrevious && <th scope="col">Pembanding</th>}
+            <th scope="col">{t.analytics.chartPeriod}</th>
+            <th scope="col">{t.analytics.chartRevenue}</th>
+            {showPrevious && <th scope="col">{t.analytics.chartComparison}</th>}
           </tr>
         </thead>
         <tbody>
           {buckets.map((b) => (
             <tr key={b.from}>
               <th scope="row">
-                {formatBucketRange(b.from, b.to, granularity)}
+                {formatBucketRange(b.from, b.to, granularity, intlLocale)}
               </th>
               <td>{formatRupiah(b.amount)}</td>
               {showPrevious && (

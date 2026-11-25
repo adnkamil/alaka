@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react'
 import PartnerInvoiceList from '../../../components/PartnerInvoiceList'
 import UnderlineTabs from '../../../components/ui/UnderlineTabs'
 import PartnerJastiperCheck from '../../../components/PartnerJastiperCheck'
+import { usePartnerT } from '../../../components/PartnerI18n'
 import { getPartnerJastiperDetail } from '../../../lib/partner-jastiper-detail'
 import { listPartnerInvoices } from '../../../lib/invoice-functions'
 
@@ -27,6 +28,8 @@ function PartnerJastiperDetailPage() {
   const { id, brandId } = Route.useParams()
   const { submit, tab } = Route.useSearch()
   const navigate = Route.useNavigate()
+  const t = usePartnerT()
+  const c = t.check
   const detail = useQuery({
     queryKey: ['partner-jastiper-detail', id, brandId],
     queryFn: () =>
@@ -42,12 +45,12 @@ function PartnerJastiperDetailPage() {
   const needsReview = invoices.some((i) => i.status === 'menunggu_review')
   const activeTab = tab ?? 'pesanan'
   const tabs = [
-    { key: 'pesanan' as const, label: 'Pesanan' },
+    { key: 'pesanan' as const, label: c.tabOrders },
     {
       key: 'tagihan' as const,
-      label: 'Tagihan',
+      label: c.tabInvoices,
       count: invoices.length || undefined,
-      dot: needsReview ? 'Ada bukti bayar yang menunggu review' : undefined,
+      dot: needsReview ? c.reviewDot : undefined,
     },
   ]
   return (
@@ -57,7 +60,7 @@ function PartnerJastiperDetailPage() {
           <Link
             to="/partner/event/$id"
             params={{ id }}
-            aria-label="Kembali"
+            aria-label={t.common.back}
             className="-ml-1 flex size-8 shrink-0 items-center justify-center lg:hidden"
             style={{ color: 'var(--app-text)' }}
           >
@@ -65,13 +68,13 @@ function PartnerJastiperDetailPage() {
           </Link>
           <div>
             <h1 className="pm-display text-[22px] leading-tight lg:text-[26px]">
-              {detail.data?.brandName ?? 'Jastiper'}
+              {detail.data?.brandName ?? c.jastiperFallback}
             </h1>
             <p
               className="mt-1 text-[13px]"
               style={{ color: 'var(--app-text-soft)' }}
             >
-              Cek pesanan jastiper di event ini
+              {c.subtitle}
             </p>
           </div>
         </div>
@@ -81,12 +84,12 @@ function PartnerJastiperDetailPage() {
           className="app-btn-outline hidden lg:inline-flex"
           style={{ minHeight: 40, fontSize: 13 }}
         >
-          Kembali ke event
+          {c.backToEvent}
         </Link>
       </header>
       <UnderlineTabs
         className="-mt-1"
-        ariaLabel="Isi detail jastiper"
+        ariaLabel={c.tabsLabel}
         items={tabs}
         value={activeTab}
         onChange={(key) =>

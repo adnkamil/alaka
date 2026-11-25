@@ -14,6 +14,7 @@ import type { AnalyticsParams } from './partner-analytics-functions'
 import { listPartnerRulesPage } from './partner-rule-functions'
 import { fetchPartnerEventProducts } from './partner-event-product-functions'
 import { fetchAdminPartners, fetchCurrentPartner } from './partner-functions'
+import { fetchPartnerLocale } from './partner-locale-functions'
 import {
   fetchOwnPartnerEventParticipants,
   fetchPartnerEvent,
@@ -53,6 +54,13 @@ export const adminCalendarEventParticipantsQuery = (id: string) =>
 export const currentPartnerQuery = queryOptions({
   queryKey: ['current-partner'],
   queryFn: () => fetchCurrentPartner(),
+})
+
+/** Bahasa tampilan Partner Portal (cookie); lihat src/lib/partner-locale.ts. */
+export const partnerLocaleQuery = queryOptions({
+  queryKey: ['partner-locale'],
+  queryFn: () => fetchPartnerLocale(),
+  staleTime: Infinity,
 })
 
 /** Semua partner untuk halaman admin. */

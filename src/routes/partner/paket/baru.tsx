@@ -3,6 +3,7 @@ import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { ArrowLeft } from 'lucide-react'
 import { useState } from 'react'
 import PartnerRuleForm, { FORM_ID, type RuleFormValue } from '../../../components/PartnerRuleForm'
+import { usePartnerT } from '../../../components/PartnerI18n'
 import { fetchPartnerProducts } from '../../../lib/partner-product-functions'
 import {
   listPartnerProductSizes,
@@ -22,6 +23,8 @@ function NewPartnerRulePage() {
   const queryClient = useQueryClient()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const t = usePartnerT()
+  const b = t.bundle
   const { data: rules = [] } = useQuery({ queryKey: RULES_KEY, queryFn: () => listPartnerRules() })
   const { data: products = [] } = useQuery({
     queryKey: ['partner-products'],
@@ -56,7 +59,7 @@ function NewPartnerRulePage() {
       await queryClient.invalidateQueries({ queryKey: RULES_KEY })
       await navigate({ to: '/partner/paket' })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Gagal menyimpan aturan')
+      setError(err instanceof Error ? err.message : b.saveFailed)
     } finally {
       setSaving(false)
     }
@@ -65,13 +68,13 @@ function NewPartnerRulePage() {
   return (
     <main className="pm-wide flex flex-col gap-4 px-5 pb-8 pt-4 lg:gap-5">
       <header className="flex flex-wrap items-center gap-3">
-        <Link to="/partner/paket" aria-label="Kembali" className="-ml-1 flex size-8 items-center justify-center" style={{ color: 'var(--app-text)' }}>
+        <Link to="/partner/paket" aria-label={t.common.back} className="-ml-1 flex size-8 items-center justify-center" style={{ color: 'var(--app-text)' }}>
           <ArrowLeft size={22} />
         </Link>
-        <h1 className="pm-display text-[22px] leading-tight lg:text-[26px]">Aturan Paket Baru</h1>
+        <h1 className="pm-display text-[22px] leading-tight lg:text-[26px]">{b.createTitle}</h1>
         <div className="ml-auto flex items-center gap-2">
           <Link to="/partner/paket" className="app-btn-outline" style={{ minHeight: 44, fontSize: 14 }}>
-            Batal
+            {t.common.cancel}
           </Link>
           <button
             type="submit"
@@ -80,12 +83,12 @@ function NewPartnerRulePage() {
             className="app-btn-primary"
             style={{ minHeight: 44, fontSize: 14 }}
           >
-            {saving ? 'Menyimpan…' : 'Simpan aturan'}
+            {saving ? t.common.saving : b.saveRule}
           </button>
         </div>
       </header>
       <PartnerRuleForm
-        title="Detail aturan"
+        title={b.detailTitle}
         initial={{ name: '', minQty: '3', bundlePrice: '', isActive: true, productIds: [], productSizes: {} }}
         products={available}
         allRules={rules}

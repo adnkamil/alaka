@@ -2,6 +2,7 @@ import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { ArrowLeft } from 'lucide-react'
 import PartnerEventForm from '../../../components/PartnerEventForm'
+import { usePartnerT } from '../../../components/PartnerI18n'
 import type { PartnerEventFormValue } from '../../../components/PartnerEventForm'
 import { createPartnerEvent } from '../../../lib/partner-event-functions'
 import { setPartnerEventProducts } from '../../../lib/partner-event-product-functions'
@@ -18,6 +19,7 @@ function NewPartnerEventPage() {
   const queryClient = useQueryClient()
   const navigate = Route.useNavigate()
   const { data: products } = useSuspenseQuery(partnerProductsQuery)
+  const t = usePartnerT()
 
   async function handleSubmit(
     value: PartnerEventFormValue,
@@ -52,19 +54,21 @@ function NewPartnerEventPage() {
       <header className="flex items-center gap-3 lg:hidden">
         <Link
           to="/partner/event"
-          aria-label="Kembali"
+          aria-label={t.common.back}
           className="-ml-1 flex size-8 items-center justify-center"
           style={{ color: 'var(--app-text)' }}
         >
           <ArrowLeft size={22} />
         </Link>
-        <h1 className="pm-display text-[22px] leading-tight">Buat Event</h1>
+        <h1 className="pm-display text-[22px] leading-tight">
+          {t.event.createTitle}
+        </h1>
       </header>
 
       <PartnerEventForm
-        title="Buat Event"
-        breadcrumb="Buat event"
-        submitLabel="Simpan event"
+        title={t.event.createTitle}
+        breadcrumb={t.event.createCrumb}
+        submitLabel={t.event.createSubmit}
         products={products}
         initialValue={{
           name: '',

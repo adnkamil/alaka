@@ -3,6 +3,7 @@ import { Link, useRouter, useRouterState } from '@tanstack/react-router'
 import { useState } from 'react'
 import PartnerLogo from './PartnerLogo'
 import { PARTNER_TABS, isPartnerTabActive } from './partner-nav-items'
+import { usePartnerT } from './PartnerI18n'
 import { logoutPartner } from '../lib/partner-functions'
 import { partnerInitials } from '../lib/partner-logo-rules'
 
@@ -20,6 +21,7 @@ export default function PartnerSidebar({ name, logoUrl }: PartnerSidebarProps) {
   const queryClient = useQueryClient()
   const router = useRouter()
   const [loggingOut, setLoggingOut] = useState(false)
+  const t = usePartnerT()
 
   async function handleLogout() {
     setLoggingOut(true)
@@ -48,12 +50,12 @@ export default function PartnerSidebar({ name, logoUrl }: PartnerSidebarProps) {
             className="text-[11px]"
             style={{ color: 'var(--app-text-soft)' }}
           >
-            Partner Portal
+            {t.shell.portalName}
           </span>
         </div>
       </div>
 
-      <nav className="mt-8 flex flex-col gap-1.5" aria-label="Menu partner">
+      <nav className="mt-8 flex flex-col gap-1.5" aria-label={t.shell.menuLabel}>
         {PARTNER_TABS.map((tab) => {
           const Icon = tab.icon
           const active = isPartnerTabActive(pathname, tab.to)
@@ -70,7 +72,7 @@ export default function PartnerSidebar({ name, logoUrl }: PartnerSidebarProps) {
               }}
             >
               <Icon size={19} />
-              {tab.label}
+              {t.shell.nav[tab.labelKey]}
             </Link>
           )
         })}
@@ -97,7 +99,7 @@ export default function PartnerSidebar({ name, logoUrl }: PartnerSidebarProps) {
             className="text-xs font-medium disabled:opacity-60"
             style={{ color: 'var(--app-accent)' }}
           >
-            Keluar
+            {t.shell.logout}
           </button>
         </div>
       </div>

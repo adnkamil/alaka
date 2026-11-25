@@ -7,9 +7,48 @@ export interface ChangePasswordFormValue {
   newPassword: string
 }
 
+/** Teks modal; default bahasa Indonesia. Partner Portal mengirim terjemahan. */
+export interface ChangePasswordText {
+  close: string
+  currentLabel: string
+  currentPlaceholder: string
+  showCurrent: string
+  newLabel: string
+  newPlaceholder: string
+  showNew: string
+  confirmLabel: string
+  confirmPlaceholder: string
+  otherDevicesNote: string
+  cancel: string
+  saving: string
+  tooShort: string
+  mismatch: string
+  failed: string
+}
+
+const DEFAULT_TEXT: ChangePasswordText = {
+  close: 'Tutup',
+  currentLabel: 'Kata sandi sekarang',
+  currentPlaceholder: 'Kata sandi yang dipakai sekarang',
+  showCurrent: 'Tampilkan kata sandi sekarang',
+  newLabel: 'Kata sandi baru',
+  newPlaceholder: 'Minimal 8 karakter',
+  showNew: 'Tampilkan kata sandi baru',
+  confirmLabel: 'Konfirmasi kata sandi baru',
+  confirmPlaceholder: 'Ulangi kata sandi baru',
+  otherDevicesNote:
+    'Setelah diganti, perangkat lain yang masih login otomatis keluar.',
+  cancel: 'Batal',
+  saving: 'Menyimpan...',
+  tooShort: 'Password minimal 8 karakter',
+  mismatch: 'Konfirmasi kata sandi tidak sama',
+  failed: 'Gagal mengubah kata sandi',
+}
+
 interface ChangePasswordModalProps {
   title?: string
   submitLabel?: string
+  text?: ChangePasswordText
   onClose: () => void
   onSubmit: (value: ChangePasswordFormValue) => Promise<void>
 }
@@ -17,6 +56,7 @@ interface ChangePasswordModalProps {
 export default function ChangePasswordModal({
   title = 'Ubah Kata Sandi',
   submitLabel = 'Simpan',
+  text = DEFAULT_TEXT,
   onClose,
   onSubmit,
 }: ChangePasswordModalProps) {
@@ -37,11 +77,11 @@ export default function ChangePasswordModal({
     setError(null)
 
     if (newPassword.length < 8) {
-      setError('Password minimal 8 karakter')
+      setError(text.tooShort)
       return
     }
     if (newPassword !== confirmPassword) {
-      setError('Konfirmasi kata sandi tidak sama')
+      setError(text.mismatch)
       return
     }
 
@@ -49,7 +89,7 @@ export default function ChangePasswordModal({
     try {
       await onSubmit({ currentPassword, newPassword })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Gagal mengubah kata sandi')
+      setError(err instanceof Error ? err.message : text.failed)
     } finally {
       setIsSubmitting(false)
     }
@@ -88,7 +128,7 @@ export default function ChangePasswordModal({
             disabled={isSubmitting}
             className="rounded-full p-1 transition-colors hover:opacity-75 disabled:opacity-30"
             style={{ color: 'var(--app-text-mute)' }}
-            aria-label="Tutup"
+            aria-label={text.close}
           >
             <X size={18} />
           </button>
@@ -96,13 +136,13 @@ export default function ChangePasswordModal({
 
         <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
           <label className="flex flex-col gap-1 text-sm font-medium">
-            Kata sandi sekarang
+            {text.currentLabel}
             <div className="relative">
               <input
                 type={showCurrent ? 'text' : 'password'}
                 required
                 autoFocus
-                placeholder="Kata sandi yang dipakai sekarang"
+                placeholder={text.currentPlaceholder}
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 className="app-input pr-10"
@@ -112,7 +152,7 @@ export default function ChangePasswordModal({
                 onClick={() => setShowCurrent((v) => !v)}
                 className="absolute inset-y-0 right-3 flex items-center"
                 style={{ color: 'var(--app-text-mute)' }}
-                aria-label="Tampilkan kata sandi sekarang"
+                aria-label={text.showCurrent}
               >
                 {showCurrent ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -120,13 +160,13 @@ export default function ChangePasswordModal({
           </label>
 
           <label className="flex flex-col gap-1 text-sm font-medium">
-            Kata sandi baru
+            {text.newLabel}
             <div className="relative">
               <input
                 type={showNew ? 'text' : 'password'}
                 required
                 minLength={8}
-                placeholder="Minimal 8 karakter"
+                placeholder={text.newPlaceholder}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 className="app-input pr-10"
@@ -136,7 +176,7 @@ export default function ChangePasswordModal({
                 onClick={() => setShowNew((v) => !v)}
                 className="absolute inset-y-0 right-3 flex items-center"
                 style={{ color: 'var(--app-text-mute)' }}
-                aria-label="Tampilkan kata sandi baru"
+                aria-label={text.showNew}
               >
                 {showNew ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -144,17 +184,17 @@ export default function ChangePasswordModal({
           </label>
 
           <label className="flex flex-col gap-1 text-sm font-medium">
-            Konfirmasi kata sandi baru
+            {text.confirmLabel}
             <input
               type={showNew ? 'text' : 'password'}
               required
-              placeholder="Ulangi kata sandi baru"
+              placeholder={text.confirmPlaceholder}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               className="app-input"
             />
             <span className="text-xs" style={{ color: 'var(--app-text-mute)' }}>
-              Setelah diganti, perangkat lain yang masih login otomatis keluar.
+              {text.otherDevicesNote}
             </span>
           </label>
 
@@ -176,7 +216,7 @@ export default function ChangePasswordModal({
                 color: 'var(--app-text-soft)',
               }}
             >
-              Batal
+              {text.cancel}
             </button>
             <button
               type="submit"
@@ -184,7 +224,7 @@ export default function ChangePasswordModal({
               className="rounded-xl px-4 py-2 text-xs font-semibold text-[var(--app-on-solid)] shadow-sm transition-opacity hover:opacity-90 disabled:opacity-50"
               style={{ background: 'var(--app-accent)' }}
             >
-              {isSubmitting ? 'Menyimpan...' : submitLabel}
+              {isSubmitting ? text.saving : submitLabel}
             </button>
           </div>
         </form>

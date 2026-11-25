@@ -97,7 +97,15 @@ export function buildMonthGrid(key: MonthKey): Array<string | null> {
 }
 
 /** `2026-10-14` -> `Rabu, 14 Oktober 2026`. */
-export function formatLongDate(isoDate: string): string {
+export function formatLongDate(isoDate: string, locale?: string): string {
+  if (locale && locale !== 'id-ID') {
+    return intlDate(isoDate, locale, {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    })
+  }
   const [year, month, day] = isoDate.split('-').map(Number)
   const weekday = new Intl.DateTimeFormat('id-ID', {
     weekday: 'long',
@@ -169,11 +177,35 @@ export function isCalendarEventWithinDays(
  * panjang (`Rabu, 14 Oktober 2026`); event beberapa hari memakai format ringkas
  * (`20 – 22 Nov 2026`, `28 Okt – 2 Nov 2026`, `30 Des 2026 – 2 Jan 2027`).
  */
-export function formatDateRange(start: string, end: string | null): string {
-  if (!end || end === start) return formatLongDate(start)
+/** Tanggal `YYYY-MM-DD` lewat `Intl` di UTC (tanggalnya sudah tanggal WIB). */
+function intlDate(
+  isoDate: string,
+  locale: string,
+  options: Intl.DateTimeFormatOptions,
+): string {
+  return new Intl.DateTimeFormat(locale, { ...options, timeZone: 'UTC' }).format(
+    new Date(`${isoDate}T00:00:00Z`),
+  )
+}
+
+/**
+ * Rentang tanggal event. Default bahasa Indonesia; `locale` lain (mis.
+ * "en-GB" untuk Partner Portal berbahasa Inggris) memakai nama bulan `Intl`.
+ */
+export function formatDateRange(
+  start: string,
+  end: string | null,
+  locale?: string,
+): string {
+  if (!end || end === start) return formatLongDate(start, locale)
   const [y1, m1, d1] = start.split('-').map(Number)
   const [y2, m2, d2] = end.split('-').map(Number)
-  const mon = (month: number) => MONTH_NAMES[month - 1].slice(0, 3)
+  const mon = (month: number) =>
+    locale && locale !== 'id-ID'
+      ? intlDate(`2000-${String(month).padStart(2, '0')}-15`, locale, {
+          month: 'short',
+        })
+      : MONTH_NAMES[month - 1].slice(0, 3)
   if (y1 !== y2) return `${d1} ${mon(m1)} ${y1} – ${d2} ${mon(m2)} ${y2}`
   if (m1 !== m2) return `${d1} ${mon(m1)} – ${d2} ${mon(m2)} ${y1}`
   return `${d1} – ${d2} ${mon(m1)} ${y1}`

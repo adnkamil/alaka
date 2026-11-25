@@ -5,6 +5,7 @@ import { ChevronDown, Search } from 'lucide-react'
 import Pagination from './ui/Pagination'
 import PartnerRowChip from './PartnerRowChip'
 import SubmitStatusBadge from './SubmitStatusBadge'
+import { usePartnerI18n, usePartnerT } from './PartnerI18n'
 import { formatWibDateTime } from '../lib/event-slot'
 import { getPartnerSubmitList } from '../lib/partner-submit-list'
 import { buildWhatsAppLink, formatPhoneNumber } from '../lib/format'
@@ -53,6 +54,8 @@ export default function PartnerJastiperCheck({
   submit?: number
 }) {
   const queryClient = useQueryClient()
+  const t = usePartnerT()
+  const c = t.check
   const subs = useQuery({
     // brandId ikut ke server supaya hanya data jastiper ini yang dibaca.
     queryKey: ['partner-submissions', calendarEventId, brandId],
@@ -174,20 +177,17 @@ export default function PartnerJastiperCheck({
       })
     },
     onError: (err) =>
-      setError(err instanceof Error ? err.message : 'Gagal menyimpan'),
+      setError(err instanceof Error ? err.message : c.saveFailed),
   })
 
   const d = detail.data
   const hasRejected = summary.pcs.rejected > 0
   const waLink = d?.waNumber
-    ? buildWhatsAppLink(
-        d.waNumber,
-        `Halo ${d.brandName}, ini dari tim partner untuk pesanan event ini.`,
-      )
+    ? buildWhatsAppLink(d.waNumber, c.waGreeting(d.brandName))
     : null
 
   if (subs.isLoading || detail.isLoading || submitList.isLoading)
-    return <p className="text-sm">Memuat…</p>
+    return <p className="text-sm">{t.common.loading}</p>
 
   const contactCard = d && (
     <section className="app-card p-4 text-[13px]">
@@ -195,7 +195,7 @@ export default function PartnerJastiperCheck({
         className="text-[11px] font-semibold uppercase tracking-wide"
         style={{ color: 'var(--pm-gold)' }}
       >
-        Kontak jastiper
+        {c.contact}
       </p>
       <p className="mt-2">
         {d.brandName}
@@ -213,7 +213,7 @@ export default function PartnerJastiperCheck({
           rel="noreferrer"
           className="mt-3 block rounded-lg border px-4 py-2 text-center text-[13px] font-semibold"
         >
-          Hubungi via WhatsApp
+          {c.contactWa}
         </a>
       )}
     </section>
@@ -231,27 +231,26 @@ export default function PartnerJastiperCheck({
             …
           </div>
           <h2 className="mt-4 text-base font-semibold">
-            Jastiper ini belum mengirim pesanan ke kamu.
+            {c.emptyTitle}
           </h2>
           <p
             className="mt-2 max-w-md text-[13px]"
             style={{ color: 'var(--app-text-soft)' }}
           >
-            Pesanan muncul di sini setelah jastiper menekan Submit saat slot
-            dibuka. Sampai saat itu, daftar barang dan total belum bisa dilihat.
+            {c.emptyBody}
           </p>
         </section>
         <div className="flex flex-col gap-3">
           <section className="app-card p-4">
-            <PartnerRowChip label="Draft" tone="neutral" />
+            <PartnerRowChip label={c.draft} tone="neutral" />
             <h3 className="mt-2 text-base font-semibold">
-              Menunggu jastiper
+              {c.waitingJastiper}
             </h3>
             <p
               className="mt-1 text-[13px]"
               style={{ color: 'var(--app-text-soft)' }}
             >
-              Pesanan muncul setelah jastiper menekan Submit saat slot dibuka.
+              {c.waitingJastiperBody}
             </p>
           </section>
           {contactCard}
@@ -274,8 +273,8 @@ export default function PartnerJastiperCheck({
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cari nama produk"
-              aria-label="Cari nama produk"
+              placeholder={c.searchProduct}
+              aria-label={c.searchProduct}
               className="app-input pl-10"
               style={{ height: 42, borderRadius: 12 }}
             />
@@ -286,24 +285,24 @@ export default function PartnerJastiperCheck({
           <div
             className="flex flex-wrap gap-2"
             role="tablist"
-            aria-label="Pilih submit"
+            aria-label={c.pickSubmission}
           >
             {[
-              { key: 'semua' as const, label: 'Semua' },
+              { key: 'semua' as const, label: c.all },
               ...submissions.map((x) => ({
                 key: x.submitNo,
-                label: `Submit ${x.submitNo}`,
+                label: c.submissionTab(x.submitNo),
               })),
-            ].map((t) => (
+            ].map((item) => (
               <button
-                key={t.key}
+                key={item.key}
                 type="button"
                 role="tab"
-                aria-selected={activeTab === t.key}
-                onClick={() => setTab(t.key)}
-                className={`pm-chip ${activeTab === t.key ? 'pm-chip--active' : ''}`}
+                aria-selected={activeTab === item.key}
+                onClick={() => setTab(item.key)}
+                className={`pm-chip ${activeTab === item.key ? 'pm-chip--active' : ''}`}
               >
-                {t.label}
+                {item.label}
               </button>
             ))}
           </div>
@@ -334,20 +333,19 @@ export default function PartnerJastiperCheck({
       <div className="flex flex-col gap-3 lg:sticky lg:top-4 lg:self-start">
         <section className="app-card p-4">
           <PartnerRowChip
-            label={pendingSubs.length > 0 ? 'Pengajuan' : 'Disetujui'}
+            label={pendingSubs.length > 0 ? c.submitted : c.approved}
             tone={pendingSubs.length > 0 ? 'info' : 'success'}
           />
           {pendingSubs.length > 0 ? (
             <>
               <h3 className="mt-2 text-base font-semibold">
-                Cek pesanan ini
+                {c.checkThis}
               </h3>
               <p
                 className="mt-1 text-[13px]"
                 style={{ color: 'var(--app-text-soft)' }}
               >
-                Isi jumlah yang dapat di tabel, lalu tekan Selesai dicek untuk
-                tiap submit.
+                {c.checkHint}
               </p>
               {error && (
                 <p className="mt-2 text-xs text-[var(--app-danger)]">{error}</p>
@@ -364,27 +362,25 @@ export default function PartnerJastiperCheck({
                     className="w-full rounded-lg px-4 py-2 text-sm font-semibold text-[var(--app-on-solid)] disabled:opacity-50"
                     style={{ background: 'var(--app-accent)' }}
                   >
-                    Selesai dicek Submit ke-{sub.submitNo}
+                    {c.doneChecking(sub.submitNo)}
                   </button>
                 ))}
               </div>
             </>
           ) : (
             <>
-              <h3 className="mt-2 text-base font-semibold">Hasil final</h3>
+              <h3 className="mt-2 text-base font-semibold">{c.finalResult}</h3>
               <p
                 className="mt-1 text-[13px]"
                 style={{ color: 'var(--app-text-soft)' }}
               >
-                Semua barang sudah dicek. Yang tidak dapat tidak masuk tagihan.
+                {c.finalBody}
               </p>
               <p
                 className="mt-2 text-xs"
                 style={{ color: hasRejected ? 'var(--app-danger)' : 'var(--app-success)' }}
               >
-                {hasRejected
-                  ? 'Ada barang yang ditolak'
-                  : '✓ Semua barang sudah cukup'}
+                {hasRejected ? c.someRejected : c.allEnough}
               </p>
             </>
           )}
@@ -431,28 +427,29 @@ function SummaryCard({
   totalAmount: number
 }) {
   const { pcs } = summary
+  const c = usePartnerT().check
   const segments = [
     {
       key: 'approved',
-      label: 'Dapat',
+      label: c.segReceived,
       value: pcs.approved,
       color: 'var(--app-success)',
     },
     {
       key: 'rejected',
-      label: 'Ditolak',
+      label: c.segRejected,
       value: pcs.rejected,
       color: 'var(--app-danger)',
     },
     {
       key: 'cancelled',
-      label: 'Dibatalkan',
+      label: c.segCancelled,
       value: pcs.cancelled,
       color: 'var(--app-text-mute)',
     },
     {
       key: 'pending',
-      label: 'Menunggu dicek',
+      label: c.segWaiting,
       value: pcs.pending,
       color: 'var(--app-warning)',
     },
@@ -468,17 +465,17 @@ function SummaryCard({
           className="text-[11px] font-semibold uppercase tracking-wide"
           style={{ color: 'var(--pm-gold)' }}
         >
-          Ringkasan
+          {c.summary}
         </p>
         <span className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
-          {summary.submitCount} submit ·{' '}
+          {c.summaryCount(summary.submitCount)}
           <span className="pm-num">{totalPcs}</span> pcs
         </span>
       </div>
 
       <div className="mt-3 flex flex-col gap-3">
         <div className="min-w-0">
-          <p style={{ color: 'var(--app-text-soft)' }}>Total tagihan</p>
+          <p style={{ color: 'var(--app-text-soft)' }}>{c.totalInvoice}</p>
           <p className="pm-num text-[22px] font-bold leading-tight">
             {formatRupiah(totalAmount)}
           </p>
@@ -486,7 +483,7 @@ function SummaryCard({
             className="mt-0.5 text-[11px]"
             style={{ color: 'var(--app-text-mute)' }}
           >
-            Paket dihitung dari semua pcs jastiper ini
+            {c.bundleNote}
           </p>
         </div>
         {anyPending && (
@@ -498,7 +495,8 @@ function SummaryCard({
               className="text-xs"
               style={{ color: 'var(--app-text-soft)' }}
             >
-              Belum dicek · <span className="pm-num">{pcs.pending}</span> pcs
+              {c.notChecked}
+              <span className="pm-num">{pcs.pending}</span> pcs
             </p>
             <p className="pm-num text-[13px] font-semibold">
               +{formatRupiah(summary.pendingAmount)}
@@ -509,9 +507,9 @@ function SummaryCard({
 
       <div className="mt-4">
         <div className="mb-1.5 flex items-center justify-between text-xs">
-          <span style={{ color: 'var(--app-text-soft)' }}>Progres cek</span>
+          <span style={{ color: 'var(--app-text-soft)' }}>{c.progress}</span>
           <span className="pm-num font-medium">
-            {checkedPcs}/{totalPcs} pcs dicek
+            {c.progressValue(checkedPcs, totalPcs)}
           </span>
         </div>
         <div
@@ -594,6 +592,25 @@ function SubmitBlock({
   /** Isi banyak baris sekaligus (baris gabungan satu varian). */
   onSetDapat: (values: Record<string, number>) => void
 }) {
+  const { t, intlLocale } = usePartnerI18n()
+  const c = t.check
+  const mergedChip = {
+    disetujui: { label: c.mergedApproved, tone: 'success' },
+    sebagian: { label: c.mergedPartial, tone: 'warn' },
+    ditolak: { label: c.mergedRejected, tone: 'danger' },
+    dibatalkan: { label: c.mergedCancelled, tone: 'neutral' },
+  } as const
+  const columnLabels: Record<MergedSortKey, string> = {
+    productName: c.colProduct,
+    variation: c.colVariation,
+    size: c.colSize,
+    total: c.colTotal,
+    priceType: c.colPriceType,
+    stock: c.colStock,
+    requested: c.colRequested,
+    approved: c.colReceived,
+    status: c.colStatus,
+  }
   const rows = allRows(sub).filter((r) =>
     r.productName.toLowerCase().includes(searchKey),
   )
@@ -623,7 +640,7 @@ function SubmitBlock({
       stock: (m) => m.stock,
       requested: (m) => m.requested,
       approved: (m) => m.approved,
-      status: (m) => MERGED_CHIP[m.status].label,
+      status: (m) => mergedChip[m.status].label,
     }),
   )
   const pager = merged ? mergedPager : rowPager
@@ -641,19 +658,19 @@ function SubmitBlock({
   return (
     <section className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-1">
-        <h2 className="text-base font-bold">Submit ke-{sub.submitNo}</h2>
+        <h2 className="text-base font-bold">{c.submissionNo(sub.submitNo)}</h2>
         {sub.reopened && (
-          <PartnerRowChip label="Ada barang pengganti" tone="warn" />
+          <PartnerRowChip label={c.hasReplacement} tone="warn" />
         )}
         <span className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
-          {formatWibDateTime(sub.submittedAt)}
+          {formatWibDateTime(sub.submittedAt, intlLocale)}
         </span>
         {info?.invoice ? (
           <Link
             to="/partner/tagihan/$invoiceId"
             params={{ invoiceId: info.invoice.id }}
             className="no-underline"
-            title="Buka tagihan"
+            title={c.openInvoice}
           >
             <SubmitStatusBadge
               checked={sub.checked}
@@ -675,10 +692,10 @@ function SubmitBlock({
             style={{ color: 'var(--app-text-soft)' }}
           >
             {sub.checked
-              ? `${info.pcs.approved} dapat`
-              : `${info.pcs.pending} pcs menunggu`}
-            {info.pcs.rejected > 0 && ` · ${info.pcs.rejected} ditolak`}
-            {info.pcs.cancelled > 0 && ` · ${info.pcs.cancelled} dibatalkan`}
+              ? c.pcsReceived(info.pcs.approved)
+              : c.pcsWaiting(info.pcs.pending)}
+            {info.pcs.rejected > 0 && c.pcsRejected(info.pcs.rejected)}
+            {info.pcs.cancelled > 0 && c.pcsCancelled(info.pcs.cancelled)}
           </span>
         )}
       </div>
@@ -687,34 +704,26 @@ function SubmitBlock({
         <table className="w-full text-[13px]">
           <thead style={{ background: 'var(--pm-tint)' }}>
             <tr>
-              {MERGED_COLUMNS.map(([h, key]) => (
+              {MERGED_COLUMNS.map((key) => (
                 <th
-                  key={h}
+                  key={key}
                   aria-sort={
                     merged ? ariaSortOf(mergedSort.sort, key) : undefined
                   }
-                  className={`px-4 py-3 text-[11px] font-semibold uppercase tracking-wide ${['Total harga', 'Stok', 'Diminta', 'Dapat'].includes(h) ? 'text-right' : 'text-left'}`}
+                  className={`px-4 py-3 text-[11px] font-semibold uppercase tracking-wide ${RIGHT_ALIGNED.has(key) ? 'text-right' : 'text-left'}`}
                   style={{ color: 'var(--pm-gold)' }}
                 >
                   {/* Sebelum dicek, baris digabung/berpasangan dan bisa diisi, jadi urutannya dikunci. */}
                   <SortHeader
-                    label={h}
+                    label={columnLabels[key]}
                     sortKey={merged ? key : undefined}
                     sort={mergedSort.sort}
                     onSort={(k) => {
                       mergedSort.toggle(k)
                       mergedPager.resetPage()
                     }}
-                    align={
-                      ['Total harga', 'Stok', 'Diminta', 'Dapat'].includes(h)
-                        ? 'right'
-                        : 'left'
-                    }
-                    title={
-                      h === 'Stok'
-                        ? 'Stok varian saat ini di katalog'
-                        : undefined
-                    }
+                    align={RIGHT_ALIGNED.has(key) ? 'right' : 'left'}
+                    title={key === 'stock' ? c.stockTitle : undefined}
                   />
                 </th>
               ))}
@@ -722,7 +731,7 @@ function SubmitBlock({
           </thead>
           <tbody>
             {pagedMerged.map((m) => {
-              const chip = MERGED_CHIP[m.status]
+              const chip = mergedChip[m.status]
               return (
                 <tr
                   key={m.key}
@@ -737,9 +746,9 @@ function SubmitBlock({
                   </td>
                   <td className="px-4 py-3" title={m.ruleName ?? undefined}>
                     {m.priceType === 'paket' && m.price !== null
-                      ? `Paket ${formatRupiah(m.price)} / ${m.bundlePcs} pcs`
+                      ? c.bundlePrice(formatRupiah(m.price), m.bundlePcs)
                       : m.priceType === 'satuan' && m.price !== null
-                        ? `Satuan ${formatRupiah(m.price)} / pcs`
+                        ? c.unitPrice(formatRupiah(m.price))
                         : '-'}
                   </td>
                   <td className="pm-num px-4 py-3 text-right">
@@ -777,10 +786,10 @@ function SubmitBlock({
                 const over = entry.rows.some((r) => overRows.has(r.id))
                 const short = total - dapatTotal
                 const chip = over
-                  ? { label: 'Melebihi stok', tone: 'danger' as const }
+                  ? { label: c.overStock, tone: 'danger' as const }
                   : short <= 0
-                    ? { label: 'Cukup', tone: 'success' as const }
-                    : { label: `Kurang ${short}`, tone: 'danger' as const }
+                    ? { label: c.enough, tone: 'success' as const }
+                    : { label: c.short(short), tone: 'danger' as const }
                 const stockShort = first.stock !== null && first.stock < total
                 return (
                   <tr
@@ -801,9 +810,7 @@ function SubmitBlock({
                           : undefined
                       }
                       title={
-                        stockShort
-                          ? 'Stok kurang dari jumlah yang diminta'
-                          : undefined
+                        stockShort ? c.stockShortTitle : undefined
                       }
                     >
                       {first.stock ?? '-'}
@@ -826,7 +833,7 @@ function SubmitBlock({
                           onSetDapat(splitApproved(entry.rows, value))
                         }}
                         className="w-16 rounded border px-2 py-1 text-right"
-                        aria-label={`Jumlah dapat untuk ${first.productName}`}
+                        aria-label={c.receivedFor(first.productName)}
                       />
                     </td>
                     <td className="px-4 py-3">
@@ -844,17 +851,17 @@ function SubmitBlock({
               const chip =
                 row.status === 'pengajuan'
                   ? overRows.has(row.id)
-                    ? { label: 'Melebihi stok', tone: 'danger' as const }
+                    ? { label: c.overStock, tone: 'danger' as const }
                     : short <= 0
-                      ? { label: 'Cukup', tone: 'success' as const }
-                      : { label: `Kurang ${short}`, tone: 'danger' as const }
+                      ? { label: c.enough, tone: 'success' as const }
+                      : { label: c.short(short), tone: 'danger' as const }
                   : row.status === 'disetujui'
-                    ? { label: 'Disetujui', tone: 'success' as const }
+                    ? { label: c.rowApproved, tone: 'success' as const }
                     : row.status === 'disanggah'
-                      ? { label: 'Ditolak', tone: 'danger' as const }
+                      ? { label: c.rowRejected, tone: 'danger' as const }
                       : row.status === 'dibatalkan'
-                        ? { label: 'Dibatalkan', tone: 'neutral' as const }
-                        : { label: 'Belum disubmit', tone: 'neutral' as const }
+                        ? { label: c.rowCancelled, tone: 'neutral' as const }
+                        : { label: c.rowNotSubmitted, tone: 'neutral' as const }
               return (
                 <tr
                   key={row.id}
@@ -873,7 +880,7 @@ function SubmitBlock({
                         className="mt-0.5 block text-[11px] font-semibold"
                         style={{ color: 'var(--app-accent-strong)' }}
                       >
-                        ↳ Pengganti untuk {displayItemName(row.replaces)}
+                        {c.replacementFor(displayItemName(row.replaces))}
                       </span>
                     )}
                     {replacedBy.get(row.id) && (
@@ -881,7 +888,7 @@ function SubmitBlock({
                         className="mt-0.5 block text-[11px] font-normal"
                         style={{ color: 'var(--app-text-soft)' }}
                       >
-                        Diganti dengan {replacedBy.get(row.id)}
+                        {c.replacedWith(replacedBy.get(row.id) ?? '')}
                       </span>
                     )}
                   </td>
@@ -898,7 +905,7 @@ function SubmitBlock({
                     }
                     title={
                       isPendingRow && row.stock !== null && row.stock < row.qty
-                        ? 'Stok kurang dari jumlah yang diminta'
+                        ? c.stockShortTitle
                         : undefined
                     }
                   >
@@ -916,7 +923,7 @@ function SubmitBlock({
                           onChangeDapat(row, maxDapat, Number(e.target.value))
                         }
                         className="w-16 rounded border px-2 py-1 text-right"
-                        aria-label={`Jumlah dapat untuk ${row.productName}`}
+                        aria-label={c.receivedFor(row.productName)}
                       />
                     ) : (
                       <span className="pm-num">
@@ -937,7 +944,7 @@ function SubmitBlock({
                   className="px-4 py-6 text-center text-[13px]"
                   style={{ color: 'var(--app-text-soft)' }}
                 >
-                  Belum ada barang yang cocok.
+                  {c.noMatch}
                 </td>
               </tr>
             )}
@@ -949,12 +956,15 @@ function SubmitBlock({
   )
 }
 
-const PAIR_STATUS_CHIP = {
-  pengajuan: { label: 'Menunggu dicek', tone: 'warn' },
-  disetujui: { label: 'Disetujui', tone: 'success' },
-  disanggah: { label: 'Ditolak lagi', tone: 'danger' },
-  dibatalkan: { label: 'Dibatalkan', tone: 'neutral' },
-} as const
+function usePairStatusChip() {
+  const c = usePartnerT().check
+  return {
+    pengajuan: { label: c.pairWaiting, tone: 'warn' },
+    disetujui: { label: c.pairApproved, tone: 'success' },
+    disanggah: { label: c.pairRejectedAgain, tone: 'danger' },
+    dibatalkan: { label: c.pairCancelled, tone: 'neutral' },
+  } as const
+}
 
 /**
  * Barang ditolak dan penggantinya. Kalau pengganti ditolak lagi dan diganti
@@ -969,6 +979,7 @@ function ReplacementPairs({ pairs }: { pairs: Array<ReplacementPair> }) {
     0,
   )
   const [open, setOpen] = useState(waiting > 0)
+  const c = usePartnerT().check
   if (pairs.length === 0) return null
   const byRejected = new Map(pairs.map((p) => [p.rejected.id, p]))
   // Pasangan yang barang ditolaknya sendiri adalah pengganti ikut rantai induknya.
@@ -989,16 +1000,16 @@ function ReplacementPairs({ pairs }: { pairs: Array<ReplacementPair> }) {
             className="text-[11px] font-bold uppercase tracking-wide"
             style={{ color: 'var(--pm-gold)' }}
           >
-            Barang ditolak dan penggantinya
+            {c.pairsTitle}
           </span>
           <span
             className="pm-num text-xs"
             style={{ color: 'var(--app-text-soft)' }}
           >
-            ({roots.length} barang)
+            {c.pairsCount(roots.length)}
           </span>
           {waiting > 0 && (
-            <PartnerRowChip label={`${waiting} menunggu dicek`} tone="warn" />
+            <PartnerRowChip label={c.pairsWaiting(waiting)} tone="warn" />
           )}
         </span>
         <ChevronDown
@@ -1026,7 +1037,7 @@ function ReplacementPairs({ pairs }: { pairs: Array<ReplacementPair> }) {
                 style={{ borderColor: 'var(--app-border)' }}
               >
                 <div className="flex flex-wrap items-center gap-2">
-                  <PartnerRowChip label="Ditolak" tone="danger" />
+                  <PartnerRowChip label={c.rejected} tone="danger" />
                   <span className="font-semibold line-through decoration-1">
                     {displayItemName(root.rejected.label)}
                   </span>
@@ -1062,16 +1073,18 @@ function ReplacementChain({
   depth: number
 }) {
   const indent = { marginLeft: depth * 16 }
+  const c = usePartnerT().check
+  const pairStatusChip = usePairStatusChip()
   return (
     <>
       {pair.replacements.map((r) => {
-        const chip = r.status ? PAIR_STATUS_CHIP[r.status] : null
+        const chip = r.status ? pairStatusChip[r.status] : null
         const next = byRejected.get(r.id)
         return (
           <div key={r.id} className="flex flex-col gap-1.5">
             <div className="flex flex-wrap items-center gap-2" style={indent}>
               <span aria-hidden="true">↳</span>
-              <PartnerRowChip label="Pengganti" tone="info" />
+              <PartnerRowChip label={c.replacement} tone="info" />
               <span
                 className={`font-semibold ${r.status === 'disanggah' ? 'line-through decoration-1' : ''}`}
               >
@@ -1100,7 +1113,7 @@ function ReplacementChain({
           className="text-xs"
           style={{ ...indent, color: 'var(--app-text-soft)' }}
         >
-          Jastiper memutuskan tidak diganti.
+          {c.notReplaced}
         </p>
       )}
       {pair.state === 'perlu_keputusan' && pair.openQty > 0 && (
@@ -1108,7 +1121,7 @@ function ReplacementChain({
           className="text-xs"
           style={{ ...indent, color: 'var(--app-text-soft)' }}
         >
-          {pair.openQty} pcs belum diganti, jastiper belum memutuskan.
+          {c.undecided(pair.openQty)}
         </p>
       )}
     </>
@@ -1126,24 +1139,25 @@ type MergedSortKey =
   | 'approved'
   | 'status'
 
-const MERGED_COLUMNS: ReadonlyArray<readonly [string, MergedSortKey]> = [
-  ['Produk', 'productName'],
-  ['Variasi', 'variation'],
-  ['Ukuran', 'size'],
-  ['Total harga', 'total'],
-  ['Tipe harga', 'priceType'],
-  ['Stok', 'stock'],
-  ['Diminta', 'requested'],
-  ['Dapat', 'approved'],
-  ['Status', 'status'],
+const MERGED_COLUMNS: ReadonlyArray<MergedSortKey> = [
+  'productName',
+  'variation',
+  'size',
+  'total',
+  'priceType',
+  'stock',
+  'requested',
+  'approved',
+  'status',
 ]
 
-const MERGED_CHIP = {
-  disetujui: { label: 'Disetujui', tone: 'success' },
-  sebagian: { label: 'Disetujui sebagian', tone: 'warn' },
-  ditolak: { label: 'Ditolak', tone: 'danger' },
-  dibatalkan: { label: 'Dibatalkan', tone: 'neutral' },
-} as const
+/** Kolom angka, rata kanan. */
+const RIGHT_ALIGNED: ReadonlySet<MergedSortKey> = new Set([
+  'total',
+  'stock',
+  'requested',
+  'approved',
+])
 
 function hasPending(sub: ReviewSubmission) {
   return allRows(sub).some((r) => r.status === 'pengajuan')

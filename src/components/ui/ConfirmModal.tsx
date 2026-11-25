@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { AlertTriangle, X } from 'lucide-react'
 import { useBackToClose } from '../../lib/back-to-close'
+import { useUiText } from './ui-text'
 
 interface ConfirmModalProps {
   open: boolean
@@ -28,6 +29,7 @@ export default function ConfirmModal({
   onOk,
   onCancel,
 }: ConfirmModalProps) {
+  const text = useUiText()
   // Lock scroll & handle Esc key
   useEffect(() => {
     if (!open) return
@@ -74,7 +76,7 @@ export default function ConfirmModal({
           disabled={loading}
           className="absolute right-4 top-4 rounded-full p-1 transition-colors hover:opacity-75 disabled:opacity-30"
           style={{ color: 'var(--app-text-mute)' }}
-          aria-label="Tutup"
+          aria-label={text.close}
         >
           <X size={18} />
         </button>

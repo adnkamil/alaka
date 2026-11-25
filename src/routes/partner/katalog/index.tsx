@@ -7,6 +7,7 @@ import {
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { Inbox, Package, Plus } from 'lucide-react'
 import UnderlineTabs from '../../../components/ui/UnderlineTabs'
+import { usePartnerT } from '../../../components/PartnerI18n'
 import Pagination from '../../../components/ui/Pagination'
 import Toast from '../../../components/ui/Toast'
 import { getErrorMessage } from '../../../lib/error-message'
@@ -44,11 +45,14 @@ export const Route = createFileRoute('/partner/katalog/')({
 
 type Tab = 'all' | 'aktif' | 'nonaktif'
 
-const TABS: Array<{ key: Tab; label: string }> = [
-  { key: 'all', label: 'Semua' },
-  { key: 'aktif', label: 'Aktif' },
-  { key: 'nonaktif', label: 'Nonaktif' },
-]
+function useTabs(counts: Record<Tab, number>) {
+  const c = usePartnerT().catalog
+  return [
+    { key: 'all' as const, label: c.tabAll, count: counts.all },
+    { key: 'aktif' as const, label: c.tabActive, count: counts.aktif },
+    { key: 'nonaktif' as const, label: c.tabInactive, count: counts.nonaktif },
+  ]
+}
 
 function PartnerCatalogPage() {
   const queryClient = useQueryClient()
@@ -58,6 +62,8 @@ function PartnerCatalogPage() {
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
   const [notice, setNotice] = useState<string | null>(null)
   const { sort, toggle } = useTableSort<ProductSortKey>()
+  const t = usePartnerT()
+  const c = t.catalog
   // Kata kunci dikirim ke server setelah berhenti mengetik sebentar.
   const debouncedSearch = useDebouncedValue(search.trim())
 
@@ -79,6 +85,7 @@ function PartnerCatalogPage() {
     if (serverPage !== undefined && serverPage !== page) setPage(serverPage)
   }, [serverPage, page])
 
+  const tabs = useTabs(data?.counts ?? { all: 0, aktif: 0, nonaktif: 0 })
   if (!data) return null
   const { rows: visible, counts } = data
 
@@ -112,26 +119,25 @@ function PartnerCatalogPage() {
       })
       await queryClient.invalidateQueries({ queryKey: ['partner-products'] })
     } catch (err) {
-      setNotice(getErrorMessage(err, 'Gagal mengubah status produk'))
+      setNotice(getErrorMessage(err, c.toggleFailed))
     }
   }
 
   return (
     <>
       <main className="flex flex-col gap-3.5 px-5 pb-[150px] pt-4 lg:hidden">
-        <h1 className="pm-display text-[22px] leading-tight">Products</h1>
+        <h1 className="pm-display text-[22px] leading-tight">{c.title}</h1>
 
         <PartnerTableToolbar
           search={search}
           onSearchChange={changeSearch}
-          placeholder="Cari produk"
-          label="Cari produk"
+          placeholder={c.searchShort}
           pager={pager}
         />
 
         <UnderlineTabs
-          ariaLabel="Status produk"
-          items={TABS.map((t) => ({ ...t, count: counts[t.key] }))}
+          ariaLabel={c.statusLabel}
+          items={tabs}
           value={tab}
           onChange={changeTab}
         />
@@ -140,9 +146,7 @@ function PartnerCatalogPage() {
           <div className="app-card flex flex-col items-center gap-2 p-8 text-center">
             <Inbox size={28} style={{ color: 'var(--app-text-mute)' }} />
             <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
-              {counts.all === 0
-                ? 'Belum ada produk. Tambahkan yang pertama.'
-                : 'Belum ada produk yang cocok.'}
+              {counts.all === 0 ? c.emptyAll : c.emptyMatch}
             </p>
           </div>
         ) : (
@@ -165,7 +169,7 @@ function PartnerCatalogPage() {
             className="app-btn-primary w-full gap-2 no-underline"
           >
             <Plus size={18} />
-            Tambah produk
+            {c.add}
           </Link>
         </div>
       </main>
@@ -180,6 +184,7 @@ function PartnerCatalogPage() {
         pager={pager}
         sort={sort}
         onSort={changeSort}
+        tabs={tabs}
       />
       {notice && <Toast message={notice} onClose={() => setNotice(null)} />}
     </>
@@ -194,6 +199,7 @@ function ProductRow({
   onToggle: () => void
 }) {
   const photoUrl = partnerProductPhotoUrl(product.id, product.photoUpdatedAt)
+  const c = usePartnerT().catalog
   return (
     <div className="app-card flex items-center gap-3 p-3">
       <Link
@@ -247,9 +253,9 @@ function ProductRow({
             ? 'var(--app-success)'
             : 'var(--app-text-soft)',
         }}
-        aria-label={product.isActive ? 'Nonaktifkan produk' : 'Aktifkan produk'}
+        aria-label={product.isActive ? c.deactivate : c.activate}
       >
-        {product.isActive ? 'Aktif' : 'Nonaktif'}
+        {product.isActive ? c.active : c.inactive}
       </button>
     </div>
   )
@@ -269,7 +275,9 @@ function CatalogDesktop({
   pager,
   sort,
   onSort,
+  tabs,
 }: {
+  tabs: ReturnType<typeof useTabs>
   visible: Array<PartnerProductListRow>
   counts: Record<Tab, number>
   tab: Tab
@@ -281,18 +289,19 @@ function CatalogDesktop({
   sort: SortState<ProductSortKey>
   onSort: (key: ProductSortKey) => void
 }) {
+  const c = usePartnerT().catalog
   return (
     <main className="pm-wide hidden flex-col gap-5 lg:flex">
       <header className="flex items-start justify-between gap-4">
         <div>
           <h1 className="pm-display text-[26px] leading-tight">
-            Products
+            {c.title}
           </h1>
           <p
             className="mt-1 text-[13px]"
             style={{ color: 'var(--app-text-soft)' }}
           >
-            {counts.all} produk · {counts.aktif} aktif
+            {c.summary(counts.all, counts.aktif)}
           </p>
         </div>
         <Link
@@ -301,13 +310,13 @@ function CatalogDesktop({
           style={{ minHeight: 44, fontSize: 14 }}
         >
           <Plus size={16} />
-          Tambah produk
+          {c.add}
         </Link>
       </header>
 
       <UnderlineTabs
-        ariaLabel="Status produk"
-        items={TABS.map((t) => ({ ...t, count: counts[t.key] }))}
+        ariaLabel={c.statusLabel}
+        items={tabs}
         value={tab}
         onChange={onTab}
       />
@@ -316,9 +325,7 @@ function CatalogDesktop({
         <div className="app-card flex flex-col items-center gap-2 p-10 text-center">
           <Inbox size={28} style={{ color: 'var(--app-text-mute)' }} />
           <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
-            {counts.all === 0
-              ? 'Belum ada produk. Tambahkan yang pertama.'
-              : 'Belum ada produk yang cocok.'}
+            {counts.all === 0 ? c.emptyAll : c.emptyMatch}
           </p>
         </div>
       ) : (
@@ -326,8 +333,7 @@ function CatalogDesktop({
           <PartnerTableToolbar
             search={search}
             onSearchChange={onSearch}
-            placeholder="Cari nama atau kode produk"
-            label="Cari nama atau kode produk"
+            placeholder={c.searchLong}
             pager={pager}
           />
           <div className="app-card overflow-x-auto">
@@ -337,17 +343,17 @@ function CatalogDesktop({
             >
               {(
                 [
-                  ['Produk', 'name'],
-                  ['Harga', 'price'],
-                  ['Dipakai di event', 'eventCount'],
-                  ['Status', 'isActive'],
+                  [c.colProduct, 'name'],
+                  [c.colPrice, 'price'],
+                  [c.colUsedIn, 'eventCount'],
+                  [c.colStatus, 'isActive'],
                 ] as const
               ).map(([label, key]) => (
                 <div key={key} role="columnheader" aria-sort={ariaSortOf(sort, key)}>
                   <SortHeader label={label} sortKey={key} sort={sort} onSort={onSort} />
                 </div>
               ))}
-              <span>Aksi</span>
+              <span>{c.colAction}</span>
             </div>
             {visible.map((product) => (
               <DesktopProductRow
@@ -372,6 +378,7 @@ function DesktopProductRow({
   onToggle: () => void
 }) {
   const photoUrl = partnerProductPhotoUrl(product.id, product.photoUpdatedAt)
+  const c = usePartnerT().catalog
   return (
     <div
       className={`grid ${COLUMNS} items-center gap-4 border-t px-5 py-3`}
@@ -420,9 +427,7 @@ function DesktopProductRow({
         {formatRupiah(product.price)}
       </span>
       <span className="text-[13px]" style={{ color: 'var(--app-text-soft)' }}>
-        {product.eventCount > 0
-          ? `${product.eventCount} event`
-          : 'Belum dipakai'}
+        {product.eventCount > 0 ? c.usedIn(product.eventCount) : c.notUsed}
       </span>
       <div>
         <button
@@ -438,13 +443,11 @@ function DesktopProductRow({
               : 'var(--app-text-soft)',
           }}
           title={
-            product.isActive ? 'Klik untuk nonaktifkan' : 'Klik untuk aktifkan'
+            product.isActive ? c.clickDeactivate : c.clickActivate
           }
-          aria-label={
-            product.isActive ? 'Nonaktifkan produk' : 'Aktifkan produk'
-          }
+          aria-label={product.isActive ? c.deactivate : c.activate}
         >
-          {product.isActive ? 'Aktif' : 'Nonaktif'}
+          {product.isActive ? c.active : c.inactive}
         </button>
       </div>
       <Link
@@ -453,7 +456,7 @@ function DesktopProductRow({
         className="text-[13px] font-semibold no-underline"
         style={{ color: 'var(--app-accent)' }}
       >
-        Edit
+        {c.edit}
       </Link>
     </div>
   )

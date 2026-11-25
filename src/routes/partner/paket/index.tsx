@@ -7,6 +7,7 @@ import { Link, createFileRoute } from '@tanstack/react-router'
 import { Layers, Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import Pagination from '../../../components/ui/Pagination'
+import { usePartnerI18n, usePartnerT } from '../../../components/PartnerI18n'
 import PartnerTableToolbar from '../../../components/ui/PartnerTableToolbar'
 import SortHeader, { ariaSortOf } from '../../../components/ui/SortHeader'
 import { useTableSort } from '../../../lib/use-table-sort'
@@ -24,11 +25,12 @@ const RULES_KEY = ['partner-rules']
 
 const COLUMNS = 'min-w-[920px] grid-cols-[minmax(0,1.5fr)_70px_150px_110px_110px_130px]'
 
-function formatPrice(value: number) {
-  return `Rp${value.toLocaleString('id-ID')}`
+function formatPrice(value: number, locale: string) {
+  return `Rp${value.toLocaleString(locale)}`
 }
 
 function StatusBadge({ active }: { active: boolean }) {
+  const b = usePartnerT().bundle
   return (
     <span
       className="app-badge shrink-0"
@@ -37,7 +39,7 @@ function StatusBadge({ active }: { active: boolean }) {
         color: active ? 'var(--app-success)' : 'var(--app-text-soft)',
       }}
     >
-      {active ? 'Aktif' : 'Nonaktif'}
+      {active ? b.active : b.inactive}
     </span>
   )
 }
@@ -49,6 +51,8 @@ function PartnerPaketPage() {
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebouncedValue(search.trim())
   const { sort, toggle } = useTableSort<RuleSortKey>()
+  const { t, intlLocale } = usePartnerI18n()
+  const b = t.bundle
   const { data, isLoading, error } = useQuery({
     ...partnerRulesPageQuery({ page, pageSize, search: debouncedSearch, sort }),
     // Tabel tetap tampil (data lama) selama halaman berikutnya ditarik.
@@ -82,9 +86,7 @@ function PartnerPaketPage() {
 
   async function handleDelete(id: string, name: string) {
     if (
-      !window.confirm(
-        `Hapus aturan "${name}"? Pesanan yang sudah memakainya tidak berubah.`,
-      )
+      !window.confirm(b.deleteConfirm(name))
     )
       return
     setActionError(null)
@@ -93,7 +95,7 @@ function PartnerPaketPage() {
       await queryClient.invalidateQueries({ queryKey: RULES_KEY })
     } catch (err) {
       setActionError(
-        err instanceof Error ? err.message : 'Gagal menghapus aturan',
+        err instanceof Error ? err.message : b.deleteFailed,
       )
     }
   }
@@ -103,13 +105,13 @@ function PartnerPaketPage() {
       <header className="flex items-start justify-between gap-4">
         <div>
           <h1 className="pm-display text-[22px] leading-tight lg:text-[26px]">
-            Bundling
+            {b.title}
           </h1>
           <p
             className="mt-1 text-[13px]"
             style={{ color: 'var(--app-text-soft)' }}
           >
-            {total} aturan
+            {b.ruleCount(total)}
           </p>
         </div>
         <Link
@@ -118,7 +120,7 @@ function PartnerPaketPage() {
           style={{ minHeight: 44, fontSize: 14 }}
         >
           <Plus size={16} />
-          Tambah aturan
+          {b.addRule}
         </Link>
       </header>
 
@@ -127,7 +129,7 @@ function PartnerPaketPage() {
           className="app-card p-4 text-sm"
           style={{ color: 'var(--app-danger)' }}
         >
-          Gagal memuat aturan paket.
+          {b.loadFailed}
         </div>
       )}
       {actionError && (
@@ -141,7 +143,7 @@ function PartnerPaketPage() {
       )}
       {isLoading && (
         <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
-          Memuat…
+          {t.common.loading}
         </p>
       )}
 
@@ -149,7 +151,7 @@ function PartnerPaketPage() {
         <div className="app-card flex flex-col items-center gap-2 p-8 text-center">
           <Layers size={28} style={{ color: 'var(--app-text-soft)' }} />
           <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
-            Belum ada aturan paket. Contoh: 3 pcs Rp100.000.
+            {b.empty}
           </p>
         </div>
       )}
@@ -160,8 +162,7 @@ function PartnerPaketPage() {
             <PartnerTableToolbar
               search={search}
               onSearchChange={onSearchChange}
-              placeholder="Cari nama aturan"
-              label="Cari nama aturan"
+              placeholder={b.searchRule}
               pager={toolbarPager}
             />
           </div>
@@ -169,7 +170,7 @@ function PartnerPaketPage() {
           {/* Mobile: kartu bertumpuk. */}
           {rules.length === 0 && (
             <p className="py-6 text-center text-sm" style={{ color: 'var(--app-text-soft)' }}>
-              Tidak ada aturan yang cocok dengan pencarian.
+              {b.noMatch}
             </p>
           )}
 
@@ -183,7 +184,7 @@ function PartnerPaketPage() {
                       className="mt-0.5 text-[13px]"
                       style={{ color: 'var(--app-text-soft)' }}
                     >
-                      {rule.productIds.length} produk · min. {rule.minQty} pcs
+                      {b.ruleSummary(rule.productIds.length, rule.minQty)}
                     </p>
                   </div>
                   <StatusBadge active={rule.isActive} />
@@ -192,13 +193,13 @@ function PartnerPaketPage() {
                   className="pm-num text-base font-bold"
                   style={{ color: 'var(--app-accent)' }}
                 >
-                  {formatPrice(rule.bundlePrice)}
+                  {formatPrice(rule.bundlePrice, intlLocale)}
                   <span
                     className="text-xs font-medium"
                     style={{ color: 'var(--app-text-soft)' }}
                   >
                     {' '}
-                    / {rule.minQty} pcs
+                    {b.perPcs(rule.minQty)}
                   </span>
                 </p>
                 <div className="grid grid-cols-2 gap-2.5">
@@ -208,7 +209,7 @@ function PartnerPaketPage() {
                     className="app-btn-outline no-underline"
                     style={{ minHeight: 40, fontSize: 13 }}
                   >
-                    Ubah
+                    {b.edit}
                   </Link>
                   <button
                     type="button"
@@ -220,7 +221,7 @@ function PartnerPaketPage() {
                     }}
                     onClick={() => handleDelete(rule.id, rule.name)}
                   >
-                    Hapus
+                    {b.delete}
                   </button>
                 </div>
               </div>
@@ -235,9 +236,9 @@ function PartnerPaketPage() {
             >
               {(
                 [
-                  ['Nama aturan', 'name'],
-                  ['Pcs', 'minQty'],
-                  ['Harga paket', 'bundlePrice'],
+                  [b.colName, 'name'],
+                  [b.colPcs, 'minQty'],
+                  [b.colPrice, 'bundlePrice'],
                 ] as const
               ).map(([label, key]) => (
                 <div key={key} role="columnheader" aria-sort={ariaSortOf(sort, key)}>
@@ -252,10 +253,10 @@ function PartnerPaketPage() {
                   />
                 </div>
               ))}
-              <span>Produk</span>
+              <span>{b.colProducts}</span>
               <div role="columnheader" aria-sort={ariaSortOf(sort, 'isActive')}>
                 <SortHeader
-                  label="Status"
+                  label={b.colStatus}
                   sortKey="isActive"
                   sort={sort}
                   onSort={(k) => {
@@ -264,7 +265,7 @@ function PartnerPaketPage() {
                   }}
                 />
               </div>
-              <span>Aksi</span>
+              <span>{b.colAction}</span>
             </div>
             {rules.map((rule) => (
               <div
@@ -278,13 +279,13 @@ function PartnerPaketPage() {
                   className="pm-num text-sm font-bold"
                   style={{ color: 'var(--app-accent)' }}
                 >
-                  {formatPrice(rule.bundlePrice)}
+                  {formatPrice(rule.bundlePrice, intlLocale)}
                 </span>
                 <span
                   className="text-[13px]"
                   style={{ color: 'var(--app-text-soft)' }}
                 >
-                  {rule.productIds.length} produk
+                  {b.productCount(rule.productIds.length)}
                 </span>
                 <div>
                   <StatusBadge active={rule.isActive} />
@@ -296,7 +297,7 @@ function PartnerPaketPage() {
                     className="text-[13px] font-semibold no-underline"
                     style={{ color: 'var(--app-accent)' }}
                   >
-                    Ubah
+                    {b.edit}
                   </Link>
                   <button
                     type="button"
@@ -304,7 +305,7 @@ function PartnerPaketPage() {
                     style={{ color: 'var(--app-danger)' }}
                     onClick={() => handleDelete(rule.id, rule.name)}
                   >
-                    Hapus
+                    {b.delete}
                   </button>
                 </div>
               </div>

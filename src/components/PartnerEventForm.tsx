@@ -15,12 +15,12 @@ import {
 } from '../lib/calendar-banner-image'
 import {
   CALENDAR_EVENT_LIMITS,
-  END_DATE_ERROR,
   isEndDateValid,
 } from '../lib/calendar-event-input'
 import { parseCatalogUrl } from '../lib/partner-catalog-rules'
 import { partnerProductPhotoUrl } from '../lib/partner-product-rules'
 import { PartnerProductPickerSheet } from './PartnerProductPicker'
+import { usePartnerI18n } from './PartnerI18n'
 import type { CalendarEventFormValue } from './CalendarEventForm'
 import type { PartnerProductRow } from '../lib/partner-product-queries'
 
@@ -110,6 +110,7 @@ export default function PartnerEventForm({
   const [pickerOpen, setPickerOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { t, translateError, errorMessage } = usePartnerI18n()
 
   async function handlePickBanner(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -122,7 +123,7 @@ export default function PartnerEventForm({
       setBannerDataUrl(await blobToDataUrl(blob))
       setRemoveBanner(false)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Gagal memproses banner')
+      setError(errorMessage(err, t.event.bannerProcessFailed))
     } finally {
       setBusy(false)
     }
@@ -132,12 +133,12 @@ export default function PartnerEventForm({
     e.preventDefault()
     setError(null)
     if (!isEndDateValid(eventDate, endDate)) {
-      setError(END_DATE_ERROR)
+      setError(t.event.endDateError)
       return
     }
     const catalog = parseCatalogUrl(catalogUrl)
     if (!catalog.ok) {
-      setError(catalog.error)
+      setError(translateError(catalog.error))
       return
     }
     setBusy(true)
@@ -161,7 +162,7 @@ export default function PartnerEventForm({
         productIds,
       )
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Gagal menyimpan event')
+      setError(errorMessage(err, t.event.saveFailed))
     } finally {
       setBusy(false)
     }
@@ -176,7 +177,7 @@ export default function PartnerEventForm({
     if (currentBannerSrc) setRemoveBanner(true)
   }
 
-  const submitText = busy ? 'Menyimpan...' : submitLabel
+  const submitText = busy ? t.common.saving : submitLabel
   const selectedProducts = (products ?? []).filter((p) =>
     productIds.includes(p.id),
   )
@@ -202,7 +203,7 @@ export default function PartnerEventForm({
                 className="no-underline"
                 style={{ color: 'inherit' }}
               >
-                Event
+                {t.event.title}
               </Link>{' '}
               / {breadcrumb}
             </p>
@@ -215,7 +216,7 @@ export default function PartnerEventForm({
                 className={cancelClass}
                 style={buttonStyle}
               >
-                Batal
+                {t.common.cancel}
               </Link>
             ) : (
               <Link
@@ -223,7 +224,7 @@ export default function PartnerEventForm({
                 className={cancelClass}
                 style={buttonStyle}
               >
-                Batal
+                {t.common.cancel}
               </Link>
             )}
             <button
@@ -248,7 +249,7 @@ export default function PartnerEventForm({
         {/* Kartu informasi: di mobile hanya pembungkus transparan. */}
         <div className="contents pm-lg-card lg:col-start-1 lg:row-start-2 lg:flex lg:flex-col lg:gap-4 lg:p-6">
           <h2 className="pm-display order-1 hidden text-base lg:block">
-            Informasi event
+            {t.event.info}
           </h2>
 
           {/* Offline / Online */}
@@ -256,14 +257,14 @@ export default function PartnerEventForm({
             className="order-1 flex rounded-xl p-1 lg:w-[276px]"
             style={{ background: 'var(--pm-muted)' }}
             role="radiogroup"
-            aria-label="Jenis event"
+            aria-label={t.event.typeLabel}
           >
             {[
-              { value: false, label: 'Offline' },
-              { value: true, label: 'Online' },
+              { value: false, label: t.event.offline },
+              { value: true, label: t.event.online },
             ].map((opt) => (
               <button
-                key={opt.label}
+                key={String(opt.value)}
                 type="button"
                 role="radio"
                 aria-checked={isOnline === opt.value}
@@ -284,7 +285,7 @@ export default function PartnerEventForm({
           </div>
 
           <div className="order-1 flex flex-col gap-3.5 lg:gap-4">
-            <Field label="Nama event">
+            <Field label={t.event.name}>
               <input
                 required
                 autoFocus
@@ -292,12 +293,12 @@ export default function PartnerEventForm({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="app-input"
-                placeholder="cth. Imbex Fair 2026"
+                placeholder={t.event.namePlaceholder}
               />
             </Field>
 
             <div className="grid grid-cols-2 gap-2.5 lg:gap-4">
-              <Field label="Tanggal mulai">
+              <Field label={t.event.startDate}>
                 <div className="relative">
                   <CalendarDays
                     size={18}
@@ -318,7 +319,7 @@ export default function PartnerEventForm({
                   />
                 </div>
               </Field>
-              <Field label="Tanggal selesai">
+              <Field label={t.event.endDate}>
                 <div className="relative">
                   <CalendarDays
                     size={18}
@@ -336,7 +337,7 @@ export default function PartnerEventForm({
               </Field>
             </div>
 
-            <Field label={isOnline ? 'Platform / tempat PO' : 'Lokasi'}>
+            <Field label={isOnline ? t.event.platform : t.event.location}>
               <div className="relative">
                 <MapPin
                   size={18}
@@ -351,8 +352,8 @@ export default function PartnerEventForm({
                   className="app-input pl-10"
                   placeholder={
                     isOnline
-                      ? 'cth. Instagram Live'
-                      : 'cth. Istora Senayan, Jakarta'
+                      ? t.event.platformPlaceholder
+                      : t.event.locationPlaceholder
                   }
                 />
               </div>
@@ -360,7 +361,7 @@ export default function PartnerEventForm({
           </div>
 
           <div className="order-3">
-            <Field label="Deskripsi">
+            <Field label={t.event.description}>
               <textarea
                 rows={4}
                 maxLength={CALENDAR_EVENT_LIMITS.description}
@@ -368,13 +369,13 @@ export default function PartnerEventForm({
                 onChange={(e) => setDescription(e.target.value)}
                 className="app-input resize-none !h-[92px] lg:!h-[132px]"
                 style={{ padding: '13px 14px' }}
-                placeholder="Tentang event ini"
+                placeholder={t.event.descriptionPlaceholder}
               />
             </Field>
           </div>
 
           <div className="order-3">
-            <Field label="Link katalog (opsional)">
+            <Field label={t.event.catalogLink}>
               <div className="relative">
                 <FileText
                   size={18}
@@ -395,9 +396,7 @@ export default function PartnerEventForm({
               className="mt-1.5 text-[11px]"
               style={{ color: 'var(--app-text-soft)' }}
             >
-              Jastiper bisa mengunduh katalog ini di halaman event. Kalau pakai
-              Google Drive, atur akses ke &quot;Siapa saja yang memiliki
-              link&quot;.
+              {t.event.catalogHint}
             </p>
           </div>
         </div>
@@ -405,7 +404,7 @@ export default function PartnerEventForm({
         <div className="contents lg:col-start-2 lg:row-start-2 lg:flex lg:flex-col lg:gap-5">
           <div className="order-2 flex flex-col gap-3.5 pm-lg-card lg:gap-3 lg:p-5">
             <h2 className="pm-display hidden text-base lg:block">
-              Banner event
+              {t.event.banner}
             </h2>
             <button
               type="button"
@@ -420,7 +419,7 @@ export default function PartnerEventForm({
               {previewSrc ? (
                 <img
                   src={previewSrc}
-                  alt="Pratinjau banner"
+                  alt={t.event.bannerPreview}
                   className="h-12 w-20 shrink-0 rounded-xl object-cover lg:h-[158px] lg:w-full lg:rounded-none"
                 />
               ) : (
@@ -436,16 +435,16 @@ export default function PartnerEventForm({
                   style={{ color: 'var(--app-accent)' }}
                 >
                   {busy
-                    ? 'Memproses...'
+                    ? t.common.processing
                     : previewSrc
-                      ? 'Ganti banner event'
-                      : 'Unggah banner event'}
+                      ? t.event.bannerChange
+                      : t.event.bannerUpload}
                 </span>
                 <span
                   className="text-[11px]"
                   style={{ color: 'var(--app-text-soft)' }}
                 >
-                  Rasio 16:9, maks. 1000px
+                  {t.event.bannerSpec}
                 </span>
               </span>
             </button>
@@ -457,7 +456,7 @@ export default function PartnerEventForm({
                 className="-mt-2 self-start text-xs font-semibold disabled:opacity-50 lg:mt-0"
                 style={{ color: 'var(--app-danger)' }}
               >
-                Hapus banner
+                {t.event.bannerRemove}
               </button>
             )}
           </div>
@@ -476,14 +475,16 @@ export default function PartnerEventForm({
                   style={{ color: 'var(--app-accent)' }}
                 />
                 <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <span className="text-sm font-bold">Produk di event ini</span>
+                  <span className="text-sm font-bold">
+                    {t.event.productsInThisEvent}
+                  </span>
                   <span
                     className="text-[11px]"
                     style={{ color: 'var(--app-text-soft)' }}
                   >
                     {productIds.length === 0
-                      ? 'Opsional, bisa diubah nanti'
-                      : `${productIds.length} produk dipilih`}
+                      ? t.event.productsOptional
+                      : t.event.productsSelected(productIds.length)}
                   </span>
                 </span>
                 <ChevronRight
@@ -495,7 +496,9 @@ export default function PartnerEventForm({
 
               <div className="pm-lg-card hidden flex-col gap-3 p-5 lg:flex">
                 <div className="flex items-center justify-between">
-                  <h2 className="pm-display text-base">Produk di event</h2>
+                  <h2 className="pm-display text-base">
+                    {t.event.productsInEvent}
+                  </h2>
                   <span
                     className="app-badge"
                     style={{
@@ -503,7 +506,7 @@ export default function PartnerEventForm({
                       color: 'var(--app-success)',
                     }}
                   >
-                    {productIds.length} produk
+                    {t.event.productCount(productIds.length)}
                   </span>
                 </div>
                 {selectedProducts.length === 0 ? (
@@ -511,7 +514,7 @@ export default function PartnerEventForm({
                     className="text-[13px]"
                     style={{ color: 'var(--app-text-soft)' }}
                   >
-                    Opsional, bisa diubah nanti.
+                    {t.event.productsOptionalDot}
                   </p>
                 ) : (
                   <ul className="flex max-h-[320px] flex-col gap-2.5 overflow-y-auto">
@@ -553,7 +556,7 @@ export default function PartnerEventForm({
                   className="self-start text-xs font-semibold"
                   style={{ color: 'var(--app-accent)' }}
                 >
-                  Kelola pilihan produk
+                  {t.event.manageProducts}
                 </button>
               </div>
             </>
@@ -572,7 +575,7 @@ export default function PartnerEventForm({
 
       {pickerOpen && products && (
         <PartnerProductPickerSheet
-          title="Produk di Event"
+          title={t.event.pickerTitle}
           products={products}
           initialIds={productIds}
           onClose={() => setPickerOpen(false)}

@@ -24,9 +24,9 @@ import type {
   ReviewRow,
   ReviewSubmission,
 } from '../lib/submit-review-queries'
-import { pendingSubmitNotice } from '../lib/submit-status'
 import { allocateApproved, overStockRowIds } from '../lib/partner-stock-review'
 import { displayItemName } from '../lib/partner-item-label'
+import { usePartnerT } from './PartnerI18n'
 
 /**
  * Cek partner per submit. Ada dua cara: cek stok otomatis untuk semua submit
@@ -45,6 +45,7 @@ export default function PartnerSubmitReview({
   barOnly?: boolean
 }) {
   const queryClient = useQueryClient()
+  const rv = usePartnerT().review
   const submissionsKey = ['partner-submissions', calendarEventId, brandId]
   const stockKey = ['auto-stock-check', calendarEventId]
 
@@ -111,9 +112,7 @@ export default function PartnerSubmitReview({
       }
     } catch (err) {
       setStockError(
-        err instanceof Error
-          ? err.message
-          : 'Pengecekan berhenti karena gangguan.',
+        err instanceof Error ? err.message : rv.stoppedByError,
       )
     } finally {
       setLooping(false)
@@ -129,12 +128,12 @@ export default function PartnerSubmitReview({
         await stopAutoStockCheck({ data: { calendarEventId } }),
       )
     } catch (err) {
-      setStockError(err instanceof Error ? err.message : 'Gagal menghentikan')
+      setStockError(err instanceof Error ? err.message : rv.stopFailed)
     }
   }
 
-  if (!barOnly && query.isLoading) return <p>Memuat pengajuan…</p>
-  if (!barOnly && query.isError) return <p>Gagal memuat pengajuan.</p>
+  if (!barOnly && query.isLoading) return <p>{rv.loading}</p>
+  if (!barOnly && query.isError) return <p>{rv.loadFailed}</p>
   const brands = (query.data ?? []).filter(
     (b) => brandId === undefined || b.brandId === brandId,
   )
@@ -142,7 +141,7 @@ export default function PartnerSubmitReview({
   const paused = stock?.run?.status === 'paused'
   const pending = stock?.pendingCount ?? 0
   const progress = stock?.run
-    ? `${stock.run.processed} dari ${stock.run.total} pengajuan`
+    ? rv.progress(stock.run.processed, stock.run.total)
     : ''
 
   if (barOnly) {
@@ -171,10 +170,10 @@ export default function PartnerSubmitReview({
       <div className="rounded-xl border p-4 space-y-2">
         <p className="text-sm">
           {busy
-            ? `Sedang mengecek ${progress}…`
+            ? rv.checkingProgress(progress)
             : pending > 0
-              ? `${pending} pengajuan belum dicek`
-              : 'Semua pengajuan sudah dicek'}
+              ? rv.pendingCount(pending)
+              : rv.allChecked}
         </p>
         <div className="flex flex-wrap gap-2">
           <button
@@ -183,7 +182,7 @@ export default function PartnerSubmitReview({
             disabled={busy || pending === 0}
             onClick={runAutoCheck}
           >
-            {paused ? 'Lanjutkan cek otomatis' : 'Cek stok otomatis'}
+            {paused ? rv.resumeAuto : rv.startAuto}
           </button>
           {busy && (
             <button
@@ -191,26 +190,25 @@ export default function PartnerSubmitReview({
               className="rounded-lg border px-4 py-2"
               onClick={stopAutoCheck}
             >
-              Hentikan
+              {rv.stop}
             </button>
           )}
         </div>
         {paused && !busy && (
           <p className="text-sm text-[var(--app-warning)]">
-            Pengecekan berhenti di tengah. Lanjutkan untuk mengecek sisanya.
+            {rv.pausedNote}
           </p>
         )}
         {!busy && stock?.run?.status === 'done' && pending > 0 && (
           <p className="text-sm text-[var(--app-warning)]">
-            Ada {pending} pengajuan baru yang masuk setelah pengecekan terakhir.
-            Tekan cek stok otomatis untuk mengecek.
+            {rv.newAfterDone(pending)}
           </p>
         )}
         {stockError && <p className="text-sm text-[var(--app-danger)]">{stockError}</p>}
       </div>
 
       {brands.length === 0 ? (
-        <p>Belum ada pengajuan dari jastiper.</p>
+        <p>{rv.noSubmissions}</p>
       ) : (
         brands.map((brand) => (
           <BrandBlock
@@ -269,14 +267,16 @@ function AutoCheckBar({
   onDismiss: () => void
 }) {
   const [stopping, setStopping] = useState(false)
+  const t = usePartnerT()
+  const rv = t.review
   useEffect(() => {
     if (!busy) setStopping(false)
   }, [busy])
   // Pesan sukses hilang sendiri setelah beberapa detik.
   useEffect(() => {
     if (finishedCount === null || pending > 0 || error) return
-    const t = setTimeout(onDismiss, 6_000)
-    return () => clearTimeout(t)
+    const timer = setTimeout(onDismiss, 6_000)
+    return () => clearTimeout(timer)
   }, [finishedCount, pending, error])
 
   const interrupted = !busy && (status === 'paused' || stale)
@@ -289,32 +289,27 @@ function AutoCheckBar({
   if (busy) {
     tone = 'accent'
     Icon = Loader2
-    title = stopping
-      ? 'Menghentikan pengecekan…'
-      : `Mengecek ${processed} dari ${total} pengajuan`
-    hint = 'Halaman boleh tetap dibuka. Daftar jastiper ikut diperbarui.'
+    title = stopping ? rv.stopping : rv.checking(processed, total)
+    hint = rv.busyHint
   } else if (error) {
     tone = 'danger'
     Icon = AlertTriangle
-    title = 'Pengecekan berhenti karena gangguan'
+    title = rv.errorTitle
     hint = error
   } else if (interrupted && pending > 0) {
     tone = 'warning'
     Icon = AlertTriangle
-    title = `Pengecekan berhenti di ${processed} dari ${total}`
-    hint = `${pending} pengajuan masih menunggu. Lanjutkan untuk mengecek sisanya.`
+    title = rv.interruptedTitle(processed, total)
+    hint = rv.interruptedHint(pending)
   } else if (pending > 0) {
     tone = 'accent'
-    title = `${pending} pengajuan menunggu dicek stok`
-    hint =
-      status === 'done'
-        ? 'Pengajuan baru masuk setelah pengecekan terakhir.'
-        : 'Sisa stok dibagi otomatis ke pengajuan sesuai urutan masuk.'
+    title = rv.pendingTitle(pending)
+    hint = status === 'done' ? rv.pendingHintNew : rv.pendingHint
   } else if (finishedCount !== null) {
     tone = 'success'
     Icon = CheckCircle2
-    title = 'Semua pengajuan sudah dicek'
-    hint = `${finishedCount} pengajuan selesai dicek otomatis.`
+    title = rv.allChecked
+    hint = rv.doneHint(finishedCount)
   } else {
     return null
   }
@@ -361,12 +356,12 @@ function AutoCheckBar({
                 onStop()
               }}
             >
-              Hentikan
+              {rv.stop}
             </button>
           ) : tone === 'success' ? (
             <button
               type="button"
-              aria-label="Tutup"
+              aria-label={t.common.close}
               className="grid h-9 w-9 place-items-center rounded-lg"
               style={{ color: 'var(--app-text-soft)' }}
               onClick={onDismiss}
@@ -384,10 +379,10 @@ function AutoCheckBar({
                 {error || interrupted ? (
                   <>
                     <RotateCw size={16} />
-                    {error ? 'Coba lagi' : 'Lanjutkan'}
+                    {error ? rv.retry : rv.resume}
                   </>
                 ) : (
-                  'Cek stok otomatis'
+                  rv.startAuto
                 )}
               </button>
             )
@@ -493,6 +488,7 @@ function SubmissionBlock({
   )
   const overRows = overStockRowIds(rows, approved)
   const [error, setError] = useState<string | null>(null)
+  const rv = usePartnerT().review
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -514,7 +510,7 @@ function SubmissionBlock({
       onDone()
     },
     onError: (err) =>
-      setError(err instanceof Error ? err.message : 'Gagal menyimpan'),
+      setError(err instanceof Error ? err.message : rv.saveFailed),
   })
 
   const cancelMutation = useMutation({
@@ -527,23 +523,30 @@ function SubmissionBlock({
       onDone()
     },
     onError: (err) =>
-      setError(err instanceof Error ? err.message : 'Gagal membatalkan'),
+      setError(err instanceof Error ? err.message : rv.cancelFailed),
   })
 
-  const notice = pendingSubmitNotice(otherPendingNos)
+  const notice =
+    otherPendingNos.length > 0
+      ? rv.otherPending(
+          [...new Set(otherPendingNos)].sort((a, b) => a - b).join(', '),
+        )
+      : null
 
   // Baris yang sebagian disetujui: ada baris disetujui dan baris kurang untuk produk yang sama.
   const rejectedKeys = new Set(
     allRows(submission)
-      .filter((r) => r.status === 'disanggah')
+      .filter((row) => row.status === 'disanggah')
       .map(productKey),
   )
   const isPartial = (row: ReviewRow) =>
     row.status === 'disetujui' && rejectedKeys.has(productKey(row))
 
-  const mainRows = allRows(submission).filter((r) => r.status !== 'dibatalkan')
+  const mainRows = allRows(submission).filter(
+    (row) => row.status !== 'dibatalkan',
+  )
   const cancelledRows = allRows(submission).filter(
-    (r) => r.status === 'dibatalkan',
+    (row) => row.status === 'dibatalkan',
   )
 
   const state = processing
@@ -555,7 +558,7 @@ function SubmissionBlock({
   return (
     <div className="rounded-xl border p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold">Submit ke-{submission.submitNo}</h3>
+        <h3 className="font-semibold">{rv.submitNo(submission.submitNo)}</h3>
         <CheckIcon state={state} />
       </div>
       {notice && <p className="text-sm text-[var(--app-warning)]">{notice}</p>}
@@ -566,7 +569,7 @@ function SubmissionBlock({
           row={row}
           label={
             row.status === 'disetujui' && isPartial(row)
-              ? 'Sebagian disetujui'
+              ? rv.partiallyApproved
               : undefined
           }
           value={approved[row.id]}
@@ -576,7 +579,7 @@ function SubmissionBlock({
           cancelling={cancelMutation.isPending}
           onCancel={() => {
             if (
-              window.confirm('Batalkan item ini? Stok akan kembali ke katalog.')
+              window.confirm(rv.cancelConfirm)
             ) {
               cancelMutation.mutate(row)
             }
@@ -588,7 +591,7 @@ function SubmissionBlock({
       {cancelledRows.length > 0 && (
         <div className="space-y-1 border-t pt-3">
           <p className="text-xs font-semibold text-stone-500">
-            Dibatalkan partner
+            {rv.cancelledByPartner}
           </p>
           {cancelledRows.map((row) => (
             <RowLine
@@ -615,7 +618,7 @@ function SubmissionBlock({
             disabled={mutation.isPending || overRows.size > 0 || processing}
             onClick={() => mutation.mutate()}
           >
-            Selesai dicek
+            {rv.doneChecking}
           </button>
         </>
       )}
@@ -627,18 +630,19 @@ function SubmissionBlock({
 }
 
 function CheckIcon({ state }: { state: 'checked' | 'processing' | 'waiting' }) {
+  const rv = usePartnerT().review
   if (state === 'processing') {
     return (
       <span
         role="status"
-        aria-label="Sedang dicek"
+        aria-label={rv.beingChecked}
         className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-stone-300 border-t-stone-700"
       />
     )
   }
   if (state === 'checked') {
     return (
-      <span aria-label="Sudah dicek" className="text-[var(--app-success)]">
+      <span aria-label={rv.checked} className="text-[var(--app-success)]">
         ✓
       </span>
     )
@@ -667,28 +671,29 @@ function RowLine({
   onCancel: () => void
   onChange: (v: number) => void
 }) {
+  const rv = usePartnerT().review
   const statusLabel =
     label ??
     (row.status === 'pengajuan'
-      ? 'Menunggu dicek'
+      ? rv.rowWaiting
       : row.status === 'disetujui'
-        ? 'Disetujui'
+        ? rv.rowApproved
         : row.status === 'disanggah'
-          ? 'Kurang'
+          ? rv.rowShort
           : row.status === 'dibatalkan'
-            ? 'Dibatalkan'
+            ? rv.rowCancelled
             : '')
   return (
     <div className="flex items-center justify-between gap-3 text-sm">
       <span>
         {displayItemName(row.label)}
-        {row.kind === 'komponen' ? ' (paket)' : ''}
+        {row.kind === 'komponen' ? rv.bundleSuffix : ''}
       </span>
       <span className="flex items-center gap-2">
         <span className="text-stone-500">{statusLabel}</span>
         {editable && row.stock !== null && (
           <span className={overStock ? 'text-[var(--app-danger)]' : 'text-stone-500'}>
-            Stok {row.stock}
+            {rv.stockLabel(row.stock)}
           </span>
         )}
         {editable ? (
@@ -708,10 +713,10 @@ function RowLine({
               )
             }}
             className="w-20 rounded border px-2 py-1"
-            aria-label={`Jumlah disetujui untuk ${displayItemName(row.label)}`}
+            aria-label={rv.approvedQtyFor(displayItemName(row.label))}
           />
         ) : (
-          <span>{row.qty} pcs</span>
+          <span>{`${row.qty} pcs`}</span>
         )}
         {cancellable && (
           <button
@@ -720,7 +725,7 @@ function RowLine({
             disabled={cancelling}
             onClick={onCancel}
           >
-            Batalkan
+            {rv.cancelItem}
           </button>
         )}
       </span>

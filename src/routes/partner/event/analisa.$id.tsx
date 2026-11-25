@@ -10,6 +10,9 @@ import {
   SectionHeader,
   Segmented,
 } from '../../../components/PartnerAnalyticsPanels'
+import { usePartnerI18n } from '../../../components/PartnerI18n'
+import type { PartnerDict } from '../../../lib/i18n/partner'
+import { APP_TIME_ZONE } from '../../../lib/timezone'
 import { getPartnerEventAnalytics } from '../../../lib/partner-event-analytics-functions'
 import type {
   EventAnalytics,
@@ -38,11 +41,44 @@ const COLOR = {
 const soft = { color: 'var(--app-text-soft)' }
 const mute = { color: 'var(--app-text-mute)' }
 const border = { borderColor: 'var(--app-border)' }
-const fmt = (n: number) => n.toLocaleString('id-ID')
 const LIST_LIMIT = 8
+
+/** Kamus + pemformat angka bahasa aktif untuk halaman ini. */
+function useAnalysisI18n() {
+  const { t, intlLocale } = usePartnerI18n()
+  const fmt = (n: number) => n.toLocaleString(intlLocale)
+  /** Server menamai varian tanpa opsi "Standar"; tampilkan sesuai bahasa. */
+  const variant = (label: string) =>
+    label === 'Standar' ? t.analytics.standardVariant : label
+  return { t, a: t.analytics, fmt, variant, intlLocale }
+}
+
+/**
+ * Label bucket timeline dari `key` (awal bucket, epoch ms) dalam WIB, sesuai
+ * bahasa aktif: "12 Aug, 14:00" / "12 Agu, 14.00".
+ */
+function timelineLabel(key: string, granularity: 'jam' | 'hari', locale: string) {
+  const d = new Date(Number(key))
+  const day = d
+    .toLocaleDateString(locale, {
+      day: 'numeric',
+      month: 'short',
+      timeZone: APP_TIME_ZONE,
+    })
+    .replace(/\./g, '')
+  if (granularity === 'hari') return day
+  const time = d.toLocaleTimeString(locale, {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    timeZone: APP_TIME_ZONE,
+  })
+  return `${day}, ${time}`
+}
 
 function PartnerEventAnalyticsPage() {
   const { id } = Route.useParams()
+  const { t, a } = useAnalysisI18n()
   const { data: event } = useQuery(partnerEventQuery(id))
   const { data, error, isLoading } = useQuery({
     queryKey: ['partner-event-analytics', id],
@@ -57,7 +93,7 @@ function PartnerEventAnalyticsPage() {
             <Link
               to="/partner/event/$id"
               params={{ id }}
-              aria-label="Kembali"
+              aria-label={t.common.back}
               className="pa-focus -ml-1 flex size-8 shrink-0 items-center justify-center rounded-lg lg:hidden"
               style={{ color: 'var(--app-text)' }}
             >
@@ -65,7 +101,7 @@ function PartnerEventAnalyticsPage() {
             </Link>
             <div className="flex min-w-0 flex-col gap-1">
               <h1 className="pm-display text-[22px] leading-tight lg:text-[26px]">
-                Analisa Event
+                {a.eventAnalysis}
               </h1>
               <p className="truncate text-sm" style={soft}>
                 <Link
@@ -73,7 +109,7 @@ function PartnerEventAnalyticsPage() {
                   className="no-underline"
                   style={{ color: 'inherit' }}
                 >
-                  Event
+                  {t.shell.nav.event}
                 </Link>{' '}
                 /{' '}
                 <Link
@@ -84,7 +120,7 @@ function PartnerEventAnalyticsPage() {
                 >
                   {event?.name ?? '…'}
                 </Link>{' '}
-                / Analisa
+                / {a.analysisCrumb}
               </p>
             </div>
           </div>
@@ -94,14 +130,14 @@ function PartnerEventAnalyticsPage() {
             className="app-btn-outline hidden shrink-0 no-underline lg:inline-flex"
             style={{ minHeight: 40, fontSize: 13 }}
           >
-            Kembali ke event
+            {a.backToEvent}
           </Link>
         </header>
 
         {error && (
           <Panel>
             <p className="text-sm" style={{ color: COLOR.ditolak }}>
-              Gagal memuat analisa event.
+              {a.analysisLoadFailed}
             </p>
           </Panel>
         )}
@@ -113,11 +149,12 @@ function PartnerEventAnalyticsPage() {
 }
 
 function AnalyticsSkeleton() {
+  const { a } = useAnalysisI18n()
   return (
     <div
       className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4"
       aria-busy="true"
-      aria-label="Memuat analisa"
+      aria-label={a.loadingAnalysis}
     >
       {Array.from({ length: 4 }).map((_, i) => (
         <div
@@ -149,6 +186,7 @@ function ShowMore({
   expanded: boolean
   onToggle: () => void
 }) {
+  const { a } = useAnalysisI18n()
   if (total <= shown && !expanded) return null
   return (
     <button
@@ -157,7 +195,7 @@ function ShowMore({
       className="pa-focus self-start rounded text-xs font-semibold"
       style={{ color: 'var(--app-accent)' }}
     >
-      {expanded ? 'Tampilkan lebih sedikit' : `Tampilkan semua (${total})`}
+      {expanded ? a.showLess : a.showAll(total)}
     </button>
   )
 }
@@ -172,6 +210,7 @@ function Bar({
   value: number
   rejected?: number
 }) {
+  const { a } = useAnalysisI18n()
   return (
     <div
       className="flex h-1.5 w-full gap-[2px] overflow-hidden rounded-full"
@@ -186,7 +225,7 @@ function Bar({
       {rejected > 0 && (
         <div
           className="rounded-full"
-          title={`${rejected} pcs ditolak`}
+          title={a.pcsRejectedTitle(rejected)}
           style={{
             width: `${(rejected / max) * 100}%`,
             background: COLOR.ditolakBar,
@@ -200,14 +239,14 @@ function Bar({
 // ---------------------------------------------------------------------------
 
 function AnalyticsBody({ id, data }: { id: string; data: EventAnalytics }) {
+  const { a, fmt } = useAnalysisI18n()
   if (data.jastiper.joined === 0) {
     return (
       <Panel>
         <div className="flex flex-col items-center gap-1 py-8 text-center">
-          <p className="text-sm font-semibold">Belum ada jastiper yang ikut</p>
+          <p className="text-sm font-semibold">{a.noJastiperTitle}</p>
           <p className="text-sm" style={soft}>
-            Analisa akan muncul setelah jastiper bergabung dan mulai mengirim
-            pesanan.
+            {a.noJastiperBody}
           </p>
         </div>
       </Panel>
@@ -224,57 +263,49 @@ function AnalyticsBody({ id, data }: { id: string; data: EventAnalytics }) {
   // Sama dengan angka "Tagihan" dan "Pcs ditagih" di Dashboard untuk event ini.
   const soldHint =
     data.billed.count === 0
-      ? `${fmt(soldProducts)} produk laku`
+      ? a.productsSold(fmt(soldProducts))
       : notBilled > 0
-        ? `${fmt(data.billed.pcs)} sudah ditagih · ${fmt(notBilled)} belum`
-        : `Semua sudah ditagih`
+        ? a.billedSplit(fmt(data.billed.pcs), fmt(notBilled))
+        : a.allBilled
 
   return (
     <>
       <section
         className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(0,1.35fr)_repeat(3,minmax(0,1fr))] lg:gap-4"
-        aria-label="Ringkasan"
+        aria-label={a.summary}
       >
         <KpiCard
           primary
-          label="Total ditagih"
+          label={a.kpiBilled}
           value={formatRupiah(data.billed.total)}
           hint={
             data.billed.count
-              ? `${fmt(data.billed.count)} tagihan · ${paidShare}% sudah lunas`
-              : 'Belum ada tagihan'
+              ? a.billedHint(fmt(data.billed.count), paidShare)
+              : a.noInvoices
           }
-          definition="Total nilai tagihan aktif ke jastiper di event ini, tidak termasuk tagihan yang dibatalkan. Sama dengan Total Revenue event ini di Dashboard. Bukan profit dan bukan dana yang sudah diterima."
+          definition={a.kpiBilledDef}
         />
         <KpiCard
-          label="Pcs terjual"
+          label={a.kpiSold}
           value={fmt(data.pcs.terjual)}
           hint={soldHint}
-          definition={
-            data.slotEnabled
-              ? 'Pcs yang disetujui saat dicek, sudah ditagih maupun belum. Dashboard hanya menghitung pcs yang sudah ditagih. Isi paket dihitung per pcs.'
-              : 'Semua pcs yang dipesan lewat jastiper. Isi paket dihitung per pcs.'
-          }
+          definition={data.slotEnabled ? a.kpiSoldDefSlot : a.kpiSoldDef}
         />
         <KpiCard
-          label="Jastiper ikut"
+          label={a.kpiJoined}
           value={fmt(data.jastiper.joined)}
           hint={
             data.slotEnabled
-              ? `${fmt(data.jastiper.submitted)} sudah submit`
-              : `${fmt(data.jastiper.active)} ada pesanan`
+              ? a.joinedSubmitted(fmt(data.jastiper.submitted))
+              : a.joinedActive(fmt(data.jastiper.active))
           }
-          definition="Jastiper yang menekan Ikut Event di event ini."
+          definition={a.kpiJoinedDef}
         />
         <KpiCard
-          label="Pcs ditolak"
+          label={a.kpiRejected}
           value={fmt(data.pcs.ditolak)}
-          hint={
-            data.pcs.ditolak > 0
-              ? 'Tidak tersedia saat dicek'
-              : 'Semua pesanan tersedia'
-          }
-          definition="Pcs yang tidak bisa dipenuhi saat dicek (stok tidak tersedia). Tidak ditagih."
+          hint={data.pcs.ditolak > 0 ? a.rejectedHint : a.allAvailable}
+          definition={a.kpiRejectedDef}
         />
       </section>
 
@@ -285,10 +316,10 @@ function AnalyticsBody({ id, data }: { id: string; data: EventAnalytics }) {
       <div className="grid grid-cols-1 items-start gap-5 lg:gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,1fr)]">
         <TopProducts products={data.products} />
         <BusinessInsights
-          insights={eventInsights(data)}
-          title="Sorotan event"
-          description="Disusun otomatis dari data event ini."
-          emptyText="Belum cukup data untuk menarik kesimpulan dari event ini."
+          insights={eventInsights(data, a, fmt)}
+          title={a.highlights}
+          description={a.highlightsDesc}
+          emptyText={a.highlightsEmpty}
         />
       </div>
 
@@ -306,14 +337,22 @@ function AnalyticsBody({ id, data }: { id: string; data: EventAnalytics }) {
 }
 
 /** Kalimat sorotan dari data aktual; tiap kalimat hanya muncul kalau datanya ada. */
-function eventInsights(data: EventAnalytics): Array<Insight> {
+function eventInsights(
+  data: EventAnalytics,
+  a: PartnerDict['analytics'],
+  fmt: (n: number) => string,
+): Array<Insight> {
   const out: Array<Insight> = []
   const top = data.products.at(0)
   if (top && top.terjual > 0) {
     out.push({
       key: 'top-product',
       tone: 'neutral',
-      text: `${top.productName} paling laku: ${fmt(top.terjual)} pcs lewat ${fmt(top.jastiper)} jastiper.`,
+      text: a.insightTopProduct(
+        top.productName,
+        fmt(top.terjual),
+        fmt(top.jastiper),
+      ),
     })
   }
   const topJ = data.jastiperRanking.at(0)
@@ -321,7 +360,7 @@ function eventInsights(data: EventAnalytics): Array<Insight> {
     out.push({
       key: 'top-jastiper',
       tone: 'neutral',
-      text: `${topJ.brandName} menjual pcs terbanyak (${fmt(topJ.terjual)} pcs).`,
+      text: a.insightTopJastiper(topJ.brandName, fmt(topJ.terjual)),
     })
   }
   if (data.stockOut.length > 0) {
@@ -331,14 +370,14 @@ function eventInsights(data: EventAnalytics): Array<Insight> {
       tone: 'down',
       text:
         hot > 0
-          ? `${fmt(data.stockOut.length)} varian habis, ${fmt(hot)} di antaranya sempat dipesan. Pertimbangkan tambah stok untuk event berikutnya.`
-          : `${fmt(data.stockOut.length)} varian habis.`,
+          ? a.insightStockOutHot(fmt(data.stockOut.length), fmt(hot))
+          : a.insightStockOut(fmt(data.stockOut.length)),
     })
   } else if (data.pcs.ditolak > 0) {
     out.push({
       key: 'rejected',
       tone: 'down',
-      text: `${fmt(data.pcs.ditolak)} pcs ditolak karena tidak tersedia saat dicek.`,
+      text: a.insightRejected(fmt(data.pcs.ditolak)),
     })
   }
   const topSize = data.sizes.at(0)
@@ -346,7 +385,7 @@ function eventInsights(data: EventAnalytics): Array<Insight> {
     out.push({
       key: 'top-size',
       tone: 'neutral',
-      text: `Ukuran ${topSize.size} paling dicari (${fmt(topSize.terjual)} pcs).`,
+      text: a.insightTopSize(topSize.size, fmt(topSize.terjual)),
     })
   }
   return out
@@ -355,28 +394,29 @@ function eventInsights(data: EventAnalytics): Array<Insight> {
 // ---------------------------------------------------------------------------
 
 function PcsBreakdown({ data }: { data: EventAnalytics }) {
+  const { a, fmt } = useAnalysisI18n()
   const parts = [
     {
       key: 'terjual',
-      label: 'Terjual',
+      label: a.flowSold,
       value: data.pcs.terjual,
       color: COLOR.terjual,
     },
     {
       key: 'menunggu',
-      label: 'Menunggu dicek',
+      label: a.flowWaiting,
       value: data.pcs.menunggu,
       color: COLOR.menunggu,
     },
     {
       key: 'ditolak',
-      label: 'Ditolak',
+      label: a.flowRejected,
       value: data.pcs.ditolak,
       color: COLOR.ditolak,
     },
     {
       key: 'draft',
-      label: 'Belum disubmit',
+      label: a.flowDraft,
       value: data.pcs.draft,
       color: COLOR.draft,
     },
@@ -390,11 +430,11 @@ function PcsBreakdown({ data }: { data: EventAnalytics }) {
   return (
     <Panel>
       <SectionHeader
-        title="Alur pcs"
-        description={`${fmt(total)} pcs dipesan lewat jastiper di event ini.`}
+        title={a.flowTitle}
+        description={a.flowDesc(fmt(total))}
       />
       {total === 0 ? (
-        <EmptyNote>Belum ada pesanan produk.</EmptyNote>
+        <EmptyNote>{a.flowEmpty}</EmptyNote>
       ) : (
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-8">
           <div className="flex min-w-0 flex-1 flex-col gap-3">
@@ -440,7 +480,7 @@ function PcsBreakdown({ data }: { data: EventAnalytics }) {
             >
               <div>
                 <dt className="text-xs" style={soft}>
-                  Satuan
+                  {a.flowSingle}
                 </dt>
                 <dd className="pa-num mt-0.5 text-base font-semibold">
                   {fmt(data.kindSplit.satuan)}{' '}
@@ -451,7 +491,7 @@ function PcsBreakdown({ data }: { data: EventAnalytics }) {
               </div>
               <div>
                 <dt className="text-xs" style={soft}>
-                  Lewat paket
+                  {a.flowBundle}
                 </dt>
                 <dd className="pa-num mt-0.5 text-base font-semibold">
                   {fmt(data.kindSplit.paket)}{' '}
@@ -470,7 +510,11 @@ function PcsBreakdown({ data }: { data: EventAnalytics }) {
 
 function Timeline({ timeline }: { timeline: EventAnalytics['timeline'] }) {
   const [hover, setHover] = useState<number | null>(null)
-  const buckets = timeline.buckets
+  const { a, fmt, intlLocale } = useAnalysisI18n()
+  const buckets = timeline.buckets.map((b) => ({
+    ...b,
+    label: timelineLabel(b.key, timeline.granularity, intlLocale),
+  }))
   const max = Math.max(1, ...buckets.map((b) => b.pcs))
   const peak = buckets.reduce<(typeof buckets)[number] | null>(
     (best, b) => (!best || b.pcs > best.pcs ? b : best),
@@ -483,11 +527,11 @@ function Timeline({ timeline }: { timeline: EventAnalytics['timeline'] }) {
   return (
     <Panel>
       <SectionHeader
-        title="Aktivitas submit"
-        description={`Pcs yang dikirim jastiper per ${timeline.granularity} (WIB).`}
+        title={a.activityTitle}
+        description={a.activityDesc(timeline.granularity)}
       />
       {buckets.length === 0 ? (
-        <EmptyNote>Belum ada submit pesanan.</EmptyNote>
+        <EmptyNote>{a.activityEmpty}</EmptyNote>
       ) : (
         <div className="flex flex-col gap-2">
           <p className="h-5 text-xs" style={soft} aria-live="polite">
@@ -500,11 +544,11 @@ function Timeline({ timeline }: { timeline: EventAnalytics['timeline'] }) {
                 >
                   {fmt(active.pcs)}
                 </span>{' '}
-                pcs dari {fmt(active.submits)} submit
+                {a.activityPcsFrom(fmt(active.submits))}
               </>
             ) : peak && peak.pcs > 0 ? (
               <>
-                Paling ramai:{' '}
+                {a.activityPeak}{' '}
                 <b style={{ color: 'var(--app-text)' }}>{peak.label}</b> (
                 {fmt(peak.pcs)} pcs)
               </>
@@ -531,7 +575,7 @@ function Timeline({ timeline }: { timeline: EventAnalytics['timeline'] }) {
                 onMouseEnter={() => setHover(i)}
                 onFocus={() => setHover(i)}
                 onBlur={() => setHover(null)}
-                aria-label={`${b.label}: ${b.pcs} pcs dari ${b.submits} submit`}
+                aria-label={a.activityBarLabel(b.label, b.pcs, b.submits)}
               >
                 <span
                   className="w-full rounded-t-[4px] transition-colors"
@@ -567,17 +611,18 @@ function Timeline({ timeline }: { timeline: EventAnalytics['timeline'] }) {
 function TopProducts({ products }: { products: Array<ProductStat> }) {
   const [expanded, setExpanded] = useState(false)
   const [open, setOpen] = useState<string | null>(null)
+  const { a, fmt, variant } = useAnalysisI18n()
   const max = Math.max(1, ...products.map((p) => p.terjual + p.ditolak))
   const list = expanded ? products : products.slice(0, LIST_LIMIT)
 
   return (
     <Panel>
       <SectionHeader
-        title="Produk terlaris"
-        description="Urut pcs terjual. Klik produk untuk melihat per varian."
+        title={a.bestProducts}
+        description={a.bestProductsDesc}
       />
       {products.length === 0 ? (
-        <EmptyNote>Belum ada produk yang terjual.</EmptyNote>
+        <EmptyNote>{a.bestProductsEmpty}</EmptyNote>
       ) : (
         <>
           <ol className="flex flex-col">
@@ -604,11 +649,11 @@ function TopProducts({ products }: { products: Array<ProductStat> }) {
                       </p>
                       <Bar max={max} value={p.terjual} rejected={p.ditolak} />
                       <p className="text-xs" style={soft}>
-                        {fmt(p.jastiper)} jastiper
+                        {a.jastiperCount(fmt(p.jastiper))}
                         {p.ditolak > 0 && (
                           <span style={{ color: COLOR.ditolak }}>
                             {' '}
-                            · {fmt(p.ditolak)} ditolak
+                            · {a.rejectedCount(fmt(p.ditolak))}
                           </span>
                         )}
                       </p>
@@ -638,14 +683,14 @@ function TopProducts({ products }: { products: Array<ProductStat> }) {
                           style={border}
                         >
                           <span className="truncate" style={soft}>
-                            {v.label}
+                            {variant(v.label)}
                           </span>
                           <span className="pa-num shrink-0">
                             <b>{fmt(v.terjual)}</b> pcs
                             {v.ditolak > 0 && (
                               <span style={{ color: COLOR.ditolak }}>
                                 {' '}
-                                · {fmt(v.ditolak)} ditolak
+                                · {a.rejectedCount(fmt(v.ditolak))}
                               </span>
                             )}
                           </span>
@@ -671,6 +716,7 @@ function TopProducts({ products }: { products: Array<ProductStat> }) {
 
 function TopJastiper({ id, data }: { id: string; data: EventAnalytics }) {
   const [expanded, setExpanded] = useState(false)
+  const { a, fmt } = useAnalysisI18n()
   const ranking = data.jastiperRanking
   const max = Math.max(1, ...ranking.map((j) => j.terjual + j.ditolak))
   const list = expanded ? ranking : ranking.slice(0, LIST_LIMIT)
@@ -680,8 +726,8 @@ function TopJastiper({ id, data }: { id: string; data: EventAnalytics }) {
   return (
     <Panel>
       <SectionHeader
-        title="Jastiper teratas"
-        description="Urut pcs terjual. Klik untuk melihat detail jastiper."
+        title={a.topJastiper}
+        description={a.topJastiperDesc}
       />
       <ol className="flex flex-col">
         <li
@@ -690,9 +736,9 @@ function TopJastiper({ id, data }: { id: string; data: EventAnalytics }) {
           aria-hidden="true"
         >
           <span>#</span>
-          <span>Jastiper</span>
-          <span className="text-right">Pcs</span>
-          <span className="hidden text-right sm:block">Ditagih</span>
+          <span>{a.colJastiper}</span>
+          <span className="text-right">{a.colPcs}</span>
+          <span className="hidden text-right sm:block">{a.colBilled}</span>
           <span />
         </li>
         {list.map((j, i) => (
@@ -734,8 +780,10 @@ function TopJastiper({ id, data }: { id: string; data: EventAnalytics }) {
                     }}
                   >
                     {j.paidAmount >= j.billedAmount
-                      ? 'Lunas'
-                      : `${Math.round((j.paidAmount / j.billedAmount) * 100)}% lunas`}
+                      ? a.paid
+                      : a.paidPct(
+                          Math.round((j.paidAmount / j.billedAmount) * 100),
+                        )}
                   </span>
                 )}
               </span>
@@ -763,25 +811,26 @@ function StockCard({
 }) {
   const [tab, setTab] = useState<'habis' | 'hampir'>('habis')
   const [expanded, setExpanded] = useState(false)
+  const { a, fmt, variant } = useAnalysisI18n()
   const rows = tab === 'habis' ? stockOut : lowStock
   const list = expanded ? rows : rows.slice(0, LIST_LIMIT)
 
   return (
     <Panel>
       <SectionHeader
-        title="Stok produk"
-        description="Stok saat ini dari produk yang dibawa ke event."
+        title={a.stockTitle}
+        description={a.stockDesc}
         action={
           <Segmented
-            label="Filter stok"
+            label={a.stockFilter}
             value={tab}
             onChange={(next) => {
               setTab(next)
               setExpanded(false)
             }}
             options={[
-              { value: 'habis', label: `Habis · ${stockOut.length}` },
-              { value: 'hampir', label: `Hampir habis · ${lowStock.length}` },
+              { value: 'habis', label: a.stockOutTab(stockOut.length) },
+              { value: 'hampir', label: a.stockLowTab(lowStock.length) },
             ]}
           />
         }
@@ -789,8 +838,8 @@ function StockCard({
       {rows.length === 0 ? (
         <EmptyNote>
           {tab === 'habis'
-            ? 'Tidak ada varian yang habis.'
-            : 'Tidak ada varian yang hampir habis.'}
+            ? a.stockOutEmpty
+            : a.stockLowEmpty}
         </EmptyNote>
       ) : (
         <>
@@ -808,11 +857,11 @@ function StockCard({
                       {s.productName}
                     </p>
                     <p className="truncate text-xs" style={soft}>
-                      {s.label}
+                      {variant(s.label)}
                       {' · '}
                       {s.terjual + s.ditolak > 0 ? (
                         <>
-                          terjual{' '}
+                          {a.soldWord}{' '}
                           <span
                             className="pa-num"
                             style={{ color: 'var(--app-text)' }}
@@ -822,12 +871,12 @@ function StockCard({
                           {s.ditolak > 0 && (
                             <span style={{ color: COLOR.ditolak }}>
                               {' '}
-                              · ditolak {fmt(s.ditolak)}
+                              · {a.rejectedWord} {fmt(s.ditolak)}
                             </span>
                           )}
                         </>
                       ) : (
-                        'tidak dipesan di event ini'
+                        a.notOrderedHere
                       )}
                     </p>
                   </div>
@@ -845,7 +894,7 @@ function StockCard({
                           }
                     }
                   >
-                    {out ? 'Habis' : `Sisa ${s.stockQty}`}
+                    {out ? a.soldOut : a.stockLeft(s.stockQty)}
                   </span>
                 </li>
               )
@@ -865,22 +914,18 @@ function StockCard({
 
 function UnmetDemand({ list }: { list: EventAnalytics['unmetDemand'] }) {
   const max = Math.max(1, ...list.map((u) => u.ditolak))
+  const { a, fmt, variant } = useAnalysisI18n()
   return (
     <Panel>
-      <SectionHeader
-        title="Permintaan tak terpenuhi"
-        description="Pcs ditolak terbanyak, sinyal untuk menambah stok."
-      />
+      <SectionHeader title={a.unmetTitle} description={a.unmetDesc} />
       {list.length === 0 ? (
-        <EmptyNote>
-          Semua pesanan tersedia. Tidak ada pcs yang ditolak.
-        </EmptyNote>
+        <EmptyNote>{a.unmetEmpty}</EmptyNote>
       ) : (
         <ul className="flex flex-col gap-3">
           {list.map((u) => (
             <li key={u.label} className="flex flex-col gap-1.5">
               <div className="flex items-baseline justify-between gap-3 text-sm">
-                <span className="truncate">{u.label}</span>
+                <span className="truncate">{variant(u.label)}</span>
                 <span
                   className="pa-num shrink-0 font-semibold"
                   style={{ color: COLOR.ditolak }}
@@ -911,14 +956,12 @@ function UnmetDemand({ list }: { list: EventAnalytics['unmetDemand'] }) {
 function SizeCard({ sizes }: { sizes: EventAnalytics['sizes'] }) {
   const total = sizes.reduce((s, x) => s + x.terjual, 0)
   const max = Math.max(1, ...sizes.map((s) => s.terjual))
+  const { a, fmt } = useAnalysisI18n()
   return (
     <Panel>
-      <SectionHeader
-        title="Ukuran terlaris"
-        description="Pcs terjual per ukuran."
-      />
+      <SectionHeader title={a.sizesTitle} description={a.sizesDesc} />
       {sizes.length === 0 ? (
-        <EmptyNote>Produk di event ini belum memakai ukuran.</EmptyNote>
+        <EmptyNote>{a.sizesEmpty}</EmptyNote>
       ) : (
         <ul className="flex flex-col gap-3">
           {sizes.slice(0, 8).map((s) => (

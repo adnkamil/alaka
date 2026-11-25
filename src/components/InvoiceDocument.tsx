@@ -4,14 +4,13 @@ import { formatInvoiceNumber, parseBundleLabel } from '../lib/invoice-rules'
 import { formatRupiah } from '../lib/partner-product-rules'
 import { splitItemName } from '../lib/partner-item-label'
 import { toLocalPhoneNumber } from '../lib/format'
+import { useOptionalPartnerI18n } from './PartnerI18n'
 
 type Line = InvoiceDetail['lines'][number]
 
-const STATUS_STAMP: Partial<
-  Record<InvoiceDetail['status'], { text: string; color: string }>
-> = {
-  lunas: { text: 'LUNAS', color: 'var(--inv-success)' },
-  dibatalkan: { text: 'DIBATALKAN', color: 'var(--inv-danger)' },
+const STAMP_COLOR: Partial<Record<InvoiceDetail['status'], string>> = {
+  lunas: 'var(--inv-success)',
+  dibatalkan: 'var(--inv-danger)',
 }
 
 /** Pcs satu baris: paket dihitung dari isinya, satuan dari qty. */
@@ -24,7 +23,8 @@ function pcsOf(line: Line): number {
 
 function ItemName({ name, qty }: { name: string; qty?: number }) {
   const { product, size, variation } = splitItemName(name)
-  const detail = [variation && `Varian: ${variation}`, size && `Ukuran: ${size}`]
+  const iv = useOptionalPartnerI18n().t.invoice
+  const detail = [variation && iv.docVariant(variation), size && iv.docSize(size)]
     .filter(Boolean)
     .join('   ')
   return (
@@ -45,12 +45,20 @@ function ItemName({ name, qty }: { name: string; qty?: number }) {
  * hasil cetaknya konsisten. Gaya ada di `.inv-sheet` (styles.css).
  */
 export default function InvoiceDocument({ invoice: d }: { invoice: InvoiceDetail }) {
-  const stamp = STATUS_STAMP[d.status]
+  const { t, intlLocale } = useOptionalPartnerI18n()
+  const iv = t.invoice
+  const stampColor = STAMP_COLOR[d.status]
+  const stamp = stampColor
+    ? {
+        color: stampColor,
+        text: d.status === 'lunas' ? iv.stampPaid : iv.stampCancelled,
+      }
+    : null
   const submitNos = [...new Set(d.lines.map((l) => l.submitNo))].sort((a, b) => a - b)
   const multiSubmit = submitNos.length > 1
   const bank = d.partnerBank
   const paid = d.status === 'lunas' || d.status === 'dibatalkan'
-  const issuedAt = formatWibDateTime(d.sentAt)
+  const issuedAt = formatWibDateTime(d.sentAt, intlLocale)
 
   return (
     <article className="inv-sheet" aria-label={`Invoice ${formatInvoiceNumber(d.number)}`}>
@@ -77,24 +85,23 @@ export default function InvoiceDocument({ invoice: d }: { invoice: InvoiceDetail
           </div>
         </div>
         <div className="inv-title">
-          <p className="inv-doc">INVOICE</p>
+          <p className="inv-doc">{iv.docTitle}</p>
           <p className="inv-number">{formatInvoiceNumber(d.number)}</p>
-          <p className="inv-muted">Tanggal: {issuedAt}</p>
+          <p className="inv-muted">{iv.docDate(issuedAt)}</p>
         </div>
       </header>
 
       <section className="inv-boxes">
         <div className="inv-box">
-          <p className="inv-label">Diterbitkan untuk</p>
+          <p className="inv-label">{iv.docIssuedTo}</p>
           <p className="inv-box-title">{d.brandName}</p>
           {d.brandWa && <p className="inv-muted">WA: {toLocalPhoneNumber(d.brandWa)}</p>}
         </div>
         <div className="inv-box">
-          <p className="inv-label">Event</p>
+          <p className="inv-label">{iv.docEvent}</p>
           <p className="inv-box-title">{d.eventName}</p>
           <p className="inv-muted">
-            Submit{' '}
-            {submitNos.map((n) => `#${n}`).join(', ')}
+            {iv.docSubmits(submitNos.map((n) => `#${n}`).join(', '))}
           </p>
         </div>
       </section>
@@ -102,11 +109,11 @@ export default function InvoiceDocument({ invoice: d }: { invoice: InvoiceDetail
       <table className="inv-table">
         <thead>
           <tr>
-            <th className="inv-c-no">No</th>
-            <th>Deskripsi item</th>
-            <th className="inv-c-qty">Qty</th>
-            <th className="inv-c-money">Harga</th>
-            <th className="inv-c-money">Jumlah</th>
+            <th className="inv-c-no">{iv.docNo}</th>
+            <th>{iv.docDescription}</th>
+            <th className="inv-c-qty">{iv.docQty}</th>
+            <th className="inv-c-money">{iv.docPrice}</th>
+            <th className="inv-c-money">{iv.docAmount}</th>
           </tr>
         </thead>
         <tbody>
@@ -119,7 +126,7 @@ export default function InvoiceDocument({ invoice: d }: { invoice: InvoiceDetail
                   {l.kind === 'paket' ? (
                     <>
                       <span className="inv-strong">
-                        Paket · {bundle ? bundle.ruleName : l.label}
+                        {iv.docBundle(bundle ? bundle.ruleName : l.label)}
                       </span>
                       {bundle && (
                         <ul className="inv-bundle">
@@ -134,10 +141,10 @@ export default function InvoiceDocument({ invoice: d }: { invoice: InvoiceDetail
                   ) : (
                     <ItemName name={l.label} />
                   )}
-                  {multiSubmit && <span className="inv-sub">Submit #{l.submitNo}</span>}
+                  {multiSubmit && <span className="inv-sub">{iv.docSubmitNo(l.submitNo)}</span>}
                 </td>
                 <td className="inv-c-qty inv-strong">
-                  {l.kind === 'paket' ? `${l.qty} paket` : l.qty}
+                  {l.kind === 'paket' ? iv.docBundles(l.qty) : l.qty}
                 </td>
                 <td className="inv-c-money">{formatRupiah(l.unitPrice)}</td>
                 <td className="inv-c-money inv-strong">{formatRupiah(l.amount)}</td>
@@ -151,46 +158,50 @@ export default function InvoiceDocument({ invoice: d }: { invoice: InvoiceDetail
         <div className="inv-pay">
           {!paid && (
             <div className="inv-box inv-box--pay">
-              <p className="inv-label">Info transfer pembayaran</p>
+              <p className="inv-label">{iv.docTransferInfo}</p>
               {bank ? (
                 <>
                   <p className="inv-strong">{bank.bankName}</p>
                   <p className="inv-account">{bank.accountNumber}</p>
-                  <p>a/n {bank.accountName}</p>
+                  <p>{iv.docAccountHolder(bank.accountName)}</p>
                 </>
               ) : (
                 <p className="inv-muted">
-                  Rekening belum diisi partner. Hubungi {d.partnerName}
-                  {d.partnerWa ? ` (${toLocalPhoneNumber(d.partnerWa)})` : ''}.
+                  {iv.docNoBank(
+                    d.partnerName,
+                    d.partnerWa ? toLocalPhoneNumber(d.partnerWa) : '',
+                  )}
                 </p>
               )}
             </div>
           )}
           {d.status === 'lunas' && d.paidConfirmedAt && (
             <p className="inv-muted">
-              Lunas pada {formatWibDateTime(d.paidConfirmedAt)}
+              {iv.docPaidOn(formatWibDateTime(d.paidConfirmedAt, intlLocale))}
             </p>
           )}
           {d.status === 'dibatalkan' && (
             <p className="inv-muted">
-              Dibatalkan{d.cancelledAt ? ` ${formatWibDateTime(d.cancelledAt)}` : ''}
+              {iv.docCancelled(
+                d.cancelledAt ? formatWibDateTime(d.cancelledAt, intlLocale) : '',
+              )}
               {d.cancelReason ? ` · ${d.cancelReason}` : ''}
             </p>
           )}
         </div>
         <dl className="inv-totals">
           <div>
-            <dt>Total qty</dt>
+            <dt>{iv.docTotalQty}</dt>
             <dd>{d.lines.reduce((n, l) => n + pcsOf(l), 0)} pcs</dd>
           </div>
           <div className="inv-grand">
-            <dt>Total bayar</dt>
+            <dt>{iv.docTotalDue}</dt>
             <dd>{formatRupiah(d.totalAmount)}</dd>
           </div>
         </dl>
       </section>
 
-      <footer className="inv-foot">Terima kasih telah berbelanja bersama {d.partnerName}!</footer>
+      <footer className="inv-foot">{iv.docThanks(d.partnerName)}</footer>
     </article>
   )
 }

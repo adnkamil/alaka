@@ -1,4 +1,5 @@
 import { LOW_STOCK_THRESHOLD } from '../lib/partner-event-analytics'
+import { usePartnerT } from './PartnerI18n'
 
 export type VariantStock = {
   id: string
@@ -41,6 +42,7 @@ export default function PartnerProductVariantStock({
 }: {
   variants: Array<VariantStock>
 }) {
+  const s = usePartnerT().stock
   if (!hasVariantOptions(variants)) return null
 
   // Urutan variasi dan ukuran mengikuti urutan katalog.
@@ -64,17 +66,17 @@ export default function PartnerProductVariantStock({
           <div className="flex flex-wrap gap-1.5">
             {list.map((v) => {
               const tone = toneOf(v.stock)
-              const stockText = v.stock <= 0 ? 'Habis' : `${v.stock}`
+              const stockText = v.stock <= 0 ? s.soldOut : `${v.stock}`
               return (
                 <span
                   key={v.id}
                   className="pm-num inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px]"
                   style={tone}
-                  title={`${[v.variation, v.size].filter(Boolean).join(' / ')}: ${v.stock <= 0 ? 'stok habis' : `stok ${v.stock}`}`}
+                  title={`${[v.variation, v.size].filter(Boolean).join(' / ')}: ${v.stock <= 0 ? s.outOfStock : s.stockOf(v.stock)}`}
                 >
                   {v.size && <span className="font-semibold">{v.size}</span>}
                   {v.size && <span aria-hidden="true">·</span>}
-                  <span>{v.size ? stockText : `Stok ${stockText}`}</span>
+                  <span>{v.size ? stockText : s.stockLabel(stockText)}</span>
                 </span>
               )
             })}

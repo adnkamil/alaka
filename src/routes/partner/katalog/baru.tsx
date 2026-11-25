@@ -3,6 +3,7 @@ import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { ArrowLeft } from 'lucide-react'
 import { useRef, useState } from 'react'
 import PartnerProductForm from '../../../components/PartnerProductForm'
+import { usePartnerT } from '../../../components/PartnerI18n'
 import PartnerVariantEditor from '../../../components/PartnerVariantEditor'
 import PartnerProductRuleCard from '../../../components/PartnerProductRuleCard'
 import {
@@ -20,6 +21,7 @@ export const Route = createFileRoute('/partner/katalog/baru')({
 function NewPartnerProductPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const t = usePartnerT()
   const variantRef = useRef<PartnerVariantEditorHandle>(null)
   const ruleRef = useRef<PartnerProductRuleCardHandle>(null)
   const [sizes, setSizes] = useState<Array<string>>([])
@@ -70,18 +72,20 @@ function NewPartnerProductPage() {
       <header className="flex items-center gap-3 lg:hidden">
         <Link
           to="/partner/katalog"
-          aria-label="Kembali"
+          aria-label={t.common.back}
           className="-ml-1 flex size-8 items-center justify-center"
           style={{ color: 'var(--app-text)' }}
         >
           <ArrowLeft size={22} />
         </Link>
-        <h1 className="pm-display text-[22px] leading-tight">Tambah Produk</h1>
+        <h1 className="pm-display text-[22px] leading-tight">
+          {t.catalog.createTitle}
+        </h1>
       </header>
       <PartnerProductForm
-        title="Tambah Produk"
-        breadcrumb="Tambah produk"
-        submitLabel="Simpan produk"
+        title={t.catalog.createTitle}
+        breadcrumb={t.catalog.createCrumb}
+        submitLabel={t.catalog.createSubmit}
         onSubmit={handleSubmit}
         hidePrice
         afterForm={

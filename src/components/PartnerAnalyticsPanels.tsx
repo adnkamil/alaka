@@ -12,7 +12,6 @@ import {
 import { useEffect, useId, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
-  EVENT_STATUS_LABELS,
   percentChange,
   sortEvents,
   sortProducts,
@@ -32,6 +31,7 @@ import {
   formatPercent,
   formatRangeLabel,
 } from './PartnerAnalyticsFormat'
+import { usePartnerI18n, usePartnerT } from './PartnerI18n'
 
 const soft = { color: 'var(--app-text-soft)' }
 const mute = { color: 'var(--app-text-mute)' }
@@ -49,6 +49,7 @@ export function InfoTip({
   children: ReactNode
 }) {
   const [open, setOpen] = useState(false)
+  const t = usePartnerT()
   const id = useId()
   const ref = useRef<HTMLSpanElement>(null)
   useEffect(() => {
@@ -68,7 +69,7 @@ export function InfoTip({
     >
       <button
         type="button"
-        aria-label={`Definisi ${label}`}
+        aria-label={t.analytics.definitionOf(label)}
         aria-describedby={open ? id : undefined}
         aria-expanded={open}
         className="pa-focus -m-1.5 inline-flex rounded-full p-1.5"
@@ -105,10 +106,11 @@ export function ChangeBadge({
   value: number | null
   size?: 'sm' | 'md'
 }) {
+  const { t, intlLocale } = usePartnerI18n()
   if (value === null) {
     return (
       <span className="text-xs" style={mute}>
-        Belum ada pembanding
+        {t.analytics.noComparison}
       </span>
     )
   }
@@ -133,8 +135,14 @@ export function ChangeBadge({
       style={{ color, background: bg }}
     >
       {!flat && <Icon size={size === 'md' ? 14 : 12} aria-hidden="true" />}
-      <span className="sr-only">{flat ? 'Stabil' : up ? 'Naik' : 'Turun'}</span>
-      {formatPercent(value)}
+      <span className="sr-only">
+        {flat
+          ? t.analytics.trendFlat
+          : up
+            ? t.analytics.trendUp
+            : t.analytics.trendDown}
+      </span>
+      {formatPercent(value, intlLocale)}
     </span>
   )
 }
@@ -285,48 +293,42 @@ export function KpiCards({
   previous: SalesSummary
   comparisonLabel: string
 }) {
+  const { t, intlLocale } = usePartnerI18n()
   return (
     <div className="flex flex-col gap-2">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-[minmax(0,1.35fr)_repeat(3,minmax(0,1fr))] lg:gap-4">
         <KpiCard
           primary
-          label="Total Revenue"
+          label={t.analytics.kpiRevenue}
           value={formatRupiah(current.netSales)}
           change={percentChange(current.netSales, previous.netSales)}
-          definition={
-            <>
-              Net sales: total nilai tagihan ke jastiper pada periode ini, tidak
-              termasuk tagihan yang dibatalkan. Harga paket sudah
-              diperhitungkan. Bukan profit, bukan dana yang sudah diterima,
-              tanpa ongkir dan biaya admin ALAKA.
-            </>
-          }
+          definition={t.analytics.kpiRevenueDef}
         />
         <KpiCard
-          label="Total Tagihan"
-          value={formatCount(current.orders)}
+          label={t.analytics.kpiInvoices}
+          value={formatCount(current.orders, intlLocale)}
           change={percentChange(current.orders, previous.orders)}
-          definition="Jumlah tagihan yang terbit ke jastiper pada periode ini, tidak termasuk yang dibatalkan. Bukan jumlah pembeli: satu tagihan bisa berisi beberapa submit."
+          definition={t.analytics.kpiInvoicesDef}
         />
         <KpiCard
-          label="Pcs Ditagih"
-          value={formatCount(current.units)}
+          label={t.analytics.kpiUnits}
+          value={formatCount(current.units, intlLocale)}
           change={percentChange(current.units, previous.units)}
-          definition="Total pcs produk di dalam tagihan aktif. Isi paket dihitung per pcs. Pcs yang sudah disetujui tapi belum ditagih belum masuk di sini."
+          definition={t.analytics.kpiUnitsDef}
         />
         <KpiCard
-          label="Rata-rata per Tagihan"
+          label={t.analytics.kpiAov}
           value={current.aov === null ? '–' : formatRupiah(current.aov)}
           change={
             current.aov !== null && previous.aov !== null
               ? percentChange(current.aov, previous.aov)
               : null
           }
-          definition="Rata-rata nilai satu tagihan: Total Revenue dibagi Total Tagihan."
+          definition={t.analytics.kpiAovDef}
         />
       </div>
       <p className="text-xs" style={mute}>
-        Perubahan dibandingkan {comparisonLabel}.
+        {t.analytics.changeComparedWith(comparisonLabel)}
       </p>
     </div>
   )
@@ -349,21 +351,22 @@ const STATUS_STYLE: Record<
 }
 
 function StatusBadge({ status }: { status: PartnerEventStatus }) {
+  const t = usePartnerT()
   return (
     <span
       className="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold"
       style={{ ...STATUS_STYLE[status], borderColor: 'var(--app-border)' }}
     >
-      {EVENT_STATUS_LABELS[status]}
+      {t.analytics.eventStatus[status]}
     </span>
   )
 }
 
-function eventPeriod(row: EventPerformanceRow) {
-  return formatRangeLabel({
-    from: row.eventDate,
-    to: row.endDate ?? row.eventDate,
-  })
+function eventPeriod(row: EventPerformanceRow, locale: string) {
+  return formatRangeLabel(
+    { from: row.eventDate, to: row.endDate ?? row.eventDate },
+    locale,
+  )
 }
 
 const EVENT_PAGE = 8
@@ -376,6 +379,7 @@ export function EventPerformance({
   const [sort, setSort] = useState<EventSort>('revenue')
   const [expanded, setExpanded] = useState(false)
   const navigate = useNavigate()
+  const { t, intlLocale } = usePartnerI18n()
   const sorted = sortEvents(rows, sort)
   const visible = expanded ? sorted : sorted.slice(0, EVENT_PAGE)
   const open = (id: string) =>
@@ -384,17 +388,17 @@ export function EventPerformance({
   return (
     <Panel>
       <SectionHeader
-        title="Event Performance"
-        description="Event yang berjalan atau punya penjualan pada periode ini. Klik event untuk analisa lengkap."
+        title={t.analytics.eventPerformance}
+        description={t.analytics.eventPerformanceDesc}
         action={
           rows.length > 1 ? (
             <Segmented
-              label="Urutkan event"
+              label={t.analytics.sortEvents}
               value={sort}
               onChange={setSort}
               options={[
-                { value: 'revenue', label: 'Revenue tertinggi' },
-                { value: 'units', label: 'Pcs terbanyak' },
+                { value: 'revenue', label: t.analytics.sortHighestRevenue },
+                { value: 'units', label: t.analytics.sortMostPcs },
               ]}
             />
           ) : undefined
@@ -402,7 +406,7 @@ export function EventPerformance({
       />
       {rows.length === 0 ? (
         <p className="py-6 text-center text-sm" style={soft}>
-          Tidak ada event pada periode ini.
+          {t.analytics.noEventsInPeriod}
         </p>
       ) : (
         <>
@@ -412,25 +416,25 @@ export function EventPerformance({
               <thead>
                 <tr className="text-left text-xs" style={mute}>
                   <th scope="col" className="px-5 pb-2 font-medium">
-                    Event
+                    {t.analytics.colEvent}
                   </th>
                   <th scope="col" className="px-3 pb-2 font-medium">
-                    Periode
+                    {t.analytics.colPeriod}
                   </th>
                   <th scope="col" className="px-3 pb-2 text-right font-medium">
-                    Total Revenue
+                    {t.analytics.colRevenue}
                   </th>
                   <th scope="col" className="px-3 pb-2 text-right font-medium">
-                    Tagihan
+                    {t.analytics.colInvoices}
                   </th>
                   <th scope="col" className="px-3 pb-2 text-right font-medium">
-                    Pcs ditagih
+                    {t.analytics.colUnits}
                   </th>
                   <th scope="col" className="px-3 pb-2 font-medium">
-                    Status
+                    {t.analytics.colStatus}
                   </th>
                   <th scope="col" className="w-10 pb-2 pr-5">
-                    <span className="sr-only">Detail</span>
+                    <span className="sr-only">{t.analytics.colDetail}</span>
                   </th>
                 </tr>
               </thead>
@@ -454,7 +458,7 @@ export function EventPerformance({
                       </Link>
                     </td>
                     <td className="whitespace-nowrap px-3 py-3" style={soft}>
-                      {eventPeriod(row)}
+                      {eventPeriod(row, intlLocale)}
                     </td>
                     <td className="whitespace-nowrap px-3 py-3 text-right">
                       <div className="pa-num font-semibold">
@@ -467,10 +471,10 @@ export function EventPerformance({
                       )}
                     </td>
                     <td className="pa-num px-3 py-3 text-right">
-                      {formatCount(row.orders)}
+                      {formatCount(row.orders, intlLocale)}
                     </td>
                     <td className="pa-num px-3 py-3 text-right">
-                      {formatCount(row.units)}
+                      {formatCount(row.units, intlLocale)}
                     </td>
                     <td className="px-3 py-3">
                       <StatusBadge status={row.status} />
@@ -504,8 +508,11 @@ export function EventPerformance({
                       <StatusBadge status={row.status} />
                     </div>
                     <p className="text-xs" style={soft}>
-                      {eventPeriod(row)} · {formatCount(row.orders)} tagihan ·{' '}
-                      {formatCount(row.units)} pcs
+                      {eventPeriod(row, intlLocale)} ·{' '}
+                      {t.analytics.eventRowSummary(
+                        formatCount(row.orders, intlLocale),
+                        formatCount(row.units, intlLocale),
+                      )}
                     </p>
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-1">
@@ -528,8 +535,8 @@ export function EventPerformance({
               onClick={() => setExpanded((v) => !v)}
             >
               {expanded
-                ? 'Tampilkan lebih sedikit'
-                : `Tampilkan semua (${sorted.length})`}
+                ? t.analytics.showLess
+                : t.analytics.showAll(sorted.length)}
             </button>
           )}
         </>
@@ -574,22 +581,25 @@ export function TopProducts({
   totalRevenue: number
 }) {
   const [sort, setSort] = useState<ProductSort>('units')
+  const { t, intlLocale } = usePartnerI18n()
   const rows = sortProducts(products, sort).slice(0, TOP_PRODUCTS)
 
   return (
     <Panel>
       <SectionHeader
-        title="Top Selling Products"
-        description={`${Math.min(products.length, TOP_PRODUCTS)} produk teratas pada periode ini.`}
+        title={t.analytics.topProducts}
+        description={t.analytics.topProductsDesc(
+          Math.min(products.length, TOP_PRODUCTS),
+        )}
         action={
           products.length > 1 ? (
             <Segmented
-              label="Urutkan produk"
+              label={t.analytics.sortProducts}
               value={sort}
               onChange={setSort}
               options={[
-                { value: 'units', label: 'Pcs terbanyak' },
-                { value: 'revenue', label: 'Highest Revenue' },
+                { value: 'units', label: t.analytics.sortMostPcs },
+                { value: 'revenue', label: t.analytics.sortHighestRevenue },
               ]}
             />
           ) : undefined
@@ -597,7 +607,7 @@ export function TopProducts({
       />
       {rows.length === 0 ? (
         <p className="py-6 text-center text-sm" style={soft}>
-          Belum ada produk terjual pada periode ini.
+          {t.analytics.noProductsSold}
         </p>
       ) : (
         <ol className="flex flex-col">
@@ -607,15 +617,13 @@ export function TopProducts({
             aria-hidden="true"
           >
             <span>#</span>
-            <span>Produk</span>
-            <span className="text-right">Pcs ditagih</span>
-            <span className="text-right">Revenue</span>
+            <span>{t.analytics.colProduct}</span>
+            <span className="text-right">{t.analytics.colUnits}</span>
+            <span className="text-right">{t.analytics.chartRevenue}</span>
             <span className="inline-flex items-center justify-end gap-1">
-              Kontribusi
-              <InfoTip label="Kontribusi">
-                Porsi revenue produk dari Total Revenue. Nilai tagihan dibagi ke
-                produk di dalamnya sebanding qty × harga katalog, jadi diskon
-                paket ikut terbagi.
+              {t.analytics.colContribution}
+              <InfoTip label={t.analytics.colContribution}>
+                {t.analytics.contributionDef}
               </InfoTip>
             </span>
           </li>
@@ -640,24 +648,24 @@ export function TopProducts({
                         className="hidden truncate text-xs sm:block"
                         style={mute}
                       >
-                        SKU {p.sku}
+                        {t.analytics.sku(p.sku)}
                       </p>
                     )}
                     <p className="truncate text-xs sm:hidden" style={mute}>
-                      {p.sku ? `SKU ${p.sku} · ` : ''}
-                      {formatCount(p.units)} pcs
+                      {p.sku ? `${t.analytics.sku(p.sku)} · ` : ''}
+                      {t.common.pcs(formatCount(p.units, intlLocale))}
                     </p>
                   </div>
                 </div>
                 <span className="pa-num hidden text-right text-sm sm:block">
-                  {formatCount(p.units)}
+                  {formatCount(p.units, intlLocale)}
                 </span>
                 <div className="text-right">
                   <p className="pa-num text-sm font-semibold">
                     {formatRupiah(p.revenue)}
                   </p>
                   <p className="pa-num text-xs sm:hidden" style={soft}>
-                    {formatPercent(share)} dari revenue
+                    {t.analytics.shareOfRevenue(formatPercent(share, intlLocale))}
                   </p>
                 </div>
                 <div className="hidden items-center justify-end gap-2 sm:flex">
@@ -674,7 +682,7 @@ export function TopProducts({
                     />
                   </div>
                   <span className="pa-num w-12 text-right text-xs" style={soft}>
-                    {formatPercent(share)}
+                    {formatPercent(share, intlLocale)}
                   </span>
                 </div>
               </li>
@@ -692,21 +700,25 @@ export function TopProducts({
 
 export function BusinessInsights({
   insights,
-  title = 'Business Insights',
-  description = 'Disusun otomatis dari data penjualan periode ini.',
-  emptyText = 'Belum cukup data untuk menarik kesimpulan pada periode ini.',
+  title,
+  description,
+  emptyText,
 }: {
   insights: Array<Insight>
   title?: string
   description?: string
   emptyText?: string
 }) {
+  const t = usePartnerT()
   return (
     <Panel>
-      <SectionHeader title={title} description={description} />
+      <SectionHeader
+        title={title ?? t.analytics.insightsTitle}
+        description={description ?? t.analytics.insightsDesc}
+      />
       {insights.length === 0 ? (
         <p className="text-sm" style={soft}>
-          {emptyText}
+          {emptyText ?? t.analytics.insightsEmpty}
         </p>
       ) : (
         <ul className="flex flex-col gap-3">
@@ -758,47 +770,43 @@ export function BusinessInsights({
 // ---------------------------------------------------------------------------
 
 export function MetricDefinitions() {
+  const t = usePartnerT()
+  const a = t.analytics
   return (
     <details className="app-card group p-4 text-sm sm:p-5">
       <summary
         className="pa-focus cursor-pointer rounded font-medium"
         style={{ color: 'var(--app-text)' }}
       >
-        Cara angka dihitung
+        {a.howCalculated}
       </summary>
       <ul
         className="mt-3 flex list-disc flex-col gap-1.5 pl-5 text-xs leading-relaxed"
         style={soft}
       >
         <li>
-          <b>Revenue (Net Sales)</b> = total nilai tagihan ke jastiper. Nilai
-          tagihan dikunci saat tagihan terbit, jadi tidak berubah walau harga
-          katalog diubah.
+          <b>{a.defRevenueTerm}</b>
+          {a.defRevenue}
         </li>
         <li>
-          <b>Diskon</b>: harga paket sudah termasuk di Net Sales. Diskon belum
-          tercatat terpisah, jadi Gross Sales dan Discounts belum ditampilkan
-          sebagai angka sendiri.
+          <b>{a.defDiscountTerm}</b>
+          {a.defDiscount}
         </li>
         <li>
-          <b>Tagihan & Pcs ditagih</b> hanya dari tagihan yang sudah terbit. Pcs
-          yang sudah disetujui saat dicek tapi belum ditagih belum masuk di
-          sini; angka itu ada di Analisa Event sebagai &ldquo;Pcs
-          terjual&rdquo;.
+          <b>{a.defInvoicesTerm}</b>
+          {a.defInvoices}
         </li>
         <li>
-          <b>Pembatalan</b>: tagihan yang dibatalkan tidak dihitung sama sekali.
-          Belum ada fitur retur/refund.
+          <b>{a.defCancelTerm}</b>
+          {a.defCancel}
         </li>
         <li>
-          <b>Tidak termasuk</b>: ongkir, biaya admin ALAKA, dan status
-          pembayaran. Revenue bukan profit dan bukan dana yang sudah diterima.
-          Profit belum dihitung karena biaya produk dan operasional belum
-          tersedia.
+          <b>{a.defExcludedTerm}</b>
+          {a.defExcluded}
         </li>
         <li>
-          <b>Tanggal</b> transaksi = tanggal tagihan terbit, dikelompokkan dalam
-          WIB (GMT+7).
+          <b>{a.defDateTerm}</b>
+          {a.defDate}
         </li>
       </ul>
     </details>

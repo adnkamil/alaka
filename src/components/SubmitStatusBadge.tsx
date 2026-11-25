@@ -1,4 +1,5 @@
 import { formatInvoiceNumber, invoiceStatusMeta } from '../lib/invoice-rules'
+import { usePartnerT } from './PartnerI18n'
 import type { InvoiceStatus, SubmitInvoiceState } from '../lib/invoice-rules'
 
 const STYLE = {
@@ -26,30 +27,33 @@ export default function SubmitStatusBadge({
   invoiceNumber?: number
   invoiceStatus?: InvoiceStatus
 }) {
+  // Dipakai di Partner Portal saja, jadi teksnya ikut bahasa partner.
+  const t = usePartnerT().invoice
   const { label, tone } = (() => {
     switch (state) {
       case 'menunggu_dicek':
-        return { label: 'Menunggu dicek', tone: 'info' as const }
+        return { label: t.submitWaiting, tone: 'info' as const }
       case 'menunggu_keputusan':
-        return { label: 'Menunggu keputusan jastiper', tone: 'warn' as const }
+        return { label: t.submitAwaitingDecision, tone: 'warn' as const }
       case 'siap_ditagih':
-        return { label: 'Siap ditagih', tone: 'success' as const }
+        return { label: t.submitReady, tone: 'success' as const }
       case 'sudah_ditagih': {
-        const meta = invoiceStatusMeta(invoiceStatus ?? 'ditagih')
+        const status = invoiceStatus ?? 'ditagih'
+        const meta = invoiceStatusMeta(status)
         return {
           label:
             invoiceNumber !== undefined
-              ? `${meta.label} · ${formatInvoiceNumber(invoiceNumber)}`
-              : meta.label,
+              ? `${t.status[status]} · ${formatInvoiceNumber(invoiceNumber)}`
+              : t.status[status],
           tone: meta.tone,
         }
       }
       case 'tanpa_tagihan':
-        return { label: 'Sudah dicek · tanpa tagihan', tone: 'neutral' as const }
+        return { label: t.submitNoInvoice, tone: 'neutral' as const }
       default:
         return checked
-          ? { label: 'Sudah dicek', tone: 'success' as const }
-          : { label: 'Menunggu dicek', tone: 'info' as const }
+          ? { label: t.submitChecked, tone: 'success' as const }
+          : { label: t.submitWaiting, tone: 'info' as const }
     }
   })()
   return (

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Info, X } from 'lucide-react'
+import { useUiText } from './ui-text'
 
 /**
  * Alert melayang (toast) untuk info sesaat.
@@ -28,6 +29,7 @@ export default function Toast({
   duration = 4000,
   onClose,
 }: ToastProps) {
+  const text = useUiText()
   // 'entering' -> dipasang dari posisi bawah, lalu 'visible' supaya ia naik.
   const [state, setState] = useState<'entering' | 'visible' | 'leaving'>(
     'entering',
@@ -93,7 +95,7 @@ export default function Toast({
           onClick={dismiss}
           className="flex-shrink-0 opacity-60 transition-opacity hover:opacity-100"
           style={{ color: 'var(--app-text-soft)' }}
-          aria-label="Tutup notifikasi"
+          aria-label={text.closeNotification}
         >
           <X size={15} />
         </button>

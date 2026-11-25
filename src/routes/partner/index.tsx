@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { z } from 'zod'
 import PartnerAnalyticsChart from '../../components/PartnerAnalyticsChart'
 import PartnerLogo from '../../components/PartnerLogo'
+import { usePartnerI18n } from '../../components/PartnerI18n'
 import PartnerNotificationBell from '../../components/PartnerNotificationBell'
 import { formatRangeLabel } from '../../components/PartnerAnalyticsFormat'
 import {
@@ -21,17 +22,13 @@ import {
 import type { AnalyticsParams } from '../../lib/partner-analytics-functions'
 import {
   ANALYTICS_PRESETS,
-  PRESET_LABELS,
   allowedGranularities,
   buildInsights,
   buildSeries,
   compareSeries,
   effectiveGranularity,
 } from '../../lib/partner-analytics-rules'
-import type {
-  AnalyticsPreset,
-  Granularity,
-} from '../../lib/partner-analytics-rules'
+import type { AnalyticsPreset } from '../../lib/partner-analytics-rules'
 import { formatRupiah } from '../../lib/partner-product-rules'
 import { partnerInitials } from '../../lib/partner-logo-rules'
 import { currentPartnerQuery, partnerAnalyticsQuery } from '../../lib/queries'
@@ -76,23 +73,18 @@ export const Route = createFileRoute('/partner/')({
   component: PartnerDashboardPage,
 })
 
-const GRANULARITY_LABELS: Record<Granularity, string> = {
-  day: 'Harian',
-  week: 'Mingguan',
-  month: 'Bulanan',
-}
-
 /**
  * Header khusus mobile. Di mobile tidak ada topbar, jadi ini satu-satunya
  * jalan ke Profil (lewat logo) dan Notifikasi (lonceng).
  */
 function MobileHeader() {
   const { data: partner } = useSuspenseQuery(currentPartnerQuery)
+  const { t } = usePartnerI18n()
   // Layout `/partner` sudah memastikan partner ada; ini cuma penyempit tipe.
   if (!partner) return null
   return (
     <div className="flex items-center gap-3 lg:hidden">
-      <Link to="/partner/profil" aria-label="Profil" className="shrink-0">
+      <Link to="/partner/profil" aria-label={t.shell.profile} className="shrink-0">
         <PartnerLogo
           name={partner.name}
           logoUrl={partner.logoUrl}
@@ -104,7 +96,7 @@ function MobileHeader() {
       </Link>
       <div className="min-w-0 flex-1">
         <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
-          Halo,
+          {t.analytics.greeting}
         </p>
         <p className="pm-display truncate text-base">{partner.name}</p>
       </div>
@@ -116,6 +108,7 @@ function MobileHeader() {
 function PartnerDashboardPage() {
   const search = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
+  const { t, intlLocale } = usePartnerI18n()
   const params = toParams(search)
   const { data, isFetching, isError, refetch } = useQuery({
     ...partnerAnalyticsQuery(params),
@@ -139,20 +132,25 @@ function PartnerDashboardPage() {
     )
   }, [data, granularity])
 
+  // Label pembanding dari kamus (bukan `data.comparisonLabel` dari server)
+  // supaya ikut bahasa aktif.
+  const comparisonLabel = data ? t.analytics.comparison[data.preset] : ''
+
   const insights = useMemo(
     () =>
       data
         ? buildInsights({
             current: data.current,
             previous: data.previous,
-            comparisonLabel: data.comparisonLabel,
+            comparisonLabel,
             events: data.events,
             allEvents: data.calendarEventId === null,
             products: data.products,
             formatMoney: formatRupiah,
+            copy: t.analytics.insightCopy,
           })
         : [],
-    [data],
+    [data, comparisonLabel, t],
   )
 
   return (
@@ -164,10 +162,10 @@ function PartnerDashboardPage() {
             className="pm-display text-[22px] leading-tight lg:text-[26px]"
             style={{ color: 'var(--app-text)' }}
           >
-            Dashboard
+            {t.analytics.title}
           </h1>
           <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
-            Pantau performa penjualan dan perkembangan bisnis Anda.
+            {t.analytics.subtitle}
           </p>
         </header>
 
@@ -180,14 +178,14 @@ function PartnerDashboardPage() {
         {isError && !data ? (
           <Panel>
             <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
-              Data analytics gagal dimuat.
+              {t.analytics.loadFailed}
             </p>
             <button
               type="button"
               className="app-btn-outline self-start"
               onClick={() => refetch()}
             >
-              Coba lagi
+              {t.analytics.retry}
             </button>
           </Panel>
         ) : data ? (
@@ -200,14 +198,16 @@ function PartnerDashboardPage() {
               className="-mt-2 text-xs"
               style={{ color: 'var(--app-text-mute)' }}
             >
-              {formatRangeLabel(data.range)} · dibandingkan{' '}
-              {formatRangeLabel(data.previousRange)} · WIB
+              {formatRangeLabel(data.range, intlLocale)} ·{' '}
+              {t.analytics.comparedWith}{' '}
+              {formatRangeLabel(data.previousRange, intlLocale)} ·{' '}
+              {t.analytics.timezone}
             </p>
 
             <KpiCards
               current={data.current}
               previous={data.previous}
-              comparisonLabel={data.comparisonLabel}
+              comparisonLabel={comparisonLabel}
             />
 
             <Panel>
@@ -217,21 +217,20 @@ function PartnerDashboardPage() {
                     className="pm-display text-base"
                     style={{ color: 'var(--app-text)' }}
                   >
-                    Sales Performance
+                    {t.analytics.salesPerformance}
                   </h2>
                   <p
                     className="mt-0.5 text-xs"
                     style={{ color: 'var(--app-text-soft)' }}
                   >
-                    Revenue {GRANULARITY_LABELS[granularity].toLowerCase()} pada
-                    periode terpilih.
+                    {t.analytics.revenueByGranularity(granularity)}
                   </p>
                 </div>
                 {allowedGranularities(data.range).length > 1 && (
                   <div
                     className="pa-seg"
                     role="group"
-                    aria-label="Agregasi grafik"
+                    aria-label={t.analytics.chartAggregation}
                   >
                     {allowedGranularities(data.range).map((g) => (
                       <button
@@ -240,7 +239,7 @@ function PartnerDashboardPage() {
                         aria-pressed={granularity === g}
                         onClick={() => setSearch({ g })}
                       >
-                        {GRANULARITY_LABELS[g]}
+                        {t.analytics.granularity[g]}
                       </button>
                     ))}
                   </div>
@@ -250,7 +249,7 @@ function PartnerDashboardPage() {
                 buckets={series}
                 granularity={granularity}
                 showPrevious={data.previous.netSales > 0}
-                comparisonLabel={data.comparisonLabel}
+                comparisonLabel={comparisonLabel}
               />
             </Panel>
 
@@ -282,6 +281,7 @@ function Filters({
   onChange: (patch: Partial<AnalyticsSearch>) => void
 }) {
   const preset = search.range ?? DEFAULT_PRESET
+  const { t } = usePartnerI18n()
   const today = todayIsoDateInAppTimeZone()
   const [from, setFrom] = useState(search.from ?? '')
   const [to, setTo] = useState(search.to ?? '')
@@ -300,7 +300,7 @@ function Filters({
           className="text-xs font-medium"
           style={{ color: 'var(--app-text-soft)' }}
         >
-          Periode
+          {t.analytics.period}
         </span>
         <select
           className="pa-select"
@@ -329,7 +329,7 @@ function Filters({
         >
           {ANALYTICS_PRESETS.map((p) => (
             <option key={p} value={p}>
-              {p === 'custom' ? 'Custom date range' : PRESET_LABELS[p]}
+              {p === 'custom' ? t.analytics.customRange : t.analytics.presets[p]}
             </option>
           ))}
         </select>
@@ -348,7 +348,7 @@ function Filters({
               className="text-xs font-medium"
               style={{ color: 'var(--app-text-soft)' }}
             >
-              Dari
+              {t.analytics.from}
             </span>
             <input
               type="date"
@@ -363,7 +363,7 @@ function Filters({
               className="text-xs font-medium"
               style={{ color: 'var(--app-text-soft)' }}
             >
-              Sampai
+              {t.analytics.to}
             </span>
             <input
               type="date"
@@ -380,7 +380,7 @@ function Filters({
             className="pa-focus h-11 rounded-xl px-5 text-sm font-semibold text-[var(--app-on-solid)] disabled:opacity-40"
             style={{ background: 'var(--app-accent)' }}
           >
-            Terapkan
+            {t.analytics.apply}
           </button>
         </form>
       )}
@@ -390,14 +390,14 @@ function Filters({
           className="text-xs font-medium"
           style={{ color: 'var(--app-text-soft)' }}
         >
-          Event
+          {t.analytics.event}
         </span>
         <select
           className="pa-select"
           value={search.event ?? ''}
           onChange={(e) => onChange({ event: e.target.value || undefined })}
         >
-          <option value="">All Events</option>
+          <option value="">{t.analytics.allEvents}</option>
           {events.map((ev) => (
             <option key={ev.id} value={ev.id}>
               {ev.name}

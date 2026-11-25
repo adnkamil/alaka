@@ -6,6 +6,7 @@ import { PARTNER_STATUS_FILTERS } from '../../../lib/event-slot'
 import { getPartnerEventPicklist } from '../../../lib/partner-picklist-functions'
 import { useClientPager } from '../../../lib/use-client-pager'
 import UnderlineTabs from '../../../components/ui/UnderlineTabs'
+import { usePartnerT } from '../../../components/PartnerI18n'
 import PartnerTableToolbar from '../../../components/ui/PartnerTableToolbar'
 import SortHeader, { ariaSortOf } from '../../../components/ui/SortHeader'
 import { sortRows } from '../../../lib/table-sort'
@@ -24,8 +25,9 @@ export const Route = createFileRoute('/partner/event/rekap/$id')({
 function PartnerEventRekapPage() {
   const { id } = Route.useParams()
   const { status } = Route.useSearch()
-  const statusLabel =
-    PARTNER_STATUS_FILTERS.find((f) => f.key === status)?.label ?? 'Semua'
+  const t = usePartnerT()
+  const rc = t.recap
+  const statusLabel = rc.status[status]
   const [filter, setFilter] = useState<string>('')
   const { data, error, isLoading } = useQuery({
     queryKey: ['partner-event-picklist', id, filter, status],
@@ -53,7 +55,7 @@ function PartnerEventRekapPage() {
       productName: (r) => r.productName,
       variation: (r) => r.variation,
       size: (r) => r.size,
-      source: (r) => (r.ruleName ? `Paket: ${r.ruleName}` : 'Satuan'),
+      source: (r) => (r.ruleName ? rc.bundle(r.ruleName) : rc.single),
       total: (r) => r.total,
     }),
   )
@@ -65,32 +67,32 @@ function PartnerEventRekapPage() {
           <Link
             to="/partner/event/$id"
             params={{ id }}
-            aria-label="Kembali"
+            aria-label={t.common.back}
             className="-ml-1 flex size-8 shrink-0 items-center justify-center lg:hidden"
             style={{ color: 'var(--app-text)' }}
           >
             <ArrowLeft size={22} />
           </Link>
           <div>
-            <h1 className="pm-display text-[22px] leading-tight lg:text-[26px]">Rekap  Orderan</h1>
+            <h1 className="pm-display text-[22px] leading-tight lg:text-[26px]">{rc.title}</h1>
             <p className="mt-1 text-[13px]" style={{ color: 'var(--app-text-soft)' }}>
-              {totalPcs} pcs untuk disiapkan · Status: {statusLabel}
+              {rc.summary(totalPcs, statusLabel)}
             </p>
           </div>
         </div>
         <Link to="/partner/event/$id" params={{ id }} className="app-btn-outline hidden lg:inline-flex" style={{ minHeight: 40, fontSize: 13 }}>
-          Kembali ke event
+          {rc.backToEvent}
         </Link>
       </header>
 
       <UnderlineTabs
-        ariaLabel="Filter rekap"
+        ariaLabel={rc.filterLabel}
         items={[
-          { key: '', label: 'Semua' },
-          { key: 'satuan', label: 'Barang satuan' },
+          { key: '', label: rc.all },
+          { key: 'satuan', label: rc.singleItems },
           ...(data?.rules ?? []).map((r) => ({
             key: r.id,
-            label: `Paket: ${r.name}`,
+            label: rc.bundle(r.name),
           })),
         ]}
         value={filter}
@@ -99,14 +101,14 @@ function PartnerEventRekapPage() {
 
       {error && (
         <div className="app-card p-4 text-sm" style={{ color: 'var(--app-danger)' }}>
-          Gagal memuat rekap.
+          {rc.loadFailed}
         </div>
       )}
-      {isLoading && <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>Memuat…</p>}
+      {isLoading && <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>{t.common.loading}</p>}
       {data && data.rows.length === 0 && (
         <div className="app-card flex flex-col items-center gap-2 p-8 text-center">
           <PackageCheck size={28} style={{ color: 'var(--app-text-soft)' }} />
-          <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>Belum ada barang untuk ditampilkan.</p>
+          <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>{rc.empty}</p>
         </div>
       )}
 
@@ -118,13 +120,12 @@ function PartnerEventRekapPage() {
             setSearch(value)
             rekapPager.resetPage()
           }}
-          placeholder="Cari nama produk"
-          label="Cari nama produk"
+          placeholder={rc.searchProduct}
           pager={rekapPager.pager}
         />
         {rekapRows.length === 0 && (
           <p className="py-6 text-center text-sm" style={{ color: 'var(--app-text-soft)' }}>
-            Tidak ada produk yang cocok dengan pencarian.
+            {rc.noMatch}
           </p>
         )}
         <div className="flex flex-col gap-3 lg:hidden">
@@ -137,7 +138,7 @@ function PartnerEventRekapPage() {
                 <div className="min-w-0">
                   <p className="text-sm font-bold leading-snug">{row.productName}</p>
                   <p className="mt-0.5 text-xs" style={{ color: 'var(--app-text-soft)' }}>
-                    {[row.variation, row.size].filter(Boolean).join(' · ') || 'Standar'}
+                    {[row.variation, row.size].filter(Boolean).join(' · ') || rc.standard}
                   </p>
                 </div>
                 <span className="pm-num shrink-0 text-base font-bold" style={{ color: 'var(--app-accent)' }}>
@@ -145,7 +146,7 @@ function PartnerEventRekapPage() {
                 </span>
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="app-badge">{row.ruleName ? `Paket: ${row.ruleName}` : 'Satuan'}</span>
+                <span className="app-badge">{row.ruleName ? rc.bundle(row.ruleName) : rc.single}</span>
                 {row.byJastiper.map((j) => (
                   <span key={j.brandName} className="pm-chip" style={{ padding: '4px 10px', fontSize: 11 }}>
                     {j.brandName} · {j.qty}
@@ -162,18 +163,18 @@ function PartnerEventRekapPage() {
               <tr>
                 {(
                   [
-                    ['Produk', 'productName'],
-                    ['Variasi', 'variation'],
-                    ['Ukuran', 'size'],
-                    ['Sumber', 'source'],
-                    ['Qty', 'total'],
-                    ['Per jastiper', undefined],
+                    [rc.colProduct, 'productName'],
+                    [rc.colVariation, 'variation'],
+                    [rc.colSize, 'size'],
+                    [rc.colSource, 'source'],
+                    [rc.colQty, 'total'],
+                    [rc.colPerJastiper, undefined],
                   ] as const
                 ).map(([h, key]) => (
                   <th
                     key={h}
                     aria-sort={key ? ariaSortOf(rekapSort.sort, key) : undefined}
-                    className={`px-4 py-3 text-left text-[11px] font-semibold ${h === 'Qty' ? 'text-right' : ''}`}
+                    className={`px-4 py-3 text-left text-[11px] font-semibold ${key === 'total' ? 'text-right' : ''}`}
                     style={{ color: 'var(--app-text-soft)' }}
                   >
                     <SortHeader
@@ -184,7 +185,7 @@ function PartnerEventRekapPage() {
                         rekapSort.toggle(k)
                         rekapPager.resetPage()
                       }}
-                      align={h === 'Qty' ? 'right' : 'left'}
+                      align={key === 'total' ? 'right' : 'left'}
                     />
                   </th>
                 ))}
@@ -201,7 +202,7 @@ function PartnerEventRekapPage() {
                   <td className="px-4 py-3">{row.variation ?? '-'}</td>
                   <td className="px-4 py-3">{row.size ?? '-'}</td>
                   <td className="px-4 py-3">
-                    <span className="app-badge">{row.ruleName ? `Paket: ${row.ruleName}` : 'Satuan'}</span>
+                    <span className="app-badge">{row.ruleName ? rc.bundle(row.ruleName) : rc.single}</span>
                   </td>
                   <td className="pm-num px-4 py-3 text-right text-sm font-bold" style={{ color: 'var(--app-accent)' }}>
                     {row.total}

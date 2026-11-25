@@ -153,17 +153,29 @@ export function toWibLocal(date: Date): string {
   return new Date(date.getTime() + WIB_OFFSET_MS).toISOString().slice(0, 16)
 }
 
-const wibDateTime = new Intl.DateTimeFormat('id-ID', {
-  timeZone: APP_TIME_ZONE,
-  day: 'numeric',
-  month: 'short',
-  hour: '2-digit',
-  minute: '2-digit',
-})
+const wibDateTimeFormats = new Map<string, Intl.DateTimeFormat>()
+
+function wibDateTime(locale: string) {
+  let format = wibDateTimeFormats.get(locale)
+  if (!format) {
+    format = new Intl.DateTimeFormat(locale, {
+      timeZone: APP_TIME_ZONE,
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+    wibDateTimeFormats.set(locale, format)
+  }
+  return format
+}
 
 /** "9 Nov, 18.00 WIB" */
-export function formatWibDateTime(date: Date | string): string {
-  return `${wibDateTime.format(new Date(date))} WIB`
+export function formatWibDateTime(
+  date: Date | string,
+  locale = 'id-ID',
+): string {
+  return `${wibDateTime(locale).format(new Date(date))} WIB`
 }
 
 // ---------------------------------------------------------------------------
@@ -257,12 +269,15 @@ export function slotWindowWarnings(input: {
   closesAt: Date | null
   /** Tanggal event berakhir, format YYYY-MM-DD. */
   eventEndDate: string | null
+  /** Teks peringatan per bahasa; default bahasa Indonesia. */
+  closesAfterEventMessage?: string
 }): Array<string> {
   if (input.closesAt === null || input.eventEndDate === null) return []
   const endOfEvent = parseWibLocal(`${input.eventEndDate.slice(0, 10)}T23:59`)
   if (endOfEvent && input.closesAt.getTime() > endOfEvent.getTime()) {
     return [
-      'Slot ditutup setelah event berakhir. Pastikan ini memang disengaja.',
+      input.closesAfterEventMessage ??
+        'Slot ditutup setelah event berakhir. Pastikan ini memang disengaja.',
     ]
   }
   return []

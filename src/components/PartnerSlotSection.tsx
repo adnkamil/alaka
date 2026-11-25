@@ -11,6 +11,7 @@ import {
   getPartnerSlotWindow,
   setPartnerSlotWindow,
 } from '../lib/partner-slot-functions'
+import { usePartnerT } from './PartnerI18n'
 
 /**
  * Pengaturan slot pemesanan (waktu buka dan tutup, jam WIB) dan antrean
@@ -43,9 +44,12 @@ export default function PartnerSlotSection({
   const antrean = [...waiting, ...drafts]
   const [opensAt, setOpensAt] = useState('')
   const [closesAt, setClosesAt] = useState('')
+  const t = usePartnerT()
+  const s = t.eventDetail.slot
   const warnings = slotWindowWarnings({
     closesAt: closesAt === '' ? null : parseWibLocal(closesAt),
     eventEndDate,
+    closesAfterEventMessage: s.closesAfterEvent,
   })
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<{
@@ -72,10 +76,10 @@ export default function PartnerSlotSection({
       await queryClient.invalidateQueries({
         queryKey: ['partner-slot-queue', calendarEventId],
       })
-      setMessage({ text: 'Pengaturan slot disimpan.', error: false })
+      setMessage({ text: s.saved, error: false })
     } catch (err) {
       setMessage({
-        text: err instanceof Error ? err.message : 'Gagal menyimpan',
+        text: err instanceof Error ? err.message : t.common.saveFailed,
         error: true,
       })
     } finally {
@@ -90,20 +94,18 @@ export default function PartnerSlotSection({
           className="text-[11px] font-bold uppercase tracking-wide"
           style={{ color: 'var(--pm-gold)' }}
         >
-          Slot pemesanan
+          {s.title}
         </p>
         <p
           className="mt-1 text-[13px]"
           style={{ color: 'var(--app-text-soft)' }}
         >
-          Jastiper menyusun pesanan dari katalog dulu, lalu mengirimnya saat slot
-          dibuka. Pesanan yang dikirim terkunci dan antreannya mengikuti urutan
-          kirim.
+          {s.intro}
         </p>
       </div>
       <div className="flex flex-col gap-3">
         <label className="flex flex-col gap-1 text-[13px] font-semibold">
-          Slot dibuka (WIB)
+          {s.opens}
           <input
             type="datetime-local"
             value={opensAt}
@@ -113,7 +115,7 @@ export default function PartnerSlotSection({
           />
         </label>
         <label className="flex flex-col gap-1 text-[13px] font-semibold">
-          Slot ditutup (WIB)
+          {s.closes}
           <input
             type="datetime-local"
             value={closesAt}
@@ -135,7 +137,7 @@ export default function PartnerSlotSection({
           onClick={() => void save(opensAt, closesAt)}
           className="app-btn-primary flex-1 disabled:opacity-50"
         >
-          Simpan slot
+          {s.save}
         </button>
       </div>
       {message && (
@@ -149,7 +151,7 @@ export default function PartnerSlotSection({
 
       {antrean.length > 0 && window?.opensAt && (
         <div className="flex flex-col">
-          <p className="mb-1 text-[13px] font-bold">Antrean jastiper</p>
+          <p className="mb-1 text-[13px] font-bold">{s.queue}</p>
           {antrean.map((row) => (
             <Link
               key={row.eventId}
@@ -163,7 +165,7 @@ export default function PartnerSlotSection({
                 {row.rank !== null ? `#${row.rank}` : '–'}
               </span>
               <span className="min-w-0 flex-1 truncate">
-                {row.brandName || 'Tanpa nama'}
+                {row.brandName || t.eventDetail.noName}
               </span>
               <span
                 className="shrink-0 text-[11px]"
@@ -174,7 +176,7 @@ export default function PartnerSlotSection({
                       : 'var(--app-text-soft)',
                 }}
               >
-                {row.rank !== null ? 'Pengajuan' : 'Draft'}
+                {row.rank !== null ? s.submitted : s.draft}
               </span>
             </Link>
           ))}

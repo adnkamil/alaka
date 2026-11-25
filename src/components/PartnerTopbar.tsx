@@ -4,6 +4,7 @@ import { Link, useRouterState } from '@tanstack/react-router'
 import { CalendarDays, Package, Search } from 'lucide-react'
 import PartnerLogo from './PartnerLogo'
 import PartnerNotificationBell from './PartnerNotificationBell'
+import { usePartnerT } from './PartnerI18n'
 import { matchesSearch } from '../lib/partner-topbar-search'
 import { partnerInitials } from '../lib/partner-logo-rules'
 import { getPartnerJastiperDetail } from '../lib/partner-jastiper-detail'
@@ -30,6 +31,7 @@ export default function PartnerTopbar({ name, logoUrl }: PartnerTopbarProps) {
   const [open, setOpen] = useState(false)
   const [armed, setArmed] = useState(false)
   const boxRef = useRef<HTMLDivElement>(null)
+  const t = usePartnerT()
 
   // Halaman detail jastiper menampilkan breadcrumb sebagai ganti kolom cari.
   const pathname = useRouterState({ select: (st) => st.location.pathname })
@@ -84,12 +86,12 @@ export default function PartnerTopbar({ name, logoUrl }: PartnerTopbarProps) {
     <header className="pm-topbar">
       {crumb ? (
         <nav
-          aria-label="Breadcrumb"
+          aria-label={t.shell.breadcrumb}
           className="flex min-w-0 items-center gap-2 text-[13px]"
           style={{ color: 'var(--app-text-soft)' }}
         >
           <Link to="/partner/event" className="no-underline" style={{ color: 'inherit' }}>
-            Event
+            {t.shell.nav.event}
           </Link>
           <span>/</span>
           <Link
@@ -124,8 +126,8 @@ export default function PartnerTopbar({ name, logoUrl }: PartnerTopbarProps) {
             setOpen(true)
           }}
           onKeyDown={(e) => e.key === 'Escape' && setOpen(false)}
-          placeholder="Cari produk, event..."
-          aria-label="Cari produk atau event"
+          placeholder={t.shell.searchPlaceholder}
+          aria-label={t.shell.searchLabel}
           className="app-input pl-10"
           style={{ height: 42, borderRadius: 12 }}
         />
@@ -140,7 +142,7 @@ export default function PartnerTopbar({ name, logoUrl }: PartnerTopbarProps) {
                 className="px-3 py-2 text-sm"
                 style={{ color: 'var(--app-text-soft)' }}
               >
-                Tidak ada produk atau event yang cocok.
+                {t.shell.searchNoMatches}
               </p>
             )}
             {productHits.map((p) => (
@@ -158,7 +160,7 @@ export default function PartnerTopbar({ name, logoUrl }: PartnerTopbarProps) {
                   className="ml-auto text-[11px]"
                   style={{ color: 'var(--app-text-mute)' }}
                 >
-                  Produk
+                  {t.shell.searchKindProduct}
                 </span>
               </Link>
             ))}
@@ -180,7 +182,7 @@ export default function PartnerTopbar({ name, logoUrl }: PartnerTopbarProps) {
                   className="ml-auto text-[11px]"
                   style={{ color: 'var(--app-text-mute)' }}
                 >
-                  Event
+                  {t.shell.searchKindEvent}
                 </span>
               </Link>
             ))}
@@ -193,7 +195,7 @@ export default function PartnerTopbar({ name, logoUrl }: PartnerTopbarProps) {
       <PartnerNotificationBell />
       <Link
         to="/partner/profil"
-        aria-label="Profil"
+        aria-label={t.shell.profile}
         className="flex items-center gap-3 rounded-xl py-1 pl-1 pr-2 no-underline hover:bg-[var(--pm-tint)]"
         style={{ color: 'inherit' }}
       >

@@ -2,7 +2,6 @@ import { useImperativeHandle, useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Trash2, Upload } from 'lucide-react'
 import RupiahInput from './ui/RupiahInput'
-import { getErrorMessage } from '../lib/error-message'
 import {
   PRODUCT_CODE_MAX,
   PRODUCT_DESCRIPTION_MAX,
@@ -13,6 +12,7 @@ import {
   blobToDataUrl,
   fileToProductPhotoBlob,
 } from '../lib/product-photo-image'
+import { usePartnerI18n } from './PartnerI18n'
 
 export type PartnerProductPhotoChange =
   | { action: 'keep' }
@@ -120,6 +120,8 @@ export default function PartnerProductForm({
   const [photoBusy, setPhotoBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const { t, errorMessage } = usePartnerI18n()
+  const c = t.catalog
 
   const price = hidePrice ? (initial?.price ?? 0) : parseRupiah(priceText)
 
@@ -136,7 +138,7 @@ export default function PartnerProductForm({
       setPhoto({ action: 'replace', dataUrl })
       setPreviewUrl(dataUrl)
     } catch (err) {
-      setError(getErrorMessage(err, 'Foto tidak bisa diproses'))
+      setError(errorMessage(err, c.photoFailed))
     } finally {
       setPhotoBusy(false)
     }
@@ -152,8 +154,7 @@ export default function PartnerProductForm({
   async function submit(): Promise<void> {
     setError(null)
     if (price === null) {
-      const msg =
-        'Harga tidak valid. Isi angka rupiah, mis. 189000 atau 189.000.'
+      const msg = c.invalidPrice
       setError(msg)
       throw new Error(msg)
     }
@@ -168,7 +169,7 @@ export default function PartnerProductForm({
         photo,
       })
     } catch (err) {
-      setError(getErrorMessage(err, 'Gagal menyimpan produk'))
+      setError(errorMessage(err, c.saveFailed))
       throw err
     } finally {
       setIsSubmitting(false)
@@ -182,7 +183,7 @@ export default function PartnerProductForm({
 
   useImperativeHandle(ref, () => ({ save: submit }))
 
-  const submitText = isSubmitting ? 'Menyimpan...' : submitLabel
+  const submitText = isSubmitting ? t.common.saving : submitLabel
 
   return (
     <>
@@ -203,7 +204,7 @@ export default function PartnerProductForm({
                 className="no-underline"
                 style={{ color: 'inherit' }}
               >
-                Katalog
+                {c.catalogCrumb}
               </Link>{' '}
               / {breadcrumb}
             </p>
@@ -215,7 +216,7 @@ export default function PartnerProductForm({
                 className="app-btn-outline no-underline"
                 style={{ minHeight: 44, fontSize: 14 }}
               >
-                Batal
+                {t.common.cancel}
               </Link>
               <button
                 type="submit"
@@ -239,24 +240,24 @@ export default function PartnerProductForm({
 
         <div className="order-2 flex flex-col gap-3.5 pm-lg-card lg:col-start-1 lg:row-start-2 lg:gap-4 lg:p-6">
           <h2 className="pm-display hidden text-base lg:block">
-            Informasi produk
+            {c.info}
           </h2>
 
-          <Field label="Nama produk">
+          <Field label={c.name}>
             <input
               required
               maxLength={PRODUCT_NAME_MAX}
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="app-input"
-              placeholder="mis. Kemeja Koko Premium"
+              placeholder={c.namePlaceholder}
             />
           </Field>
 
           <div
             className={`flex flex-col gap-3.5 ${hidePrice ? '' : 'lg:grid lg:grid-cols-2 lg:gap-4'}`}
           >
-            <Field label="Kode produk (opsional)">
+            <Field label={c.code}>
               <input
                 maxLength={PRODUCT_CODE_MAX}
                 value={code}
@@ -267,7 +268,7 @@ export default function PartnerProductForm({
             </Field>
 
             {!hidePrice && (
-              <Field label="Harga">
+              <Field label={c.price}>
                 <RupiahInput
                   required
                   value={priceText}
@@ -279,7 +280,7 @@ export default function PartnerProductForm({
             )}
           </div>
 
-          <Field label="Deskripsi">
+          <Field label={c.description}>
             <textarea
               rows={4}
               maxLength={PRODUCT_DESCRIPTION_MAX}
@@ -287,7 +288,7 @@ export default function PartnerProductForm({
               onChange={(e) => setDescription(e.target.value)}
               className="app-input resize-none !h-[92px] lg:!h-[132px]"
               style={{ padding: '13px 14px' }}
-              placeholder="Bahan, ukuran, atau catatan lain"
+              placeholder={c.descriptionPlaceholder}
             />
           </Field>
         </div>
@@ -295,7 +296,7 @@ export default function PartnerProductForm({
         <div className="contents lg:col-start-2 lg:row-start-2 lg:flex lg:flex-col lg:gap-4">
           <div className="order-1 flex flex-col gap-3.5 pm-lg-card lg:gap-3 lg:p-5">
             <h2 className="pm-display hidden text-base lg:block">
-              Foto produk
+              {c.photo}
             </h2>
             <button
               type="button"
@@ -311,7 +312,7 @@ export default function PartnerProductForm({
               {previewUrl ? (
                 <img
                   src={previewUrl}
-                  alt="Foto produk"
+                  alt={c.photoAlt}
                   className="h-32 w-full object-cover lg:h-44"
                 />
               ) : (
@@ -321,13 +322,13 @@ export default function PartnerProductForm({
                     className="text-[13px] font-bold"
                     style={{ color: 'var(--app-accent)' }}
                   >
-                    {photoBusy ? 'Memproses...' : 'Unggah foto produk'}
+                    {photoBusy ? t.common.processing : c.photoUpload}
                   </span>
                   <span
                     className="text-[11px]"
                     style={{ color: 'var(--app-text-soft)' }}
                   >
-                    JPG/PNG, otomatis dikonversi ke WebP
+                    {c.photoHint}
                   </span>
                 </>
               )}
@@ -340,7 +341,7 @@ export default function PartnerProductForm({
                 style={{ color: 'var(--app-danger)' }}
               >
                 <Trash2 size={13} />
-                Hapus foto
+                {c.photoRemove}
               </button>
             )}
           </div>
@@ -350,19 +351,19 @@ export default function PartnerProductForm({
             style={{ borderColor: 'var(--app-border)' }}
           >
             <div className="flex flex-col gap-0.5">
-              <span className="text-sm font-bold">Tampilkan di katalog</span>
+              <span className="text-sm font-bold">{c.showInCatalog}</span>
               <span
                 className="text-[11px]"
                 style={{ color: 'var(--app-text-soft)' }}
               >
-                Jastiper bisa memilih produk ini saat ikut event.
+                {c.showInCatalogHint}
               </span>
             </div>
             <button
               type="button"
               role="switch"
               aria-checked={isActive}
-              aria-label="Tampilkan di katalog"
+              aria-label={c.showInCatalog}
               onClick={() => setIsActive((v) => !v)}
               className="relative h-[26px] w-[46px] shrink-0 rounded-full transition-colors"
               style={{ background: isActive ? 'var(--app-success)' : 'var(--pm-switch-off)' }}

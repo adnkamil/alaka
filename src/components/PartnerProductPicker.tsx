@@ -15,6 +15,7 @@ import type { PartnerProductRow } from '../lib/partner-product-queries'
 import UnderlineTabs from './ui/UnderlineTabs'
 import Pagination from './ui/Pagination'
 import { useClientPager } from '../lib/use-client-pager'
+import { usePartnerT } from './PartnerI18n'
 
 /** Cocok kalau nama atau kode produk mengandung kata kunci (tanpa huruf besar/kecil). */
 export function matchesProductQuery(product: PartnerProductRow, query: string) {
@@ -33,6 +34,7 @@ export function ProductSearchInput({
   value: string
   onChange: (value: string) => void
 }) {
+  const t = usePartnerT()
   return (
     <div
       className="flex h-[46px] shrink-0 items-center gap-2 rounded-xl border px-3.5"
@@ -46,7 +48,8 @@ export function ProductSearchInput({
         type="search"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Cari nama atau kode produk"
+        placeholder={t.event.searchProduct}
+        aria-label={t.event.searchProduct}
         className="min-w-0 flex-1 border-0 bg-transparent text-sm font-medium outline-none"
         style={{ color: 'var(--app-text)' }}
       />
@@ -65,6 +68,7 @@ export function ProductCheckRow({
   onToggle: () => void
 }) {
   const photoUrl = partnerProductPhotoUrl(product.id, product.photoUpdatedAt)
+  const t = usePartnerT()
   return (
     <label
       className="app-card flex shrink-0 cursor-pointer items-center gap-3 p-3"
@@ -117,7 +121,7 @@ export function ProductCheckRow({
             color: 'var(--app-text-soft)',
           }}
         >
-          Nonaktif
+          {t.event.inactive}
         </span>
       )}
     </label>
@@ -158,6 +162,7 @@ export function ProductChecklist({
   const [query, setQuery] = useState('')
   const [scope, setScope] = useState<Scope>('semua')
   const allRef = useRef<HTMLInputElement>(null)
+  const t = usePartnerT()
 
   const selectedCount = options.reduce(
     (n, p) => (selected.has(p.id) ? n + 1 : n),
@@ -179,8 +184,8 @@ export function ProductChecklist({
   }, [state])
 
   const scopes: Array<{ key: Scope; label: string; count: number }> = [
-    { key: 'semua', label: 'Semua', count: options.length },
-    { key: 'dipilih', label: 'Dipilih', count: selectedCount },
+    { key: 'semua', label: t.event.scopeAll, count: options.length },
+    { key: 'dipilih', label: t.event.scopeSelected, count: selectedCount },
   ]
 
   return (
@@ -203,7 +208,7 @@ export function ProductChecklist({
           />
         </div>
         <UnderlineTabs
-          ariaLabel="Tampilkan produk"
+          ariaLabel={t.event.scopeLabel}
           items={scopes}
           value={scope}
           onChange={setScope}
@@ -231,8 +236,8 @@ export function ProductChecklist({
               style={{ accentColor: 'var(--app-accent)' }}
             />
             <span className="flex-1 text-sm font-bold">
-              {state === 'all' ? 'Lepas semua' : 'Pilih semua'}
-              {filtering ? ' hasil' : ''}
+              {state === 'all' ? t.event.deselectAll : t.event.selectAll}
+              {filtering ? t.event.resultsSuffix : ''}
               <span
                 className="ml-1.5 font-medium"
                 style={{ color: 'var(--app-text-soft)' }}
@@ -248,7 +253,7 @@ export function ProductChecklist({
         <div className="app-card flex flex-col items-center gap-3 p-8 text-center">
           <Package size={28} style={{ color: 'var(--app-text-mute)' }} />
           <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
-            Belum ada produk aktif di katalog.
+            {t.event.noActiveProducts}
           </p>
         </div>
       ) : visible.length === 0 ? (
@@ -257,8 +262,8 @@ export function ProductChecklist({
           style={{ color: 'var(--app-text-soft)' }}
         >
           {query.trim()
-            ? `Tidak ada produk yang cocok dengan “${query.trim()}”.`
-            : 'Belum ada produk yang dipilih.'}
+            ? t.event.noProductMatch(query.trim())
+            : t.event.noneSelected}
         </p>
       ) : (
         <div
@@ -308,6 +313,7 @@ export function PartnerProductPickerSheet({
   )
   const options = selectableProducts(products, new Set(initialIds))
   const count = options.reduce((n, p) => (selected.has(p.id) ? n + 1 : n), 0)
+  const t = usePartnerT()
 
   return (
     <div
@@ -321,7 +327,7 @@ export function PartnerProductPickerSheet({
         <button
           type="button"
           onClick={onClose}
-          aria-label="Kembali"
+          aria-label={t.common.back}
           className="-ml-1 flex size-8 items-center justify-center"
           style={{ color: 'var(--app-text)' }}
         >
@@ -352,7 +358,7 @@ export function PartnerProductPickerSheet({
           }
           className="app-btn-primary w-full"
         >
-          Simpan ({count} produk)
+          {t.event.saveSelection(count)}
         </button>
       </div>
     </div>

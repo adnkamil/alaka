@@ -1,0 +1,286 @@
+/** Halaman detail event partner (/partner/event/$id). */
+
+const en = {
+  title: 'Event Details',
+  filterAll: 'All',
+  filterWaiting: 'Waiting for check',
+  filterReady: 'Ready to invoice',
+  filterBilled: 'Invoiced',
+  filterReview: 'Payment review',
+  filterLabel: 'Submission filter',
+  replacementTitle:
+    'The jastiper replaced rejected items. Only the replacements need checking, and this submission is checked before the regular queue.',
+  replacementTag: 'Has replacement items',
+  previewItem: 'Item',
+  previewQty: 'Qty',
+  previewPrice: 'Price',
+  previewSubtotal: 'Subtotal',
+  previewBundles: 'Bundles',
+  previewSingles: 'Single items',
+  previewSaving: 'Bundle savings',
+  previewTotal: 'Total',
+  viewInvoice: 'View invoice',
+  notSubmitted: (count: number) => `${count} jastipers have not submitted`,
+  noName: 'Unnamed',
+  invoiceSent: 'Invoice sent to the jastiper',
+  invoiceSendFailed: 'Could not send the invoice',
+  statusChangeFailed: 'Could not change the event status',
+  barSummary: (submits: number, pcs: number) =>
+    `${submits} submissions · ${pcs} pcs · `,
+  unitPriceTitle: 'Total if all pcs were invoiced at the single-item price',
+  unitPrice: 'single-item price',
+  bundleNoteStart: (count: number) =>
+    `${count} bundles by the bundle rules, counted from all of this jastiper’s pcs in this invoice`,
+  bundleNoteSaving: (amount: string) => `, saving ${amount}`,
+  breakdown: (lines: number) => `Invoice breakdown (${lines} lines)`,
+  waiveWarning: (submits: string) =>
+    `Submission #${submits} is still waiting for the jastiper’s decision on rejected bundle contents. If the invoice is sent, those items are treated as not replaced (invoiced as is).`,
+  bankMissingStart: 'Fill in your payment account on the ',
+  bankMissingLink: 'Profile page',
+  bankMissingEnd: ' before invoicing jastipers.',
+  selectAllOfJastiper: 'Select all submissions from this jastiper',
+  sendInvoice: 'Send invoice',
+  orderRecap: 'Order Recap',
+  eventAnalysis: 'Event Analysis',
+  online: 'Online',
+  offline: 'Offline',
+  contentTabs: 'Event content',
+  tabInfo: 'Info',
+  tabProducts: 'Products',
+  tabJastiper: 'Jastiper',
+  editEvent: 'Edit event',
+  reopen: 'Reopen',
+  endEvent: 'End event',
+  manageProducts: 'Manage products',
+  searchProduct: 'Search product name',
+  noProducts: 'No products selected for this event yet.',
+  variantCount: (count: number) => `${count} variants`,
+  inactive: 'inactive',
+  stock: 'stock',
+  soldOutCount: (count: number) => `${count} sold out`,
+  noJastiper: 'No jastipers have joined this event yet.',
+  searchJastiper: 'Search jastiper name',
+  noneSubmitted: 'No jastipers have submitted yet.',
+  noJastiperMatch: 'No matching jastipers.',
+  oneInvoiceOneJastiper: 'One invoice per jastiper',
+  selectSubmission: (submitNo: number, brand: string) =>
+    `Select submission #${submitNo} ${brand}`,
+  submittedAt: (time: string) => `Submitted ${time}`,
+  rejectedTitle: 'Items rejected by the partner (insufficient or no stock).',
+  pcsRejected: (count: number) => `${count} pcs rejected`,
+  queueLine: (rank: number, submitNo: number, pcs: number) =>
+    `Queue #${rank} · Submission #${submitNo} · ${pcs} pcs`,
+  joinedOn: (date: string) => `Joined ${date}`,
+  call: (name: string) => `Call ${name}`,
+  eventInfo: 'Event info',
+  infoType: 'Type',
+  infoDate: 'Date',
+  infoLocation: 'Location',
+  infoJastiper: 'Jastiper',
+  infoJoined: (count: number) => `${count} joined`,
+  infoOrders: 'Orders',
+  infoPcsIn: (count: number) => `${count} pcs in`,
+  infoOrdersIn: (count: number) => `${count} in`,
+  manageProductsCount: (count: number) => `Manage products (${count})`,
+  colJastiper: 'Jastiper',
+  colSubmittedAt: 'Submitted at',
+  colQueue: 'Queue',
+  colSubmitNo: 'Submission no.',
+  colPcs: 'Pcs',
+  colRejected: 'Pcs rejected',
+  colStatus: 'Status',
+  colJoinedAt: 'Joined on',
+  colWhatsapp: 'WhatsApp no.',
+  colOrders: 'Orders',
+  colAction: 'Action',
+  contact: 'Contact',
+  endConfirmTitle: 'End this event?',
+  endConfirmBody:
+    'The event disappears from the jastiper calendar right away. Data from jastipers who joined is kept, and the event can be reopened at any time.',
+  sendConfirmTitle: (brand: string | null) =>
+    `Send the invoice to ${brand ?? 'the jastiper'}?`,
+  sendConfirmBody: (p: {
+    submits: number
+    pcs: number
+    amount: string
+    bundles: number
+    saving: string | null
+    waiveSubmits: string | null
+  }) =>
+    `${p.submits} submissions · ${p.pcs} pcs · ${p.amount}${
+      p.bundles > 0
+        ? ` (including ${p.bundles} bundles${p.saving ? `, saving ${p.saving}` : ''})`
+        : ''
+    }. The jastiper will be notified. Items in these submissions cannot be cancelled while the invoice is active.${
+      p.waiveSubmits
+        ? ` Submission #${p.waiveSubmits} is still waiting for the jastiper’s decision on rejected bundle contents. By sending this invoice, those items are treated as not replaced and the jastiper can no longer send replacements.`
+        : ''
+    }`,
+  sending: 'Sending...',
+  revenue: {
+    totalBilled: 'Total invoiced',
+    totalRevenue: 'Total revenue',
+    summary: (pcs: number, count: number) => `${pcs} pcs · ${count} invoices`,
+    noneSent: 'No invoices sent yet',
+    paidShareLabel: 'Share of paid invoices',
+    paidShare: (pct: number) => `${pct}% paid`,
+    paid: 'Paid',
+    review: 'Check payment proof',
+    unpaid: 'Unpaid',
+    waitingApproval: 'Waiting for approval',
+    waitingValue: (pcs: number, submits: number) =>
+      `${pcs} pcs · ${submits} submissions`,
+  },
+  slot: {
+    title: 'Ordering slot',
+    intro:
+      'Jastipers build their orders from the catalog first, then send them when the slot opens. Sent orders are locked and queued in the order they were sent.',
+    opens: 'Slot opens (WIB)',
+    closes: 'Slot closes (WIB)',
+    closesAfterEvent:
+      'The slot closes after the event ends. Make sure this is intended.',
+    save: 'Save slot',
+    saved: 'Slot settings saved.',
+    queue: 'Jastiper queue',
+    submitted: 'Submitted',
+    draft: 'Draft',
+  },
+}
+
+const id: typeof en = {
+  title: 'Detail Event',
+  filterAll: 'Semua',
+  filterWaiting: 'Menunggu dicek',
+  filterReady: 'Siap ditagih',
+  filterBilled: 'Sudah ditagih',
+  filterReview: 'Review pembayaran',
+  filterLabel: 'Filter submit',
+  replacementTitle:
+    'Jastiper mengganti barang yang ditolak. Hanya barang penggantinya yang perlu dicek, dan submit ini dicek lebih dulu dari antrean biasa.',
+  replacementTag: 'Ada barang pengganti',
+  previewItem: 'Barang',
+  previewQty: 'Jumlah',
+  previewPrice: 'Harga',
+  previewSubtotal: 'Subtotal',
+  previewBundles: 'Paket',
+  previewSingles: 'Satuan',
+  previewSaving: 'Hemat paket',
+  previewTotal: 'Total',
+  viewInvoice: 'Lihat tagihan',
+  notSubmitted: (count) => `${count} jastiper belum submit`,
+  noName: 'Tanpa nama',
+  invoiceSent: 'Tagihan terkirim ke jastiper',
+  invoiceSendFailed: 'Gagal mengirim tagihan',
+  statusChangeFailed: 'Gagal mengubah status event',
+  barSummary: (submits, pcs) => `${submits} submit · ${pcs} pcs · `,
+  unitPriceTitle: 'Total kalau semua pcs ditagih harga satuan',
+  unitPrice: 'harga satuan',
+  bundleNoteStart: (count) =>
+    `${count} paket menurut aturan paket, dihitung dari semua pcs jastiper di tagihan ini`,
+  bundleNoteSaving: (amount) => `, hemat ${amount}`,
+  breakdown: (lines) => `Rincian tagihan (${lines} baris)`,
+  waiveWarning: (submits) =>
+    `Submit ke-${submits} masih menunggu keputusan jastiper untuk isi paket yang ditolak. Kalau tagihan dikirim, barang itu dianggap tidak diganti (tagih apa adanya).`,
+  bankMissingStart: 'Isi rekening pembayaran di ',
+  bankMissingLink: 'halaman Profil',
+  bankMissingEnd: ' dulu sebelum menagih jastiper.',
+  selectAllOfJastiper: 'Pilih semua submit jastiper ini',
+  sendInvoice: 'Kirim tagihan',
+  orderRecap: 'Rekap Orderan',
+  eventAnalysis: 'Analisa Event',
+  online: 'Online',
+  offline: 'Offline',
+  contentTabs: 'Isi event',
+  tabInfo: 'Info',
+  tabProducts: 'Produk',
+  tabJastiper: 'Jastiper',
+  editEvent: 'Ubah event',
+  reopen: 'Buka kembali',
+  endEvent: 'Akhiri event',
+  manageProducts: 'Kelola produk',
+  searchProduct: 'Cari nama produk',
+  noProducts: 'Belum ada produk yang dipilih untuk event ini.',
+  variantCount: (count) => `${count} varian`,
+  inactive: 'tidak aktif',
+  stock: 'stok',
+  soldOutCount: (count) => `${count} habis`,
+  noJastiper: 'Belum ada jastiper yang ikut event ini.',
+  searchJastiper: 'Cari nama jastiper',
+  noneSubmitted: 'Belum ada jastiper yang submit.',
+  noJastiperMatch: 'Tidak ada jastiper yang cocok.',
+  oneInvoiceOneJastiper: 'Satu tagihan untuk satu jastiper',
+  selectSubmission: (submitNo, brand) => `Pilih Submit ke-${submitNo} ${brand}`,
+  submittedAt: (time) => `Submit ${time}`,
+  rejectedTitle: 'Barang ditolak partner (stok kurang atau habis).',
+  pcsRejected: (count) => `${count} pcs ditolak`,
+  queueLine: (rank, submitNo, pcs) =>
+    `Urutan #${rank} · Submit ke-${submitNo} · ${pcs} pcs`,
+  joinedOn: (date) => `Ikut ${date}`,
+  call: (name) => `Telepon ${name}`,
+  eventInfo: 'Info event',
+  infoType: 'Tipe',
+  infoDate: 'Tanggal',
+  infoLocation: 'Lokasi',
+  infoJastiper: 'Jastiper',
+  infoJoined: (count) => `${count} bergabung`,
+  infoOrders: 'Pesanan',
+  infoPcsIn: (count) => `${count} pcs masuk`,
+  infoOrdersIn: (count) => `${count} masuk`,
+  manageProductsCount: (count) => `Kelola produk (${count})`,
+  colJastiper: 'Jastiper',
+  colSubmittedAt: 'Waktu submit',
+  colQueue: 'Urutan',
+  colSubmitNo: 'Submit ke',
+  colPcs: 'Pcs',
+  colRejected: 'Pcs ditolak',
+  colStatus: 'Status',
+  colJoinedAt: 'Tanggal ikut',
+  colWhatsapp: 'No. WhatsApp',
+  colOrders: 'Pesanan',
+  colAction: 'Aksi',
+  contact: 'Hubungi',
+  endConfirmTitle: 'Akhiri event ini?',
+  endConfirmBody:
+    'Event langsung hilang dari kalender jastiper. Data jastiper yang sudah ikut tetap tersimpan, dan event bisa dibuka kembali kapan saja.',
+  sendConfirmTitle: (brand) => `Kirim tagihan ke ${brand ?? 'jastiper'}?`,
+  sendConfirmBody: (p) =>
+    `${p.submits} submit · ${p.pcs} pcs · ${p.amount}${
+      p.bundles > 0
+        ? ` (termasuk ${p.bundles} paket${p.saving ? `, hemat ${p.saving}` : ''})`
+        : ''
+    }. Jastiper akan menerima notifikasi. Barang di submit ini tidak bisa dibatalkan selama tagihan aktif.${
+      p.waiveSubmits
+        ? ` Submit ke-${p.waiveSubmits} masih menunggu keputusan jastiper untuk isi paket yang ditolak. Dengan mengirim tagihan ini, barang itu dianggap tidak diganti dan jastiper tidak bisa mengirim penggantinya lagi.`
+        : ''
+    }`,
+  sending: 'Mengirim...',
+  revenue: {
+    totalBilled: 'Total ditagih',
+    totalRevenue: 'Total pendapatan',
+    summary: (pcs, count) => `${pcs} pcs · ${count} tagihan`,
+    noneSent: 'Belum ada tagihan terkirim',
+    paidShareLabel: 'Porsi tagihan lunas',
+    paidShare: (pct) => `${pct}% sudah lunas`,
+    paid: 'Lunas',
+    review: 'Cek bukti bayar',
+    unpaid: 'Belum dibayar',
+    waitingApproval: 'Menunggu persetujuan',
+    waitingValue: (pcs, submits) => `${pcs} pcs · ${submits} submit`,
+  },
+  slot: {
+    title: 'Slot pemesanan',
+    intro:
+      'Jastiper menyusun pesanan dari katalog dulu, lalu mengirimnya saat slot dibuka. Pesanan yang dikirim terkunci dan antreannya mengikuti urutan kirim.',
+    opens: 'Slot dibuka (WIB)',
+    closes: 'Slot ditutup (WIB)',
+    closesAfterEvent:
+      'Slot ditutup setelah event berakhir. Pastikan ini memang disengaja.',
+    save: 'Simpan slot',
+    saved: 'Pengaturan slot disimpan.',
+    queue: 'Antrean jastiper',
+    submitted: 'Pengajuan',
+    draft: 'Draft',
+  },
+}
+
+export default { en, id }

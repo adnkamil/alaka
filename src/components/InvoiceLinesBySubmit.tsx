@@ -1,6 +1,7 @@
 import { parseBundleLabel } from '../lib/invoice-rules'
 import { splitItemName } from '../lib/partner-item-label'
 import { formatRupiah } from '../lib/partner-product-rules'
+import { useOptionalPartnerI18n } from './PartnerI18n'
 
 type Line = {
   id: string
@@ -39,6 +40,7 @@ function ItemRow({
 }) {
   const { product, size, variation } = splitItemName(name)
   const soft = { color: 'var(--app-text-soft)' }
+  const iv = useOptionalPartnerI18n().t.invoice
   return (
     <div
       className={`flex items-baseline justify-between gap-3 py-2.5 pr-4 text-[13px] ${indent ? 'pl-9' : 'pl-4'} ${GRID}`}
@@ -53,7 +55,7 @@ function ItemRow({
         {/* Layar sempit: variasi dan ukuran di bawah nama. */}
         {(variation || size) && (
           <p className="text-[12px] sm:hidden" style={soft}>
-            {[variation, size && `Ukuran ${size}`].filter(Boolean).join(' · ')}
+            {[variation, size && iv.sizeOf(size)].filter(Boolean).join(' · ')}
           </p>
         )}
       </div>
@@ -86,17 +88,18 @@ export default function InvoiceLinesBySubmit({
   const head = {
     color: 'var(--pm-gold)',
   }
+  const iv = useOptionalPartnerI18n().t.invoice
   return (
     <div className="flex flex-col">
       <div
         className={`hidden px-4 py-2 text-[11px] font-semibold uppercase tracking-wide ${GRID}`}
         style={{ ...head, background: 'var(--pm-tint)' }}
       >
-        <span>Barang</span>
-        <span>Variasi</span>
-        <span>Ukuran</span>
-        <span className="text-right">Qty</span>
-        <span className="text-right">Jumlah</span>
+        <span>{iv.linesItem}</span>
+        <span>{iv.linesVariation}</span>
+        <span>{iv.linesSize}</span>
+        <span className="text-right">{iv.linesQty}</span>
+        <span className="text-right">{iv.linesAmount}</span>
       </div>
       {submitNos.map((no) => {
         const rows = lines.filter((l) => l.submitNo === no)
@@ -118,7 +121,7 @@ export default function InvoiceLinesBySubmit({
                 className="text-[12px] font-bold uppercase tracking-wide"
                 style={head}
               >
-                Submit #{no}
+                {iv.submitHeading(no)}
                 <span
                   className="ml-2 font-medium normal-case tracking-normal"
                   style={{ color: 'var(--app-text-soft)' }}
@@ -149,7 +152,7 @@ export default function InvoiceLinesBySubmit({
                             color: 'var(--app-accent)',
                           }}
                         >
-                          Paket
+                          {iv.bundleTag}
                         </span>
                         {parsed ? parsed.ruleName : l.label}
                         {l.qty > 1 && <span className="pm-num"> · {l.qty}×</span>}

@@ -18,6 +18,7 @@ import {
   markAllPartnerNotificationsRead,
 } from '../lib/partner-notification-functions'
 import { APP_TIME_ZONE } from '../lib/timezone'
+import { usePartnerI18n } from './PartnerI18n'
 import type { PartnerNotificationItem } from '../lib/partner-notification-functions'
 import type { LucideIcon } from 'lucide-react'
 
@@ -39,8 +40,8 @@ export const NOTIFICATION_KIND_ICON: Record<string, LucideIcon> = {
   topup_ditolak: Wallet,
 }
 
-export function formatNotificationTime(iso: string) {
-  return new Date(iso).toLocaleString('id-ID', {
+export function formatNotificationTime(iso: string, locale: string) {
+  return new Date(iso).toLocaleString(locale, {
     day: 'numeric',
     month: 'short',
     hour: '2-digit',
@@ -62,6 +63,7 @@ export default function PartnerNotificationBell() {
   const snapshotRef = useRef(false)
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const { t, intlLocale } = usePartnerI18n()
 
   const { data: unread } = useQuery(partnerUnreadNotificationsQuery)
   const count = unread?.count ?? 0
@@ -124,7 +126,9 @@ export default function PartnerNotificationBell() {
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label={
-          count > 0 ? `Notifikasi, ${count} belum dibaca` : 'Notifikasi'
+          count > 0
+            ? t.shell.notificationsUnread(count)
+            : t.shell.notifications
         }
         aria-expanded={open}
         aria-haspopup="dialog"
@@ -145,7 +149,7 @@ export default function PartnerNotificationBell() {
       {open && (
         <div
           role="dialog"
-          aria-label="Notifikasi"
+          aria-label={t.shell.notifications}
           className="app-card absolute right-0 top-[calc(100%+8px)] z-50 flex w-[360px] max-w-[calc(100vw-40px)] flex-col overflow-hidden"
           style={{ boxShadow: '0 12px 32px rgba(43,33,24,0.12)' }}
         >
@@ -153,7 +157,7 @@ export default function PartnerNotificationBell() {
             className="px-4 py-3 text-sm font-bold"
             style={{ borderBottom: '1px solid var(--app-border)' }}
           >
-            Notifikasi
+            {t.shell.notifications}
           </div>
 
           <div className="max-h-[360px] overflow-y-auto">
@@ -162,7 +166,7 @@ export default function PartnerNotificationBell() {
                 className="px-4 py-6 text-center text-sm"
                 style={{ color: 'var(--app-text-soft)' }}
               >
-                Memuat…
+                {t.shell.loading}
               </p>
             )}
             {items && preview.length === 0 && (
@@ -170,7 +174,7 @@ export default function PartnerNotificationBell() {
                 className="px-4 py-6 text-center text-sm"
                 style={{ color: 'var(--app-text-soft)' }}
               >
-                Belum ada notifikasi.
+                {t.shell.notificationsEmpty}
               </p>
             )}
             {preview.map((item) => {
@@ -206,7 +210,7 @@ export default function PartnerNotificationBell() {
                       className="block text-[11px]"
                       style={{ color: 'var(--app-text-mute)' }}
                     >
-                      {formatNotificationTime(item.createdAt)}
+                      {formatNotificationTime(item.createdAt, intlLocale)}
                     </span>
                   </span>
                   {item.link !== null && (
@@ -230,7 +234,7 @@ export default function PartnerNotificationBell() {
               borderTop: '1px solid var(--app-border)',
             }}
           >
-            Lihat semua
+            {t.shell.viewAll}
           </Link>
         </div>
       )}

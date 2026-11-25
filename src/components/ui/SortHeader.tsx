@@ -1,5 +1,6 @@
 import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react'
 import type { SortState } from '../../lib/table-sort'
+import { useUiText } from './ui-text'
 
 interface SortHeaderProps<TKey extends string> {
   label: string
@@ -26,6 +27,7 @@ export default function SortHeader<TKey extends string>({
   className = '',
 }: SortHeaderProps<TKey>) {
   const justify = align === 'right' ? 'justify-end' : 'justify-start'
+  const text = useUiText()
   if (!sortKey) {
     return (
       <span className={`flex ${justify} ${className}`} title={title}>
@@ -35,13 +37,13 @@ export default function SortHeader<TKey extends string>({
   }
   const active = sort?.key === sortKey
   const Icon = !active ? ChevronsUpDown : sort.dir === 'asc' ? ArrowUp : ArrowDown
-  const next = !active ? 'naik' : sort.dir === 'asc' ? 'turun' : 'normal'
+  const next = !active ? 'asc' : sort.dir === 'asc' ? 'desc' : 'none'
   return (
     <button
       type="button"
       onClick={() => onSort(sortKey)}
-      aria-label={`Urutkan ${label} (${next})`}
-      title={title ?? `Urutkan ${label}`}
+      aria-label={text.sortByNext(label, next)}
+      title={title ?? text.sortBy(label)}
       className={`inline-flex w-full items-center gap-1 ${justify} ${className}`}
       style={{
         font: 'inherit',

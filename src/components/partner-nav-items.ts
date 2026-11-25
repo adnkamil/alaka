@@ -8,17 +8,18 @@ export interface PartnerTabDef {
     | '/partner/paket'
     | '/partner/event'
     | '/partner/tagihan'
-  label: string
+  /** Kunci label di kamus `t.shell.nav`. */
+  labelKey: 'dashboard' | 'products' | 'bundling' | 'event' | 'invoices'
   icon: LucideIcon
 }
 
 /** Menu utama Partner Portal; dipakai bottom nav (mobile) & sidebar (desktop). */
 export const PARTNER_TABS: Array<PartnerTabDef> = [
-  { to: '/partner', label: 'Dashboard', icon: Home },
-  { to: '/partner/katalog', label: 'Products', icon: Package },
-  { to: '/partner/paket', label: 'Bundling', icon: Layers },
-  { to: '/partner/event', label: 'Event', icon: CalendarDays },
-  { to: '/partner/tagihan', label: 'Invoices', icon: Receipt },
+  { to: '/partner', labelKey: 'dashboard', icon: Home },
+  { to: '/partner/katalog', labelKey: 'products', icon: Package },
+  { to: '/partner/paket', labelKey: 'bundling', icon: Layers },
+  { to: '/partner/event', labelKey: 'event', icon: CalendarDays },
+  { to: '/partner/tagihan', labelKey: 'invoices', icon: Receipt },
 ]
 
 /**
