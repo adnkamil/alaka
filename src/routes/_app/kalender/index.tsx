@@ -148,7 +148,7 @@ function EventPage() {
           <SlidersHorizontal size={20} />
           {activeCount > 0 && (
             <span
-              className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] font-bold text-white"
+              className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] font-bold text-[var(--app-on-solid)]"
               style={{ background: 'var(--app-accent)' }}
             >
               {activeCount}

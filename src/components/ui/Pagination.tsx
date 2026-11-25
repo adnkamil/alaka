@@ -5,6 +5,7 @@ import {
   pageCount,
   parsePageInput,
 } from '../../lib/pagination'
+import { useUiText } from './ui-text'
 
 interface PaginationProps {
   page: number
@@ -39,6 +40,7 @@ export default function Pagination({
   // Isian sementara; null = tampilkan nomor halaman yang aktif.
   const [pageDraft, setPageDraft] = useState<string | null>(null)
   const [jumpDraft, setJumpDraft] = useState('')
+  const ui = useUiText()
 
   // Tetap tampil selama ada data, supaya tampilannya seragam di semua tabel.
   if (total === 0) return null
@@ -63,7 +65,7 @@ export default function Pagination({
           <select
             value={pageSize}
             onChange={(e) => onPageSizeChange(Number(e.target.value))}
-            aria-label="Jumlah data per halaman"
+            aria-label={ui.perPageLabel}
             className="h-9 appearance-none rounded-lg border pl-2.5 pr-8 text-sm font-medium outline-none focus:border-[var(--app-accent)]"
             style={boxStyle}
           >
@@ -80,7 +82,7 @@ export default function Pagination({
             style={{ color: 'var(--app-text-soft)' }}
           />
         </span>
-        per halaman
+        {ui.perPage}
       </label>
 
       <div className="flex items-center gap-2">
@@ -90,13 +92,13 @@ export default function Pagination({
           style={boxStyle}
           disabled={page <= 1}
           onClick={() => onPageChange(page - 1)}
-          aria-label="Halaman sebelumnya"
+          aria-label={ui.prevPage}
         >
           <ChevronLeft size={18} />
         </button>
         <input
           inputMode="numeric"
-          aria-label="Halaman saat ini"
+          aria-label={ui.currentPage}
           value={pageDraft ?? String(page)}
           onChange={(e) => setPageDraft(e.target.value)}
           onFocus={(e) => e.target.select()}
@@ -115,7 +117,7 @@ export default function Pagination({
           style={boxStyle}
         />
         <span className="whitespace-nowrap">
-          dari {totalPages.toLocaleString('id-ID')}
+          {ui.ofPages(totalPages.toLocaleString(ui.numberLocale))}
         </span>
         <button
           type="button"
@@ -123,17 +125,17 @@ export default function Pagination({
           style={boxStyle}
           disabled={page >= totalPages}
           onClick={() => onPageChange(page + 1)}
-          aria-label="Halaman berikutnya"
+          aria-label={ui.nextPage}
         >
           <ChevronRight size={18} />
         </button>
       </div>
 
       <label className="hidden items-center gap-2 sm:flex">
-        Halaman
+        {ui.pageJump}
         <input
           inputMode="numeric"
-          aria-label="Loncat ke halaman"
+          aria-label={ui.pageJumpLabel}
           value={jumpDraft}
           onChange={(e) => setJumpDraft(e.target.value)}
           onKeyDown={(e) => {

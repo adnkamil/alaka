@@ -19,12 +19,13 @@ import type { PartnerBankInfo } from '../lib/invoice-functions'
 import { formatInvoiceNumber } from '../lib/invoice-rules'
 import { fileToPaymentProofBlob } from '../lib/payment-proof-image'
 import { formatRupiah } from '../lib/partner-product-rules'
+import { useOptionalPartnerI18n } from './PartnerI18n'
 
-function blobToDataUrl(blob: Blob): Promise<string> {
+function blobToDataUrl(blob: Blob, errorMessage: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => resolve(reader.result as string)
-    reader.onerror = () => reject(new Error('Gagal membaca file'))
+    reader.onerror = () => reject(new Error(errorMessage))
     reader.readAsDataURL(blob)
   })
 }
@@ -51,6 +52,9 @@ export default function InvoiceDetailModal({
   onChanged?: () => void
 }) {
   const queryClient = useQueryClient()
+  const { t, intlLocale } = useOptionalPartnerI18n()
+  const iv = t.invoice
+  const when = (date: Date | string) => formatWibDateTime(date, intlLocale)
   const detail = useQuery({
     queryKey: ['invoice-detail', mode, invoiceId],
     queryFn: () =>
@@ -83,12 +87,12 @@ export default function InvoiceDetailModal({
       await afterChange()
       onClose()
     },
-    onError: fail('Gagal membatalkan tagihan'),
+    onError: fail(iv.cancelFailed),
   })
   const confirmMutation = useMutation({
     mutationFn: () => confirmInvoicePaid({ data: { invoiceId } }),
     onSuccess: afterChange,
-    onError: fail('Gagal menandai lunas'),
+    onError: fail(iv.markPaidFailed),
   })
   const rejectMutation = useMutation({
     mutationFn: () =>
@@ -96,21 +100,24 @@ export default function InvoiceDetailModal({
         data: { invoiceId, reason: reason.trim() || undefined },
       }),
     onSuccess: afterChange,
-    onError: fail('Gagal menolak bukti bayar'),
+    onError: fail(iv.rejectFailed),
   })
   const claimMutation = useMutation({
     mutationFn: async (file: File) => {
       if (!file.type.startsWith('image/')) {
-        throw new Error('File yang dipilih bukan gambar.')
+        throw new Error(iv.notImage)
       }
       // Gambar besar diperkecil otomatis; yang kecil dikirim apa adanya.
       const blob = await fileToPaymentProofBlob(file)
       return claimInvoicePayment({
-        data: { invoiceId, proofImage: await blobToDataUrl(blob) },
+        data: {
+          invoiceId,
+          proofImage: await blobToDataUrl(blob, iv.readFileFailed),
+        },
       })
     },
     onSuccess: afterChange,
-    onError: fail('Gagal mengirim bukti bayar'),
+    onError: fail(iv.claimFailed),
   })
 
   const busy =
@@ -157,7 +164,7 @@ export default function InvoiceDetailModal({
           disabled={busy}
           className="absolute right-4 top-4 rounded-full p-1 disabled:opacity-30"
           style={{ color: 'var(--app-text-mute)' }}
-          aria-label="Tutup"
+          aria-label={iv.close}
         >
           <X size={18} />
         </button>
@@ -165,8 +172,8 @@ export default function InvoiceDetailModal({
         {!d ? (
           <p className="p-6 text-sm">
             {detail.isError
-              ? getErrorMessage(detail.error, 'Gagal memuat tagihan')
-              : 'Memuat…'}
+              ? getErrorMessage(detail.error, iv.loadFailed)
+              : t.common.loading}
           </p>
         ) : (
           <>
@@ -176,22 +183,23 @@ export default function InvoiceDetailModal({
                 <InvoiceStatusBadge status={d.status} />
               </div>
               <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
-                {d.brandName} · Submit ke-{d.submitNos.join(', ')} · dikirim {formatWibDateTime(d.sentAt)}
+                {d.brandName} · {iv.submitNosInline(d.submitNos.join(', '))} ·{' '}
+                {iv.sentAtLower(when(d.sentAt))}
               </p>
               {d.status === 'dibatalkan' && (
                 <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
-                  Dibatalkan {d.cancelledAt ? formatWibDateTime(d.cancelledAt) : ''}
+                  {iv.cancelledAt(d.cancelledAt ? when(d.cancelledAt) : '')}
                   {d.cancelReason ? ` · ${d.cancelReason}` : ''}
                 </p>
               )}
               {d.status === 'menunggu_review' && d.paidClaimedAt && (
                 <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
-                  Jastiper mengaku sudah bayar {formatWibDateTime(d.paidClaimedAt)}
+                  {iv.claimedAt(when(d.paidClaimedAt))}
                 </p>
               )}
               {d.status === 'lunas' && d.paidConfirmedAt && (
                 <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
-                  Lunas {formatWibDateTime(d.paidConfirmedAt)}
+                  {iv.paidAt(when(d.paidConfirmedAt))}
                 </p>
               )}
             </div>
@@ -217,7 +225,7 @@ export default function InvoiceDetailModal({
               {d.hasProof && (
                 <PaymentProofViewer
                   src={proofUrl}
-                  label="Lihat bukti bayar"
+                  label={iv.viewProof}
                   className="flex items-center gap-1.5 text-xs font-semibold"
                 />
               )}
@@ -225,7 +233,7 @@ export default function InvoiceDetailModal({
               {/* Jastiper: bukti bayar ditolak partner. */}
               {!isPartner && d.status === 'ditagih' && d.paymentRejectReason && (
                 <p className="rounded-lg px-3 py-2 text-xs" style={{ background: 'var(--app-danger-soft, #fdecea)', color: 'var(--app-danger)' }}>
-                  Bukti bayar ditolak partner: {d.paymentRejectReason}
+                  {iv.proofRejectedByPartner(d.paymentRejectReason)}
                 </p>
               )}
 
@@ -254,13 +262,13 @@ export default function InvoiceDetailModal({
                     className="app-btn-primary self-end"
                     style={{ minHeight: 40, fontSize: 13 }}
                   >
-                    {claimMutation.isPending ? 'Mengirim…' : 'Sudah bayar · unggah bukti'}
+                    {claimMutation.isPending ? iv.sendingProof : iv.paidUpload}
                   </button>
                 </div>
               )}
               {!isPartner && d.status === 'menunggu_review' && (
                 <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
-                  Bukti bayar sudah dikirim. Menunggu partner mengecek.
+                  {iv.proofSent}
                 </p>
               )}
 
@@ -272,7 +280,7 @@ export default function InvoiceDetailModal({
                   className="app-btn-outline self-end"
                   style={{ color: 'var(--app-danger)', minHeight: 40, fontSize: 13 }}
                 >
-                  Batalkan tagihan
+                  {iv.cancelInvoice}
                 </button>
               )}
 
@@ -286,7 +294,7 @@ export default function InvoiceDetailModal({
                     className="app-btn-outline"
                     style={{ color: 'var(--app-danger)', minHeight: 40, fontSize: 13 }}
                   >
-                    Tolak bukti
+                    {iv.rejectProof}
                   </button>
                   <button
                     type="button"
@@ -295,7 +303,7 @@ export default function InvoiceDetailModal({
                     className="app-btn-primary"
                     style={{ minHeight: 40, fontSize: 13 }}
                   >
-                    {confirmMutation.isPending ? 'Menyimpan…' : 'Tandai lunas'}
+                    {confirmMutation.isPending ? iv.saving : iv.markPaid}
                   </button>
                 </div>
               )}
@@ -306,17 +314,15 @@ export default function InvoiceDetailModal({
               {isPartner && step !== null && (
                 <div className="flex flex-col gap-2">
                   <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
-                    {step === 'cancel'
-                      ? 'Submit di tagihan ini kembali ke "Siap ditagih" dan barangnya bisa dibatalkan lagi. Jastiper menerima notifikasi.'
-                      : 'Tagihan kembali ke "Ditagih" dan jastiper perlu mengirim bukti bayar lagi. Jastiper menerima notifikasi.'}
+                    {step === 'cancel' ? iv.cancelExplain : iv.rejectExplain}
                   </p>
                   <input
                     type="text"
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
                     maxLength={500}
-                    placeholder="Alasan (opsional)"
-                    aria-label="Alasan"
+                    placeholder={iv.reasonPlaceholder}
+                    aria-label={iv.reasonLabel}
                     className="app-input"
                     style={{ height: 42, borderRadius: 12 }}
                   />
@@ -332,7 +338,7 @@ export default function InvoiceDetailModal({
                       className="app-btn-outline"
                       style={{ minHeight: 40, fontSize: 13 }}
                     >
-                      Kembali
+                      {iv.back}
                     </button>
                     <button
                       type="button"
@@ -342,14 +348,14 @@ export default function InvoiceDetailModal({
                           ? cancelMutation.mutate()
                           : rejectMutation.mutate()
                       }
-                      className="rounded-xl px-4 py-2 text-[13px] font-semibold text-white disabled:opacity-50"
+                      className="rounded-xl px-4 py-2 text-[13px] font-semibold text-[var(--app-on-solid)] disabled:opacity-50"
                       style={{ background: 'var(--app-danger)' }}
                     >
                       {busy
-                        ? 'Memproses…'
+                        ? iv.processing
                         : step === 'cancel'
-                          ? 'Ya, batalkan tagihan'
-                          : 'Ya, tolak bukti'}
+                          ? iv.confirmCancel
+                          : iv.confirmReject}
                     </button>
                   </div>
                 </div>
@@ -373,15 +379,14 @@ export function BankInfo({
   totalAmount: number
 }) {
   const [copied, setCopied] = useState(false)
+  const iv = useOptionalPartnerI18n().t.invoice
   if (!bank) {
     return (
       <p
         className="rounded-lg px-3 py-2 text-xs"
         style={{ background: 'var(--pm-tint)', color: 'var(--app-text-soft)' }}
       >
-        {forPartner
-          ? 'Rekening pembayaran belum diisi, jadi jastiper belum tahu ke mana harus transfer. Isi di halaman Profil.'
-          : 'Partner belum mengisi rekening pembayaran. Hubungi partner untuk menanyakan tujuan transfer.'}
+        {forPartner ? iv.bankMissingPartner : iv.bankMissingJastiper}
       </p>
     )
   }
@@ -400,7 +405,7 @@ export function BankInfo({
       style={{ borderColor: 'var(--app-border)', background: 'var(--pm-tint)' }}
     >
       <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--pm-gold)' }}>
-        {forPartner ? 'Rekening yang dilihat jastiper' : 'Transfer ke'}
+        {forPartner ? iv.bankSeenByJastiper : iv.transferTo}
       </p>
       <p className="font-semibold">{bank.bankName}</p>
       <div className="flex items-center justify-between gap-3">
@@ -411,13 +416,13 @@ export function BankInfo({
           className="text-xs font-semibold"
           style={{ color: 'var(--app-accent)' }}
         >
-          {copied ? 'Tersalin' : 'Salin'}
+          {copied ? iv.copied : iv.copy}
         </button>
       </div>
-      <p style={{ color: 'var(--app-text-soft)' }}>a.n. {bank.accountName}</p>
+      <p style={{ color: 'var(--app-text-soft)' }}>{iv.accountHolder(bank.accountName)}</p>
       {!forPartner && (
         <p className="pm-num text-xs" style={{ color: 'var(--app-text-soft)' }}>
-          Jumlah: {formatRupiah(totalAmount)}
+          {iv.amount(formatRupiah(totalAmount))}
         </p>
       )}
     </div>

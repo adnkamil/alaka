@@ -98,11 +98,11 @@ describe('buildEventAnalytics', () => {
       input({
         invoices: [
           { brandId: 'b1', status: 'lunas', amount: 100, pcs: 1 },
-          { brandId: 'b1', status: 'ditagih', amount: 50, pcs: 1 },
+          { brandId: 'b1', status: 'ditagih', amount: 50, pcs: 2 },
         ],
       }),
     )
-    assert.deepEqual(out.billed, { total: 150, lunas: 100, count: 2 })
+    assert.deepEqual(out.billed, { total: 150, lunas: 100, count: 2, pcs: 3 })
     const a = out.jastiperRanking.find((j) => j.brandId === 'b1')!
     assert.equal(a.billedAmount, 150)
     assert.equal(a.paidAmount, 100)

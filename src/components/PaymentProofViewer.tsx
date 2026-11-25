@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Image as ImageIcon, X } from 'lucide-react'
 import { useBackToClose } from '../lib/back-to-close'
+import { useOptionalPartnerI18n } from './PartnerI18n'
 
 interface PaymentProofViewerProps {
   /** Bukti transfer sebagai data URL (disimpan di `subscriptions.payment_proof_image`). */
@@ -18,10 +19,11 @@ interface PaymentProofViewerProps {
  */
 export default function PaymentProofViewer({
   src,
-  label = 'Lihat bukti transfer',
+  label,
   className = 'mt-3 flex items-center gap-1.5 text-xs font-semibold',
 }: PaymentProofViewerProps) {
   const [open, setOpen] = useState(false)
+  const iv = useOptionalPartnerI18n().t.invoice
 
   return (
     <>
@@ -32,7 +34,7 @@ export default function PaymentProofViewer({
         style={{ color: 'var(--app-accent)' }}
       >
         <ImageIcon size={14} />
-        {label}
+        {label ?? iv.proofView}
       </button>
       {open && <ProofLightbox src={src} onClose={() => setOpen(false)} />}
     </>
@@ -48,6 +50,7 @@ function ProofLightbox({
 }) {
   // Tombol back HP/browser menutup preview, bukan meninggalkan halaman.
   useBackToClose(true, onClose)
+  const iv = useOptionalPartnerI18n().t.invoice
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
@@ -59,20 +62,20 @@ function ProofLightbox({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Bukti transfer"
+        aria-label={iv.proofTitle}
         className="relative z-10 flex max-h-[90vh] w-full max-w-[420px] flex-col items-center"
       >
         <button
           type="button"
           onClick={onClose}
           className="mb-2 self-end rounded-full bg-black/60 p-2 text-white"
-          aria-label="Tutup"
+          aria-label={iv.close}
         >
           <X size={18} />
         </button>
         <img
           src={src}
-          alt="Bukti transfer"
+          alt={iv.proofTitle}
           className="max-h-[80vh] w-full rounded-xl bg-white object-contain"
         />
       </div>

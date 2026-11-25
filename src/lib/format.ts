@@ -82,16 +82,19 @@ export function openWhatsApp(phone: string, message: string) {
  * Ini cuma validasi FORMAT, bukan cek apakah nomornya beneran aktif/punya WA.
  */
 /**
- * Tanggal bahasa Indonesia dengan nama bulan singkat, mis. "12 Agu 2026". Terima `Date`,
+ * Tanggal (default bahasa Indonesia; `locale` bisa diganti) dengan nama bulan singkat, mis. "12 Agu 2026". Terima `Date`,
  * string ISO (hasil serialisasi server function), atau null — null jadi string
  * kosong supaya aman dipakai langsung di JSX.
  *
  * Zona waktu dipatok ke `APP_TIME_ZONE` (WIB), bukan zona perangkat: tanggalnya
  * tanggal bisnis, jadi harus sama walau HP user lagi di luar negeri.
  */
-export function formatDate(date: Date | string | null | undefined) {
+export function formatDate(
+  date: Date | string | null | undefined,
+  locale = 'id-ID',
+) {
   if (!date) return ''
-  return new Date(date).toLocaleDateString('id-ID', {
+  return new Date(date).toLocaleDateString(locale, {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
@@ -103,11 +106,14 @@ export function formatDate(date: Date | string | null | undefined) {
  * Tanggal + jam bahasa Indonesia, mis. "12 Agu 2026, 14.35".
  * Zona waktu dipatok ke `APP_TIME_ZONE` (WIB), sama seperti `formatDate`.
  */
-export function formatDateTime(date: Date | string | null | undefined) {
+export function formatDateTime(
+  date: Date | string | null | undefined,
+  locale = 'id-ID',
+) {
   if (!date) return ''
   const d = new Date(date)
-  const day = formatDate(d)
-  const time = d.toLocaleTimeString('id-ID', {
+  const day = formatDate(d, locale)
+  const time = d.toLocaleTimeString(locale, {
     hour: '2-digit',
     minute: '2-digit',
     hourCycle: 'h23',

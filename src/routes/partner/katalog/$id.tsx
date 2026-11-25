@@ -12,6 +12,7 @@ import PartnerVariantEditor, {
 import PartnerProductRuleCard, {
   type PartnerProductRuleCardHandle,
 } from '../../../components/PartnerProductRuleCard'
+import { usePartnerT } from '../../../components/PartnerI18n'
 import { getErrorMessage } from '../../../lib/error-message'
 import { updateOwnPartnerProduct } from '../../../lib/partner-product-functions'
 import { partnerProductPhotoUrl } from '../../../lib/partner-product-rules'
@@ -27,6 +28,7 @@ function EditPartnerProductPage() {
   const { id } = Route.useParams()
   const { data: product } = useSuspenseQuery(partnerProductQuery(id))
   const queryClient = useQueryClient()
+  const t = usePartnerT()
   const productRef = useRef<PartnerProductFormHandle>(null)
   const variantRef = useRef<PartnerVariantEditorHandle>(null)
   const ruleRef = useRef<PartnerProductRuleCardHandle>(null)
@@ -62,11 +64,11 @@ function EditPartnerProductPage() {
       await productRef.current?.save()
       await variantRef.current?.save()
       await ruleRef.current?.save()
-      setStatus({ ok: true, text: 'Perubahan tersimpan.' })
+      setStatus({ ok: true, text: t.catalog.changesSaved })
     } catch (err) {
       setStatus({
         ok: false,
-        text: getErrorMessage(err, 'Gagal menyimpan perubahan'),
+        text: getErrorMessage(err, t.catalog.changesFailed),
       })
     } finally {
       setSaving(false)
@@ -80,7 +82,7 @@ function EditPartnerProductPage() {
         className="app-btn-outline no-underline"
         style={{ minHeight: 44, fontSize: 14 }}
       >
-        Batal
+        {t.common.cancel}
       </Link>
       <button
         type="button"
@@ -89,7 +91,7 @@ function EditPartnerProductPage() {
         className="app-btn-primary"
         style={{ minHeight: 44, fontSize: 14 }}
       >
-        {saving ? 'Menyimpan...' : 'Simpan perubahan'}
+        {saving ? t.common.saving : t.common.saveChanges}
       </button>
     </div>
   )
@@ -99,13 +101,15 @@ function EditPartnerProductPage() {
       <header className="flex flex-wrap items-center gap-3 lg:hidden">
         <Link
           to="/partner/katalog"
-          aria-label="Kembali"
+          aria-label={t.common.back}
           className="-ml-1 flex size-8 items-center justify-center"
           style={{ color: 'var(--app-text)' }}
         >
           <ArrowLeft size={22} />
         </Link>
-        <h1 className="pm-display text-[22px] leading-tight">Ubah Produk</h1>
+        <h1 className="pm-display text-[22px] leading-tight">
+          {t.catalog.editTitle}
+        </h1>
         {actions}
       </header>
 
@@ -113,7 +117,7 @@ function EditPartnerProductPage() {
         <p
           role="status"
           className="text-sm"
-          style={{ color: status.ok ? '#3f7d58' : 'var(--app-danger)' }}
+          style={{ color: status.ok ? 'var(--app-success)' : 'var(--app-danger)' }}
         >
           {status.text}
         </p>
@@ -129,9 +133,9 @@ function EditPartnerProductPage() {
           isActive: product.isActive,
           photoUrl: partnerProductPhotoUrl(product.id, product.photoUpdatedAt),
         }}
-        title="Ubah Produk"
-        breadcrumb="Ubah produk"
-        submitLabel="Simpan perubahan"
+        title={t.catalog.editTitle}
+        breadcrumb={t.catalog.editCrumb}
+        submitLabel={t.common.saveChanges}
         onSubmit={handleProductSubmit}
         headerActions={actions}
         hidePrice

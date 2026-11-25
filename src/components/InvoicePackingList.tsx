@@ -5,6 +5,7 @@ import { formatWibDateTime } from '../lib/event-slot'
 import { splitItemName } from '../lib/partner-item-label'
 import { toLocalPhoneNumber } from '../lib/format'
 import type { InvoiceDetail } from '../lib/invoice-functions'
+import { useOptionalPartnerI18n } from './PartnerI18n'
 
 /** Kolom: centang | Barang | Variasi | Ukuran | Pcs (kolom tengah hanya di layar lebar). */
 const COLS = 'sm:grid-cols-[18px_minmax(0,1fr)_140px_72px_72px] sm:gap-3'
@@ -49,6 +50,7 @@ export default function InvoicePackingList({
   const items = useMemo(() => buildPackingList(invoice.lines), [invoice.lines])
   const totalPcs = items.reduce((n, i) => n + i.qty, 0)
   const { checked, toggle } = useChecked(invoice.id)
+  const iv = useOptionalPartnerI18n().t.invoice
   const donePcs = items
     .filter((i) => checked.has(i.name))
     .reduce((n, i) => n + i.qty, 0)
@@ -62,7 +64,7 @@ export default function InvoicePackingList({
         style={{ background: 'var(--pm-tint)' }}
       >
         <p className="pm-num text-[13px] font-semibold">
-          Diambil {donePcs} / {totalPcs} pcs
+          {iv.picked(donePcs, totalPcs)}
         </p>
         <button
           type="button"
@@ -71,19 +73,19 @@ export default function InvoicePackingList({
           style={{ minHeight: 36, fontSize: 12 }}
         >
           <Printer size={14} />
-          Cetak
+          {iv.printShort}
         </button>
       </div>
 
       <div
         className={`hidden px-4 py-2 text-[11px] font-semibold uppercase tracking-wide sm:grid ${COLS}`}
-        style={{ color: 'var(--pm-gold)', background: 'var(--pm-tint)' }}
+        style={{ color: 'var(--pm-gold-text)', background: 'var(--pm-tint)' }}
       >
         <span />
-        <span>Barang</span>
-        <span>Variasi</span>
-        <span>Ukuran</span>
-        <span className="text-right">Pcs</span>
+        <span>{iv.packingItem}</span>
+        <span>{iv.packingVariation}</span>
+        <span>{iv.packingSize}</span>
+        <span className="text-right">{iv.packingPcs}</span>
       </div>
       <ul>
         {items.map((item) => {
@@ -101,7 +103,7 @@ export default function InvoicePackingList({
               }}
             >
               <label
-                className={`flex cursor-pointer items-center gap-3 px-4 py-3 text-[14px] sm:grid ${COLS}`}
+                className={`flex cursor-pointer items-center gap-3 px-4 py-3 text-sm sm:grid ${COLS}`}
               >
                 <input
                   type="checkbox"
@@ -113,14 +115,14 @@ export default function InvoicePackingList({
                   {product}
                   {/* Layar sempit: variasi dan ukuran di bawah nama. */}
                   {(variation || size) && (
-                    <span className="block text-[12px] sm:hidden" style={soft}>
-                      {[variation, size && `Ukuran ${size}`].filter(Boolean).join(' · ')}
+                    <span className="block text-xs sm:hidden" style={soft}>
+                      {[variation, size && iv.sizeOf(size)].filter(Boolean).join(' · ')}
                     </span>
                   )}
                 </span>
                 <span className="hidden sm:block">{variation ?? '–'}</span>
                 <span className="hidden sm:block">{size ?? '–'}</span>
-                <span className="pm-num whitespace-nowrap text-right text-[15px] font-bold">
+                <span className="pm-num whitespace-nowrap text-right text-base font-bold">
                   {item.qty} pcs
                 </span>
               </label>
@@ -134,9 +136,9 @@ export default function InvoicePackingList({
         style={{ borderColor: 'var(--app-border)' }}
       >
         <span className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
-          Total · {items.length} jenis item
+          {iv.packingTotal(items.length)}
         </span>
-        <span className="pm-num text-lg font-bold">{totalPcs} pcs</span>
+        <span className="pm-num text-base font-bold">{totalPcs} pcs</span>
       </div>
     </section>
     </>
@@ -158,33 +160,40 @@ function PackingSheet({
   totalPcs: number
   checked: Set<string>
 }) {
+  const { t, intlLocale } = useOptionalPartnerI18n()
+  const iv = t.invoice
   return (
     <article className="inv-sheet inv-sheet--packing hidden print:block">
       <header className="inv-head">
         <div>
-          <p className="inv-doc">DAFTAR PACKING</p>
+          <p className="inv-doc">{iv.packingDoc}</p>
           <p className="inv-number">{formatInvoiceNumber(invoice.number)}</p>
         </div>
         <div className="inv-title">
           <p className="inv-strong">{invoice.partnerName}</p>
-          <p className="inv-muted">Dicetak {formatWibDateTime(new Date())}</p>
+          <p className="inv-muted">
+            {iv.printedAt(formatWibDateTime(new Date(), intlLocale))}
+          </p>
         </div>
       </header>
 
       <section className="inv-boxes">
         <div className="inv-box">
-          <p className="inv-label">Kirim ke</p>
+          <p className="inv-label">{iv.shipTo}</p>
           <p className="inv-box-title">{invoice.brandName}</p>
           {invoice.brandWa && (
             <p className="inv-muted">WA: {toLocalPhoneNumber(invoice.brandWa)}</p>
           )}
         </div>
         <div className="inv-box">
-          <p className="inv-label">Event</p>
+          <p className="inv-label">{iv.docEvent}</p>
           <p className="inv-box-title">{invoice.eventName}</p>
           <p className="inv-muted">
-            Submit {invoice.submitNos.map((n) => `#${n}`).join(', ')} ·{' '}
-            {items.length} jenis · {totalPcs} pcs
+            {iv.packingSummary(
+              invoice.submitNos.map((n) => `#${n}`).join(', '),
+              items.length,
+              totalPcs,
+            )}
           </p>
         </div>
       </section>
@@ -192,11 +201,11 @@ function PackingSheet({
       <table className="inv-table inv-table--packing">
         <thead>
           <tr>
-            <th className="inv-c-check">Ok</th>
-            <th>Barang</th>
-            <th className="inv-c-opt">Variasi</th>
-            <th className="inv-c-opt">Ukuran</th>
-            <th className="inv-c-qty">Pcs</th>
+            <th className="inv-c-check">{iv.packingOk}</th>
+            <th>{iv.packingItem}</th>
+            <th className="inv-c-opt">{iv.packingVariation}</th>
+            <th className="inv-c-opt">{iv.packingSize}</th>
+            <th className="inv-c-qty">{iv.packingPcs}</th>
           </tr>
         </thead>
         <tbody>
@@ -218,7 +227,7 @@ function PackingSheet({
         <tfoot>
           <tr>
             <td colSpan={4} className="inv-strong">
-              Total
+              {iv.packingTotalRow}
             </td>
             <td className="inv-c-qty inv-qty-big">{totalPcs}</td>
           </tr>
@@ -227,10 +236,10 @@ function PackingSheet({
 
       <section className="inv-signs">
         <div>
-          <span>Disiapkan oleh</span>
+          <span>{iv.preparedBy}</span>
         </div>
         <div>
-          <span>Dicek oleh</span>
+          <span>{iv.checkedBy}</span>
         </div>
       </section>
     </article>

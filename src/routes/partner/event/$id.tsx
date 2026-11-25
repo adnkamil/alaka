@@ -37,14 +37,10 @@ import { getPartnerSubmitList } from '../../../lib/partner-submit-list'
 import { getPartnerSlotQueue } from '../../../lib/partner-slot-functions'
 import PartnerEventStatusBadge from '../../../components/PartnerEventStatusBadge'
 import ConfirmModal from '../../../components/ui/ConfirmModal'
+import { usePartnerI18n, usePartnerT } from '../../../components/PartnerI18n'
 import Toast from '../../../components/ui/Toast'
-import { formatDateRange } from '../../../lib/calendar'
 import { displayBundleLabel, displayItemName } from '../../../lib/partner-item-label'
-import {
-  buildWhatsAppLink,
-  formatDate,
-  formatPhoneNumber,
-} from '../../../lib/format'
+import { buildWhatsAppLink, formatPhoneNumber } from '../../../lib/format'
 import { getErrorMessage } from '../../../lib/error-message'
 import { setOwnPartnerEventEnded } from '../../../lib/partner-event-functions'
 import { getPartnerEventRevenue } from '../../../lib/partner-jastiper-detail'
@@ -81,7 +77,7 @@ export const Route = createFileRoute('/partner/event/$id')({
     search: Record<string, unknown>,
   ): { tab?: Tab; filter?: SubmitFilter } => ({
     tab: TABS.find((t) => t === search.tab),
-    filter: SUBMIT_FILTERS.find((f) => f.key === search.filter)?.key,
+    filter: SUBMIT_FILTERS.find((f) => f === search.filter),
   }),
   component: PartnerEventDetailPage,
 })
@@ -116,12 +112,12 @@ function initialsOf(name: string) {
 
 type SubmitFilter = 'semua' | 'menunggu' | 'siap' | 'ditagih' | 'review'
 
-const SUBMIT_FILTERS: Array<{ key: SubmitFilter; label: string }> = [
-  { key: 'semua', label: 'Semua' },
-  { key: 'menunggu', label: 'Menunggu dicek' },
-  { key: 'siap', label: 'Siap ditagih' },
-  { key: 'ditagih', label: 'Sudah ditagih' },
-  { key: 'review', label: 'Review pembayaran' },
+const SUBMIT_FILTERS: Array<SubmitFilter> = [
+  'semua',
+  'menunggu',
+  'siap',
+  'ditagih',
+  'review',
 ]
 
 /** Filter submit → filter status halaman Rekap Orderan. */
@@ -143,14 +139,15 @@ function isBillable(row: PartnerSubmitRow) {
 
 /** Penanda submit yang dibuka lagi karena ada barang pengganti: didahulukan di antrean cek. */
 function ReplacementTag({ row }: { row: PartnerSubmitRow }) {
+  const t = usePartnerT()
   if (!row.reopened) return null
   return (
     <span
       className="app-badge"
-      title="Jastiper mengganti barang yang ditolak. Hanya barang penggantinya yang perlu dicek, dan submit ini dicek lebih dulu dari antrean biasa."
-      style={{ background: 'var(--app-accent-soft)', color: '#9c463b' }}
+      title={t.eventDetail.replacementTitle}
+      style={{ background: 'var(--app-accent-soft)', color: 'var(--app-accent-strong)' }}
     >
-      Ada barang pengganti
+      {t.eventDetail.replacementTag}
     </span>
   )
 }
@@ -185,6 +182,7 @@ function InvoicePreviewTable({
 }: {
   preview: Extract<Awaited<ReturnType<typeof previewInvoice>>, { ok: true }>
 }) {
+  const d = usePartnerT().eventDetail
   const paket = preview.lines.filter((l) => l.kind === 'paket')
   const satuan = preview.lines.filter((l) => l.kind === 'satuan')
   const sectionHead = (title: string) => (
@@ -202,14 +200,14 @@ function InvoicePreviewTable({
     <table className="mt-2 w-full">
       <thead style={{ color: 'var(--app-text-soft)' }}>
         <tr>
-          <th className="py-1 text-left font-semibold">Barang</th>
-          <th className="py-1 text-right font-semibold">Jumlah</th>
-          <th className="py-1 text-right font-semibold">Harga</th>
-          <th className="py-1 text-right font-semibold">Subtotal</th>
+          <th className="py-1 text-left font-semibold">{d.previewItem}</th>
+          <th className="py-1 text-right font-semibold">{d.previewQty}</th>
+          <th className="py-1 text-right font-semibold">{d.previewPrice}</th>
+          <th className="py-1 text-right font-semibold">{d.previewSubtotal}</th>
         </tr>
       </thead>
       <tbody>
-        {paket.length > 0 && sectionHead('Paket')}
+        {paket.length > 0 && sectionHead(d.previewBundles)}
         {paket.map((l) => (
           <tr
             key={`paket-${l.label}-${l.unitPrice}`}
@@ -222,7 +220,7 @@ function InvoicePreviewTable({
             <td className="pm-num py-1.5 text-right font-semibold">{formatRupiah(l.amount)}</td>
           </tr>
         ))}
-        {satuan.length > 0 && sectionHead('Satuan')}
+        {satuan.length > 0 && sectionHead(d.previewSingles)}
         {satuan.map((l) => (
           <tr
             key={`satuan-${l.label}-${l.unitPrice}-${l.note ?? ''}`}
@@ -247,13 +245,13 @@ function InvoicePreviewTable({
         {preview.saving > 0 && (
           <tr className="border-t" style={{ borderColor: 'var(--app-border)' }}>
             <td colSpan={3} className="py-1.5 text-right" style={{ color: 'var(--app-text-soft)' }}>
-              Hemat paket
+              {d.previewSaving}
             </td>
             <td className="pm-num py-1.5 text-right">{formatRupiah(preview.saving)}</td>
           </tr>
         )}
         <tr className="border-t" style={{ borderColor: 'var(--app-border)' }}>
-          <td colSpan={3} className="py-1.5 text-right font-semibold">Total</td>
+          <td colSpan={3} className="py-1.5 text-right font-semibold">{d.previewTotal}</td>
           <td className="pm-num py-1.5 text-right font-bold">{formatRupiah(preview.totalAmount)}</td>
         </tr>
       </tfoot>
@@ -269,6 +267,7 @@ function RowStatus({
   row: PartnerSubmitRow
   onOpenInvoice: (invoiceId: string) => void
 }) {
+  const t = usePartnerT()
   const badge = (
     <SubmitStatusBadge
       checked={row.checked}
@@ -282,7 +281,7 @@ function RowStatus({
   return (
     <button
       type="button"
-      title="Lihat tagihan"
+      title={t.eventDetail.viewInvoice}
       onClick={(e) => {
         e.preventDefault()
         e.stopPropagation()
@@ -303,14 +302,23 @@ function SubmitFilterChips({
   active: SubmitFilter
   onChange: (next: SubmitFilter) => void
 }) {
+  const d = usePartnerT().eventDetail
+  const labels: Record<SubmitFilter, string> = {
+    semua: d.filterAll,
+    menunggu: d.filterWaiting,
+    siap: d.filterReady,
+    ditagih: d.filterBilled,
+    review: d.filterReview,
+  }
   return (
     <UnderlineTabs
-      ariaLabel="Filter submit"
-      items={SUBMIT_FILTERS.map((f) => ({
-        ...f,
-        count: counts[f.key],
+      ariaLabel={d.filterLabel}
+      items={SUBMIT_FILTERS.map((key) => ({
+        key,
+        label: labels[key],
+        count: counts[key],
         // Yang menunggu dicek butuh tindakan partner, jadi badge-nya ditonjolkan.
-        highlight: f.key === 'menunggu',
+        highlight: key === 'menunggu',
       }))}
       value={active}
       onChange={onChange}
@@ -325,6 +333,7 @@ function NotSubmittedNote({
   list: Array<{ brandId: string; brandName: string }>
 }) {
   const [open, setOpen] = useState(false)
+  const t = usePartnerT()
   if (list.length === 0) return null
   return (
     <div className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
@@ -334,7 +343,7 @@ function NotSubmittedNote({
         aria-expanded={open}
         className="font-semibold underline"
       >
-        {list.length} jastiper belum submit
+        {t.eventDetail.notSubmitted(list.length)}
       </button>
       {open && (
         <ul className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
@@ -355,6 +364,9 @@ function PartnerEventDetailPage() {
   )
   const { data: products } = useSuspenseQuery(partnerEventProductsQuery(id))
   const queryClient = useQueryClient()
+  const { t, formatDate, formatDateRange, intlLocale, translateError } =
+    usePartnerI18n()
+  const d = t.eventDetail
   const { data: revenue } = useQuery({
     queryKey: ['partner-event-revenue', id, participants.length],
     queryFn: () => getPartnerEventRevenue({ data: { calendarEventId: id } }),
@@ -400,9 +412,6 @@ function PartnerEventDetailPage() {
   }
   // Ringkasan pcs untuk kartu pendapatan, dihitung dari baris yang sama dengan
   // tab "Siap ditagih" dan "Menunggu" supaya angkanya selalu cocok.
-  const readyPcs = submitRows
-    .filter((r) => matchesFilter(r, 'siap'))
-    .reduce((n, r) => n + r.pcs.approved, 0)
   const waitingPcs = submitRows
     .filter((r) => matchesFilter(r, 'menunggu'))
     .reduce((n, r) => n + r.pcs.pending, 0)
@@ -426,12 +435,12 @@ function PartnerEventDetailPage() {
   )
   // Event tanpa slot tetap satu baris per jastiper.
   const filteredParticipants = participants.filter((p) =>
-    (p.brandName || 'Tanpa nama').toLowerCase().includes(searchKey),
+    (p.brandName || d.noName).toLowerCase().includes(searchKey),
   )
   const participantSort = useTableSort<ParticipantSortKey>()
   const participantPager = useClientPager(
     sortRows(filteredParticipants, participantSort.sort, {
-      brandName: (p) => p.brandName || 'Tanpa nama',
+      brandName: (p) => p.brandName || d.noName,
       joinedAt: (p) => p.joinedAt,
       waNumber: (p) => p.waNumber,
       orderCount: (p) => p.orderCount,
@@ -472,7 +481,8 @@ function PartnerEventDetailPage() {
     placeholderData: keepPreviousData,
   })
   const previewOk = preview?.ok ? preview : null
-  const previewError = preview && !preview.ok ? preview.error : null
+  const previewError =
+    preview && !preview.ok ? translateError(preview.error) : null
   const finalAmount = previewOk?.totalAmount ?? selectedTotals.amount
   const toggleSelected = (submissionId: string) =>
     setSelected((prev) => {
@@ -501,9 +511,9 @@ function PartnerEventDetailPage() {
       })
       await refreshInvoiceData()
       setSelected(new Set())
-      setNotice('Tagihan terkirim ke jastiper')
+      setNotice(d.invoiceSent)
     } catch (err) {
-      setNotice(getErrorMessage(err, 'Gagal mengirim tagihan'))
+      setNotice(getErrorMessage(err, d.invoiceSendFailed))
     } finally {
       setSending(false)
       setConfirmSend(false)
@@ -543,7 +553,7 @@ function PartnerEventDetailPage() {
       ])
       setConfirmEnd(false)
     } catch (err) {
-      setNotice(getErrorMessage(err, 'Gagal mengubah status event'))
+      setNotice(getErrorMessage(err, d.statusChangeFailed))
       setConfirmEnd(false)
     } finally {
       setBusy(false)
@@ -560,31 +570,30 @@ function PartnerEventDetailPage() {
         <span className="font-bold">{selectedRows[0].brandName}</span>
         <span className="pm-num" style={{ color: 'var(--app-text-soft)' }}>
           {' · '}
-          {selectedRows.length} submit · {selectedTotals.pcs} pcs ·{' '}
+          {d.barSummary(selectedRows.length, selectedTotals.pcs)}
         </span>
         {previewOk && previewOk.saving > 0 && (
           <span
             className="pm-num"
             style={{ color: 'var(--app-text-soft)' }}
-            title="Total kalau semua pcs ditagih harga satuan"
+            title={d.unitPriceTitle}
           >
             <span className="line-through">{formatRupiah(previewOk.rawAmount)}</span>{' '}
-            <span className="text-[11px]">harga satuan</span>{' '}
+            <span className="text-[11px]">{d.unitPrice}</span>{' '}
           </span>
         )}
         <span className="pm-num font-bold">{formatRupiah(finalAmount)}</span>
       </p>
       {previewOk && previewOk.bundleCount > 0 && (
         <p className="w-full text-xs" style={{ color: 'var(--app-text-soft)' }}>
-          {previewOk.bundleCount} paket menurut aturan paket, dihitung dari semua pcs
-          jastiper di tagihan ini
-          {previewOk.saving > 0 && <>, hemat {formatRupiah(previewOk.saving)}</>}.
+          {d.bundleNoteStart(previewOk.bundleCount)}
+          {previewOk.saving > 0 && d.bundleNoteSaving(formatRupiah(previewOk.saving))}.
         </p>
       )}
       {previewOk && previewOk.lines.length > 0 && (
         <details className="w-full text-xs">
           <summary className="cursor-pointer font-semibold">
-            Rincian tagihan ({previewOk.lines.length} baris)
+            {d.breakdown(previewOk.lines.length)}
           </summary>
           <InvoicePreviewTable preview={previewOk} />
         </details>
@@ -597,20 +606,18 @@ function PartnerEventDetailPage() {
       {waiveBlocking && (
         <p
           className="w-full rounded-lg p-2 text-xs"
-          style={{ background: '#fdecd0', color: '#8a5208' }}
+          style={{ background: 'var(--app-warning-soft)', color: 'var(--app-warning)' }}
         >
-          Submit ke-{awaitingRows.map((r) => r.submitNo).join(', ')} masih menunggu
-          keputusan jastiper untuk isi paket yang ditolak. Kalau tagihan dikirim,
-          barang itu dianggap tidak diganti (tagih apa adanya).
+          {d.waiveWarning(awaitingRows.map((r) => r.submitNo).join(', '))}
         </p>
       )}
       {bankMissing && (
         <p className="w-full text-xs" style={{ color: 'var(--app-danger)' }}>
-          Isi rekening pembayaran di{' '}
+          {d.bankMissingStart}
           <Link to="/partner/profil" className="font-semibold underline">
-            halaman Profil
-          </Link>{' '}
-          dulu sebelum menagih jastiper.
+            {d.bankMissingLink}
+          </Link>
+          {d.bankMissingEnd}
         </p>
       )}
       <div className="flex flex-wrap gap-2">
@@ -621,7 +628,7 @@ function PartnerEventDetailPage() {
             className="app-btn-outline"
             style={{ minHeight: 40, fontSize: 13 }}
           >
-            Pilih semua submit jastiper ini
+            {d.selectAllOfJastiper}
           </button>
         )}
         <button
@@ -631,7 +638,7 @@ function PartnerEventDetailPage() {
           className="app-btn-primary disabled:opacity-50"
           style={{ minHeight: 40, fontSize: 13 }}
         >
-          Kirim tagihan
+          {d.sendInvoice}
         </button>
       </div>
     </div>
@@ -643,14 +650,14 @@ function PartnerEventDetailPage() {
         <header className="flex items-center gap-3">
           <Link
             to="/partner/event"
-            aria-label="Kembali"
+            aria-label={t.common.back}
             className="-ml-1 flex size-8 items-center justify-center"
             style={{ color: 'var(--app-text)' }}
           >
             <ArrowLeft size={22} />
           </Link>
           <h1 className="pm-display flex-1 text-[22px] leading-tight">
-            Detail Event
+            {d.title}
           </h1>
           <PartnerEventStatusBadge status={status} />
         </header>
@@ -663,7 +670,7 @@ function PartnerEventDetailPage() {
             className="app-btn-outline no-underline"
             style={{ minHeight: 40, fontSize: 13 }}
           >
-            Rekap Orderan
+            {d.orderRecap}
           </Link>
           <Link
             to="/partner/event/analisa/$id"
@@ -672,7 +679,7 @@ function PartnerEventDetailPage() {
             style={{ minHeight: 40, fontSize: 13 }}
           >
             <ChartColumn size={15} />
-            Analisa Event
+            {d.eventAnalysis}
           </Link>
         </div>
 
@@ -695,16 +702,16 @@ function PartnerEventDetailPage() {
         </div>
 
         <div className="flex flex-col gap-2">
-          <h2 className="pm-display text-xl leading-snug">{event.name}</h2>
+          <h2 className="pm-display text-base leading-snug">{event.name}</h2>
           <div
             className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1.5 text-xs"
             style={{ color: 'var(--app-text-soft)' }}
           >
             <span
               className="rounded-full px-2.5 py-1 text-[11px] font-bold"
-              style={{ background: 'var(--app-accent-soft)', color: '#9c463b' }}
+              style={{ background: 'var(--app-accent-soft)', color: 'var(--app-accent-strong)' }}
             >
-              {event.isOnline ? 'Online' : 'Offline'}
+              {event.isOnline ? d.online : d.offline}
             </span>
             <span className="flex items-center gap-1">
               <CalendarDays size={14} />
@@ -719,11 +726,11 @@ function PartnerEventDetailPage() {
 
 
         <UnderlineTabs
-          ariaLabel="Isi event"
+          ariaLabel={d.contentTabs}
           items={[
-            { key: 'info', label: 'Info' },
-            { key: 'produk', label: 'Produk', count: products.length },
-            { key: 'jastiper', label: 'Jastiper', count: participants.length },
+            { key: 'info', label: d.tabInfo },
+            { key: 'produk', label: d.tabProducts, count: products.length },
+            { key: 'jastiper', label: d.tabJastiper, count: participants.length },
           ]}
           value={tab}
           onChange={setTab}
@@ -742,7 +749,7 @@ function PartnerEventDetailPage() {
                 className="app-btn-outline flex-1 gap-1.5 no-underline"
               >
                 <Pencil size={14} />
-                Ubah event
+                {d.editEvent}
               </Link>
               {event.isEnded ? (
                 <button
@@ -751,7 +758,7 @@ function PartnerEventDetailPage() {
                   onClick={() => void handleSetEnded(false)}
                   className="app-btn-outline flex-1 disabled:opacity-50"
                 >
-                  Buka kembali
+                  {d.reopen}
                 </button>
               ) : (
                 <button
@@ -761,7 +768,7 @@ function PartnerEventDetailPage() {
                   className="app-btn-outline flex-1 disabled:opacity-50"
                   style={{ color: 'var(--app-danger)' }}
                 >
-                  Akhiri event
+                  {d.endEvent}
                 </button>
               )}
             </div>
@@ -776,7 +783,7 @@ function PartnerEventDetailPage() {
               className="app-btn-outline gap-1.5 no-underline"
             >
               <Package size={14} />
-              Kelola produk
+              {d.manageProducts}
             </Link>
             <PartnerTableToolbar
               search={productSearch}
@@ -784,13 +791,12 @@ function PartnerEventDetailPage() {
                 setProductSearch(value)
                 productPager.resetPage()
               }}
-              placeholder="Cari nama produk"
-              label="Cari nama produk"
+              placeholder={d.searchProduct}
               pager={productPager.pager}
             />
             {products.length === 0 ? (
               <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
-                Belum ada produk yang dipilih untuk event ini.
+                {d.noProducts}
               </p>
             ) : (
               productPager.paged.map((product) => {
@@ -851,7 +857,7 @@ function PartnerEventDetailPage() {
                         </p>
                         {expandable && (
                           <p className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
-                            {variants.length} varian
+                            {d.variantCount(variants.length)}
                           </p>
                         )}
                       </div>
@@ -861,11 +867,11 @@ function PartnerEventDetailPage() {
                             {variants.length === 0 ? '–' : stock.total}
                           </p>
                           <p className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
-                            {variants.length === 0 ? 'tidak aktif' : 'stok'}
+                            {variants.length === 0 ? d.inactive : d.stock}
                           </p>
                           {stock.habis > 0 && (
-                            <p className="text-[11px] font-semibold" style={{ color: '#b42318' }}>
-                              {stock.habis} habis
+                            <p className="text-[11px] font-semibold" style={{ color: 'var(--app-danger)' }}>
+                              {d.soldOutCount(stock.habis)}
                             </p>
                           )}
                         </div>
@@ -909,7 +915,7 @@ function PartnerEventDetailPage() {
             <PartnerSubmitReview calendarEventId={id} barOnly />
             {participants.length === 0 ? (
               <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
-                Belum ada jastiper yang ikut event ini.
+                {d.noJastiper}
               </p>
             ) : (
               <>
@@ -931,15 +937,14 @@ function PartnerEventDetailPage() {
                     participantPager.resetPage()
                     submitPager.resetPage()
                   }}
-                  placeholder="Cari nama jastiper"
-                  label="Cari nama jastiper"
+                  placeholder={d.searchJastiper}
                   pager={slotEnabled ? submitPager.pager : participantPager.pager}
                 />
                 {(slotEnabled ? submitPager : participantPager).paged.length === 0 && (
                   <p className="py-4 text-center text-sm" style={{ color: 'var(--app-text-soft)' }}>
                     {slotEnabled && submitRows.length === 0 && searchKey === ''
-                      ? 'Belum ada jastiper yang submit.'
-                      : 'Tidak ada jastiper yang cocok.'}
+                      ? d.noneSubmitted
+                      : d.noJastiperMatch}
                   </p>
                 )}
                 {slotEnabled
@@ -954,9 +959,9 @@ function PartnerEventDetailPage() {
                             className="size-5 shrink-0"
                             checked={selected.has(row.submissionId)}
                             disabled={selectedBrandId !== null && row.brandId !== selectedBrandId}
-                            title={selectedBrandId !== null && row.brandId !== selectedBrandId ? 'Satu tagihan untuk satu jastiper' : undefined}
+                            title={selectedBrandId !== null && row.brandId !== selectedBrandId ? d.oneInvoiceOneJastiper : undefined}
                             onChange={() => toggleSelected(row.submissionId)}
-                            aria-label={`Pilih Submit ke-${row.submitNo} ${row.brandName}`}
+                            aria-label={d.selectSubmission(row.submitNo, row.brandName)}
                           />
                         )}
                         <Link
@@ -968,14 +973,14 @@ function PartnerEventDetailPage() {
                         >
                           <span
                             className="pm-display flex size-10 shrink-0 items-center justify-center rounded-full text-sm"
-                            style={{ background: 'var(--app-accent-soft)', color: '#9c463b' }}
+                            style={{ background: 'var(--app-accent-soft)', color: 'var(--app-accent-strong)' }}
                           >
                             {initialsOf(row.brandName)}
                           </span>
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-sm font-semibold">{row.brandName}</p>
                             <p className="truncate text-xs" style={{ color: 'var(--app-text-soft)' }}>
-                              Submit {formatWibDateTime(row.submittedAt)}
+                              {d.submittedAt(formatWibDateTime(row.submittedAt, intlLocale))}
                             </p>
                             <div className="mt-1 flex flex-wrap items-center gap-2">
                               <ReplacementTag row={row} />
@@ -983,22 +988,22 @@ function PartnerEventDetailPage() {
                               {row.checked && row.pcs.rejected > 0 && (
                                 <span
                                   className="app-badge"
-                                  title="Barang ditolak partner (stok kurang atau habis)."
-                                  style={{ background: 'var(--app-danger-soft, #fdecea)', color: 'var(--app-danger)' }}
+                                  title={d.rejectedTitle}
+                                  style={{ background: 'var(--app-danger-soft)', color: 'var(--app-danger)' }}
                                 >
-                                  {row.pcs.rejected} pcs ditolak
+                                  {d.pcsRejected(row.pcs.rejected)}
                                 </span>
                               )}
                             </div>
                             <p className="mt-1 text-xs" style={{ color: 'var(--app-text-soft)' }}>
-                              Urutan #{row.queueRank} · Submit ke-{row.submitNo} · {row.pcs.total} pcs
+                              {d.queueLine(row.queueRank, row.submitNo, row.pcs.total)}
                             </p>
                           </div>
                         </Link>
                       </div>
                     ))
                   : participantPager.paged.map((row) => {
-                      const name = row.brandName || 'Tanpa nama'
+                      const name = row.brandName || d.noName
                       return (
                         <div key={row.brandId} className="app-card flex items-center gap-3 p-3">
                           <Link
@@ -1010,14 +1015,14 @@ function PartnerEventDetailPage() {
                           >
                             <span
                               className="pm-display flex size-10 shrink-0 items-center justify-center rounded-full text-sm"
-                              style={{ background: 'var(--app-accent-soft)', color: '#9c463b' }}
+                              style={{ background: 'var(--app-accent-soft)', color: 'var(--app-accent-strong)' }}
                             >
                               {initialsOf(row.brandName ?? '')}
                             </span>
                             <div className="min-w-0 flex-1">
                               <p className="truncate text-sm font-semibold">{name}</p>
                               <p className="truncate text-xs" style={{ color: 'var(--app-text-soft)' }}>
-                                Ikut {formatDate(row.joinedAt)}
+                                {d.joinedOn(formatDate(row.joinedAt))}
                                 {row.waNumber ? ` · ${formatPhoneNumber(row.waNumber)}` : ''}
                               </p>
                             </div>
@@ -1025,7 +1030,7 @@ function PartnerEventDetailPage() {
                           {row.waNumber ? (
                             <a
                               href={`tel:${row.waNumber}`}
-                              aria-label={`Telepon ${name}`}
+                              aria-label={d.call(name)}
                               className="flex size-9 shrink-0 items-center justify-center rounded-full no-underline"
                               style={{ background: 'var(--app-success-soft)', color: 'var(--app-success)' }}
                             >
@@ -1051,7 +1056,7 @@ function PartnerEventDetailPage() {
             </h1>
             <p className="mt-1 text-[13px]" style={{ color: 'var(--app-text-soft)' }}>
               <Link to="/partner/event" className="no-underline" style={{ color: 'inherit' }}>
-                Event
+                {t.event.title}
               </Link>{' '}
               / {event.name}
             </p>
@@ -1064,7 +1069,7 @@ function PartnerEventDetailPage() {
               className="app-btn-outline no-underline"
               style={{ minHeight: 44, fontSize: 14 }}
             >
-              Edit event
+              {d.editEvent}
             </Link>
           </div>
         </header>
@@ -1079,7 +1084,7 @@ function PartnerEventDetailPage() {
                 className="app-btn-outline w-full no-underline"
                 style={{ minHeight: 44, fontSize: 14, padding: '0 12px' }}
               >
-                Rekap Orderan
+                {d.orderRecap}
               </Link>
               <Link
                 to="/partner/event/analisa/$id"
@@ -1088,7 +1093,7 @@ function PartnerEventDetailPage() {
                 style={{ minHeight: 44, fontSize: 14, padding: '0 12px' }}
               >
                 <ChartColumn size={16} />
-                Analisa Event
+                {d.eventAnalysis}
               </Link>
             </div>
 
@@ -1096,14 +1101,12 @@ function PartnerEventDetailPage() {
               slotEnabled={revenue?.slotEnabled ?? false}
               totalAmount={revenue?.totalAmount ?? 0}
               invoiced={revenue?.invoiced}
-              readyPcs={readyPcs}
-              readySubmitCount={submitCounts.siap}
               waitingPcs={waitingPcs}
               waitingSubmitCount={submitCounts.menunggu}
             />
 
             <section className="app-card flex flex-col gap-4 p-5">
-              <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: 'var(--pm-gold)' }}>Info event</p>
+              <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: 'var(--pm-gold)' }}>{d.eventInfo}</p>
               {event.bannerSrc && (
                 <img
                   src={event.bannerSrc}
@@ -1113,15 +1116,15 @@ function PartnerEventDetailPage() {
               )}
               <dl className="flex flex-col text-[13px]">
                 {[
-                  { label: 'Tipe', value: event.isOnline ? 'Online' : 'Offline' },
-                  { label: 'Tanggal', value: formatDateRange(event.eventDate, event.endDate) },
-                  { label: 'Lokasi', value: event.location },
-                  { label: 'Jastiper', value: `${participants.length} bergabung` },
+                  { label: d.infoType, value: event.isOnline ? d.online : d.offline },
+                  { label: d.infoDate, value: formatDateRange(event.eventDate, event.endDate) },
+                  { label: d.infoLocation, value: event.location },
+                  { label: d.infoJastiper, value: d.infoJoined(participants.length) },
                   {
-                    label: 'Pesanan',
+                    label: d.infoOrders,
                     value: slotEnabled
-                      ? `${revenue?.approvedPcs ?? 0} pcs masuk`
-                      : `${totalOrders} masuk`,
+                      ? d.infoPcsIn(revenue?.approvedPcs ?? 0)
+                      : d.infoOrdersIn(totalOrders),
                   },
                 ].map((item) => (
                   <div key={item.label} className="flex items-start justify-between gap-3 border-t py-2.5" style={{ borderColor: 'var(--app-border)' }}>
@@ -1138,7 +1141,7 @@ function PartnerEventDetailPage() {
                   style={{ color: 'var(--app-accent)' }}
                 >
                   <Package size={14} />
-                  Kelola produk ({products.length})
+                  {d.manageProductsCount(products.length)}
                 </Link>
                 <button
                   type="button"
@@ -1147,7 +1150,7 @@ function PartnerEventDetailPage() {
                   className="font-semibold disabled:opacity-50"
                   style={{ color: event.isEnded ? 'var(--app-accent)' : 'var(--app-danger)' }}
                 >
-                  {event.isEnded ? 'Buka kembali' : 'Akhiri event'}
+                  {event.isEnded ? d.reopen : d.endEvent}
                 </button>
               </div>
             </section>
@@ -1162,7 +1165,7 @@ function PartnerEventDetailPage() {
             <PartnerSubmitReview calendarEventId={id} barOnly />
             {participants.length === 0 ? (
               <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
-                Belum ada jastiper yang ikut event ini.
+                {d.noJastiper}
               </p>
             ) : (
               <>
@@ -1184,8 +1187,7 @@ function PartnerEventDetailPage() {
                     participantPager.resetPage()
                     submitPager.resetPage()
                   }}
-                  placeholder="Cari nama jastiper"
-                  label="Cari nama jastiper"
+                  placeholder={d.searchJastiper}
                   pager={slotEnabled ? submitPager.pager : participantPager.pager}
                 />
                 <div className="app-card overflow-x-auto">
@@ -1198,12 +1200,12 @@ function PartnerEventDetailPage() {
                       <>
                         {(
                           [
-                            ['Jastiper', 'brandName'],
-                            ['Waktu submit', 'submittedAt'],
-                            ['Urutan', 'queueRank'],
-                            ['Submit ke', 'submitNo'],
-                            ['Pcs', 'pcsTotal'],
-                            ['Pcs ditolak', 'pcsRejected'],
+                            [d.colJastiper, 'brandName'],
+                            [d.colSubmittedAt, 'submittedAt'],
+                            [d.colQueue, 'queueRank'],
+                            [d.colSubmitNo, 'submitNo'],
+                            [d.colPcs, 'pcsTotal'],
+                            [d.colRejected, 'pcsRejected'],
                           ] as const
                         ).map(([label, key]) => (
                           <div key={key} role="columnheader" aria-sort={ariaSortOf(submitSort.sort, key)}>
@@ -1218,16 +1220,16 @@ function PartnerEventDetailPage() {
                             />
                           </div>
                         ))}
-                        <span>Status</span>
+                        <span>{d.colStatus}</span>
                       </>
                     ) : (
                       <>
                         {(
                           [
-                            ['Jastiper', 'brandName'],
-                            ['Tanggal ikut', 'joinedAt'],
-                            ['No. WhatsApp', 'waNumber'],
-                            ['Pesanan', 'orderCount'],
+                            [d.colJastiper, 'brandName'],
+                            [d.colJoinedAt, 'joinedAt'],
+                            [d.colWhatsapp, 'waNumber'],
+                            [d.colOrders, 'orderCount'],
                           ] as const
                         ).map(([label, key]) => (
                           <div key={key} role="columnheader" aria-sort={ariaSortOf(participantSort.sort, key)}>
@@ -1242,15 +1244,15 @@ function PartnerEventDetailPage() {
                             />
                           </div>
                         ))}
-                        <span>Aksi</span>
+                        <span>{d.colAction}</span>
                       </>
                     )}
                   </div>
                   {(slotEnabled ? submitPager : participantPager).paged.length === 0 && (
                     <p className="border-t px-5 py-6 text-center text-sm" style={{ borderColor: 'var(--app-border)', color: 'var(--app-text-soft)' }}>
                       {slotEnabled && submitRows.length === 0 && searchKey === ''
-                        ? 'Belum ada jastiper yang submit.'
-                        : 'Tidak ada jastiper yang cocok.'}
+                        ? d.noneSubmitted
+                        : d.noJastiperMatch}
                     </p>
                   )}
                   {slotEnabled
@@ -1266,9 +1268,9 @@ function PartnerEventDetailPage() {
                               className="size-4"
                               checked={selected.has(row.submissionId)}
                               disabled={selectedBrandId !== null && row.brandId !== selectedBrandId}
-                              title={selectedBrandId !== null && row.brandId !== selectedBrandId ? 'Satu tagihan untuk satu jastiper' : undefined}
+                              title={selectedBrandId !== null && row.brandId !== selectedBrandId ? d.oneInvoiceOneJastiper : undefined}
                               onChange={() => toggleSelected(row.submissionId)}
-                              aria-label={`Pilih Submit ke-${row.submitNo} ${row.brandName}`}
+                              aria-label={d.selectSubmission(row.submitNo, row.brandName)}
                             />
                           )}
                           <Link
@@ -1280,7 +1282,7 @@ function PartnerEventDetailPage() {
                           >
                             <span
                               className="pm-display flex size-11 shrink-0 items-center justify-center rounded-full text-sm"
-                              style={{ background: 'var(--app-accent-soft)', color: '#9c463b' }}
+                              style={{ background: 'var(--app-accent-soft)', color: 'var(--app-accent-strong)' }}
                             >
                               {initialsOf(row.brandName)}
                             </span>
@@ -1290,7 +1292,7 @@ function PartnerEventDetailPage() {
                             </div>
                           </Link>
                           <span className="text-[13px]" style={{ color: 'var(--app-text-soft)' }}>
-                            {formatWibDateTime(row.submittedAt)}
+                            {formatWibDateTime(row.submittedAt, intlLocale)}
                           </span>
                           <span className="pm-num text-sm font-bold">#{row.queueRank}</span>
                           <span className="pm-num text-sm font-bold">#{row.submitNo}</span>
@@ -1299,8 +1301,8 @@ function PartnerEventDetailPage() {
                             {row.checked && row.pcs.rejected > 0 ? (
                               <span
                                 className="app-badge"
-                                title="Barang ditolak partner (stok kurang atau habis)."
-                                style={{ background: 'var(--app-danger-soft, #fdecea)', color: 'var(--app-danger)' }}
+                                title={d.rejectedTitle}
+                                style={{ background: 'var(--app-danger-soft)', color: 'var(--app-danger)' }}
                               >
                                 {row.pcs.rejected} pcs
                               </span>
@@ -1314,7 +1316,7 @@ function PartnerEventDetailPage() {
                         </div>
                       ))
                     : participantPager.paged.map((row) => {
-                        const name = row.brandName || 'Tanpa nama'
+                        const name = row.brandName || d.noName
                         return (
                           <div
                             key={row.brandId}
@@ -1330,7 +1332,7 @@ function PartnerEventDetailPage() {
                             >
                               <span
                                 className="pm-display flex size-11 shrink-0 items-center justify-center rounded-full text-sm"
-                                style={{ background: 'var(--app-accent-soft)', color: '#9c463b' }}
+                                style={{ background: 'var(--app-accent-soft)', color: 'var(--app-accent-strong)' }}
                               >
                                 {initialsOf(row.brandName ?? '')}
                               </span>
@@ -1353,7 +1355,7 @@ function PartnerEventDetailPage() {
                                   style={{ minHeight: 38, fontSize: 13 }}
                                 >
                                   <Phone size={15} />
-                                  Hubungi
+                                  {d.contact}
                                 </a>
                               ) : null}
                             </div>
@@ -1375,9 +1377,10 @@ function PartnerEventDetailPage() {
 
       <ConfirmModal
         open={confirmEnd}
-        title="Akhiri event ini?"
-        content="Event langsung hilang dari kalender jastiper. Data jastiper yang sudah ikut tetap tersimpan, dan event bisa dibuka kembali kapan saja."
-        okText="Akhiri event"
+        title={d.endConfirmTitle}
+        content={d.endConfirmBody}
+        okText={d.endEvent}
+        cancelText={t.common.cancel}
         loading={busy}
         onOk={() => handleSetEnded(true)}
         onCancel={() => setConfirmEnd(false)}
@@ -1385,10 +1388,23 @@ function PartnerEventDetailPage() {
       <ConfirmModal
         open={confirmSend}
         danger={false}
-        title={`Kirim tagihan ke ${selectedRows.at(0)?.brandName ?? 'jastiper'}?`}
-        content={`${selectedRows.length} submit · ${selectedTotals.pcs} pcs · ${formatRupiah(finalAmount)}${previewOk && previewOk.bundleCount > 0 ? ` (termasuk ${previewOk.bundleCount} paket${previewOk.saving > 0 ? `, hemat ${formatRupiah(previewOk.saving)}` : ''})` : ''}. Jastiper akan menerima notifikasi. Barang di submit ini tidak bisa dibatalkan selama tagihan aktif.${waiveBlocking ? ` Submit ke-${awaitingRows.map((r) => r.submitNo).join(', ')} masih menunggu keputusan jastiper untuk isi paket yang ditolak. Dengan mengirim tagihan ini, barang itu dianggap tidak diganti dan jastiper tidak bisa mengirim penggantinya lagi.` : ''}`}
-        okText="Kirim tagihan"
-        loadingText="Mengirim..."
+        title={d.sendConfirmTitle(selectedRows.at(0)?.brandName ?? null)}
+        content={d.sendConfirmBody({
+          submits: selectedRows.length,
+          pcs: selectedTotals.pcs,
+          amount: formatRupiah(finalAmount),
+          bundles: previewOk?.bundleCount ?? 0,
+          saving:
+            previewOk && previewOk.saving > 0
+              ? formatRupiah(previewOk.saving)
+              : null,
+          waiveSubmits: waiveBlocking
+            ? awaitingRows.map((r) => r.submitNo).join(', ')
+            : null,
+        })}
+        okText={d.sendInvoice}
+        cancelText={t.common.cancel}
+        loadingText={d.sending}
         loading={sending}
         onOk={handleSendInvoice}
         onCancel={() => setConfirmSend(false)}

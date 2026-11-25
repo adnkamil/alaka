@@ -1,0 +1,63 @@
+/** Kerangka Partner Portal: menu, sidebar, topbar, notifikasi, pemilih bahasa. */
+
+const en = {
+  nav: {
+    dashboard: 'Dashboard',
+    products: 'Products',
+    bundling: 'Bundling',
+    event: 'Event',
+    invoices: 'Invoices',
+  },
+  portalName: 'Partner Portal',
+  menuLabel: 'Partner menu',
+  logout: 'Log out',
+  profile: 'Profile',
+  breadcrumb: 'Breadcrumb',
+  searchPlaceholder: 'Search products, events...',
+  searchLabel: 'Search products or events',
+  searchNoMatches: 'No matching products or events.',
+  searchKindProduct: 'Product',
+  searchKindEvent: 'Event',
+  tableSearch: 'Search',
+  notifications: 'Notifications',
+  notificationsUnread: (count: number) => `Notifications, ${count} unread`,
+  notificationsEmpty: 'No notifications yet.',
+  notificationUnreadDot: 'Unread',
+  viewAll: 'View all',
+  loading: 'Loading…',
+  language: 'Language',
+  languageHint: 'Display language for the Partner Portal.',
+  languageSaveFailed: 'Could not change the language. Please try again.',
+}
+
+const id: typeof en = {
+  nav: {
+    dashboard: 'Beranda',
+    products: 'Produk',
+    bundling: 'Bundling',
+    event: 'Event',
+    invoices: 'Tagihan',
+  },
+  portalName: 'Partner Portal',
+  menuLabel: 'Menu partner',
+  logout: 'Keluar',
+  profile: 'Profil',
+  breadcrumb: 'Breadcrumb',
+  searchPlaceholder: 'Cari produk, event...',
+  searchLabel: 'Cari produk atau event',
+  searchNoMatches: 'Tidak ada produk atau event yang cocok.',
+  searchKindProduct: 'Produk',
+  searchKindEvent: 'Event',
+  tableSearch: 'Cari',
+  notifications: 'Notifikasi',
+  notificationsUnread: (count) => `Notifikasi, ${count} belum dibaca`,
+  notificationsEmpty: 'Belum ada notifikasi.',
+  notificationUnreadDot: 'Belum dibaca',
+  viewAll: 'Lihat semua',
+  loading: 'Memuat…',
+  language: 'Bahasa',
+  languageHint: 'Bahasa tampilan Partner Portal.',
+  languageSaveFailed: 'Gagal mengganti bahasa. Coba lagi.',
+}
+
+export default { en, id }

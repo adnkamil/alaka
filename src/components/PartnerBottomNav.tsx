@@ -1,5 +1,6 @@
 import { Link, useRouterState } from '@tanstack/react-router'
 import { PARTNER_TABS, isPartnerTabActive } from './partner-nav-items'
+import { usePartnerT } from './PartnerI18n'
 
 /**
  * Bottom tab Partner Portal, mengikuti desain Figma (nav putih, ikon 22px,
@@ -8,6 +9,7 @@ import { PARTNER_TABS, isPartnerTabActive } from './partner-nav-items'
  */
 export default function PartnerBottomNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
+  const t = usePartnerT()
 
   return (
     <nav
@@ -35,7 +37,7 @@ export default function PartnerBottomNav() {
               }}
             >
               <Icon size={22} />
-              {tab.label}
+              {t.shell.nav[tab.labelKey]}
             </Link>
           )
         })}

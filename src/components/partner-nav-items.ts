@@ -2,18 +2,24 @@ import { CalendarDays, Home, Layers, Package, Receipt } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 export interface PartnerTabDef {
-  to: '/partner' | '/partner/katalog' | '/partner/paket' | '/partner/event' | '/partner/tagihan'
-  label: string
+  to:
+    | '/partner'
+    | '/partner/katalog'
+    | '/partner/paket'
+    | '/partner/event'
+    | '/partner/tagihan'
+  /** Kunci label di kamus `t.shell.nav`. */
+  labelKey: 'dashboard' | 'products' | 'bundling' | 'event' | 'invoices'
   icon: LucideIcon
 }
 
 /** Menu utama Partner Portal; dipakai bottom nav (mobile) & sidebar (desktop). */
 export const PARTNER_TABS: Array<PartnerTabDef> = [
-  { to: '/partner', label: 'Beranda', icon: Home },
-  { to: '/partner/katalog', label: 'Katalog', icon: Package },
-  { to: '/partner/paket', label: 'Paket', icon: Layers },
-  { to: '/partner/event', label: 'Event', icon: CalendarDays },
-  { to: '/partner/tagihan', label: 'Tagihan', icon: Receipt },
+  { to: '/partner', labelKey: 'dashboard', icon: Home },
+  { to: '/partner/katalog', labelKey: 'products', icon: Package },
+  { to: '/partner/paket', labelKey: 'bundling', icon: Layers },
+  { to: '/partner/event', labelKey: 'event', icon: CalendarDays },
+  { to: '/partner/tagihan', labelKey: 'invoices', icon: Receipt },
 ]
 
 /**

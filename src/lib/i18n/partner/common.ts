@@ -1,0 +1,53 @@
+/** Teks umum yang dipakai banyak halaman partner. */
+
+const en = {
+  save: 'Save',
+  saveChanges: 'Save changes',
+  saving: 'Saving...',
+  cancel: 'Cancel',
+  close: 'Close',
+  delete: 'Delete',
+  deleting: 'Deleting...',
+  edit: 'Edit',
+  back: 'Back',
+  add: 'Add',
+  processing: 'Processing...',
+  loading: 'Loading…',
+  optional: '(optional)',
+  saved: 'Saved',
+  saveFailed: 'Could not save',
+  deleteFailed: 'Could not delete',
+  loadFailed: 'Could not load data',
+  all: 'All',
+  none: '—',
+  yes: 'Yes',
+  no: 'No',
+  pcs: (count: number | string) => `${count} pcs`,
+}
+
+const id: typeof en = {
+  save: 'Simpan',
+  saveChanges: 'Simpan perubahan',
+  saving: 'Menyimpan...',
+  cancel: 'Batal',
+  close: 'Tutup',
+  delete: 'Hapus',
+  deleting: 'Menghapus...',
+  edit: 'Ubah',
+  back: 'Kembali',
+  add: 'Tambah',
+  processing: 'Memproses...',
+  loading: 'Memuat…',
+  optional: '(opsional)',
+  saved: 'Tersimpan',
+  saveFailed: 'Gagal menyimpan',
+  deleteFailed: 'Gagal menghapus',
+  loadFailed: 'Gagal memuat data',
+  all: 'Semua',
+  none: '—',
+  yes: 'Ya',
+  no: 'Tidak',
+  pcs: (count) => `${count} pcs`,
+}
+
+export default { en, id }

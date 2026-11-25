@@ -10,6 +10,7 @@ import {
   Plus,
 } from 'lucide-react'
 import PartnerEventStatusBadge from '../../../components/PartnerEventStatusBadge'
+import { usePartnerI18n } from '../../../components/PartnerI18n'
 import UnderlineTabs from '../../../components/ui/UnderlineTabs'
 import Pagination from '../../../components/ui/Pagination'
 import PartnerTableToolbar from '../../../components/ui/PartnerTableToolbar'
@@ -18,7 +19,6 @@ import { useTableSort } from '../../../lib/use-table-sort'
 import type { EventSortKey } from '../../../lib/partner-event-queries'
 import type { SortState } from '../../../lib/table-sort'
 import { useDebouncedValue } from '../../../lib/use-debounced-value'
-import { formatDateRange } from '../../../lib/calendar'
 import { DEFAULT_PAGE_SIZE } from '../../../lib/pagination'
 import { partnerEventStatus } from '../../../lib/partner-event-rules'
 import { partnerEventsPageQuery } from '../../../lib/queries'
@@ -41,12 +41,16 @@ export const Route = createFileRoute('/partner/event/')({
 
 type Tab = 'all' | PartnerEventStatus
 
-const TABS: Array<{ key: Tab; label: string }> = [
-  { key: 'all', label: 'Semua' },
-  { key: 'berjalan', label: 'Berjalan' },
-  { key: 'mendatang', label: 'Mendatang' },
-  { key: 'selesai', label: 'Selesai' },
-]
+const TAB_KEYS: Array<Tab> = ['all', 'berjalan', 'mendatang', 'selesai']
+
+function useTabs(counts: Record<Tab, number>) {
+  const { t } = usePartnerI18n()
+  return TAB_KEYS.map((key) => ({
+    key,
+    label: key === 'all' ? t.event.tabAll : t.event.status[key],
+    count: counts[key],
+  }))
+}
 
 function PartnerEventListPage() {
   const [tab, setTab] = useState<Tab>('all')
@@ -56,6 +60,7 @@ function PartnerEventListPage() {
   const debouncedSearch = useDebouncedValue(search.trim())
   const today = todayIsoDateInAppTimeZone()
   const { sort, toggle } = useTableSort<EventSortKey>()
+  const { t, formatDateRange } = usePartnerI18n()
 
   const { data } = useQuery({
     ...partnerEventsPageQuery({
@@ -75,6 +80,7 @@ function PartnerEventListPage() {
     if (serverPage !== undefined && serverPage !== page) setPage(serverPage)
   }, [serverPage, page])
 
+  const tabs = useTabs(data?.counts ?? { all: 0, berjalan: 0, mendatang: 0, selesai: 0 })
   if (!data) return null
   const { counts } = data
   const visible = data.rows.map((event) => ({
@@ -108,11 +114,11 @@ function PartnerEventListPage() {
   return (
     <>
       <main className="flex flex-col gap-3.5 px-5 pb-[150px] pt-4 lg:hidden">
-        <h1 className="pm-display text-[22px] leading-tight">Event</h1>
+        <h1 className="pm-display text-[22px] leading-tight">{t.event.title}</h1>
 
         <UnderlineTabs
-          ariaLabel="Status event"
-          items={TABS.map((t) => ({ ...t, count: counts[t.key] }))}
+          ariaLabel={t.event.statusTabsLabel}
+          items={tabs}
           value={tab}
           onChange={changeTab}
         />
@@ -121,9 +127,7 @@ function PartnerEventListPage() {
           <div className="app-card flex flex-col items-center gap-2 p-8 text-center">
             <Inbox size={28} style={{ color: 'var(--app-text-mute)' }} />
             <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
-              {counts.all === 0
-                ? 'Belum ada event. Buat event pertama kamu.'
-                : 'Belum ada event di kategori ini.'}
+              {counts.all === 0 ? t.event.emptyAll : t.event.emptyTab}
             </p>
           </div>
         ) : (
@@ -174,7 +178,7 @@ function PartnerEventListPage() {
                   >
                     <MapPin size={14} />
                     <span className="truncate">
-                      {event.isOnline ? 'Online · ' : ''}
+                      {event.isOnline ? t.event.onlinePrefix : ''}
                       {event.location}
                     </span>
                   </p>
@@ -186,7 +190,7 @@ function PartnerEventListPage() {
                         color: 'var(--app-success)',
                       }}
                     >
-                      {event.participantCount} jastiper ikut
+                      {t.event.jastiperJoined(event.participantCount)}
                     </span>
                     <ChevronRight
                       size={18}
@@ -202,8 +206,7 @@ function PartnerEventListPage() {
         <PartnerTableToolbar
           search={search}
           onSearchChange={onSearchChange}
-          placeholder="Cari nama event"
-          label="Cari nama event"
+          placeholder={t.event.searchName}
           pager={pager}
         />
 
@@ -213,7 +216,7 @@ function PartnerEventListPage() {
             className="app-btn-primary w-full gap-2 no-underline"
           >
             <Plus size={18} />
-            Buat event
+            {t.event.create}
           </Link>
         </div>
       </main>
@@ -228,6 +231,7 @@ function PartnerEventListPage() {
         searching={debouncedSearch !== ''}
         sort={sort}
         onSort={onSort}
+        tabs={tabs}
       />
     </>
   )
@@ -253,7 +257,9 @@ function EventsDesktop({
   searching,
   sort,
   onSort,
+  tabs,
 }: {
+  tabs: ReturnType<typeof useTabs>
   visible: Array<EventWithStatus>
   counts: Record<Tab, number>
   tab: Tab
@@ -265,16 +271,17 @@ function EventsDesktop({
   sort: SortState<EventSortKey>
   onSort: (key: EventSortKey) => void
 }) {
+  const { t, formatDateRange } = usePartnerI18n()
   return (
     <main className="pm-wide hidden flex-col gap-5 lg:flex">
       <header className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="pm-display text-[26px] leading-tight">Event</h1>
+          <h1 className="pm-display text-[26px] leading-tight">{t.event.title}</h1>
           <p
             className="mt-1 text-[13px]"
             style={{ color: 'var(--app-text-soft)' }}
           >
-            {counts.all} event · {counts.berjalan} berjalan
+            {t.event.summary(counts.all, counts.berjalan)}
           </p>
         </div>
         <Link
@@ -283,13 +290,13 @@ function EventsDesktop({
           style={{ minHeight: 44, fontSize: 14 }}
         >
           <Plus size={16} />
-          Buat event
+          {t.event.create}
         </Link>
       </header>
 
       <UnderlineTabs
-        ariaLabel="Status event"
-        items={TABS.map((t) => ({ ...t, count: counts[t.key] }))}
+        ariaLabel={t.event.statusTabsLabel}
+        items={tabs}
         value={tab}
         onChange={onTab}
       />
@@ -299,21 +306,18 @@ function EventsDesktop({
           <PartnerTableToolbar
             search={search}
             onSearchChange={onSearchChange}
-            placeholder="Cari nama event"
-            label="Cari nama event"
+            placeholder={t.event.searchName}
             pager={pager}
           />
           <p className="py-6 text-center text-sm" style={{ color: 'var(--app-text-soft)' }}>
-            Tidak ada event yang cocok dengan pencarian.
+            {t.event.noSearchMatch}
           </p>
         </>
       ) : visible.length === 0 ? (
         <div className="app-card flex flex-col items-center gap-2 p-10 text-center">
           <Inbox size={28} style={{ color: 'var(--app-text-mute)' }} />
           <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
-            {counts.all === 0
-              ? 'Belum ada event. Buat event pertama kamu.'
-              : 'Belum ada event di kategori ini.'}
+            {counts.all === 0 ? t.event.emptyAll : t.event.emptyTab}
           </p>
         </div>
       ) : (
@@ -321,8 +325,7 @@ function EventsDesktop({
           <PartnerTableToolbar
             search={search}
             onSearchChange={onSearchChange}
-            placeholder="Cari nama event"
-            label="Cari nama event"
+            placeholder={t.event.searchName}
             pager={pager}
           />
           <div className="app-card overflow-x-auto">
@@ -332,18 +335,18 @@ function EventsDesktop({
             >
               {(
                 [
-                  ['Event', 'name'],
-                  ['Tanggal', 'eventDate'],
-                  ['Lokasi', 'location'],
-                  ['Tipe', 'isOnline'],
-                  ['Jastiper', 'participantCount'],
+                  [t.event.colEvent, 'name'],
+                  [t.event.colDate, 'eventDate'],
+                  [t.event.colLocation, 'location'],
+                  [t.event.colType, 'isOnline'],
+                  [t.event.colJastiper, 'participantCount'],
                 ] as const
               ).map(([label, key]) => (
                 <div key={key} role="columnheader" aria-sort={ariaSortOf(sort, key)}>
                   <SortHeader label={label} sortKey={key} sort={sort} onSort={onSort} />
                 </div>
               ))}
-              <span>Status</span>
+              <span>{t.event.colStatus}</span>
             </div>
             {visible.map(({ event, status }) => (
               <div
@@ -404,14 +407,14 @@ function EventsDesktop({
                           }
                     }
                   >
-                    {event.isOnline ? 'Online' : 'Offline'}
+                    {event.isOnline ? t.event.online : t.event.offline}
                   </span>
                 </div>
                 <span
                   className="pm-num text-sm font-bold"
                   style={{ color: 'var(--app-success)' }}
                 >
-                  {event.participantCount} jastiper
+                  {t.event.jastiperCount(event.participantCount)}
                 </span>
                 <div>
                   <PartnerEventStatusBadge status={status} />

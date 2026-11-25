@@ -9,6 +9,7 @@ import { buildDynamicQrisPayload } from '../lib/qris-display'
 import { useBackToClose } from '../lib/back-to-close'
 import { fileToPaymentProofBlob } from '../lib/payment-proof-image'
 import { formatRupiah } from '../lib/partner-product-rules'
+import { usePartnerI18n } from './PartnerI18n'
 
 interface PartnerTopupModalProps {
   onClose: () => void
@@ -32,11 +33,11 @@ function isAcceptedImage(file: File): boolean {
   return ext === 'png' || ext === 'jpg' || ext === 'jpeg' || ext === 'webp'
 }
 
-function blobToDataUrl(file: Blob): Promise<string> {
+function blobToDataUrl(file: Blob, errorMessage: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => resolve(String(reader.result))
-    reader.onerror = () => reject(new Error('Gagal membaca file'))
+    reader.onerror = () => reject(new Error(errorMessage))
     reader.readAsDataURL(file)
   })
 }
@@ -46,6 +47,8 @@ function blobToDataUrl(file: Blob): Promise<string> {
  * bernominal (fallback gambar QRIS statis) → upload bukti → admin verifikasi.
  */
 export default function PartnerTopupModal({ onClose, onSubmit }: PartnerTopupModalProps) {
+  const { t, errorMessage } = usePartnerI18n()
+  const cr = t.credit
   const { data: paymentInfo, isLoading: infoLoading } = useQuery({
     queryKey: ['partner-topup-payment-info'],
     queryFn: () => fetchPartnerTopupPaymentInfo(),
@@ -94,16 +97,16 @@ export default function PartnerTopupModal({ onClose, onSubmit }: PartnerTopupMod
     if (!file) return
     setError(null)
     if (!isAcceptedImage(file)) {
-      setError('Format harus PNG, JPG, JPEG, atau WEBP')
+      setError(cr.formatError)
       return
     }
     // Gambar > 1MB diperkecil otomatis (maks 1000px, JPEG).
     setIsProcessing(true)
     try {
       const blob = await fileToPaymentProofBlob(file)
-      setProofImage(await blobToDataUrl(blob))
+      setProofImage(await blobToDataUrl(blob, cr.readFileFailed))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Gagal membaca gambar, coba file lain')
+      setError(errorMessage(err, cr.imageReadFailed))
     } finally {
       setIsProcessing(false)
     }
@@ -113,14 +116,14 @@ export default function PartnerTopupModal({ onClose, onSubmit }: PartnerTopupMod
     e.preventDefault()
     setError(null)
     if (!proofImage) {
-      setError('Upload bukti transfer dulu')
+      setError(cr.proofRequired)
       return
     }
     setIsSubmitting(true)
     try {
       await onSubmit({ amount, paymentProofImage: proofImage })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Gagal mengirim top up')
+      setError(errorMessage(err, cr.submitFailed))
     } finally {
       setIsSubmitting(false)
     }
@@ -152,7 +155,7 @@ export default function PartnerTopupModal({ onClose, onSubmit }: PartnerTopupMod
               <Wallet size={18} />
             </span>
             <h3 id="partner-topup-title" className="text-base font-bold leading-tight">
-              Top Up Saldo
+              {cr.modalTitle}
             </h3>
           </div>
           <button
@@ -161,14 +164,14 @@ export default function PartnerTopupModal({ onClose, onSubmit }: PartnerTopupMod
             disabled={isSubmitting}
             className="rounded-full p-1 hover:opacity-75 disabled:opacity-30"
             style={{ color: 'var(--app-text-mute)' }}
-            aria-label="Tutup"
+            aria-label={t.common.close}
           >
             <X size={18} />
           </button>
         </div>
 
         <fieldset className="mb-4">
-          <legend className="mb-2 text-sm font-medium">Nominal</legend>
+          <legend className="mb-2 text-sm font-medium">{cr.amount}</legend>
           <div className="grid grid-cols-2 gap-2">
             {PARTNER_TOPUP_AMOUNTS.map((n) => {
               const active = n === amount
@@ -200,38 +203,38 @@ export default function PartnerTopupModal({ onClose, onSubmit }: PartnerTopupMod
           {infoLoading ? (
             <div className="flex h-40 w-40 items-center justify-center">
               <span className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
-                Memuat...
+                {cr.loading}
               </span>
             </div>
           ) : displayQrisImage ? (
             <img
               src={displayQrisImage}
-              alt={`QRIS top up ${formatRupiah(amount)}`}
+              alt={cr.qrisAlt(formatRupiah(amount))}
               className="h-40 w-40 rounded-lg bg-white object-contain p-1"
             />
           ) : (
             <div className="flex h-40 w-40 flex-col items-center justify-center gap-1 text-center">
               <QrCode size={22} style={{ color: 'var(--app-text-mute)' }} />
               <span className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
-                QRIS belum tersedia, hubungi admin ALAKA.
+                {cr.qrisMissing}
               </span>
             </div>
           )}
           {!infoLoading && (
-            <p className="pm-num text-lg font-bold" style={{ color: 'var(--app-accent)' }}>
+            <p className="pm-num text-base font-bold" style={{ color: 'var(--app-accent)' }}>
               {formatRupiah(amount)}
             </p>
           )}
           <p className="text-center text-xs" style={{ color: 'var(--app-accent)' }}>
             {isDynamicActive
-              ? 'Scan, nominal terisi otomatis, lalu upload buktinya di bawah.'
-              : 'Scan lalu transfer sesuai nominal di atas, upload buktinya di bawah.'}
+              ? cr.scanDynamic
+              : cr.scanStatic}
           </p>
         </div>
 
         <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
           <div className="flex flex-col gap-1">
-            <span className="text-sm font-medium">Bukti transfer</span>
+            <span className="text-sm font-medium">{cr.proof}</span>
             <button
               type="button"
               disabled={isSubmitting || isProcessing}
@@ -241,19 +244,19 @@ export default function PartnerTopupModal({ onClose, onSubmit }: PartnerTopupMod
             >
               {isProcessing ? (
                 <span className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
-                  Memproses gambar...
+                  {cr.processingImage}
                 </span>
               ) : proofImage ? (
                 <img
                   src={proofImage}
-                  alt="Preview bukti transfer"
+                  alt={cr.proofPreview}
                   className="h-40 w-40 rounded-lg object-contain"
                 />
               ) : (
                 <>
                   <span className="text-2xl">📎</span>
                   <span className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
-                    Tap untuk upload screenshot transfer
+                    {cr.tapToUpload}
                   </span>
                 </>
               )}
@@ -276,7 +279,7 @@ export default function PartnerTopupModal({ onClose, onSubmit }: PartnerTopupMod
                 className="self-start text-xs font-semibold disabled:opacity-50"
                 style={{ color: 'var(--app-danger)' }}
               >
-                Hapus gambar ini
+                {cr.removeImage}
               </button>
             )}
           </div>
@@ -299,15 +302,15 @@ export default function PartnerTopupModal({ onClose, onSubmit }: PartnerTopupMod
                 color: 'var(--app-text-soft)',
               }}
             >
-              Batal
+              {t.common.cancel}
             </button>
             <button
               type="submit"
               disabled={isSubmitting || !displayQrisImage || !proofImage}
-              className="rounded-xl px-4 py-2 text-xs font-semibold text-white shadow-sm hover:opacity-90 disabled:opacity-50"
+              className="rounded-xl px-4 py-2 text-xs font-semibold text-[var(--app-on-solid)] shadow-sm hover:opacity-90 disabled:opacity-50"
               style={{ background: 'var(--app-accent)' }}
             >
-              {isSubmitting ? 'Mengirim...' : 'Kirim Bukti Top Up'}
+              {isSubmitting ? cr.sending : cr.sendProof}
             </button>
           </div>
         </form>

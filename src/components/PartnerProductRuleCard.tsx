@@ -7,6 +7,7 @@ import {
   setPartnerProductRules,
 } from '../lib/partner-rule-functions'
 import { formatRupiah } from '../lib/partner-product-rules'
+import { usePartnerT } from './PartnerI18n'
 
 const RULES_KEY = ['partner-rules']
 
@@ -61,6 +62,8 @@ export default function PartnerProductRuleCard({
   ref?: React.Ref<PartnerProductRuleCardHandle>
 }) {
   const queryClient = useQueryClient()
+  const t = usePartnerT()
+  const pr = t.productRule
   const {
     data: rules = [],
     error: loadError,
@@ -110,11 +113,11 @@ export default function PartnerProductRuleCard({
   /** Alasan aturan tidak bisa dipilih untuk produk ini, atau null. */
   function unavailableReason(ruleId: string): string | null {
     const blockedBy = blockedNoSize(ruleId)
-    if (blockedBy) return `Produk tanpa ukuran sudah ikut ${blockedBy}`
+    if (blockedBy) return pr.noSizeAlreadyIn(blockedBy)
     if (sizes.length > 0) {
       const used = usedByOthers(ruleId)
       if (sizes.every((size) => used.has(size))) {
-        return 'Semua ukuran sudah ikut paket lain'
+        return pr.allSizesUsed
       }
     }
     return null
@@ -184,14 +187,12 @@ export default function PartnerProductRuleCard({
     const missing = rules.find(
       (r) => r.id in effective && effective[r.id].length === 0,
     )
-    return missing
-      ? `Pilih minimal satu ukuran untuk aturan ${missing.name}.`
-      : null
+    return missing ? pr.pickSizeFor(missing.name) : null
   }
 
   async function save(targetId?: string) {
     const id = targetId ?? productId
-    if (!id) throw new Error('Produk belum tersimpan')
+    if (!id) throw new Error(pr.notSavedYet)
     if (!dirty) return
     setStatus(null)
     try {
@@ -205,11 +206,11 @@ export default function PartnerProductRuleCard({
         },
       })
       await queryClient.invalidateQueries({ queryKey: RULES_KEY })
-      setStatus({ ok: true, text: 'Paket produk tersimpan.' })
+      setStatus({ ok: true, text: pr.saved })
     } catch (err) {
       setStatus({
         ok: false,
-        text: err instanceof Error ? err.message : 'Gagal menyimpan paket',
+        text: err instanceof Error ? err.message : pr.saveFailed,
       })
       throw err
     }
@@ -234,10 +235,10 @@ export default function PartnerProductRuleCard({
     <section className="app-card flex flex-col gap-4 p-4 lg:p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="pm-display text-base">Paket</h2>
+          <h2 className="pm-display text-base">{pr.title}</h2>
           <p className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
-            Paket harga yang berlaku untuk produk ini.
-            {sizes.length > 0 && ' Satu ukuran hanya bisa ikut satu paket.'}
+            {pr.intro}
+            {sizes.length > 0 && pr.oneSizeOneBundle}
           </p>
         </div>
         {rules.length > 0 && (
@@ -247,7 +248,7 @@ export default function PartnerProductRuleCard({
             className="app-btn-outline shrink-0"
             style={{ minHeight: 40, fontSize: 13 }}
           >
-            + Tambah paket
+            {pr.addBundle}
           </button>
         )}
       </div>
@@ -258,14 +259,14 @@ export default function PartnerProductRuleCard({
           style={{ borderColor: 'var(--app-border)' }}
         >
           <p style={{ color: 'var(--app-text-soft)' }}>
-            Belum ada aturan paket. Buat dulu, mis. "Beli 3 pcs Rp150.000".
+            {pr.emptyRules}
           </p>
           <Link
             to="/partner/paket/baru"
             className="app-btn-outline no-underline"
             style={{ minHeight: 40, fontSize: 13 }}
           >
-            + Buat aturan paket
+            {pr.createRule}
           </Link>
         </div>
       )}
@@ -280,7 +281,7 @@ export default function PartnerProductRuleCard({
             color: 'var(--app-text-soft)',
           }}
         >
-          Produk ini belum masuk paket. Klik untuk menambahkan.
+          {pr.notInBundle}
         </button>
       )}
 
@@ -299,10 +300,10 @@ export default function PartnerProductRuleCard({
                     <span className="truncate font-semibold">{r.name}</span>
                     {!r.isActive && (
                       <span
-                        className="text-[10px] font-semibold uppercase"
+                        className="text-[11px] font-semibold uppercase"
                         style={{ color: 'var(--app-text-soft)' }}
                       >
-                        Nonaktif
+                        {pr.inactive}
                       </span>
                     )}
                   </span>
@@ -310,23 +311,23 @@ export default function PartnerProductRuleCard({
                     className="text-[11px]"
                     style={{ color: 'var(--app-text-soft)' }}
                   >
-                    {r.minQty} pcs · {formatRupiah(r.bundlePrice)}
+                    {pr.ruleSummary(r.minQty, formatRupiah(r.bundlePrice))}
                   </span>
                   {sizes.length > 0 && (
                     <div className="flex flex-wrap items-center gap-1.5">
                       {chosen.length === 0 ? (
                         <span
                           className="text-[11px] font-semibold"
-                          style={{ color: '#b42318' }}
+                          style={{ color: 'var(--app-danger)' }}
                         >
-                          Belum ada ukuran dipilih
+                          {pr.noSizeChosen}
                         </span>
                       ) : (
                         chosen.map((size) => (
                           <span
                             key={size}
                             className="rounded-full px-2.5 py-0.5 text-xs font-semibold"
-                            style={{ background: '#7a4a2a', color: '#fff' }}
+                            style={{ background: 'var(--app-accent-strong)', color: 'var(--app-on-solid)' }}
                           >
                             {size}
                           </span>
@@ -336,9 +337,9 @@ export default function PartnerProductRuleCard({
                         type="button"
                         onClick={() => editSizes(r.id)}
                         className="text-[11px] font-semibold underline"
-                        style={{ color: '#7a4a2a' }}
+                        style={{ color: 'var(--app-accent-strong)' }}
                       >
-                        Ubah ukuran
+                        {pr.editSizes}
                       </button>
                     </div>
                   )}
@@ -346,8 +347,8 @@ export default function PartnerProductRuleCard({
                 <button
                   type="button"
                   onClick={() => removeRule(r.id)}
-                  aria-label={`Keluarkan dari ${r.name}`}
-                  title="Keluarkan dari paket ini"
+                  aria-label={pr.removeFrom(r.name)}
+                  title={pr.removeFromThis}
                   className="p-1"
                   style={{ color: 'var(--app-text-soft)' }}
                 >
@@ -362,17 +363,17 @@ export default function PartnerProductRuleCard({
       {rules.length > 0 && (
         <Link
           to="/partner/paket"
-          className="self-start text-[12px] font-semibold no-underline"
-          style={{ color: '#7a4a2a' }}
+          className="self-start text-xs font-semibold no-underline"
+          style={{ color: 'var(--app-accent-strong)' }}
         >
-          Kelola aturan paket →
+          {pr.manageRules}
         </Link>
       )}
 
       {status && (
         <p
           className="text-sm"
-          style={{ color: status.ok ? '#3f7d58' : '#b42318' }}
+          style={{ color: status.ok ? 'var(--app-success)' : 'var(--app-danger)' }}
           role="status"
         >
           {status.text}
@@ -387,7 +388,7 @@ export default function PartnerProductRuleCard({
           <div
             role="dialog"
             aria-modal="true"
-            aria-label={modal.step === 'pick' ? 'Pilih paket' : 'Pilih ukuran'}
+            aria-label={modal.step === 'pick' ? pr.pickBundle : pr.pickSizes}
             className="app-card flex max-h-[85dvh] w-full max-w-md flex-col gap-3 p-4 lg:p-5"
             onClick={(e) => e.stopPropagation()}
           >
@@ -397,7 +398,7 @@ export default function PartnerProductRuleCard({
                   <button
                     type="button"
                     onClick={() => setModal({ step: 'pick' })}
-                    aria-label="Kembali ke daftar paket"
+                    aria-label={pr.backToList}
                     className="-ml-1 p-1"
                   >
                     <ArrowLeft size={18} />
@@ -405,22 +406,20 @@ export default function PartnerProductRuleCard({
                 )}
                 <div className="min-w-0">
                   <h3 className="pm-display truncate text-base">
-                    {modal.step === 'pick' ? 'Pilih paket' : sizeRule?.name}
+                    {modal.step === 'pick' ? pr.pickBundle : sizeRule?.name}
                   </h3>
                   <p
                     className="text-[11px]"
                     style={{ color: 'var(--app-text-soft)' }}
                   >
-                    {modal.step === 'pick'
-                      ? 'Pilih paket yang mau diterapkan ke produk ini.'
-                      : 'Pilih ukuran yang ikut paket ini.'}
+                    {modal.step === 'pick' ? pr.pickBundleHint : pr.pickSizesHint}
                   </p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setModal(null)}
-                aria-label="Tutup"
+                aria-label={t.common.close}
                 className="p-1"
               >
                 <X size={18} />
@@ -432,8 +431,8 @@ export default function PartnerProductRuleCard({
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Cari nama paket"
-                  aria-label="Cari nama paket"
+                  placeholder={pr.searchBundle}
+                  aria-label={pr.searchBundle}
                   className="app-input"
                   autoFocus
                 />
@@ -443,9 +442,7 @@ export default function PartnerProductRuleCard({
                       className="py-6 text-center text-sm"
                       style={{ color: 'var(--app-text-soft)' }}
                     >
-                      {search.trim()
-                        ? 'Tidak ada paket yang cocok.'
-                        : 'Semua paket sudah diterapkan ke produk ini.'}
+                      {search.trim() ? pr.noMatch : pr.allApplied}
                     </p>
                   ) : (
                     <div className="flex flex-col gap-1.5">
@@ -465,10 +462,10 @@ export default function PartnerProductRuleCard({
                                 {r.name}
                                 {!r.isActive && (
                                   <span
-                                    className="ml-2 text-[10px] uppercase"
+                                    className="ml-2 text-[11px] uppercase"
                                     style={{ color: 'var(--app-text-soft)' }}
                                   >
-                                    Nonaktif
+                                    {pr.inactive}
                                   </span>
                                 )}
                               </span>
@@ -477,7 +474,7 @@ export default function PartnerProductRuleCard({
                                 style={{ color: 'var(--app-text-soft)' }}
                               >
                                 {reason ??
-                                  `${r.minQty} pcs · ${formatRupiah(r.bundlePrice)}`}
+                                  pr.ruleSummary(r.minQty, formatRupiah(r.bundlePrice))}
                               </span>
                             </span>
                             {reason === null && (
@@ -529,19 +526,20 @@ function SizePicker({
   onChange: (draft: Array<string>) => void
   onApply: () => void
 }) {
+  const pr = usePartnerT().productRule
   const free = sizes.filter((size) => !used.has(size))
   const allOn = free.length > 0 && free.every((size) => draft.includes(size))
   return (
     <>
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-semibold">Ukuran</span>
+        <span className="text-xs font-semibold">{pr.sizes}</span>
         <button
           type="button"
           onClick={() => onChange(allOn ? [] : free)}
           className="text-[11px] font-semibold underline"
-          style={{ color: '#7a4a2a' }}
+          style={{ color: 'var(--app-accent-strong)' }}
         >
-          {allOn ? 'Kosongkan' : 'Pilih semua'}
+          {allOn ? pr.clear : pr.selectAll}
         </button>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -554,7 +552,7 @@ function SizePicker({
               type="button"
               aria-pressed={on}
               disabled={owner !== undefined}
-              title={owner ? `Sudah ikut ${owner}` : undefined}
+              title={owner ? pr.alreadyIn(owner) : undefined}
               onClick={() =>
                 onChange(
                   on ? draft.filter((x) => x !== size) : [...draft, size],
@@ -562,9 +560,9 @@ function SizePicker({
               }
               className="rounded-full border px-3 py-1 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
               style={{
-                background: on ? '#7a4a2a' : 'transparent',
+                background: on ? 'var(--app-accent-strong)' : 'transparent',
                 color: on ? '#fff' : 'var(--app-text)',
-                borderColor: on ? '#7a4a2a' : 'var(--app-border)',
+                borderColor: on ? 'var(--app-accent-strong)' : 'var(--app-border)',
               }}
             >
               {size}
@@ -574,7 +572,7 @@ function SizePicker({
       </div>
       {used.size > 0 && (
         <p className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
-          Ukuran yang redup sudah ikut paket lain.
+          {pr.dimmedNote}
         </p>
       )}
       <button
@@ -585,8 +583,8 @@ function SizePicker({
         style={{ minHeight: 44, fontSize: 14 }}
       >
         {draft.length === 0
-          ? 'Pilih minimal satu ukuran'
-          : `Terapkan ke ${draft.length} ukuran`}
+          ? pr.pickAtLeastOne
+          : pr.applyTo(draft.length)}
       </button>
     </>
   )

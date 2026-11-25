@@ -109,7 +109,7 @@ export default function PaymentInfoCard({
                     onClick={() =>
                       copyNumber(String(method.accountNumber ?? ''), method.id)
                     }
-                    className="flex flex-shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold text-white"
+                    className="flex flex-shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold text-[var(--app-on-solid)]"
                     style={{ background: 'var(--app-accent)' }}
                   >
                     {copied ? <Check size={14} /> : <Copy size={14} />}

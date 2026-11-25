@@ -1,6 +1,7 @@
 import { useBackToClose } from '../lib/back-to-close'
 import { formatInvoiceNumber } from '../lib/invoice-rules'
 import { formatRupiah } from '../lib/partner-product-rules'
+import { useOptionalPartnerI18n } from './PartnerI18n'
 
 interface ConfirmPaidModalProps {
   invoiceNumber: number
@@ -28,6 +29,8 @@ export default function ConfirmPaidModal({
 }: ConfirmPaidModalProps) {
   useBackToClose(true, onClose)
   const fee = adminFee && adminFee.amount > 0 ? adminFee : null
+  const { t, intlLocale } = useOptionalPartnerI18n()
+  const iv = t.invoice
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -41,7 +44,7 @@ export default function ConfirmPaidModal({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Konfirmasi pembayaran"
+        aria-label={iv.confirmPaidLabel}
         className="relative z-10 flex w-full max-w-[420px] flex-col gap-4 rounded-2xl border p-5 shadow-2xl"
         style={{
           background: 'var(--app-card)',
@@ -49,16 +52,15 @@ export default function ConfirmPaidModal({
         }}
       >
         <div>
-          <h2 className="pm-display text-lg">Tandai lunas?</h2>
+          <h2 className="pm-display text-lg">{iv.confirmPaidTitle}</h2>
           <p className="mt-1 text-[13px]" style={{ color: 'var(--app-text-soft)' }}>
-            Pastikan bukti bayar {formatInvoiceNumber(invoiceNumber)} sudah kamu
-            periksa. Tagihan lunas tidak bisa dibatalkan.
+            {iv.confirmPaidBody(formatInvoiceNumber(invoiceNumber))}
           </p>
         </div>
 
         <dl className="flex flex-col gap-2 text-[13px]">
           <div className="flex items-center justify-between gap-3">
-            <dt style={{ color: 'var(--app-text-soft)' }}>Total invoice</dt>
+            <dt style={{ color: 'var(--app-text-soft)' }}>{iv.confirmTotal}</dt>
             <dd className="pm-num font-semibold">{formatRupiah(totalAmount)}</dd>
           </div>
           <div
@@ -66,9 +68,9 @@ export default function ConfirmPaidModal({
             style={{ borderColor: 'var(--app-border)' }}
           >
             <dt style={{ color: 'var(--app-text-soft)' }}>
-              Biaya admin ALAKA
+              {iv.confirmAdminFee}
               {fee
-                ? ` (${fee.percent.toLocaleString('id-ID', { maximumFractionDigits: 2 })}%)`
+                ? ` (${fee.percent.toLocaleString(intlLocale, { maximumFractionDigits: 2 })}%)`
                 : ''}
             </dt>
             <dd
@@ -85,8 +87,8 @@ export default function ConfirmPaidModal({
           style={{ background: 'var(--pm-tint)', color: 'var(--app-text-soft)' }}
         >
           {fee
-            ? `Biaya admin ${formatRupiah(fee.amount)} langsung dipotong dari saldo kreditmu. Saldo boleh minus dan tertutup lewat top up.`
-            : 'Tidak ada biaya admin yang dipotong dari saldo kreditmu.'}
+            ? iv.confirmFeeNote(formatRupiah(fee.amount))
+            : iv.confirmNoFee}
         </p>
 
         {error && (
@@ -103,7 +105,7 @@ export default function ConfirmPaidModal({
             className="app-btn-outline"
             style={{ minHeight: 40, fontSize: 13 }}
           >
-            Batal
+            {iv.cancel}
           </button>
           <button
             type="button"
@@ -112,7 +114,7 @@ export default function ConfirmPaidModal({
             className="app-btn-primary"
             style={{ minHeight: 40, fontSize: 13 }}
           >
-            {busy ? 'Menyimpan…' : 'Ya, tandai lunas'}
+            {busy ? iv.saving : iv.confirmYes}
           </button>
         </div>
       </div>

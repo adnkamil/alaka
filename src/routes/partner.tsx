@@ -1,9 +1,10 @@
 import { Outlet, createFileRoute, redirect } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import PartnerBottomNav from '../components/PartnerBottomNav'
+import { PartnerI18nProvider } from '../components/PartnerI18n'
 import PartnerSidebar from '../components/PartnerSidebar'
 import PartnerTopbar from '../components/PartnerTopbar'
-import { currentPartnerQuery } from '../lib/queries'
+import { currentPartnerQuery, partnerLocaleQuery } from '../lib/queries'
 
 // Proteksi di sini cuma buat UX (redirect kalau belum login sebagai partner).
 // Yang beneran mengikat ada di server lewat `requirePartner()` — lihat
@@ -11,8 +12,11 @@ import { currentPartnerQuery } from '../lib/queries'
 // function partner tetap menolak.
 export const Route = createFileRoute('/partner')({
   beforeLoad: async ({ context }) => {
-    const partner =
-      await context.queryClient.ensureQueryData(currentPartnerQuery)
+    // Bahasa ikut di-prefetch supaya SSR langsung merender bahasa pilihan.
+    const [partner] = await Promise.all([
+      context.queryClient.ensureQueryData(currentPartnerQuery),
+      context.queryClient.ensureQueryData(partnerLocaleQuery),
+    ])
     if (!partner) {
       context.queryClient.removeQueries({
         queryKey: currentPartnerQuery.queryKey,
@@ -33,15 +37,17 @@ function PartnerLayout() {
   if (!partner) return null
 
   return (
-    <div className="pm pm-root">
-      <PartnerSidebar name={partner.name} logoUrl={partner.logoUrl} />
-      <div className="pm-main">
-        <PartnerTopbar name={partner.name} logoUrl={partner.logoUrl} />
-        <div className="app-shell app-shell--with-nav pm-content">
-          <Outlet />
+    <PartnerI18nProvider>
+      <div className="pm pm-root">
+        <PartnerSidebar name={partner.name} logoUrl={partner.logoUrl} />
+        <div className="pm-main">
+          <PartnerTopbar name={partner.name} logoUrl={partner.logoUrl} />
+          <div className="app-shell app-shell--with-nav pm-content">
+            <Outlet />
+          </div>
         </div>
+        <PartnerBottomNav />
       </div>
-      <PartnerBottomNav />
-    </div>
+    </PartnerI18nProvider>
   )
 }

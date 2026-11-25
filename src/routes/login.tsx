@@ -56,10 +56,10 @@ function LoginPage() {
       {/* Panel brand: hanya di layar lebar (desktop). Di HP halaman login
           tampil seperti biasa. */}
       <aside
-        className="hidden flex-col justify-center gap-4 px-16 text-white lg:flex"
+        className="hidden flex-col justify-center gap-4 px-16 text-[var(--app-on-solid)] lg:flex"
         style={{ background: 'var(--app-accent)' }}
       >
-        <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/95 text-2xl font-bold text-[var(--app-accent)]">
+        <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--app-on-solid)] text-2xl font-bold text-[var(--app-accent)]">
           A
         </span>
         <p className="text-sm font-semibold opacity-90">ALAKA</p>

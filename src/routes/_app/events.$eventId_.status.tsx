@@ -23,9 +23,9 @@ export const Route = createFileRoute('/_app/events/$eventId_/status')({
 type Tone = 'warning' | 'success' | 'danger'
 
 const TONE: Record<Tone, { background: string; color: string }> = {
-  warning: { background: 'var(--app-warning-soft)', color: '#b45309' },
-  success: { background: 'var(--app-success-soft)', color: '#15803d' },
-  danger: { background: 'var(--app-danger-soft, #fee2e2)', color: '#b91c1c' },
+  warning: { background: 'var(--app-warning-soft)', color: 'var(--app-warning)' },
+  success: { background: 'var(--app-success-soft)', color: 'var(--app-success)' },
+  danger: { background: 'var(--app-danger-soft)', color: 'var(--app-danger)' },
 }
 
 function EventStatusPage() {
@@ -247,8 +247,8 @@ function EventStatusPage() {
     : steps
 
   const DOT: Record<'done' | 'missed' | 'todo', React.CSSProperties> = {
-    done: { background: '#15803d', borderColor: '#15803d' },
-    missed: { background: '#b91c1c', borderColor: '#b91c1c' },
+    done: { background: 'var(--app-success)', borderColor: 'var(--app-success)' },
+    missed: { background: 'var(--app-danger)', borderColor: 'var(--app-danger)' },
     todo: { background: 'transparent', borderColor: 'var(--app-border)' },
   }
 
@@ -290,7 +290,7 @@ function EventStatusPage() {
             className="flex-1 rounded-lg py-2 text-xs font-semibold transition-all"
             style={
               tab === t
-                ? { background: 'var(--app-accent)', color: 'white' }
+                ? { background: 'var(--app-accent)', color: 'var(--app-on-solid)' }
                 : { color: 'var(--app-text-soft)' }
             }
           >
@@ -467,9 +467,9 @@ function SubmitCard({
   const waiting = h.pending > 0
   const total = Math.max(h.pcs, h.approved + h.rejected + h.pending, 1)
   const segments = [
-    { key: 'approved', value: h.approved, color: '#15803d', label: 'disetujui' },
-    { key: 'rejected', value: h.rejected, color: '#b91c1c', label: 'ditolak' },
-    { key: 'pending', value: h.pending, color: '#d97706', label: 'menunggu' },
+    { key: 'approved', value: h.approved, color: 'var(--app-success)', label: 'disetujui' },
+    { key: 'rejected', value: h.rejected, color: 'var(--app-danger)', label: 'ditolak' },
+    { key: 'pending', value: h.pending, color: 'var(--app-warning)', label: 'menunggu' },
   ]
 
   return (
@@ -484,8 +484,8 @@ function SubmitCard({
           className="flex h-11 w-11 flex-shrink-0 flex-col items-center justify-center rounded-xl leading-none"
           style={
             waiting
-              ? { background: 'var(--app-warning-soft)', color: '#b45309' }
-              : { background: 'var(--app-success-soft)', color: '#15803d' }
+              ? { background: 'var(--app-warning-soft)', color: 'var(--app-warning)' }
+              : { background: 'var(--app-success-soft)', color: 'var(--app-success)' }
           }
         >
           <span className="text-[9px] font-semibold uppercase tracking-wide">Ke</span>
@@ -498,8 +498,8 @@ function SubmitCard({
               className="flex flex-shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
               style={
                 waiting
-                  ? { background: 'var(--app-warning-soft)', color: '#b45309' }
-                  : { background: 'var(--app-success-soft)', color: '#15803d' }
+                  ? { background: 'var(--app-warning-soft)', color: 'var(--app-warning)' }
+                  : { background: 'var(--app-success-soft)', color: 'var(--app-success)' }
               }
             >
               {waiting ? <Clock size={10} /> : <Check size={10} />}

@@ -19,6 +19,7 @@ import {
 import { getAutoStockCheckActive } from '../lib/stock-check-functions'
 import PartnerTableToolbar from './ui/PartnerTableToolbar'
 import { useClientPager } from '../lib/use-client-pager'
+import { usePartnerI18n, usePartnerT } from './PartnerI18n'
 
 export type PartnerVariantEditorHandle = {
   /** `targetId` dipakai halaman tambah produk: id produk yang baru dibuat. */
@@ -77,6 +78,8 @@ export default function PartnerVariantEditor({
   ref?: React.Ref<PartnerVariantEditorHandle>
 }) {
   const queryClient = useQueryClient()
+  const { t: dict, errorMessage } = usePartnerI18n()
+  const v = dict.variant
   const { data: loaded, error: loadError } = useQuery({
     queryKey: ['partner-product-variants', productId],
     queryFn: () =>
@@ -118,12 +121,12 @@ export default function PartnerVariantEditor({
     setSizes(data.sizes)
     setVariations(data.variations)
     const next: Record<string, Cell> = {}
-    for (const v of data.variants) {
-      if (!v.isActive) continue
-      next[cellKey(v.size, v.variation)] = {
+    for (const variant of data.variants) {
+      if (!variant.isActive) continue
+      next[cellKey(variant.size, variant.variation)] = {
         on: true,
-        price: String(v.price),
-        stock: String(v.stock),
+        price: String(variant.price),
+        stock: String(variant.stock),
       }
     }
     setCells(next)
@@ -164,7 +167,7 @@ export default function PartnerVariantEditor({
     } catch (err) {
       setStatus({
         ok: false,
-        text: err instanceof Error ? err.message : 'Foto tidak bisa diproses',
+        text: errorMessage(err, v.photoFailed),
       })
     } finally {
       setPhotoBusy(null)
@@ -193,7 +196,7 @@ export default function PartnerVariantEditor({
   // Baris (variasi) dipaginasi dan bisa dicari; kolom (ukuran) tampil semua.
   const [rowSearch, setRowSearch] = useState('')
   const filteredRowLabels = rowLabels.filter((row) =>
-    (row ?? 'Standar').toLowerCase().includes(rowSearch.trim().toLowerCase()),
+    (row ?? v.standard).toLowerCase().includes(rowSearch.trim().toLowerCase()),
   )
   const rowPager = useClientPager(filteredRowLabels)
   // Tanpa grup ukuran dan variasi, satu-satunya baris diberi label "Standar".
@@ -220,7 +223,7 @@ export default function PartnerVariantEditor({
         ),
       )
     } else {
-      setVariations(variations.filter((v) => v !== name))
+      setVariations(variations.filter((item) => item !== name))
       setCells(
         Object.fromEntries(
           Object.entries(cells).filter(([k]) => !k.endsWith(`\u0001${name}`)),
@@ -259,13 +262,13 @@ export default function PartnerVariantEditor({
   }
 
   function validate(): string | null {
-    if (!hasVariants && price === '') return 'Isi harga produk.'
+    if (!hasVariants && price === '') return v.priceRequired
     return null
   }
 
   async function handleSave(targetId?: string) {
     const id = targetId ?? productId
-    if (!id) throw new Error('Produk belum tersimpan')
+    if (!id) throw new Error(v.notSavedYet)
     setStatus(null)
     try {
       const chosen: Array<{
@@ -309,11 +312,11 @@ export default function PartnerVariantEditor({
       await queryClient.invalidateQueries({
         queryKey: ['partner-product-variants', id],
       })
-      setStatus({ ok: true, text: 'Varian tersimpan.' })
+      setStatus({ ok: true, text: v.saved })
     } catch (err) {
       setStatus({
         ok: false,
-        text: err instanceof Error ? err.message : 'Gagal menyimpan varian',
+        text: errorMessage(err, v.saveFailed),
       })
       throw err
     }
@@ -327,8 +330,8 @@ export default function PartnerVariantEditor({
 
   if (loadError) {
     return (
-      <div className="app-card p-4 text-sm text-red-600">
-        Gagal memuat varian.
+      <div className="app-card p-4 text-sm text-[var(--app-danger)]">
+        {v.loadFailed}
       </div>
     )
   }
@@ -337,9 +340,8 @@ export default function PartnerVariantEditor({
   return (
     <section className="app-card flex flex-col gap-4 p-4 lg:p-5">
       {stockLocked && (
-        <p className="text-xs font-semibold text-amber-700">
-          Pengecekan stok otomatis sedang berjalan. Varian dan stok dikunci
-          sampai selesai.
+        <p className="text-xs font-semibold text-[var(--app-warning)]">
+          {v.stockLocked}
         </p>
       )}
       <fieldset disabled={stockLocked} className="contents">
@@ -352,24 +354,22 @@ export default function PartnerVariantEditor({
         />
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h2 className="pm-display text-base">Informasi penjualan</h2>
+            <h2 className="pm-display text-base">{v.title}</h2>
             <p
               className="text-[11px]"
               style={{ color: 'var(--app-text-soft)' }}
             >
-              {hasVariants
-                ? 'Varian aktif. Harga dan stok diisi per kombinasi di tabel.'
-                : 'Aktifkan varian kalau harga atau stok beda per variasi/ukuran.'}
+              {hasVariants ? v.hintOn : v.hintOff}
             </p>
           </div>
           <button
             type="button"
             role="switch"
             aria-checked={hasVariants}
-            aria-label="Buat varian"
-            onClick={() => setHasVariants((v) => !v)}
+            aria-label={v.toggle}
+            onClick={() => setHasVariants((on) => !on)}
             className="relative h-[26px] w-[46px] shrink-0 rounded-full transition-colors"
-            style={{ background: hasVariants ? '#3f7d58' : '#d9cfbf' }}
+            style={{ background: hasVariants ? 'var(--app-success)' : 'var(--pm-switch-off)' }}
           >
             <span
               className="absolute top-[3px] h-5 w-5 rounded-full bg-white shadow transition-all"
@@ -380,7 +380,7 @@ export default function PartnerVariantEditor({
 
         {!hasVariants && (
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-semibold">Harga</span>
+            <span className="text-xs font-semibold">{v.price}</span>
             <RupiahInput
               value={price}
               onChange={setPrice}
@@ -392,7 +392,7 @@ export default function PartnerVariantEditor({
 
         {!hasVariants && (
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-semibold">Stok</span>
+            <span className="text-xs font-semibold">{v.stock}</span>
             <input
               type="number"
               inputMode="numeric"
@@ -407,8 +407,7 @@ export default function PartnerVariantEditor({
               className="text-[11px]"
               style={{ color: 'var(--app-text-soft)' }}
             >
-              Stok 0 tetap tampil di katalog sebagai Habis dan tidak bisa
-              dipesan jastiper.
+              {v.stockZeroHint}
             </span>
           </label>
         )}
@@ -416,8 +415,10 @@ export default function PartnerVariantEditor({
         {hasVariants && (
           <>
             <ValueEditor
-              label="Variasi"
-              placeholder="Mis. Mocca, Cream, Black"
+              label={v.variation}
+              placeholder={v.variationPlaceholder}
+              addLabel={v.add}
+              removeLabel={v.removeValue}
               values={variations}
               draft={newVariation}
               onDraft={setNewVariation}
@@ -425,8 +426,10 @@ export default function PartnerVariantEditor({
               onRemove={(name) => removeValue('variation', name)}
             />
             <ValueEditor
-              label="Ukuran"
-              placeholder="Mis. S, M, L, XL"
+              label={v.size}
+              placeholder={v.sizePlaceholder}
+              addLabel={v.add}
+              removeLabel={v.removeValue}
               values={sizes}
               draft={newSize}
               onDraft={setNewSize}
@@ -435,12 +438,12 @@ export default function PartnerVariantEditor({
             />
 
             <div className="flex flex-col gap-2">
-              <span className="text-xs font-semibold">Daftar variasi</span>
+              <span className="text-xs font-semibold">{v.list}</span>
               <div className="flex flex-col gap-2 sm:flex-row">
                 <RupiahInput
                   value={bulkPrice}
                   onChange={setBulkPrice}
-                  placeholder="Harga"
+                  placeholder={v.price}
                   className="app-input pm-num"
                 />
                 <input
@@ -450,8 +453,8 @@ export default function PartnerVariantEditor({
                   step={1}
                   value={bulkStock}
                   onChange={(e) => setBulkStock(e.target.value)}
-                  placeholder="Stok"
-                  aria-label="Stok untuk semua variasi"
+                  placeholder={v.stock}
+                  aria-label={v.stockForAll}
                   className="app-input pm-num"
                 />
                 <button
@@ -461,15 +464,14 @@ export default function PartnerVariantEditor({
                   className="app-btn-primary shrink-0 disabled:opacity-50"
                   style={{ minHeight: 44, fontSize: 14 }}
                 >
-                  Terapkan ke semua
+                  {v.applyAll}
                 </button>
               </div>
               <span
                 className="text-[11px]"
                 style={{ color: 'var(--app-text-soft)' }}
               >
-                Mengisi dan menyalakan semua kombinasi. Kolom yang dikosongkan
-                tidak diubah.
+                {v.applyAllHint}
               </span>
             </div>
 
@@ -479,8 +481,7 @@ export default function PartnerVariantEditor({
                 setRowSearch(value)
                 rowPager.resetPage()
               }}
-              placeholder="Cari variasi"
-              label="Cari variasi"
+              placeholder={v.searchVariation}
               pager={rowPager.pager}
             />
             <div
@@ -488,13 +489,13 @@ export default function PartnerVariantEditor({
               style={{ borderColor: 'var(--app-border)' }}
             >
               <table className="w-full min-w-[560px] text-[13px]">
-                <thead style={{ background: 'var(--app-card-soft, #f7f1e7)' }}>
+                <thead style={{ background: 'var(--app-card-soft)' }}>
                   <tr>
-                    {showVariationCol && <Th>Variasi</Th>}
-                    {sizes.length > 0 && <Th>Ukuran</Th>}
-                    <Th>Harga</Th>
-                    <Th>Stok</Th>
-                    <Th>Dijual</Th>
+                    {showVariationCol && <Th>{v.colVariation}</Th>}
+                    {sizes.length > 0 && <Th>{v.colSize}</Th>}
+                    <Th>{v.colPrice}</Th>
+                    <Th>{v.colStock}</Th>
+                    <Th>{v.colOnSale}</Th>
                   </tr>
                 </thead>
                 <tbody>
@@ -521,7 +522,7 @@ export default function PartnerVariantEditor({
                               style={{ borderColor: 'var(--app-border)' }}
                             >
                               {row === null ? (
-                                'Standar'
+                                v.standard
                               ) : (
                                 <span className="flex flex-col items-center gap-1.5">
                                   <VariationPhoto
@@ -545,8 +546,8 @@ export default function PartnerVariantEditor({
                             <RupiahInput
                               disabled={!cell.on}
                               value={cell.price}
-                              onChange={(v) => setCell(col, row, { price: v })}
-                              placeholder="Harga"
+                              onChange={(value) => setCell(col, row, { price: value })}
+                              placeholder={v.price}
                               className="app-input pm-num w-[150px] !py-2 disabled:opacity-50"
                             />
                           </td>
@@ -562,7 +563,7 @@ export default function PartnerVariantEditor({
                                 setCell(col, row, { stock: e.target.value })
                               }
                               placeholder="0"
-                              aria-label={`Stok ${row ?? 'standar'} ${col ?? ''}`}
+                              aria-label={v.stockOf(row ?? v.standardLower, col ?? '')}
                               className="app-input pm-num w-[110px] !py-2 disabled:opacity-50"
                             />
                           </td>
@@ -573,8 +574,8 @@ export default function PartnerVariantEditor({
                               onChange={(e) =>
                                 setCell(col, row, { on: e.target.checked })
                               }
-                              className="h-4 w-4 accent-[#3f7d58]"
-                              aria-label={`Dijual ${row ?? 'standar'} ${col ?? ''}`}
+                              className="h-4 w-4 accent-[var(--app-success)]"
+                              aria-label={v.onSaleOf(row ?? v.standardLower, col ?? '')}
                             />
                           </td>
                         </tr>
@@ -590,7 +591,7 @@ export default function PartnerVariantEditor({
         {status && (
           <p
             className="text-sm"
-            style={{ color: status.ok ? '#3f7d58' : '#b42318' }}
+            style={{ color: status.ok ? 'var(--app-success)' : 'var(--app-danger)' }}
             role="status"
           >
             {status.text}
@@ -615,14 +616,15 @@ function VariationPhoto({
   onPick: () => void
   onRemove: () => void
 }) {
+  const v = usePartnerT().variant
   if (url) {
     return (
       <span className="relative block size-14">
         <button
           type="button"
           onClick={onPick}
-          title="Ganti foto"
-          aria-label={`Ganti foto ${name}`}
+          title={v.changePhoto}
+          aria-label={v.changePhotoOf(name)}
           className="block size-14 overflow-hidden rounded-lg border"
           style={{ borderColor: 'var(--app-border)' }}
         >
@@ -631,7 +633,7 @@ function VariationPhoto({
         <button
           type="button"
           onClick={onRemove}
-          aria-label={`Hapus foto ${name}`}
+          aria-label={v.removePhotoOf(name)}
           className="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full bg-black/70 text-white"
         >
           <X size={12} />
@@ -644,13 +646,13 @@ function VariationPhoto({
       type="button"
       onClick={onPick}
       disabled={busy}
-      title="Tambah foto (opsional)"
-      aria-label={`Tambah foto ${name}`}
+      title={v.addPhoto}
+      aria-label={v.addPhotoOf(name)}
       className="flex size-14 items-center justify-center rounded-lg border border-dashed disabled:opacity-50"
-      style={{ borderColor: 'var(--app-border)', color: '#7a4a2a' }}
+      style={{ borderColor: 'var(--app-border)', color: 'var(--app-accent-strong)' }}
     >
       {busy ? (
-        <span className="text-[10px] font-semibold">...</span>
+        <span className="text-[11px] font-semibold">...</span>
       ) : (
         <ImagePlus size={20} />
       )}
@@ -677,20 +679,22 @@ function ValueEditor(props: {
   onDraft: (v: string) => void
   onAdd: () => void
   onRemove: (name: string) => void
+  addLabel: string
+  removeLabel: (name: string) => string
 }) {
   return (
     <div className="flex flex-col gap-2">
       <span className="text-xs font-semibold">{props.label}</span>
       {props.values.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {props.values.map((v) => (
-            <span key={v} className="pm-chip">
-              {v}
+          {props.values.map((value) => (
+            <span key={value} className="pm-chip">
+              {value}
               <button
                 type="button"
-                aria-label={`Hapus ${v}`}
-                onClick={() => props.onRemove(v)}
-                className="ml-1 text-[14px] leading-none"
+                aria-label={props.removeLabel(value)}
+                onClick={() => props.onRemove(value)}
+                className="ml-1 text-sm leading-none"
                 style={{ color: 'var(--app-text-soft)' }}
               >
                 ×
@@ -718,7 +722,7 @@ function ValueEditor(props: {
           className="app-btn-outline shrink-0"
           style={{ minHeight: 44 }}
         >
-          Tambah
+          {props.addLabel}
         </button>
       </div>
     </div>

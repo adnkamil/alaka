@@ -1,4 +1,5 @@
 import { formatRupiah } from '../lib/partner-product-rules'
+import { usePartnerT } from './PartnerI18n'
 
 type InvoiceBucket = { amount: number; pcs: number; count: number }
 
@@ -21,28 +22,24 @@ export default function PartnerRevenueCard({
   slotEnabled,
   totalAmount,
   invoiced,
-  readyPcs,
-  readySubmitCount,
   waitingPcs,
   waitingSubmitCount,
 }: {
   slotEnabled: boolean
   totalAmount: number
   invoiced: PartnerInvoicedSummary | undefined
-  /** Pcs disetujui di submit tab "Siap ditagih". */
-  readyPcs: number
-  readySubmitCount: number
   /** Pcs yang belum dicek di submit tab "Menunggu". */
   waitingPcs: number
   waitingSubmitCount: number
 }) {
   const soft = { color: 'var(--app-text-soft)' }
+  const r = usePartnerT().eventDetail.revenue
   const eyebrow = (
     <p
       className="text-[11px] font-bold uppercase tracking-wide"
       style={{ color: 'var(--pm-gold)' }}
     >
-      {slotEnabled ? 'Total ditagih' : 'Total pendapatan'}
+      {slotEnabled ? r.totalBilled : r.totalRevenue}
     </p>
   )
 
@@ -52,7 +49,7 @@ export default function PartnerRevenueCard({
         {eyebrow}
         <p
           className="pm-num text-[30px] font-bold leading-tight"
-          style={{ color: '#9c463b' }}
+          style={{ color: 'var(--app-accent-strong)' }}
         >
           {formatRupiah(totalAmount)}
         </p>
@@ -71,23 +68,23 @@ export default function PartnerRevenueCard({
   const statusRows = [
     {
       key: 'lunas',
-      label: 'Lunas',
+      label: r.paid,
       dot: 'var(--app-success)',
       bucket: lunas,
     },
     {
       key: 'review',
-      label: 'Cek bukti bayar',
-      dot: '#2f5fb3',
+      label: r.review,
+      dot: 'var(--app-info)',
       bucket: review,
     },
     {
       key: 'ditagih',
-      label: 'Belum dibayar',
+      label: r.unpaid,
       dot: 'var(--app-warning)',
       bucket: ditagih,
     },
-  ].filter((r) => r.bucket.count > 0)
+  ].filter((row) => row.bucket.count > 0)
 
   return (
     <section className="app-card flex flex-col gap-3 p-5">
@@ -95,14 +92,14 @@ export default function PartnerRevenueCard({
       <div>
         <p
           className="pm-num text-[30px] font-bold leading-tight"
-          style={{ color: '#9c463b' }}
+          style={{ color: 'var(--app-accent-strong)' }}
         >
           {formatRupiah(total)}
         </p>
-        <p className="mt-1 text-[12px]" style={soft}>
+        <p className="mt-1 text-xs" style={soft}>
           {totalCount > 0
-            ? `${totalPcs} pcs · ${totalCount} tagihan`
-            : 'Belum ada tagihan terkirim'}
+            ? r.summary(totalPcs, totalCount)
+            : r.noneSent}
         </p>
       </div>
 
@@ -115,7 +112,7 @@ export default function PartnerRevenueCard({
             aria-valuenow={paidShare}
             aria-valuemin={0}
             aria-valuemax={100}
-            aria-label="Porsi tagihan lunas"
+            aria-label={r.paidShareLabel}
           >
             <div
               className="h-full rounded-full"
@@ -123,7 +120,7 @@ export default function PartnerRevenueCard({
             />
           </div>
           <p className="text-[11px]" style={soft}>
-            {paidShare}% sudah lunas
+            {r.paidShare(paidShare)}
           </p>
         </div>
       )}
@@ -133,50 +130,36 @@ export default function PartnerRevenueCard({
           className="flex flex-col gap-2 border-t pt-3 text-[13px]"
           style={{ borderColor: 'var(--app-border)' }}
         >
-          {statusRows.map((r) => (
-            <div key={r.key} className="flex items-center justify-between gap-3">
+          {statusRows.map((row) => (
+            <div key={row.key} className="flex items-center justify-between gap-3">
               <span className="flex items-center gap-2" style={soft}>
                 <span
                   aria-hidden
                   className="inline-block h-2 w-2 shrink-0 rounded-full"
-                  style={{ background: r.dot }}
+                  style={{ background: row.dot }}
                 />
-                {r.label}
-                <span className="text-[11px]">({r.bucket.count})</span>
+                {row.label}
+                <span className="text-[11px]">({row.bucket.count})</span>
               </span>
               <span className="pm-num font-semibold">
-                {formatRupiah(r.bucket.amount)}
+                {formatRupiah(row.bucket.amount)}
               </span>
             </div>
           ))}
         </div>
       )}
 
-      {(readySubmitCount > 0 || waitingSubmitCount > 0) && (
+      {waitingSubmitCount > 0 && (
         <div
           className="flex flex-col gap-2 border-t pt-3 text-[13px]"
           style={{ borderColor: 'var(--app-border)' }}
         >
-          {readySubmitCount > 0 && (
-            <div className="flex items-center justify-between gap-3">
-              <span style={soft}>Siap ditagih</span>
-              <span className="pm-num font-semibold">
-                {readyPcs} pcs · {readySubmitCount} submit
-              </span>
-            </div>
-          )}
-          {waitingSubmitCount > 0 && (
-            <div className="flex items-center justify-between gap-3">
-              <span style={soft}>Menunggu persetujuan</span>
-              <span className="pm-num font-semibold" style={{ color: '#2f5fb3' }}>
-                {waitingPcs} pcs · {waitingSubmitCount} submit
-              </span>
-            </div>
-          )}
-          <p className="text-[11px]" style={soft}>
-            Nominal muncul setelah tagihan dikirim, karena harga baru terkunci
-            di tagihan.
-          </p>
+          <div className="flex items-center justify-between gap-3">
+            <span style={soft}>{r.waitingApproval}</span>
+            <span className="pm-num font-semibold" style={{ color: 'var(--app-info)' }}>
+              {r.waitingValue(waitingPcs, waitingSubmitCount)}
+            </span>
+          </div>
         </div>
       )}
     </section>

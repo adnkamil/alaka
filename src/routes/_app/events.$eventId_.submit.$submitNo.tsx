@@ -22,9 +22,9 @@ export const Route = createFileRoute('/_app/events/$eventId_/submit/$submitNo')(
 
 type LineStatus = SubmitDetailLine['status']
 
-const GREEN = { background: 'var(--app-success-soft)', color: '#15803d' }
-const RED = { background: 'var(--app-danger-soft, #fee2e2)', color: '#b91c1c' }
-const AMBER = { background: 'var(--app-warning-soft)', color: '#b45309' }
+const GREEN = { background: 'var(--app-success-soft)', color: 'var(--app-success)' }
+const RED = { background: 'var(--app-danger-soft)', color: 'var(--app-danger)' }
+const AMBER = { background: 'var(--app-warning-soft)', color: 'var(--app-warning)' }
 const MUTE = { background: 'var(--app-border)', color: 'var(--app-text-mute)' }
 
 /** Warna, ikon, dan label status satu barang. */
@@ -351,15 +351,15 @@ function SubmitDetailPage() {
       </header>
 
       {detail.isLoading && <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>Memuat…</p>}
-      {detail.isError && <p className="text-sm text-red-600">Gagal memuat detail submit.</p>}
+      {detail.isError && <p className="text-sm text-[var(--app-danger)]">Gagal memuat detail submit.</p>}
       {message && !replacing && (
         <p
           className="rounded-xl p-3 text-sm"
           role="status"
           style={
             message.tone === 'ok'
-              ? { background: 'var(--app-success-soft)', color: '#15803d' }
-              : { background: 'var(--app-danger-soft, #fee2e2)', color: '#b91c1c' }
+              ? { background: 'var(--app-success-soft)', color: 'var(--app-success)' }
+              : { background: 'var(--app-danger-soft)', color: 'var(--app-danger)' }
           }
         >
           {message.text}

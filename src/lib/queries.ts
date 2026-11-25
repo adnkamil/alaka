@@ -9,10 +9,12 @@ import type { EventSortKey } from './partner-event-queries'
 import type { ProductSortKey } from './partner-product-queries'
 import type { RuleSortKey } from './partner-rule-sort'
 import type { SortState } from './table-sort'
-import { fetchPartnerDashboard } from './partner-dashboard-functions'
+import { fetchPartnerAnalytics } from './partner-analytics-functions'
+import type { AnalyticsParams } from './partner-analytics-functions'
 import { listPartnerRulesPage } from './partner-rule-functions'
 import { fetchPartnerEventProducts } from './partner-event-product-functions'
 import { fetchAdminPartners, fetchCurrentPartner } from './partner-functions'
+import { fetchPartnerLocale } from './partner-locale-functions'
 import {
   fetchOwnPartnerEventParticipants,
   fetchPartnerEvent,
@@ -52,6 +54,13 @@ export const adminCalendarEventParticipantsQuery = (id: string) =>
 export const currentPartnerQuery = queryOptions({
   queryKey: ['current-partner'],
   queryFn: () => fetchCurrentPartner(),
+})
+
+/** Bahasa tampilan Partner Portal (cookie); lihat src/lib/partner-locale.ts. */
+export const partnerLocaleQuery = queryOptions({
+  queryKey: ['partner-locale'],
+  queryFn: () => fetchPartnerLocale(),
+  staleTime: Infinity,
 })
 
 /** Semua partner untuk halaman admin. */
@@ -130,10 +139,13 @@ export const partnerEventProductsQuery = (id: string) =>
   })
 
 /** Angka ringkasan Beranda Partner Portal. */
-export const partnerDashboardQuery = queryOptions({
-  queryKey: ['partner-dashboard'],
-  queryFn: () => fetchPartnerDashboard(),
-})
+/** Halaman Analytics: satu query per kombinasi filter (periode + event). */
+export const partnerAnalyticsQuery = (params: AnalyticsParams) =>
+  queryOptions({
+    queryKey: ['partner-analytics', params],
+    queryFn: () => fetchPartnerAnalytics({ data: params }),
+    staleTime: 60_000,
+  })
 
 /** Satu halaman aturan paket untuk tabel Aturan Paket. */
 export const partnerRulesPageQuery = (params: {

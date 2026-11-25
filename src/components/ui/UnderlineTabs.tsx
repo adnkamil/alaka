@@ -58,7 +58,7 @@ export default function UnderlineTabs<TKey extends string>({
                 className="pm-num rounded-full px-1.5 text-[11px] font-semibold leading-[18px]"
                 style={
                   urgent
-                    ? { background: 'var(--app-accent)', color: 'white' }
+                    ? { background: 'var(--app-accent)', color: 'var(--app-on-solid)' }
                     : {
                         background: active ? 'var(--app-accent-soft)' : 'var(--pm-tint)',
                         color: active ? 'var(--app-accent)' : 'var(--app-text-soft)',

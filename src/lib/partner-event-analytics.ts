@@ -123,7 +123,8 @@ export type EventAnalytics = {
   jastiper: { joined: number; active: number; submitted: number }
   pcs: PcsSplit
   kindSplit: { satuan: number; paket: number }
-  billed: { total: number; lunas: number; count: number }
+  /** Tagihan aktif: nilai, nilai lunas, jumlah tagihan, dan pcs di dalamnya. */
+  billed: { total: number; lunas: number; count: number; pcs: number }
   products: Array<ProductStat>
   sizes: Array<{ size: string; terjual: number }>
   jastiperRanking: Array<JastiperStat>
@@ -340,9 +341,10 @@ export function buildEventAnalytics(input: AnalyticsInput): EventAnalytics {
     }),
   )
 
-  const billed = { total: 0, lunas: 0, count: input.invoices.length }
+  const billed = { total: 0, lunas: 0, count: input.invoices.length, pcs: 0 }
   for (const inv of input.invoices) {
     billed.total += inv.amount
+    billed.pcs += inv.pcs
     if (inv.status === 'lunas') billed.lunas += inv.amount
   }
 

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
 import InvoiceStatusBadge from './InvoiceStatusBadge'
+import { usePartnerI18n } from './PartnerI18n'
 import Pagination from './ui/Pagination'
 import FilterSelect from './ui/FilterSelect'
 import PartnerTableToolbar from './ui/PartnerTableToolbar'
@@ -28,12 +29,12 @@ type InvoiceSortKey =
 
 type StatusFilter = 'semua' | InvoiceStatus
 
-const STATUS_FILTERS: Array<{ key: StatusFilter; label: string }> = [
-  { key: 'semua', label: 'Semua' },
-  { key: 'ditagih', label: 'Ditagih' },
-  { key: 'menunggu_review', label: 'Menunggu review' },
-  { key: 'lunas', label: 'Lunas' },
-  { key: 'dibatalkan', label: 'Dibatalkan' },
+const STATUS_FILTERS: Array<StatusFilter> = [
+  'semua',
+  'ditagih',
+  'menunggu_review',
+  'lunas',
+  'dibatalkan',
 ]
 
 /**
@@ -62,6 +63,8 @@ export default function PartnerInvoiceList({
   })
   const [status, setStatus] = useState<StatusFilter>('semua')
   const [search, setSearch] = useState('')
+  const { t, intlLocale } = usePartnerI18n()
+  const iv = t.invoice
 
   // Jumlah per chip status tidak terpengaruh kata kunci pencarian.
   const countOf = (key: StatusFilter) =>
@@ -80,9 +83,9 @@ export default function PartnerInvoiceList({
         ].some((text) => text.toLowerCase().includes(keyword))),
   )
   const searchLabel = [
-    'Cari no. invoice',
-    brandId ? null : 'jastiper',
-    calendarEventId ? null : 'event',
+    iv.searchInvoiceNo,
+    brandId ? null : iv.searchJastiper,
+    calendarEventId ? null : iv.searchEvent,
   ]
     .filter(Boolean)
     .join(', ')
@@ -102,18 +105,18 @@ export default function PartnerInvoiceList({
   )
   type ColumnDef = [string, InvoiceSortKey, 'left' | 'right']
   const columns: Array<ColumnDef> = [
-    ['No. invoice', 'number', 'left'],
+    [iv.colNumber, 'number', 'left'],
     ...(brandId
       ? []
-      : ([['Jastiper', 'brandName', 'left']] satisfies Array<ColumnDef>)),
+      : ([[iv.colJastiper, 'brandName', 'left']] satisfies Array<ColumnDef>)),
     ...(calendarEventId
       ? []
-      : ([['Event', 'eventName', 'left']] satisfies Array<ColumnDef>)),
-    ['Submit', 'submitNos', 'left'],
-    ['Pcs', 'totalPcs', 'right'],
-    ['Tanggal kirim', 'sentAt', 'left'],
-    ['Total', 'totalAmount', 'right'],
-    ['Status', 'status', 'left'],
+      : ([[iv.colEvent, 'eventName', 'left']] satisfies Array<ColumnDef>)),
+    [iv.colSubmit, 'submitNos', 'left'],
+    [iv.colPcs, 'totalPcs', 'right'],
+    [iv.colSentAt, 'sentAt', 'left'],
+    [iv.colTotal, 'totalAmount', 'right'],
+    [iv.colStatus, 'status', 'left'],
   ]
 
   if (hideWhenEmpty && !isLoading && invoices.length === 0) return null
@@ -128,20 +131,20 @@ export default function PartnerInvoiceList({
             resetPage()
           }}
           placeholder={searchLabel}
-          label={searchLabel}
           pager={pager}
           filter={
             hideStatusFilter ? undefined : (
               <FilterSelect
-                label="Status"
+                label={iv.statusLabel}
                 value={status}
-                options={STATUS_FILTERS.map((f) => {
-                  const count = countOf(f.key)
+                options={STATUS_FILTERS.map((key) => {
+                  const count = countOf(key)
+                  const label = key === 'semua' ? iv.statusAll : iv.status[key]
                   return {
-                    value: f.key,
-                    label: `${f.label} (${count})`,
+                    value: key,
+                    label: iv.filterOption(label, count),
                     // Status tanpa tagihan tidak bisa dipilih, kecuali yang sedang aktif.
-                    disabled: count === 0 && f.key !== status,
+                    disabled: count === 0 && key !== status,
                   }
                 })}
                 onChange={(value) => {
@@ -159,16 +162,14 @@ export default function PartnerInvoiceList({
           className="py-6 text-center text-sm"
           style={{ color: 'var(--app-text-soft)' }}
         >
-          Memuat tagihan…
+          {iv.loading}
         </p>
       ) : rows.length === 0 ? (
         <p
           className="app-card px-4 py-6 text-center text-sm"
           style={{ color: 'var(--app-text-soft)' }}
         >
-          {invoices.length === 0
-            ? 'Belum ada tagihan.'
-            : 'Tidak ada tagihan yang cocok.'}
+          {invoices.length === 0 ? iv.empty : iv.noMatch}
         </p>
       ) : (
         <div className="app-card overflow-x-auto p-0">
@@ -234,7 +235,7 @@ export default function PartnerInvoiceList({
                     className="px-4 py-3"
                     style={{ color: 'var(--app-text-soft)' }}
                   >
-                    {formatWibDateTime(inv.sentAt)}
+                    {formatWibDateTime(inv.sentAt, intlLocale)}
                   </td>
                   <td className="pm-num px-4 py-3 text-right font-bold">
                     {formatRupiah(inv.totalAmount)}

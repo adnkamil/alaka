@@ -7,6 +7,7 @@ import {
   formatNotificationTime,
   partnerNotificationsQuery,
 } from '../../components/PartnerNotificationBell'
+import { usePartnerI18n } from '../../components/PartnerI18n'
 import { markAllPartnerNotificationsRead } from '../../lib/partner-notification-functions'
 import type { PartnerNotificationItem } from '../../lib/partner-notification-functions'
 
@@ -24,6 +25,7 @@ function PartnerNotificationsPage() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const markedRef = useRef(false)
+  const { t, intlLocale } = usePartnerI18n()
 
   // Titik "belum dibaca" diambil dari data SAAT halaman dibuka, supaya tetap
   // terlihat walau semuanya langsung ditandai dibaca di belakang.
@@ -49,7 +51,7 @@ function PartnerNotificationsPage() {
 
   return (
     <main className="flex flex-col gap-4 px-5 pb-6 pt-4 lg:px-0">
-      <h1 className="pm-display text-xl">Notifikasi</h1>
+      <h1 className="pm-display text-[22px] leading-tight lg:text-[26px]">{t.shell.notifications}</h1>
 
       {items.length === 0 && (
         <div
@@ -57,7 +59,7 @@ function PartnerNotificationsPage() {
           style={{ color: 'var(--app-text-soft)' }}
         >
           <Bell size={28} style={{ color: 'var(--app-text-mute)' }} />
-          Belum ada notifikasi.
+          {t.shell.notificationsEmpty}
         </div>
       )}
 
@@ -76,7 +78,7 @@ function PartnerNotificationsPage() {
                   <span className="truncate font-semibold">{item.title}</span>
                   {unread && (
                     <span
-                      aria-label="Belum dibaca"
+                      aria-label={t.shell.notificationUnreadDot}
                       className="h-2 w-2 shrink-0 rounded-full"
                       style={{ background: 'var(--app-accent)' }}
                     />
@@ -94,7 +96,7 @@ function PartnerNotificationsPage() {
                   className="block text-xs"
                   style={{ color: 'var(--app-text-mute)' }}
                 >
-                  {formatNotificationTime(item.createdAt)}
+                  {formatNotificationTime(item.createdAt, intlLocale)}
                 </span>
               </span>
               {clickable && (

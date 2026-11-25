@@ -13,6 +13,7 @@ import {
   
 } from '../lib/partner-rule-form-sizes'
 import type {FormOtherRule} from '../lib/partner-rule-form-sizes';
+import { usePartnerT } from './PartnerI18n'
 
 export type RuleFormValue = {
   name: string
@@ -65,7 +66,7 @@ function SizeChip({
       onClick={onClick}
       className="rounded-full border px-2.5 py-0.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-40"
       style={{
-        background: on ? '#7a4a2a' : 'transparent',
+        background: on ? 'var(--app-accent-strong)' : 'transparent',
         color: on ? '#fff' : 'var(--app-text)',
         borderColor: 'var(--app-border)',
       }}
@@ -100,10 +101,11 @@ function ProductSizeChips({
   used: Map<string, string>
   onToggle: (size: string) => void
 }) {
+  const b = usePartnerT().bundle
   if (product.sizes.length === 0) {
     return (
       <span className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
-        Tanpa ukuran
+        {b.noSizes}
       </span>
     )
   }
@@ -117,7 +119,7 @@ function ProductSizeChips({
             label={size}
             on={selected.includes(size)}
             disabled={owner !== undefined}
-            title={owner ? `Dipakai ${owner}` : undefined}
+            title={owner ? b.usedBy(owner) : undefined}
             onClick={() => onToggle(size)}
           />
         )
@@ -149,6 +151,8 @@ export default function PartnerRuleForm({
   const [pickerPageSize, setPickerPageSize] = useState<number>(DEFAULT_PAGE_SIZE)
 
   const [localError, setLocalError] = useState<string | null>(null)
+  const t = usePartnerT()
+  const b = t.bundle
 
   const selected = products.filter((p) => value.productIds.includes(p.id))
   const visibleSelected = selected.filter((p) =>
@@ -237,10 +241,13 @@ export default function PartnerRuleForm({
         const missing = productsMissingSizes(selected, value.productSizes)
         if (missing.length > 0) {
           setLocalError(
-            `Pilih minimal satu ukuran untuk ${missing
-              .slice(0, 3)
-              .map((p) => p.name)
-              .join(', ')}${missing.length > 3 ? ` dan ${missing.length - 3} produk lain` : ''}.`,
+            b.pickSizeFor(
+              missing
+                .slice(0, 3)
+                .map((p) => p.name)
+                .join(', '),
+              Math.max(0, missing.length - 3),
+            ),
           )
           return
         }
@@ -252,17 +259,17 @@ export default function PartnerRuleForm({
         <h2 className="pm-display text-base">{title}</h2>
         <div className="flex flex-col gap-3.5 lg:grid lg:grid-cols-2 lg:gap-4">
           <label className="flex flex-col gap-1.5 lg:col-span-2">
-            <span className="text-xs font-semibold">Nama aturan</span>
+            <span className="text-xs font-semibold">{b.name}</span>
             <input
               value={value.name}
               onChange={(e) => setValue({ ...value, name: e.target.value })}
-              placeholder="Mis. 3 pcs Rp100.000"
+              placeholder={b.namePlaceholder}
               className="app-input"
               required
             />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-semibold">Jumlah pcs per paket</span>
+            <span className="text-xs font-semibold">{b.pcsPerBundle}</span>
             <input
               type="number"
               min={1}
@@ -273,10 +280,10 @@ export default function PartnerRuleForm({
             />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-semibold">Harga paket (HPP jastiper)</span>
+            <span className="text-xs font-semibold">{b.bundlePrice}</span>
             <RupiahInput
               value={value.bundlePrice}
-              onChange={(v) => setValue({ ...value, bundlePrice: v })}
+              onChange={(next) => setValue({ ...value, bundlePrice: next })}
               className="app-input pm-num"
               placeholder="100.000"
               required
@@ -289,19 +296,19 @@ export default function PartnerRuleForm({
           style={{ borderColor: 'var(--app-border)' }}
         >
           <div className="flex flex-col gap-0.5">
-            <span className="text-sm font-bold">Aktif</span>
+            <span className="text-sm font-bold">{b.active}</span>
             <span className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
-              Aturan nonaktif tidak bisa dipilih jastiper.
+              {b.activeHint}
             </span>
           </div>
           <button
             type="button"
             role="switch"
             aria-checked={value.isActive}
-            aria-label="Aktif"
+            aria-label={b.active}
             onClick={() => setValue({ ...value, isActive: !value.isActive })}
             className="relative h-[26px] w-[46px] shrink-0 rounded-full transition-colors"
-            style={{ background: value.isActive ? '#3f7d58' : '#d9cfbf' }}
+            style={{ background: value.isActive ? 'var(--app-success)' : 'var(--pm-switch-off)' }}
           >
             <span
               className="absolute top-[3px] h-5 w-5 rounded-full bg-white shadow transition-all"
@@ -312,7 +319,7 @@ export default function PartnerRuleForm({
       </section>
 
       {(localError ?? error) && (
-        <p role="alert" className="text-sm" style={{ color: '#b42318' }}>
+        <p role="alert" className="text-sm" style={{ color: 'var(--app-danger)' }}>
           {localError ?? error}
         </p>
       )}
@@ -321,9 +328,9 @@ export default function PartnerRuleForm({
       <section className="app-card flex flex-col gap-3 p-4 lg:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="pm-display text-base">Produk dalam aturan</h2>
+            <h2 className="pm-display text-base">{b.productsInRule}</h2>
             <p className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
-              {selected.length} produk dipilih
+              {b.productsSelected(selected.length)}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -336,18 +343,18 @@ export default function PartnerRuleForm({
               className="app-btn-outline whitespace-nowrap"
               style={{ minHeight: 40, fontSize: 13 }}
             >
-              + Tambah produk
+              {b.addProduct}
             </button>
           </div>
         </div>
 
         {selected.length === 0 ? (
           <p className="py-6 text-center text-sm" style={{ color: 'var(--app-text-soft)' }}>
-            Belum ada produk di aturan ini. Tekan "Tambah produk" untuk memilih.
+            {b.noProducts}
           </p>
         ) : visibleSelected.length === 0 ? (
           <p className="py-6 text-center text-sm" style={{ color: 'var(--app-text-soft)' }}>
-            Tidak ada produk yang cocok dengan pencarian.
+            {b.noProductMatch}
           </p>
         ) : (
           <>
@@ -357,8 +364,7 @@ export default function PartnerRuleForm({
               setSearch(value)
               setListPage(1)
             }}
-            placeholder="Cari produk"
-            label="Cari produk"
+            placeholder={b.searchProduct}
             pager={{
               page: listSafePage,
               pageSize: listPageSize,
@@ -375,10 +381,10 @@ export default function PartnerRuleForm({
               className={`grid ${LIST_COLUMNS} items-center gap-4 px-5 py-3.5 text-[11px] font-bold uppercase tracking-wide`}
               style={{ background: 'var(--pm-tint)', color: 'var(--pm-gold)' }}
             >
-              <span>Produk</span>
-              <span>Ukuran</span>
-              <span>Status katalog</span>
-              <span>Aksi</span>
+              <span>{b.colProduct}</span>
+              <span>{b.colSize}</span>
+              <span>{b.colCatalogStatus}</span>
+              <span>{b.colAction}</span>
             </div>
             {listPaged.map((p) => (
               <div
@@ -394,15 +400,15 @@ export default function PartnerRuleForm({
                   onToggle={(size) => toggleProductSize(p.id, size)}
                 />
                 <span>
-                  <span className="app-badge">{p.isActive ? 'Aktif' : 'Nonaktif'}</span>
+                  <span className="app-badge">{p.isActive ? b.active : b.inactive}</span>
                 </span>
                 <span>
                   <button
                     type="button"
                     onClick={() => removeProduct(p.id)}
-                    aria-label={`Keluarkan ${p.name}`}
+                    aria-label={b.removeProduct(p.name)}
                     className="p-1"
-                    style={{ color: '#b42318' }}
+                    style={{ color: 'var(--app-danger)' }}
                   >
                     <X size={16} />
                   </button>
@@ -421,18 +427,18 @@ export default function PartnerRuleForm({
         >
           <div
             role="dialog"
-            aria-label="Tambah produk ke aturan"
+            aria-label={b.pickerLabel}
             className="app-card flex max-h-[85dvh] w-full max-w-lg flex-col gap-3 p-4 lg:p-5"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between gap-2">
               <div>
-                <h3 className="pm-display text-base">Tambah produk</h3>
+                <h3 className="pm-display text-base">{b.pickerTitle}</h3>
                 <p className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
-                  Pilih produk, lalu pilih ukuran yang ikut aturan ini. Ukuran yang sudah dipakai aturan lain tidak bisa dipilih lagi.
+                  {b.pickerHint}
                 </p>
               </div>
-              <button type="button" onClick={() => setPickerOpen(false)} aria-label="Tutup" className="p-1">
+              <button type="button" onClick={() => setPickerOpen(false)} aria-label={t.common.close} className="p-1">
                 <X size={18} />
               </button>
             </div>
@@ -442,8 +448,7 @@ export default function PartnerRuleForm({
                 setPickerSearch(value)
                 setPickerPage(1)
               }}
-              placeholder="Cari nama produk"
-              label="Cari nama produk"
+              placeholder={b.searchProductName}
               pager={{
                 page: pickerSafePage,
                 pageSize: pickerPageSize,
@@ -459,7 +464,7 @@ export default function PartnerRuleForm({
             {bulkSizes.length > 0 && (
               <div className="flex flex-col gap-1.5">
                 <span className="text-[11px]" style={{ color: 'var(--app-text-soft)' }}>
-                  Terapkan ukuran ke semua produk terpilih yang punya ukuran itu:
+                  {b.bulkHint}
                 </span>
                 <div className="flex flex-wrap gap-1.5">
                   {bulkSizes.map((size) => {
@@ -482,11 +487,11 @@ export default function PartnerRuleForm({
 
             {pickable.length === 0 ? (
               <p className="py-6 text-center text-sm" style={{ color: 'var(--app-text-soft)' }}>
-                Tidak ada produk yang bisa ditambahkan ke aturan ini.
+                {b.noPickable}
               </p>
             ) : pickerVisible.length === 0 ? (
               <p className="py-6 text-center text-sm" style={{ color: 'var(--app-text-soft)' }}>
-                Tidak ada produk yang cocok dengan pencarian.
+                {b.noProductMatch}
               </p>
             ) : (
               <div className="app-card min-h-0 flex-1 overflow-y-auto overflow-hidden">
@@ -498,11 +503,11 @@ export default function PartnerRuleForm({
                     type="checkbox"
                     checked={allPickerChecked}
                     onChange={toggleAllPicker}
-                    aria-label="Pilih semua"
-                    className="h-4 w-4 accent-[#3f7d58]"
+                    aria-label={b.selectAll}
+                    className="h-4 w-4 accent-[var(--app-success)]"
                   />
-                  <span>Produk</span>
-                  <span>Status katalog</span>
+                  <span>{b.colProduct}</span>
+                  <span>{b.colCatalogStatus}</span>
                 </div>
                 {pickerPaged.map((p) => {
                   const checked = value.productIds.includes(p.id)
@@ -516,8 +521,8 @@ export default function PartnerRuleForm({
                         type="checkbox"
                         checked={checked}
                         onChange={() => togglePicker(p.id)}
-                        aria-label={`Pilih ${p.name}`}
-                        className="h-4 w-4 accent-[#3f7d58]"
+                        aria-label={b.selectProduct(p.name)}
+                        className="h-4 w-4 accent-[var(--app-success)]"
                       />
                       <span className="flex min-w-0 flex-col gap-2">
                         <span className="truncate text-sm font-bold">{p.name}</span>
@@ -531,7 +536,7 @@ export default function PartnerRuleForm({
                         )}
                       </span>
                       <span>
-                        <span className="app-badge">{p.isActive ? 'Aktif' : 'Nonaktif'}</span>
+                        <span className="app-badge">{p.isActive ? b.active : b.inactive}</span>
                       </span>
                     </div>
                   )
@@ -546,7 +551,7 @@ export default function PartnerRuleForm({
                 className="app-btn-primary"
                 style={{ minHeight: 44, fontSize: 14 }}
               >
-                Selesai
+                {b.done}
               </button>
             </div>
           </div>
