@@ -21,17 +21,12 @@ export default function PartnerRevenueCard({
   slotEnabled,
   totalAmount,
   invoiced,
-  readyPcs,
-  readySubmitCount,
   waitingPcs,
   waitingSubmitCount,
 }: {
   slotEnabled: boolean
   totalAmount: number
   invoiced: PartnerInvoicedSummary | undefined
-  /** Pcs disetujui di submit tab "Siap ditagih". */
-  readyPcs: number
-  readySubmitCount: number
   /** Pcs yang belum dicek di submit tab "Menunggu". */
   waitingPcs: number
   waitingSubmitCount: number
@@ -52,7 +47,7 @@ export default function PartnerRevenueCard({
         {eyebrow}
         <p
           className="pm-num text-[30px] font-bold leading-tight"
-          style={{ color: '#9c463b' }}
+          style={{ color: 'var(--app-accent-strong)' }}
         >
           {formatRupiah(totalAmount)}
         </p>
@@ -78,7 +73,7 @@ export default function PartnerRevenueCard({
     {
       key: 'review',
       label: 'Cek bukti bayar',
-      dot: '#2f5fb3',
+      dot: 'var(--app-info)',
       bucket: review,
     },
     {
@@ -95,11 +90,11 @@ export default function PartnerRevenueCard({
       <div>
         <p
           className="pm-num text-[30px] font-bold leading-tight"
-          style={{ color: '#9c463b' }}
+          style={{ color: 'var(--app-accent-strong)' }}
         >
           {formatRupiah(total)}
         </p>
-        <p className="mt-1 text-[12px]" style={soft}>
+        <p className="mt-1 text-xs" style={soft}>
           {totalCount > 0
             ? `${totalPcs} pcs · ${totalCount} tagihan`
             : 'Belum ada tagihan terkirim'}
@@ -152,31 +147,17 @@ export default function PartnerRevenueCard({
         </div>
       )}
 
-      {(readySubmitCount > 0 || waitingSubmitCount > 0) && (
+      {waitingSubmitCount > 0 && (
         <div
           className="flex flex-col gap-2 border-t pt-3 text-[13px]"
           style={{ borderColor: 'var(--app-border)' }}
         >
-          {readySubmitCount > 0 && (
-            <div className="flex items-center justify-between gap-3">
-              <span style={soft}>Siap ditagih</span>
-              <span className="pm-num font-semibold">
-                {readyPcs} pcs · {readySubmitCount} submit
-              </span>
-            </div>
-          )}
-          {waitingSubmitCount > 0 && (
-            <div className="flex items-center justify-between gap-3">
-              <span style={soft}>Menunggu persetujuan</span>
-              <span className="pm-num font-semibold" style={{ color: '#2f5fb3' }}>
-                {waitingPcs} pcs · {waitingSubmitCount} submit
-              </span>
-            </div>
-          )}
-          <p className="text-[11px]" style={soft}>
-            Nominal muncul setelah tagihan dikirim, karena harga baru terkunci
-            di tagihan.
-          </p>
+          <div className="flex items-center justify-between gap-3">
+            <span style={soft}>Menunggu persetujuan</span>
+            <span className="pm-num font-semibold" style={{ color: 'var(--app-info)' }}>
+              {waitingPcs} pcs · {waitingSubmitCount} submit
+            </span>
+          </div>
         </div>
       )}
     </section>

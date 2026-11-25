@@ -328,7 +328,7 @@ export default function SubmitSubscriptionModal({
             <button
               type="submit"
               disabled={isSubmitting || !displayQrisImage || !proofImage}
-              className="rounded-xl px-4 py-2 text-xs font-semibold text-white shadow-sm hover:opacity-90 disabled:opacity-50"
+              className="rounded-xl px-4 py-2 text-xs font-semibold text-[var(--app-on-solid)] shadow-sm hover:opacity-90 disabled:opacity-50"
               style={{ background: 'var(--app-accent)' }}
             >
               {isSubmitting ? 'Mengirim...' : 'Kirim Pengajuan'}

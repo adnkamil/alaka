@@ -967,19 +967,19 @@ function EventDetailPage() {
           {showEventMenu && (
             <>
               <div
-                className="fixed inset-0 z-10"
+                className="fixed inset-0 z-50"
                 onClick={() => setShowEventMenu(false)}
                 aria-hidden="true"
               />
               <div
-                className="absolute right-0 top-full z-20 mt-2 w-72 rounded-2xl border p-4 shadow-xl animate-in fade-in slide-in-from-top-1 duration-150"
+                className="absolute right-0 top-full z-[60] mt-2 max-h-[calc(100dvh-6rem)] w-72 overflow-y-auto overscroll-contain rounded-2xl border p-3.5 shadow-xl animate-in fade-in slide-in-from-top-1 duration-150"
                 style={{
                   background: 'var(--app-card)',
                   borderColor: 'var(--app-border)',
                 }}
               >
                 <p
-                  className="mb-2 text-xs font-semibold"
+                  className="mb-1.5 text-xs font-semibold"
                   style={{ color: 'var(--app-text-soft)' }}
                 >
                   Aturan fee jastip untuk event ini
@@ -1009,23 +1009,22 @@ function EventDetailPage() {
                 </div>
 
                 <div
-                  className="my-4 border-t"
+                  className="my-3 border-t"
                   style={{ borderColor: 'var(--app-border)' }}
                 />
 
                 {/* Sembunyikan rincian fee di invoice/tagihan ke pelanggan. */}
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold">
                       Sembunyikan rincian fee
                     </p>
                     <p
-                      className="mt-0.5 text-xs leading-relaxed"
+                      className="mt-0.5 text-xs leading-snug"
                       style={{ color: 'var(--app-text-soft)' }}
                     >
-                      Kalau aktif, invoice/tagihan ke pelanggan cuma menampilkan
-                      qty dan harga nett-nya (harga asli + fee), tanpa memecah
-                      fee. Total tagihan tetap sama.
+                      Tagihan cuma tampil harga nett (harga asli + fee). Total
+                      tetap sama.
                     </p>
                   </div>
                   <Switch
@@ -1036,78 +1035,68 @@ function EventDetailPage() {
                 </div>
 
                 <div
-                  className="my-4 border-t"
+                  className="my-3 border-t"
                   style={{ borderColor: 'var(--app-border)' }}
                 />
 
-                {/* Import data pesanan dari file Excel/CSV. Masukannya cuma di
-                    menu ini — di halaman event nggak ada tombol terpisah. */}
-                <button
-                  type="button"
-                  disabled={!event.isActive || ordersLocked}
-                  onClick={() => {
-                    setShowEventMenu(false)
-                    setShowImportOrders(true)
-                  }}
-                  className="flex w-full items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold disabled:opacity-50"
-                  style={{
-                    borderColor: 'var(--app-border)',
-                    color: 'var(--app-text)',
-                  }}
-                >
-                  <FileSpreadsheet size={14} />
-                  Import data (Excel/CSV)
-                </button>
+                {/* Import / export data pesanan (Excel/CSV), sejajar. */}
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    disabled={!event.isActive || ordersLocked}
+                    onClick={() => {
+                      setShowEventMenu(false)
+                      setShowImportOrders(true)
+                    }}
+                    className="flex items-center justify-center gap-1.5 rounded-xl border px-2 py-2 text-xs font-semibold disabled:opacity-50"
+                    style={{
+                      borderColor: 'var(--app-border)',
+                      color: 'var(--app-text)',
+                    }}
+                  >
+                    <FileSpreadsheet size={14} />
+                    Import
+                  </button>
+                  <button
+                    type="button"
+                    disabled={event.orders.length === 0 || isExportingOrders}
+                    onClick={() => void handleExportOrders()}
+                    className="flex items-center justify-center gap-1.5 rounded-xl border px-2 py-2 text-xs font-semibold disabled:opacity-50"
+                    style={{
+                      borderColor: 'var(--app-border)',
+                      color: 'var(--app-text)',
+                    }}
+                  >
+                    <Download size={14} />
+                    {isExportingOrders ? 'Menyiapkan...' : 'Export'}
+                  </button>
+                </div>
                 <p
-                  className="mt-2 text-xs leading-relaxed"
+                  className="mt-2 text-xs leading-snug"
                   style={{ color: 'var(--app-text-soft)' }}
                 >
-                  {event.isActive
-                    ? 'Kolom file: No urut, Nama, No WA, item, harga, qty (opsional), fee (opsional). Qty kosong dianggap 1. Kalau fee dikosongkan, diisi otomatis dari aturan fee event ini.'
-                    : 'Event nonaktif — aktifkan dulu untuk menambah pesanan lewat import.'}
-                </p>
-
-                {/* Export semua pesanan event ini ke Excel: satu baris per barang. */}
-                <button
-                  type="button"
-                  disabled={event.orders.length === 0 || isExportingOrders}
-                  onClick={() => void handleExportOrders()}
-                  className="mt-3 flex w-full items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold disabled:opacity-50"
-                  style={{
-                    borderColor: 'var(--app-border)',
-                    color: 'var(--app-text)',
-                  }}
-                >
-                  <Download size={14} />
-                  {isExportingOrders
-                    ? 'Menyiapkan file...'
-                    : 'Export data (Excel)'}
-                </button>
-                <p
-                  className="mt-2 text-xs leading-relaxed"
-                  style={{ color: 'var(--app-text-soft)' }}
-                >
-                  {event.orders.length === 0
-                    ? 'Belum ada pesanan untuk diexport.'
-                    : 'Semua pesanan event ini diunduh jadi satu file Excel — satu baris per barang: No urut, Nama, No WA, Item, Harga, Fee, Qty, Total.'}
+                  {!event.isActive
+                    ? 'Event nonaktif — aktifkan dulu untuk import pesanan.'
+                    : event.orders.length === 0
+                      ? 'Belum ada pesanan untuk diexport.'
+                      : 'Import: kolom No urut, Nama, No WA, item, harga, qty & fee (opsional). Export: semua pesanan jadi satu file Excel.'}
                 </p>
 
                 <div
-                  className="my-4 border-t"
+                  className="my-3 border-t"
                   style={{ borderColor: 'var(--app-border)' }}
                 />
 
                 {/* Nonaktifkan / aktifkan event — nonaktif bukan hapus. */}
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold">Event aktif</p>
                     <p
-                      className="mt-0.5 text-xs leading-relaxed"
+                      className="mt-0.5 text-xs leading-snug"
                       style={{ color: 'var(--app-text-soft)' }}
                     >
-                      Kalau dinonaktifkan, event ini keluar dari daftar Event
-                      aktif dan tidak bisa ditambah pesanan baru. Datanya tetap
-                      tersimpan dan bisa diaktifkan lagi kapan saja.
+                      Kalau mati, event keluar dari daftar aktif dan tidak bisa
+                      ditambah pesanan. Data tetap aman.
                     </p>
                   </div>
                   <Switch
@@ -1118,7 +1107,7 @@ function EventDetailPage() {
                 </div>
 
                 <div
-                  className="my-4 border-t"
+                  className="my-3 border-t"
                   style={{ borderColor: 'var(--app-border)' }}
                 />
 
@@ -1135,7 +1124,7 @@ function EventDetailPage() {
                     }
                     setShowDeleteEvent(true)
                   }}
-                  className="flex w-full items-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold"
                   style={{
                     borderColor: 'var(--app-danger-soft)',
                     color: 'var(--app-danger)',
@@ -1173,7 +1162,7 @@ function EventDetailPage() {
                 })
               }
               className="mb-4 flex w-full items-center justify-between rounded-xl px-3.5 py-3 text-left text-[13px] font-semibold"
-              style={{ background: 'var(--app-warning-soft)', color: '#b45309' }}
+              style={{ background: 'var(--app-warning-soft)', color: 'var(--app-warning)' }}
             >
               <span>{unpaidInvoiceCount} tagihan partner belum dibayar</span>
               <span>Lihat →</span>
@@ -1231,7 +1220,7 @@ function EventDetailPage() {
           className="flex-1 rounded-lg py-2 text-xs font-semibold transition-all"
           style={
             viewMode === 'perCustomer'
-              ? { background: 'var(--app-accent)', color: 'white' }
+              ? { background: 'var(--app-accent)', color: 'var(--app-on-solid)' }
               : { color: 'var(--app-text-soft)' }
           }
           aria-pressed={viewMode === 'perCustomer'}
@@ -1247,7 +1236,7 @@ function EventDetailPage() {
           className="flex-1 rounded-lg py-2 text-xs font-semibold transition-all"
           style={
             viewMode === 'perItem'
-              ? { background: 'var(--app-accent)', color: 'white' }
+              ? { background: 'var(--app-accent)', color: 'var(--app-on-solid)' }
               : { color: 'var(--app-text-soft)' }
           }
           aria-pressed={viewMode === 'perItem'}
@@ -1283,7 +1272,7 @@ function EventDetailPage() {
             }
             className={`flex items-center justify-center gap-1.5 rounded-xl py-2 px-1 text-xs font-semibold transition-all border ${
               statusFilter === 'unpaid'
-                ? 'border-[var(--app-warning)] bg-[var(--app-warning)] text-white shadow-sm'
+                ? 'border-[var(--app-warning)] bg-[var(--app-warning)] text-[var(--app-on-solid)] shadow-sm'
                 : 'border-[var(--app-border)] bg-[var(--app-card)] text-[var(--app-text-soft)] hover:border-[var(--app-warning)]'
             }`}
           >
@@ -1291,7 +1280,7 @@ function EventDetailPage() {
             <span
               className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
                 statusFilter === 'unpaid'
-                  ? 'bg-white/20 text-white'
+                  ? 'bg-white/20 text-[var(--app-on-solid)]'
                   : 'bg-[var(--app-warning-soft)] text-[var(--app-warning)]'
               }`}
             >
@@ -1304,7 +1293,7 @@ function EventDetailPage() {
             onClick={() => setStatusFilter(statusFilter === 'dp' ? null : 'dp')}
             className={`flex items-center justify-center gap-1.5 rounded-xl py-2 px-1 text-xs font-semibold transition-all border ${
               statusFilter === 'dp'
-                ? 'border-[var(--app-accent)] bg-[var(--app-accent)] text-white shadow-sm'
+                ? 'border-[var(--app-accent)] bg-[var(--app-accent)] text-[var(--app-on-solid)] shadow-sm'
                 : 'border-[var(--app-border)] bg-[var(--app-card)] text-[var(--app-text-soft)] hover:border-[var(--app-accent)]'
             }`}
           >
@@ -1312,7 +1301,7 @@ function EventDetailPage() {
             <span
               className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
                 statusFilter === 'dp'
-                  ? 'bg-white/20 text-white'
+                  ? 'bg-white/20 text-[var(--app-on-solid)]'
                   : 'bg-[var(--app-accent-soft)] text-[var(--app-accent)]'
               }`}
             >
@@ -1327,7 +1316,7 @@ function EventDetailPage() {
             }
             className={`flex items-center justify-center gap-1.5 rounded-xl py-2 px-1 text-xs font-semibold transition-all border ${
               statusFilter === 'paid'
-                ? 'border-[var(--app-success)] bg-[var(--app-success)] text-white shadow-sm'
+                ? 'border-[var(--app-success)] bg-[var(--app-success)] text-[var(--app-on-solid)] shadow-sm'
                 : 'border-[var(--app-border)] bg-[var(--app-card)] text-[var(--app-text-soft)] hover:border-[var(--app-success)]'
             }`}
           >
@@ -1335,7 +1324,7 @@ function EventDetailPage() {
             <span
               className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
                 statusFilter === 'paid'
-                  ? 'bg-white/20 text-white'
+                  ? 'bg-white/20 text-[var(--app-on-solid)]'
                   : 'bg-[var(--app-success-soft)] text-[var(--app-success)]'
               }`}
             >
@@ -1350,16 +1339,16 @@ function EventDetailPage() {
             }
             className={`flex items-center justify-center gap-1.5 rounded-xl py-2 px-1 text-xs font-semibold transition-all border ${
               statusFilter === 'shipped'
-                ? 'border-[#2563eb] bg-[#2563eb] text-white shadow-sm'
-                : 'border-[var(--app-border)] bg-[var(--app-card)] text-[var(--app-text-soft)] hover:border-[#2563eb]'
+                ? 'border-[var(--app-info)] bg-[var(--app-info)] text-[var(--app-on-solid)] shadow-sm'
+                : 'border-[var(--app-border)] bg-[var(--app-card)] text-[var(--app-text-soft)] hover:border-[var(--app-info)]'
             }`}
           >
             <span>Kirim</span>
             <span
               className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
                 statusFilter === 'shipped'
-                  ? 'bg-white/20 text-white'
-                  : 'bg-[rgba(59,130,246,0.14)] text-[#2563eb]'
+                  ? 'bg-white/20 text-[var(--app-on-solid)]'
+                  : 'bg-[var(--app-info-soft)] text-[var(--app-info)]'
               }`}
             >
               {shippedCount}
@@ -1376,7 +1365,7 @@ function EventDetailPage() {
             }
             className={`flex items-center justify-center gap-1.5 rounded-xl py-2 px-1 text-xs font-semibold transition-all border ${
               obtainedFilter === 'pending'
-                ? 'border-[var(--app-warning)] bg-[var(--app-warning)] text-white shadow-sm'
+                ? 'border-[var(--app-warning)] bg-[var(--app-warning)] text-[var(--app-on-solid)] shadow-sm'
                 : 'border-[var(--app-border)] bg-[var(--app-card)] text-[var(--app-text-soft)] hover:border-[var(--app-warning)]'
             }`}
           >
@@ -1384,7 +1373,7 @@ function EventDetailPage() {
             <span
               className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
                 obtainedFilter === 'pending'
-                  ? 'bg-white/20 text-white'
+                  ? 'bg-white/20 text-[var(--app-on-solid)]'
                   : 'bg-[var(--app-warning-soft)] text-[var(--app-warning)]'
               }`}
             >
@@ -1401,7 +1390,7 @@ function EventDetailPage() {
             }
             className={`flex items-center justify-center gap-1.5 rounded-xl py-2 px-1 text-xs font-semibold transition-all border ${
               obtainedFilter === 'obtained'
-                ? 'border-[var(--app-success)] bg-[var(--app-success)] text-white shadow-sm'
+                ? 'border-[var(--app-success)] bg-[var(--app-success)] text-[var(--app-on-solid)] shadow-sm'
                 : 'border-[var(--app-border)] bg-[var(--app-card)] text-[var(--app-text-soft)] hover:border-[var(--app-success)]'
             }`}
           >
@@ -1409,7 +1398,7 @@ function EventDetailPage() {
             <span
               className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
                 obtainedFilter === 'obtained'
-                  ? 'bg-white/20 text-white'
+                  ? 'bg-white/20 text-[var(--app-on-solid)]'
                   : 'bg-[var(--app-success-soft)] text-[var(--app-success)]'
               }`}
             >
@@ -1868,7 +1857,7 @@ function EventDetailPage() {
               />
             </label>
             {bundlePriceError && (
-              <p role="alert" className="text-sm text-red-600">{bundlePriceError}</p>
+              <p role="alert" className="text-sm text-[var(--app-danger)]">{bundlePriceError}</p>
             )}
             <div className="flex justify-end gap-2">
               <button type="button" onClick={() => setBundlePriceEdit(null)} disabled={isSavingBundlePrice}>
@@ -1886,7 +1875,7 @@ function EventDetailPage() {
         <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 mx-auto flex max-w-lg justify-end px-6">
           <button
             onClick={() => openSheet({ type: 'create' })}
-            className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg"
+            className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full text-[var(--app-on-solid)] shadow-lg"
             style={{ background: 'var(--app-accent)' }}
             aria-label="Tambah Pesanan"
           >

@@ -14,7 +14,7 @@ function PartnerInvoicesPage() {
     <main className="pm-wide flex flex-col gap-4 px-5 pb-8 pt-4 lg:gap-5">
       <header>
         <h1 className="pm-display text-[22px] leading-tight lg:text-[26px]">
-          Tagihan
+          Invoices
         </h1>
         <p
           className="mt-1 text-[13px]"

@@ -128,7 +128,7 @@ function AdminPartnerPage() {
           <button
             type="button"
             onClick={() => setFormOpen(true)}
-            className="flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-semibold text-white shadow-sm"
+            className="flex items-center gap-1 rounded-xl px-3 py-2 text-xs font-semibold text-[var(--app-on-solid)] shadow-sm"
             style={{ background: 'var(--app-accent)' }}
           >
             <Plus size={14} />

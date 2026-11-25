@@ -4,11 +4,11 @@ const TONE_STYLE: Record<
   PartnerBadgeTone | 'danger',
   { background: string; color: string }
 > = {
-  neutral: { background: '#efe5d8', color: '#7a6a58' },
-  info: { background: '#e0ecfb', color: '#2f5fb3' },
-  warn: { background: '#fdecd0', color: '#b26a0a' },
-  success: { background: '#dcebe1', color: '#3f7a55' },
-  danger: { background: '#f3dcd6', color: '#9c463b' },
+  neutral: { background: 'var(--pm-muted)', color: 'var(--app-text-soft)' },
+  info: { background: 'var(--app-info-soft)', color: 'var(--app-info)' },
+  warn: { background: 'var(--app-warning-soft)', color: 'var(--app-warning)' },
+  success: { background: 'var(--app-success-soft)', color: 'var(--app-success)' },
+  danger: { background: 'var(--app-danger-soft)', color: 'var(--app-danger)' },
 }
 
 /** Chip kecil status baris tabel: Cukup / Kurang 2 / Menunggu / Pengganti. */

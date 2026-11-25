@@ -98,7 +98,7 @@ function PartnerEventRekapPage() {
       />
 
       {error && (
-        <div className="app-card p-4 text-sm" style={{ color: '#b42318' }}>
+        <div className="app-card p-4 text-sm" style={{ color: 'var(--app-danger)' }}>
           Gagal memuat rekap.
         </div>
       )}
@@ -136,11 +136,11 @@ function PartnerEventRekapPage() {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-sm font-bold leading-snug">{row.productName}</p>
-                  <p className="mt-0.5 text-[12px]" style={{ color: 'var(--app-text-soft)' }}>
+                  <p className="mt-0.5 text-xs" style={{ color: 'var(--app-text-soft)' }}>
                     {[row.variation, row.size].filter(Boolean).join(' · ') || 'Standar'}
                   </p>
                 </div>
-                <span className="pm-num shrink-0 text-lg font-bold" style={{ color: 'var(--app-accent)' }}>
+                <span className="pm-num shrink-0 text-base font-bold" style={{ color: 'var(--app-accent)' }}>
                   {row.total}
                 </span>
               </div>
@@ -158,7 +158,7 @@ function PartnerEventRekapPage() {
 
         <div className="app-card hidden overflow-x-auto p-0 lg:block">
           <table className="w-full text-[13px]">
-            <thead style={{ background: 'var(--app-card-soft, #f7f1e7)' }}>
+            <thead style={{ background: 'var(--app-card-soft)' }}>
               <tr>
                 {(
                   [

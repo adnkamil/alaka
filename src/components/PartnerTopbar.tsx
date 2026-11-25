@@ -4,7 +4,7 @@ import { Link, useRouterState } from '@tanstack/react-router'
 import { CalendarDays, Package, Search } from 'lucide-react'
 import PartnerLogo from './PartnerLogo'
 import PartnerNotificationBell from './PartnerNotificationBell'
-import { matchesSearch } from '../lib/partner-dashboard-rules'
+import { matchesSearch } from '../lib/partner-topbar-search'
 import { partnerInitials } from '../lib/partner-logo-rules'
 import { getPartnerJastiperDetail } from '../lib/partner-jastiper-detail'
 import {

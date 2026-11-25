@@ -6,8 +6,8 @@ import { getEventSlotSummary } from '../lib/event-slot-functions'
 type Tone = 'warning' | 'success'
 
 const TONE: Record<Tone, { background: string; color: string }> = {
-  warning: { background: 'var(--app-warning-soft)', color: '#b45309' },
-  success: { background: 'var(--app-success-soft)', color: '#15803d' },
+  warning: { background: 'var(--app-warning-soft)', color: 'var(--app-warning)' },
+  success: { background: 'var(--app-success-soft)', color: 'var(--app-success)' },
 }
 
 /**

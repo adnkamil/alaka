@@ -402,7 +402,7 @@ function InvoicePage() {
               <button
                 type="button"
                 onClick={() => setShowAddCustomer(true)}
-                className="rounded-lg px-3 py-1.5 text-xs font-semibold text-white"
+                className="rounded-lg px-3 py-1.5 text-xs font-semibold text-[var(--app-on-solid)]"
                 style={{ background: 'var(--app-accent)' }}
               >
                 Tambah ke Customer

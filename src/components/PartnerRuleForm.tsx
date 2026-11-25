@@ -65,7 +65,7 @@ function SizeChip({
       onClick={onClick}
       className="rounded-full border px-2.5 py-0.5 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-40"
       style={{
-        background: on ? '#7a4a2a' : 'transparent',
+        background: on ? 'var(--app-accent-strong)' : 'transparent',
         color: on ? '#fff' : 'var(--app-text)',
         borderColor: 'var(--app-border)',
       }}
@@ -301,7 +301,7 @@ export default function PartnerRuleForm({
             aria-label="Aktif"
             onClick={() => setValue({ ...value, isActive: !value.isActive })}
             className="relative h-[26px] w-[46px] shrink-0 rounded-full transition-colors"
-            style={{ background: value.isActive ? '#3f7d58' : '#d9cfbf' }}
+            style={{ background: value.isActive ? 'var(--app-success)' : 'var(--pm-switch-off)' }}
           >
             <span
               className="absolute top-[3px] h-5 w-5 rounded-full bg-white shadow transition-all"
@@ -312,7 +312,7 @@ export default function PartnerRuleForm({
       </section>
 
       {(localError ?? error) && (
-        <p role="alert" className="text-sm" style={{ color: '#b42318' }}>
+        <p role="alert" className="text-sm" style={{ color: 'var(--app-danger)' }}>
           {localError ?? error}
         </p>
       )}
@@ -402,7 +402,7 @@ export default function PartnerRuleForm({
                     onClick={() => removeProduct(p.id)}
                     aria-label={`Keluarkan ${p.name}`}
                     className="p-1"
-                    style={{ color: '#b42318' }}
+                    style={{ color: 'var(--app-danger)' }}
                   >
                     <X size={16} />
                   </button>
@@ -499,7 +499,7 @@ export default function PartnerRuleForm({
                     checked={allPickerChecked}
                     onChange={toggleAllPicker}
                     aria-label="Pilih semua"
-                    className="h-4 w-4 accent-[#3f7d58]"
+                    className="h-4 w-4 accent-[var(--app-success)]"
                   />
                   <span>Produk</span>
                   <span>Status katalog</span>
@@ -517,7 +517,7 @@ export default function PartnerRuleForm({
                         checked={checked}
                         onChange={() => togglePicker(p.id)}
                         aria-label={`Pilih ${p.name}`}
-                        className="h-4 w-4 accent-[#3f7d58]"
+                        className="h-4 w-4 accent-[var(--app-success)]"
                       />
                       <span className="flex min-w-0 flex-col gap-2">
                         <span className="truncate text-sm font-bold">{p.name}</span>

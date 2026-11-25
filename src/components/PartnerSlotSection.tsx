@@ -124,7 +124,7 @@ export default function PartnerSlotSection({
         </label>
       </div>
       {warnings.map((w) => (
-        <p key={w} className="text-[12px]" style={{ color: '#b26a0a' }}>
+        <p key={w} className="text-xs" style={{ color: 'var(--app-warning)' }}>
           {w}
         </p>
       ))}
@@ -141,7 +141,7 @@ export default function PartnerSlotSection({
       {message && (
         <p
           className="text-[13px]"
-          style={{ color: message.error ? '#b42318' : 'var(--app-success)' }}
+          style={{ color: message.error ? 'var(--app-danger)' : 'var(--app-success)' }}
         >
           {message.text}
         </p>
@@ -170,7 +170,7 @@ export default function PartnerSlotSection({
                 style={{
                   color:
                     row.status === 'terkirim'
-                    ? '#2f5fb3'
+                    ? 'var(--app-info)'
                       : 'var(--app-text-soft)',
                 }}
               >

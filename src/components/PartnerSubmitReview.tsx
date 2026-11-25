@@ -196,17 +196,17 @@ export default function PartnerSubmitReview({
           )}
         </div>
         {paused && !busy && (
-          <p className="text-sm text-amber-700">
+          <p className="text-sm text-[var(--app-warning)]">
             Pengecekan berhenti di tengah. Lanjutkan untuk mengecek sisanya.
           </p>
         )}
         {!busy && stock?.run?.status === 'done' && pending > 0 && (
-          <p className="text-sm text-amber-700">
+          <p className="text-sm text-[var(--app-warning)]">
             Ada {pending} pengajuan baru yang masuk setelah pengecekan terakhir.
             Tekan cek stok otomatis untuk mengecek.
           </p>
         )}
-        {stockError && <p className="text-sm text-red-600">{stockError}</p>}
+        {stockError && <p className="text-sm text-[var(--app-danger)]">{stockError}</p>}
       </div>
 
       {brands.length === 0 ? (
@@ -233,9 +233,9 @@ type BarTone = 'accent' | 'warning' | 'danger' | 'success'
 
 const toneStyle: Record<BarTone, { bg: string; fg: string }> = {
   accent: { bg: 'var(--app-accent-soft)', fg: 'var(--app-accent)' },
-  warning: { bg: 'var(--app-warning-soft)', fg: '#b45309' },
+  warning: { bg: 'var(--app-warning-soft)', fg: 'var(--app-warning)' },
   danger: { bg: 'var(--app-danger-soft)', fg: 'var(--app-danger)' },
-  success: { bg: 'var(--app-success-soft)', fg: '#15803d' },
+  success: { bg: 'var(--app-success-soft)', fg: 'var(--app-success)' },
 }
 
 /**
@@ -558,7 +558,7 @@ function SubmissionBlock({
         <h3 className="font-semibold">Submit ke-{submission.submitNo}</h3>
         <CheckIcon state={state} />
       </div>
-      {notice && <p className="text-sm text-amber-700">{notice}</p>}
+      {notice && <p className="text-sm text-[var(--app-warning)]">{notice}</p>}
 
       {mainRows.map((row) => (
         <RowLine
@@ -608,7 +608,7 @@ function SubmissionBlock({
 
       {rows.length > 0 && (
         <>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-[var(--app-danger)]">{error}</p>}
           <button
             type="button"
             className="rounded-lg bg-stone-800 px-4 py-2 text-white disabled:opacity-50"
@@ -620,7 +620,7 @@ function SubmissionBlock({
         </>
       )}
       {rows.length === 0 && error && (
-        <p className="text-sm text-red-600">{error}</p>
+        <p className="text-sm text-[var(--app-danger)]">{error}</p>
       )}
     </div>
   )
@@ -638,7 +638,7 @@ function CheckIcon({ state }: { state: 'checked' | 'processing' | 'waiting' }) {
   }
   if (state === 'checked') {
     return (
-      <span aria-label="Sudah dicek" className="text-green-700">
+      <span aria-label="Sudah dicek" className="text-[var(--app-success)]">
         ✓
       </span>
     )
@@ -687,7 +687,7 @@ function RowLine({
       <span className="flex items-center gap-2">
         <span className="text-stone-500">{statusLabel}</span>
         {editable && row.stock !== null && (
-          <span className={overStock ? 'text-red-600' : 'text-stone-500'}>
+          <span className={overStock ? 'text-[var(--app-danger)]' : 'text-stone-500'}>
             Stok {row.stock}
           </span>
         )}

@@ -206,7 +206,7 @@ function EventProductsPage() {
               >
                 Produk dipilih
               </p>
-              <p className="pm-display mt-1 text-[32px] leading-none">
+              <p className="pm-display mt-1 text-[30px] leading-none">
                 {selectedCount}
                 <span
                   className="ml-1.5 text-base font-medium"

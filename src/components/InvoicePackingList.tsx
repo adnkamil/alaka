@@ -77,7 +77,7 @@ export default function InvoicePackingList({
 
       <div
         className={`hidden px-4 py-2 text-[11px] font-semibold uppercase tracking-wide sm:grid ${COLS}`}
-        style={{ color: 'var(--pm-gold)', background: 'var(--pm-tint)' }}
+        style={{ color: 'var(--pm-gold-text)', background: 'var(--pm-tint)' }}
       >
         <span />
         <span>Barang</span>
@@ -101,7 +101,7 @@ export default function InvoicePackingList({
               }}
             >
               <label
-                className={`flex cursor-pointer items-center gap-3 px-4 py-3 text-[14px] sm:grid ${COLS}`}
+                className={`flex cursor-pointer items-center gap-3 px-4 py-3 text-sm sm:grid ${COLS}`}
               >
                 <input
                   type="checkbox"
@@ -113,14 +113,14 @@ export default function InvoicePackingList({
                   {product}
                   {/* Layar sempit: variasi dan ukuran di bawah nama. */}
                   {(variation || size) && (
-                    <span className="block text-[12px] sm:hidden" style={soft}>
+                    <span className="block text-xs sm:hidden" style={soft}>
                       {[variation, size && `Ukuran ${size}`].filter(Boolean).join(' · ')}
                     </span>
                   )}
                 </span>
                 <span className="hidden sm:block">{variation ?? '–'}</span>
                 <span className="hidden sm:block">{size ?? '–'}</span>
-                <span className="pm-num whitespace-nowrap text-right text-[15px] font-bold">
+                <span className="pm-num whitespace-nowrap text-right text-base font-bold">
                   {item.qty} pcs
                 </span>
               </label>
@@ -136,7 +136,7 @@ export default function InvoicePackingList({
         <span className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
           Total · {items.length} jenis item
         </span>
-        <span className="pm-num text-lg font-bold">{totalPcs} pcs</span>
+        <span className="pm-num text-base font-bold">{totalPcs} pcs</span>
       </div>
     </section>
     </>

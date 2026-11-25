@@ -148,7 +148,7 @@ function ReplacementTag({ row }: { row: PartnerSubmitRow }) {
     <span
       className="app-badge"
       title="Jastiper mengganti barang yang ditolak. Hanya barang penggantinya yang perlu dicek, dan submit ini dicek lebih dulu dari antrean biasa."
-      style={{ background: 'var(--app-accent-soft)', color: '#9c463b' }}
+      style={{ background: 'var(--app-accent-soft)', color: 'var(--app-accent-strong)' }}
     >
       Ada barang pengganti
     </span>
@@ -400,9 +400,6 @@ function PartnerEventDetailPage() {
   }
   // Ringkasan pcs untuk kartu pendapatan, dihitung dari baris yang sama dengan
   // tab "Siap ditagih" dan "Menunggu" supaya angkanya selalu cocok.
-  const readyPcs = submitRows
-    .filter((r) => matchesFilter(r, 'siap'))
-    .reduce((n, r) => n + r.pcs.approved, 0)
   const waitingPcs = submitRows
     .filter((r) => matchesFilter(r, 'menunggu'))
     .reduce((n, r) => n + r.pcs.pending, 0)
@@ -597,7 +594,7 @@ function PartnerEventDetailPage() {
       {waiveBlocking && (
         <p
           className="w-full rounded-lg p-2 text-xs"
-          style={{ background: '#fdecd0', color: '#8a5208' }}
+          style={{ background: 'var(--app-warning-soft)', color: 'var(--app-warning)' }}
         >
           Submit ke-{awaitingRows.map((r) => r.submitNo).join(', ')} masih menunggu
           keputusan jastiper untuk isi paket yang ditolak. Kalau tagihan dikirim,
@@ -695,14 +692,14 @@ function PartnerEventDetailPage() {
         </div>
 
         <div className="flex flex-col gap-2">
-          <h2 className="pm-display text-xl leading-snug">{event.name}</h2>
+          <h2 className="pm-display text-base leading-snug">{event.name}</h2>
           <div
             className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1.5 text-xs"
             style={{ color: 'var(--app-text-soft)' }}
           >
             <span
               className="rounded-full px-2.5 py-1 text-[11px] font-bold"
-              style={{ background: 'var(--app-accent-soft)', color: '#9c463b' }}
+              style={{ background: 'var(--app-accent-soft)', color: 'var(--app-accent-strong)' }}
             >
               {event.isOnline ? 'Online' : 'Offline'}
             </span>
@@ -864,7 +861,7 @@ function PartnerEventDetailPage() {
                             {variants.length === 0 ? 'tidak aktif' : 'stok'}
                           </p>
                           {stock.habis > 0 && (
-                            <p className="text-[11px] font-semibold" style={{ color: '#b42318' }}>
+                            <p className="text-[11px] font-semibold" style={{ color: 'var(--app-danger)' }}>
                               {stock.habis} habis
                             </p>
                           )}
@@ -968,7 +965,7 @@ function PartnerEventDetailPage() {
                         >
                           <span
                             className="pm-display flex size-10 shrink-0 items-center justify-center rounded-full text-sm"
-                            style={{ background: 'var(--app-accent-soft)', color: '#9c463b' }}
+                            style={{ background: 'var(--app-accent-soft)', color: 'var(--app-accent-strong)' }}
                           >
                             {initialsOf(row.brandName)}
                           </span>
@@ -984,7 +981,7 @@ function PartnerEventDetailPage() {
                                 <span
                                   className="app-badge"
                                   title="Barang ditolak partner (stok kurang atau habis)."
-                                  style={{ background: 'var(--app-danger-soft, #fdecea)', color: 'var(--app-danger)' }}
+                                  style={{ background: 'var(--app-danger-soft)', color: 'var(--app-danger)' }}
                                 >
                                   {row.pcs.rejected} pcs ditolak
                                 </span>
@@ -1010,7 +1007,7 @@ function PartnerEventDetailPage() {
                           >
                             <span
                               className="pm-display flex size-10 shrink-0 items-center justify-center rounded-full text-sm"
-                              style={{ background: 'var(--app-accent-soft)', color: '#9c463b' }}
+                              style={{ background: 'var(--app-accent-soft)', color: 'var(--app-accent-strong)' }}
                             >
                               {initialsOf(row.brandName ?? '')}
                             </span>
@@ -1096,8 +1093,6 @@ function PartnerEventDetailPage() {
               slotEnabled={revenue?.slotEnabled ?? false}
               totalAmount={revenue?.totalAmount ?? 0}
               invoiced={revenue?.invoiced}
-              readyPcs={readyPcs}
-              readySubmitCount={submitCounts.siap}
               waitingPcs={waitingPcs}
               waitingSubmitCount={submitCounts.menunggu}
             />
@@ -1280,7 +1275,7 @@ function PartnerEventDetailPage() {
                           >
                             <span
                               className="pm-display flex size-11 shrink-0 items-center justify-center rounded-full text-sm"
-                              style={{ background: 'var(--app-accent-soft)', color: '#9c463b' }}
+                              style={{ background: 'var(--app-accent-soft)', color: 'var(--app-accent-strong)' }}
                             >
                               {initialsOf(row.brandName)}
                             </span>
@@ -1300,7 +1295,7 @@ function PartnerEventDetailPage() {
                               <span
                                 className="app-badge"
                                 title="Barang ditolak partner (stok kurang atau habis)."
-                                style={{ background: 'var(--app-danger-soft, #fdecea)', color: 'var(--app-danger)' }}
+                                style={{ background: 'var(--app-danger-soft)', color: 'var(--app-danger)' }}
                               >
                                 {row.pcs.rejected} pcs
                               </span>
@@ -1330,7 +1325,7 @@ function PartnerEventDetailPage() {
                             >
                               <span
                                 className="pm-display flex size-11 shrink-0 items-center justify-center rounded-full text-sm"
-                                style={{ background: 'var(--app-accent-soft)', color: '#9c463b' }}
+                                style={{ background: 'var(--app-accent-soft)', color: 'var(--app-accent-strong)' }}
                               >
                                 {initialsOf(row.brandName ?? '')}
                               </span>

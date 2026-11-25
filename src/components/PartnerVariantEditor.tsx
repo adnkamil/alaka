@@ -327,7 +327,7 @@ export default function PartnerVariantEditor({
 
   if (loadError) {
     return (
-      <div className="app-card p-4 text-sm text-red-600">
+      <div className="app-card p-4 text-sm text-[var(--app-danger)]">
         Gagal memuat varian.
       </div>
     )
@@ -337,7 +337,7 @@ export default function PartnerVariantEditor({
   return (
     <section className="app-card flex flex-col gap-4 p-4 lg:p-5">
       {stockLocked && (
-        <p className="text-xs font-semibold text-amber-700">
+        <p className="text-xs font-semibold text-[var(--app-warning)]">
           Pengecekan stok otomatis sedang berjalan. Varian dan stok dikunci
           sampai selesai.
         </p>
@@ -369,7 +369,7 @@ export default function PartnerVariantEditor({
             aria-label="Buat varian"
             onClick={() => setHasVariants((v) => !v)}
             className="relative h-[26px] w-[46px] shrink-0 rounded-full transition-colors"
-            style={{ background: hasVariants ? '#3f7d58' : '#d9cfbf' }}
+            style={{ background: hasVariants ? 'var(--app-success)' : 'var(--pm-switch-off)' }}
           >
             <span
               className="absolute top-[3px] h-5 w-5 rounded-full bg-white shadow transition-all"
@@ -488,7 +488,7 @@ export default function PartnerVariantEditor({
               style={{ borderColor: 'var(--app-border)' }}
             >
               <table className="w-full min-w-[560px] text-[13px]">
-                <thead style={{ background: 'var(--app-card-soft, #f7f1e7)' }}>
+                <thead style={{ background: 'var(--app-card-soft)' }}>
                   <tr>
                     {showVariationCol && <Th>Variasi</Th>}
                     {sizes.length > 0 && <Th>Ukuran</Th>}
@@ -573,7 +573,7 @@ export default function PartnerVariantEditor({
                               onChange={(e) =>
                                 setCell(col, row, { on: e.target.checked })
                               }
-                              className="h-4 w-4 accent-[#3f7d58]"
+                              className="h-4 w-4 accent-[var(--app-success)]"
                               aria-label={`Dijual ${row ?? 'standar'} ${col ?? ''}`}
                             />
                           </td>
@@ -590,7 +590,7 @@ export default function PartnerVariantEditor({
         {status && (
           <p
             className="text-sm"
-            style={{ color: status.ok ? '#3f7d58' : '#b42318' }}
+            style={{ color: status.ok ? 'var(--app-success)' : 'var(--app-danger)' }}
             role="status"
           >
             {status.text}
@@ -647,10 +647,10 @@ function VariationPhoto({
       title="Tambah foto (opsional)"
       aria-label={`Tambah foto ${name}`}
       className="flex size-14 items-center justify-center rounded-lg border border-dashed disabled:opacity-50"
-      style={{ borderColor: 'var(--app-border)', color: '#7a4a2a' }}
+      style={{ borderColor: 'var(--app-border)', color: 'var(--app-accent-strong)' }}
     >
       {busy ? (
-        <span className="text-[10px] font-semibold">...</span>
+        <span className="text-[11px] font-semibold">...</span>
       ) : (
         <ImagePlus size={20} />
       )}
@@ -690,7 +690,7 @@ function ValueEditor(props: {
                 type="button"
                 aria-label={`Hapus ${v}`}
                 onClick={() => props.onRemove(v)}
-                className="ml-1 text-[14px] leading-none"
+                className="ml-1 text-sm leading-none"
                 style={{ color: 'var(--app-text-soft)' }}
               >
                 ×

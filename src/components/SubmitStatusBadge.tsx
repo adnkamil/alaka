@@ -2,10 +2,13 @@ import { formatInvoiceNumber, invoiceStatusMeta } from '../lib/invoice-rules'
 import type { InvoiceStatus, SubmitInvoiceState } from '../lib/invoice-rules'
 
 const STYLE = {
-  info: { background: '#e0ecfb', color: '#2f5fb3' },
-  success: { background: '#dcebe1', color: '#3f7a55' },
-  warn: { background: '#fdecd0', color: '#b26a0a' },
-  neutral: { background: '#efe5d8', color: '#7a6a58' },
+  info: { background: 'var(--app-info-soft)', color: 'var(--app-info)' },
+  success: { background: 'var(--app-success-soft)', color: 'var(--app-success)' },
+  warn: { background: 'var(--app-warning-soft)', color: 'var(--app-warning)' },
+  neutral: {
+    background: 'var(--pm-muted, var(--app-card-hover))',
+    color: 'var(--app-text-soft)',
+  },
 }
 
 /**

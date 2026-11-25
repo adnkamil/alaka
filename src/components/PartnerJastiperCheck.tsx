@@ -230,7 +230,7 @@ export default function PartnerJastiperCheck({
           >
             …
           </div>
-          <h2 className="mt-4 text-[16px] font-semibold">
+          <h2 className="mt-4 text-base font-semibold">
             Jastiper ini belum mengirim pesanan ke kamu.
           </h2>
           <p
@@ -244,7 +244,7 @@ export default function PartnerJastiperCheck({
         <div className="flex flex-col gap-3">
           <section className="app-card p-4">
             <PartnerRowChip label="Draft" tone="neutral" />
-            <h3 className="mt-2 text-[16px] font-semibold">
+            <h3 className="mt-2 text-base font-semibold">
               Menunggu jastiper
             </h3>
             <p
@@ -339,7 +339,7 @@ export default function PartnerJastiperCheck({
           />
           {pendingSubs.length > 0 ? (
             <>
-              <h3 className="mt-2 text-[16px] font-semibold">
+              <h3 className="mt-2 text-base font-semibold">
                 Cek pesanan ini
               </h3>
               <p
@@ -350,7 +350,7 @@ export default function PartnerJastiperCheck({
                 tiap submit.
               </p>
               {error && (
-                <p className="mt-2 text-[12px] text-red-600">{error}</p>
+                <p className="mt-2 text-xs text-[var(--app-danger)]">{error}</p>
               )}
               <div className="mt-3 flex flex-col gap-2">
                 {pendingSubs.map((sub) => (
@@ -361,7 +361,7 @@ export default function PartnerJastiperCheck({
                     disabled={
                       mutation.isPending || overSubs.has(sub.submissionId)
                     }
-                    className="w-full rounded-lg px-4 py-2 text-[14px] font-semibold text-white disabled:opacity-50"
+                    className="w-full rounded-lg px-4 py-2 text-sm font-semibold text-[var(--app-on-solid)] disabled:opacity-50"
                     style={{ background: 'var(--app-accent)' }}
                   >
                     Selesai dicek Submit ke-{sub.submitNo}
@@ -371,7 +371,7 @@ export default function PartnerJastiperCheck({
             </>
           ) : (
             <>
-              <h3 className="mt-2 text-[16px] font-semibold">Hasil final</h3>
+              <h3 className="mt-2 text-base font-semibold">Hasil final</h3>
               <p
                 className="mt-1 text-[13px]"
                 style={{ color: 'var(--app-text-soft)' }}
@@ -379,8 +379,8 @@ export default function PartnerJastiperCheck({
                 Semua barang sudah dicek. Yang tidak dapat tidak masuk tagihan.
               </p>
               <p
-                className="mt-2 text-[12px]"
-                style={{ color: hasRejected ? '#b42318' : '#2f6b3f' }}
+                className="mt-2 text-xs"
+                style={{ color: hasRejected ? 'var(--app-danger)' : 'var(--app-success)' }}
               >
                 {hasRejected
                   ? 'Ada barang yang ditolak'
@@ -470,7 +470,7 @@ function SummaryCard({
         >
           Ringkasan
         </p>
-        <span className="text-[12px]" style={{ color: 'var(--app-text-soft)' }}>
+        <span className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
           {summary.submitCount} submit ·{' '}
           <span className="pm-num">{totalPcs}</span> pcs
         </span>
@@ -495,7 +495,7 @@ function SummaryCard({
             style={{ background: 'var(--app-warning-soft)' }}
           >
             <p
-              className="text-[12px]"
+              className="text-xs"
               style={{ color: 'var(--app-text-soft)' }}
             >
               Belum dicek · <span className="pm-num">{pcs.pending}</span> pcs
@@ -508,7 +508,7 @@ function SummaryCard({
       </div>
 
       <div className="mt-4">
-        <div className="mb-1.5 flex items-center justify-between text-[12px]">
+        <div className="mb-1.5 flex items-center justify-between text-xs">
           <span style={{ color: 'var(--app-text-soft)' }}>Progres cek</span>
           <span className="pm-num font-medium">
             {checkedPcs}/{totalPcs} pcs dicek
@@ -557,7 +557,7 @@ function SummaryCard({
               />
               {s.label}
             </dt>
-            <dd className="pm-num mt-0.5 text-[15px] font-semibold">
+            <dd className="pm-num mt-0.5 text-base font-semibold">
               {s.value}{' '}
               <span
                 className="text-[11px] font-normal"
@@ -641,11 +641,11 @@ function SubmitBlock({
   return (
     <section className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-1">
-        <h2 className="text-[15px] font-bold">Submit ke-{sub.submitNo}</h2>
+        <h2 className="text-base font-bold">Submit ke-{sub.submitNo}</h2>
         {sub.reopened && (
           <PartnerRowChip label="Ada barang pengganti" tone="warn" />
         )}
-        <span className="text-[12px]" style={{ color: 'var(--app-text-soft)' }}>
+        <span className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
           {formatWibDateTime(sub.submittedAt)}
         </span>
         {info?.invoice ? (
@@ -671,7 +671,7 @@ function SubmitBlock({
         )}
         {info && (
           <span
-            className="text-[12px]"
+            className="text-xs"
             style={{ color: 'var(--app-text-soft)' }}
           >
             {sub.checked
@@ -871,7 +871,7 @@ function SubmitBlock({
                     {row.replaces && (
                       <span
                         className="mt-0.5 block text-[11px] font-semibold"
-                        style={{ color: '#9c463b' }}
+                        style={{ color: 'var(--app-accent-strong)' }}
                       >
                         ↳ Pengganti untuk {displayItemName(row.replaces)}
                       </span>
@@ -992,7 +992,7 @@ function ReplacementPairs({ pairs }: { pairs: Array<ReplacementPair> }) {
             Barang ditolak dan penggantinya
           </span>
           <span
-            className="pm-num text-[12px]"
+            className="pm-num text-xs"
             style={{ color: 'var(--app-text-soft)' }}
           >
             ({roots.length} barang)
@@ -1097,7 +1097,7 @@ function ReplacementChain({
       })}
       {pair.state === 'tidak_diganti' && (
         <p
-          className="text-[12px]"
+          className="text-xs"
           style={{ ...indent, color: 'var(--app-text-soft)' }}
         >
           Jastiper memutuskan tidak diganti.
@@ -1105,7 +1105,7 @@ function ReplacementChain({
       )}
       {pair.state === 'perlu_keputusan' && pair.openQty > 0 && (
         <p
-          className="text-[12px]"
+          className="text-xs"
           style={{ ...indent, color: 'var(--app-text-soft)' }}
         >
           {pair.openQty} pcs belum diganti, jastiper belum memutuskan.

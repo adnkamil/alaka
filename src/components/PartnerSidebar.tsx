@@ -37,7 +37,7 @@ export default function PartnerSidebar({ name, logoUrl }: PartnerSidebarProps) {
       <div className="flex items-center gap-3 px-1">
         <div
           className="pm-display flex h-10 w-10 items-center justify-center rounded-xl text-xl"
-          style={{ background: 'var(--app-accent)', color: '#ffffff' }}
+          style={{ background: 'var(--app-accent)', color: 'var(--app-on-solid)' }}
           aria-hidden
         >
           A

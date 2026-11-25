@@ -201,7 +201,7 @@ function PartnerInvoiceDetailPage() {
                 <span className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
                   Total · {d.totalPcs} pcs
                 </span>
-                <span className="pm-num text-lg font-bold">{formatRupiah(d.totalAmount)}</span>
+                <span className="pm-num text-base font-bold">{formatRupiah(d.totalAmount)}</span>
               </div>
             </section>
                 </div>
@@ -402,7 +402,7 @@ function PartnerInvoiceDetailPage() {
                         ? cancelMutation.mutate()
                         : rejectMutation.mutate()
                     }
-                    className="rounded-xl px-4 py-2 text-[13px] font-semibold text-white disabled:opacity-50"
+                    className="rounded-xl px-4 py-2 text-[13px] font-semibold text-[var(--app-on-solid)] disabled:opacity-50"
                     style={{ background: 'var(--app-danger)' }}
                   >
                     {busy

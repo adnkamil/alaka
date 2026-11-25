@@ -113,7 +113,7 @@ function EditPartnerProductPage() {
         <p
           role="status"
           className="text-sm"
-          style={{ color: status.ok ? '#3f7d58' : 'var(--app-danger)' }}
+          style={{ color: status.ok ? 'var(--app-success)' : 'var(--app-danger)' }}
         >
           {status.text}
         </p>

@@ -458,7 +458,7 @@ export default function OrderItemList({
                 disabled={priceBusy}
                 onClick={saveGroupPrice}
                 className="rounded-lg px-3 py-1.5 text-sm font-semibold disabled:opacity-40"
-                style={{ background: 'var(--app-accent)', color: '#fff' }}
+                style={{ background: 'var(--app-accent)', color: 'var(--app-on-solid)' }}
               >
                 {priceBusy ? 'Menyimpan...' : 'Simpan'}
               </button>

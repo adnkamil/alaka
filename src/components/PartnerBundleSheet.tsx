@@ -45,7 +45,7 @@ interface PartnerBundleSheetProps {
   onSubmit: (value: PartnerBundleSubmit) => Promise<void>
 }
 
-const GREEN = '#3f7d58'
+const GREEN = 'var(--app-success)'
 
 function rupiah(n: number) {
   return `Rp${n.toLocaleString('id-ID')}`
@@ -167,7 +167,7 @@ export default function PartnerBundleSheet({
     <div className="flex flex-col gap-4 p-5">
       <div>
         <h2 className="pm-display text-base">Pilih paket</h2>
-        <p className="text-[12px]" style={{ color: 'var(--app-text-soft)' }}>
+        <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
           Untuk pesanan <span className="font-bold" style={{ color: 'var(--app-text)' }}>{customerName}</span>
         </p>
       </div>
@@ -186,7 +186,7 @@ export default function PartnerBundleSheet({
                 className="rounded-xl border p-3 text-left"
                 style={{
                   borderColor: active ? 'var(--app-accent)' : 'var(--app-border)',
-                  background: active ? 'var(--app-accent-soft, #f3e3de)' : 'transparent',
+                  background: active ? 'var(--app-accent-soft)' : 'transparent',
                 }}
               >
                 <span className="block text-sm font-semibold">{r.name}</span>
@@ -316,7 +316,7 @@ export default function PartnerBundleSheet({
                     <p className="truncate text-sm font-semibold">{product?.name ?? 'Produk'}</p>
                     <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>{meta}</p>
                     {picked > 0 && (
-                      <span className="mt-1 inline-block rounded-md px-2 py-0.5 text-[11px]" style={{ background: '#fde2e2', color: '#b42318' }}>
+                      <span className="mt-1 inline-block rounded-md px-2 py-0.5 text-[11px]" style={{ background: 'var(--app-danger-soft)', color: 'var(--app-danger)' }}>
                         {picked} pcs dipilih
                       </span>
                     )}
@@ -326,7 +326,7 @@ export default function PartnerBundleSheet({
               )
             })}
             {rule.productIds.every((id) => variantsOf(id).length === 0) && (
-              <p className="text-sm" style={{ color: '#b42318' }}>
+              <p className="text-sm" style={{ color: 'var(--app-danger)' }}>
                 Produk dalam aturan ini belum punya varian. Minta partner menyimpan produknya ulang.
               </p>
             )}
@@ -378,7 +378,7 @@ export default function PartnerBundleSheet({
       )}
 
       {error && (
-        <p role="alert" className="text-sm" style={{ color: '#b42318' }}>{error}</p>
+        <p role="alert" className="text-sm" style={{ color: 'var(--app-danger)' }}>{error}</p>
       )}
 
       <div className="flex justify-end gap-2">
@@ -473,7 +473,7 @@ function ProductPackSheet({
           <div className="min-w-0 flex-1">
             <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>Pilih isi paket · {bundleName}</p>
             <p className="font-semibold">{product.name}</p>
-            <span className="mt-1 inline-block rounded-md px-2 py-0.5 text-[11px]" style={{ background: 'var(--app-card-soft, #f7f1e7)' }}>
+            <span className="mt-1 inline-block rounded-md px-2 py-0.5 text-[11px]" style={{ background: 'var(--app-card-hover)' }}>
               Sisa isi paket: {remaining} pcs
             </span>
           </div>
@@ -528,7 +528,7 @@ function ProductPackSheet({
           </div>
         </div>
 
-        <p className="rounded-xl p-3 text-xs" style={{ background: 'var(--app-card-soft, #f7f1e7)', color: 'var(--app-text-soft)' }}>
+        <p className="rounded-xl p-3 text-xs" style={{ background: 'var(--app-card-hover)', color: 'var(--app-text-soft)' }}>
           Harga mengikuti paket ({rupiah(bundlePrice)}), bukan harga satuan. Fee dan harga jual diatur setelah paket lengkap.
           {alreadyPacked > 0 && ` Varian ini sudah ada di paket (×${alreadyPacked}).`}
         </p>

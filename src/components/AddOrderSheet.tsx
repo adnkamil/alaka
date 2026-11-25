@@ -336,7 +336,7 @@ function SubmittedItemBody({
           onClick={save}
           disabled={busy || !dirty}
           className="rounded-lg px-3 py-1.5 text-xs font-semibold disabled:opacity-40"
-          style={{ background: 'var(--app-accent)', color: '#fff' }}
+          style={{ background: 'var(--app-accent)', color: 'var(--app-on-solid)' }}
         >
           {busy ? 'Menyimpan…' : 'Simpan harga'}
         </button>

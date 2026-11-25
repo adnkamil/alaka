@@ -49,7 +49,7 @@ function PartnerNotificationsPage() {
 
   return (
     <main className="flex flex-col gap-4 px-5 pb-6 pt-4 lg:px-0">
-      <h1 className="pm-display text-xl">Notifikasi</h1>
+      <h1 className="pm-display text-[22px] leading-tight lg:text-[26px]">Notifikasi</h1>
 
       {items.length === 0 && (
         <div

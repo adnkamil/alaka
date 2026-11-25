@@ -342,7 +342,7 @@ export default function InvoiceDetailModal({
                           ? cancelMutation.mutate()
                           : rejectMutation.mutate()
                       }
-                      className="rounded-xl px-4 py-2 text-[13px] font-semibold text-white disabled:opacity-50"
+                      className="rounded-xl px-4 py-2 text-[13px] font-semibold text-[var(--app-on-solid)] disabled:opacity-50"
                       style={{ background: 'var(--app-danger)' }}
                     >
                       {busy

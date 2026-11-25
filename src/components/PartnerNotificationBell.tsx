@@ -134,7 +134,7 @@ export default function PartnerNotificationBell() {
         <Bell size={21} />
         {count > 0 && (
           <span
-            className="absolute right-0 top-0 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold text-white"
+            className="absolute right-0 top-0 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold text-[var(--app-on-solid)]"
             style={{ background: 'var(--app-accent)' }}
           >
             {count > 9 ? '9+' : count}

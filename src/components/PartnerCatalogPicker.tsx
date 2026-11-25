@@ -35,7 +35,7 @@ interface PartnerCatalogPickerProps {
   maxQty?: number | null
 }
 
-const PINK = '#b42318'
+const PINK = 'var(--app-danger)'
 
 function rupiah(n: number) {
   return `Rp${n.toLocaleString('id-ID')}`
@@ -135,7 +135,7 @@ export default function PartnerCatalogPicker({
         {notice && (
           <p
             className="rounded-xl p-3 text-xs"
-            style={{ background: 'var(--app-accent-soft)', color: '#9c463b' }}
+            style={{ background: 'var(--app-accent-soft)', color: 'var(--app-accent-strong)' }}
           >
             {notice}
           </p>
@@ -251,7 +251,7 @@ export default function PartnerCatalogPicker({
                 <p className="text-sm font-semibold" style={{ color: 'var(--app-accent)' }}>{priceLabel(p)}</p>
                 <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>{meta}</p>
                 {p.variants.every((v) => v.stock <= 0) ? (
-                  <span className="mt-1 mr-1 inline-block rounded-md px-2 py-0.5 text-[11px]" style={{ background: '#eee', color: '#555' }}>
+                  <span className="mt-1 mr-1 inline-block rounded-md px-2 py-0.5 text-[11px]" style={{ background: 'var(--app-card-hover)', color: 'var(--app-text-soft)' }}>
                     Habis
                   </span>
                 ) : (
@@ -260,7 +260,7 @@ export default function PartnerCatalogPicker({
                   </span>
                 )}
                 {count > 0 && (
-                  <span className="mt-1 inline-block rounded-md px-2 py-0.5 text-[11px]" style={{ background: '#fde2e2', color: PINK }}>
+                  <span className="mt-1 inline-block rounded-md px-2 py-0.5 text-[11px]" style={{ background: 'var(--app-danger-soft)', color: PINK }}>
                     Di pesanan ×{count}
                   </span>
                 )}
@@ -272,13 +272,13 @@ export default function PartnerCatalogPicker({
       </div>
 
       {toast && (
-        <div className="fixed bottom-24 left-1/2 z-[65] w-[calc(100%-2rem)] max-w-[28rem] -translate-x-1/2 rounded-xl px-4 py-3 text-sm text-white" style={{ background: '#2a2a2a' }} role="status">
+        <div className="fixed bottom-24 left-1/2 z-[65] w-[calc(100%-2rem)] max-w-[28rem] -translate-x-1/2 rounded-xl px-4 py-3 text-sm" style={{ background: 'var(--app-text)', color: 'var(--app-card)' }} role="status">
           {toast}
         </div>
       )}
       <div
         className="fixed bottom-0 left-1/2 z-[65] w-full max-w-lg -translate-x-1/2 border-t p-4"
-        style={{ background: 'var(--app-card, #fff)', borderColor: 'var(--app-border)', paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+        style={{ background: 'var(--app-card)', borderColor: 'var(--app-border)', paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
       >
         <button type="button" onClick={onClose} className="app-btn-primary w-full" style={{ minHeight: 44, fontSize: 14 }}>
           Selesai · {pickedTotal} barang di pesanan
@@ -472,7 +472,7 @@ function VariantSheet({
         )}
 
         {mode === 'add' && alreadyInOrder > 0 && (
-          <p className="rounded-xl p-3 text-xs" style={{ background: '#fde2e2', color: PINK }}>
+          <p className="rounded-xl p-3 text-xs" style={{ background: 'var(--app-danger-soft)', color: PINK }}>
             Varian ini sudah ada di pesanan (×{alreadyInOrder}). Jumlah akan ditambahkan ke barang yang sama, bukan baris baru.
           </p>
         )}

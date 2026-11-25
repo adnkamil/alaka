@@ -299,7 +299,7 @@ export default function PartnerProductRuleCard({
                     <span className="truncate font-semibold">{r.name}</span>
                     {!r.isActive && (
                       <span
-                        className="text-[10px] font-semibold uppercase"
+                        className="text-[11px] font-semibold uppercase"
                         style={{ color: 'var(--app-text-soft)' }}
                       >
                         Nonaktif
@@ -317,7 +317,7 @@ export default function PartnerProductRuleCard({
                       {chosen.length === 0 ? (
                         <span
                           className="text-[11px] font-semibold"
-                          style={{ color: '#b42318' }}
+                          style={{ color: 'var(--app-danger)' }}
                         >
                           Belum ada ukuran dipilih
                         </span>
@@ -326,7 +326,7 @@ export default function PartnerProductRuleCard({
                           <span
                             key={size}
                             className="rounded-full px-2.5 py-0.5 text-xs font-semibold"
-                            style={{ background: '#7a4a2a', color: '#fff' }}
+                            style={{ background: 'var(--app-accent-strong)', color: 'var(--app-on-solid)' }}
                           >
                             {size}
                           </span>
@@ -336,7 +336,7 @@ export default function PartnerProductRuleCard({
                         type="button"
                         onClick={() => editSizes(r.id)}
                         className="text-[11px] font-semibold underline"
-                        style={{ color: '#7a4a2a' }}
+                        style={{ color: 'var(--app-accent-strong)' }}
                       >
                         Ubah ukuran
                       </button>
@@ -362,8 +362,8 @@ export default function PartnerProductRuleCard({
       {rules.length > 0 && (
         <Link
           to="/partner/paket"
-          className="self-start text-[12px] font-semibold no-underline"
-          style={{ color: '#7a4a2a' }}
+          className="self-start text-xs font-semibold no-underline"
+          style={{ color: 'var(--app-accent-strong)' }}
         >
           Kelola aturan paket →
         </Link>
@@ -372,7 +372,7 @@ export default function PartnerProductRuleCard({
       {status && (
         <p
           className="text-sm"
-          style={{ color: status.ok ? '#3f7d58' : '#b42318' }}
+          style={{ color: status.ok ? 'var(--app-success)' : 'var(--app-danger)' }}
           role="status"
         >
           {status.text}
@@ -465,7 +465,7 @@ export default function PartnerProductRuleCard({
                                 {r.name}
                                 {!r.isActive && (
                                   <span
-                                    className="ml-2 text-[10px] uppercase"
+                                    className="ml-2 text-[11px] uppercase"
                                     style={{ color: 'var(--app-text-soft)' }}
                                   >
                                     Nonaktif
@@ -539,7 +539,7 @@ function SizePicker({
           type="button"
           onClick={() => onChange(allOn ? [] : free)}
           className="text-[11px] font-semibold underline"
-          style={{ color: '#7a4a2a' }}
+          style={{ color: 'var(--app-accent-strong)' }}
         >
           {allOn ? 'Kosongkan' : 'Pilih semua'}
         </button>
@@ -562,9 +562,9 @@ function SizePicker({
               }
               className="rounded-full border px-3 py-1 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
               style={{
-                background: on ? '#7a4a2a' : 'transparent',
+                background: on ? 'var(--app-accent-strong)' : 'transparent',
                 color: on ? '#fff' : 'var(--app-text)',
-                borderColor: on ? '#7a4a2a' : 'var(--app-border)',
+                borderColor: on ? 'var(--app-accent-strong)' : 'var(--app-border)',
               }}
             >
               {size}

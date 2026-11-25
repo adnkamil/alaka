@@ -8,8 +8,8 @@ export type VariantStock = {
   stock: number
 }
 
-const RED = { background: '#fbe4e1', color: '#b42318', borderColor: '#f3c6c0' }
-const AMBER = { background: '#fbefd9', color: '#8a5a0c', borderColor: '#f0d9a8' }
+const RED = { background: 'var(--app-danger-soft)', color: 'var(--app-danger)', borderColor: 'var(--app-danger-soft)' }
+const AMBER = { background: 'var(--app-warning-soft)', color: 'var(--app-warning)', borderColor: 'var(--app-warning-soft)' }
 const NEUTRAL = { background: '#ffffff', color: 'var(--app-text)', borderColor: 'var(--app-border)' }
 
 function toneOf(stock: number) {
@@ -57,7 +57,7 @@ export default function PartnerProductVariantStock({
       {[...groups.entries()].map(([variation, list]) => (
         <li key={variation} className="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:gap-3">
           {variation && (
-            <span className="shrink-0 pt-0.5 text-[12px] font-semibold sm:w-28 sm:truncate" title={variation}>
+            <span className="shrink-0 pt-0.5 text-xs font-semibold sm:w-28 sm:truncate" title={variation}>
               {variation}
             </span>
           )}

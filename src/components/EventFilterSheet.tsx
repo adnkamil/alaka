@@ -223,7 +223,7 @@ export default function EventFilterSheet({
         <button
           type="button"
           onClick={() => onApply(waktu, lokasi)}
-          className="h-12 w-full rounded-xl text-sm font-semibold text-white"
+          className="h-12 w-full rounded-xl text-sm font-semibold text-[var(--app-on-solid)]"
           style={{ background: 'var(--app-accent)' }}
         >
           Tampilkan {total} event

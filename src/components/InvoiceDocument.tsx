@@ -10,8 +10,8 @@ type Line = InvoiceDetail['lines'][number]
 const STATUS_STAMP: Partial<
   Record<InvoiceDetail['status'], { text: string; color: string }>
 > = {
-  lunas: { text: 'LUNAS', color: '#15803d' },
-  dibatalkan: { text: 'DIBATALKAN', color: '#b91c1c' },
+  lunas: { text: 'LUNAS', color: 'var(--inv-success)' },
+  dibatalkan: { text: 'DIBATALKAN', color: 'var(--inv-danger)' },
 }
 
 /** Pcs satu baris: paket dihitung dari isinya, satuan dari qty. */

@@ -50,7 +50,7 @@ export default function EventListCard({
         style={{ background: 'var(--app-card)', border: '1px solid var(--app-border)' }}
       >
         <span
-          className="w-full py-0.5 text-center text-[10px] font-bold text-white"
+          className="w-full py-0.5 text-center text-[10px] font-bold text-[var(--app-on-solid)]"
           style={{ background: 'var(--app-accent)' }}
         >
           {month}

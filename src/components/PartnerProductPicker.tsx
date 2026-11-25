@@ -78,7 +78,7 @@ export function ProductCheckRow({
         checked={checked}
         onChange={onToggle}
         className="size-5 shrink-0"
-        style={{ accentColor: '#b6584b' }}
+        style={{ accentColor: 'var(--app-accent)' }}
       />
       <div
         className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-xl"
@@ -228,7 +228,7 @@ export function ProductChecklist({
                 )
               }
               className="size-5 shrink-0"
-              style={{ accentColor: '#b6584b' }}
+              style={{ accentColor: 'var(--app-accent)' }}
             />
             <span className="flex-1 text-sm font-bold">
               {state === 'all' ? 'Lepas semua' : 'Pilih semua'}

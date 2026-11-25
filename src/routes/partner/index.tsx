@@ -1,486 +1,410 @@
-import { useSuspenseQuery } from '@tanstack/react-query'
-import { Link, createFileRoute } from '@tanstack/react-router'
-import { CalendarDays, Package, Plus, ShoppingBag, Users } from 'lucide-react'
+import {
+  keepPreviousData,
+  useQuery,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
+import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
+import { useEffect, useMemo, useState } from 'react'
+import { z } from 'zod'
+import PartnerAnalyticsChart from '../../components/PartnerAnalyticsChart'
 import PartnerLogo from '../../components/PartnerLogo'
 import PartnerNotificationBell from '../../components/PartnerNotificationBell'
-import { formatDate, formatPhoneNumber } from '../../lib/format'
-import { gainHint, relativeDayLabel } from '../../lib/partner-dashboard-rules'
-import { partnerInitials } from '../../lib/partner-logo-rules'
+import { formatRangeLabel } from '../../components/PartnerAnalyticsFormat'
 import {
-  currentPartnerQuery,
-  partnerDashboardQuery,
-  partnerEventsQuery,
-} from '../../lib/queries'
-import { partnerEventStatus } from '../../lib/partner-event-rules'
-import type { PartnerDashboard } from '../../lib/partner-dashboard-queries'
-import type { PartnerEventRow } from '../../lib/partner-event-queries'
-import type { PartnerEventStatus } from '../../lib/partner-event-rules'
+  BusinessInsights,
+  EventPerformance,
+  KpiCards,
+  MetricDefinitions,
+  Panel,
+  TopProducts,
+} from '../../components/PartnerAnalyticsPanels'
+import type { AnalyticsParams } from '../../lib/partner-analytics-functions'
+import {
+  ANALYTICS_PRESETS,
+  PRESET_LABELS,
+  allowedGranularities,
+  buildInsights,
+  buildSeries,
+  compareSeries,
+  effectiveGranularity,
+} from '../../lib/partner-analytics-rules'
+import type {
+  AnalyticsPreset,
+  Granularity,
+} from '../../lib/partner-analytics-rules'
+import { formatRupiah } from '../../lib/partner-product-rules'
+import { partnerInitials } from '../../lib/partner-logo-rules'
+import { currentPartnerQuery, partnerAnalyticsQuery } from '../../lib/queries'
 import { todayIsoDateInAppTimeZone } from '../../lib/timezone'
-import type { LucideIcon } from 'lucide-react'
 
-export const Route = createFileRoute('/partner/')({
-  // Angka di Beranda berubah di luar sesi partner (jastiper menekan "Ikut
-  // Event"), jadi selalu ambil ulang saat halaman dibuka — bukan dari cache.
-  loader: ({ context }) =>
-    Promise.all([
-      context.queryClient.ensureQueryData(currentPartnerQuery),
-      context.queryClient.fetchQuery({
-        ...partnerDashboardQuery,
-        staleTime: 0,
-      }),
-      context.queryClient.fetchQuery({ ...partnerEventsQuery, staleTime: 0 }),
-    ]),
-  component: PartnerHomePage,
+const GRANULARITIES = ['day', 'week', 'month'] as const
+
+const searchSchema = z.object({
+  range: z.enum(ANALYTICS_PRESETS).optional().catch(undefined),
+  from: z.string().optional().catch(undefined),
+  to: z.string().optional().catch(undefined),
+  event: z.uuid().optional().catch(undefined),
+  g: z.enum(GRANULARITIES).optional().catch(undefined),
 })
 
-function StatCard({
-  label,
-  value,
-  icon: Icon,
-}: {
-  label: string
-  value: number
-  icon: LucideIcon
-}) {
+type AnalyticsSearch = z.infer<typeof searchSchema>
+
+const DEFAULT_PRESET: AnalyticsPreset = '30d'
+
+/** Parameter server dari URL. Agregasi grafik (`g`) diolah di client saja. */
+function toParams(search: AnalyticsSearch): AnalyticsParams {
+  const preset = search.range ?? DEFAULT_PRESET
+  return {
+    preset,
+    ...(preset === 'custom' ? { from: search.from, to: search.to } : {}),
+    ...(search.event ? { calendarEventId: search.event } : {}),
+  }
+}
+
+export const Route = createFileRoute('/partner/')({
+  validateSearch: searchSchema,
+  // Sengaja tanpa `loaderDeps`: ganti filter tidak memblok navigasi (tidak
+  // muncul skeleton); komponen mengambil data baru sambil menahan tampilan
+  // lama. Loader hanya menyiapkan data untuk pembukaan pertama (termasuk SSR).
+  loader: ({ context, location }) =>
+    Promise.all([
+      context.queryClient.ensureQueryData(currentPartnerQuery),
+      context.queryClient.ensureQueryData(
+        partnerAnalyticsQuery(toParams(searchSchema.parse(location.search))),
+      ),
+    ]),
+  component: PartnerDashboardPage,
+})
+
+const GRANULARITY_LABELS: Record<Granularity, string> = {
+  day: 'Harian',
+  week: 'Mingguan',
+  month: 'Bulanan',
+}
+
+/**
+ * Header khusus mobile. Di mobile tidak ada topbar, jadi ini satu-satunya
+ * jalan ke Profil (lewat logo) dan Notifikasi (lonceng).
+ */
+function MobileHeader() {
+  const { data: partner } = useSuspenseQuery(currentPartnerQuery)
+  // Layout `/partner` sudah memastikan partner ada; ini cuma penyempit tipe.
+  if (!partner) return null
   return (
-    <div className="app-card flex flex-1 flex-col gap-1.5 p-3.5">
-      <div className="flex items-center justify-between gap-2">
-        <p
+    <div className="flex items-center gap-3 lg:hidden">
+      <Link to="/partner/profil" aria-label="Profil" className="shrink-0">
+        <PartnerLogo
+          name={partner.name}
+          logoUrl={partner.logoUrl}
+          size={44}
+          shape="circle"
+          initials={partnerInitials(partner.name)}
+          className="pm-display"
+        />
+      </Link>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
+          Halo,
+        </p>
+        <p className="pm-display truncate text-base">{partner.name}</p>
+      </div>
+      <PartnerNotificationBell />
+    </div>
+  )
+}
+
+function PartnerDashboardPage() {
+  const search = Route.useSearch()
+  const navigate = useNavigate({ from: Route.fullPath })
+  const params = toParams(search)
+  const { data, isFetching, isError, refetch } = useQuery({
+    ...partnerAnalyticsQuery(params),
+    placeholderData: keepPreviousData,
+  })
+
+  const setSearch = (patch: Partial<AnalyticsSearch>) =>
+    navigate({
+      search: (prev) => ({ ...prev, ...patch }),
+      replace: true,
+      resetScroll: false,
+    })
+
+  const granularity = data ? effectiveGranularity(data.range, search.g) : 'day'
+
+  const series = useMemo(() => {
+    if (!data) return []
+    return compareSeries(
+      buildSeries(data.range, granularity, data.currentDaily),
+      buildSeries(data.previousRange, granularity, data.previousDaily),
+    )
+  }, [data, granularity])
+
+  const insights = useMemo(
+    () =>
+      data
+        ? buildInsights({
+            current: data.current,
+            previous: data.previous,
+            comparisonLabel: data.comparisonLabel,
+            events: data.events,
+            allEvents: data.calendarEventId === null,
+            products: data.products,
+            formatMoney: formatRupiah,
+          })
+        : [],
+    [data],
+  )
+
+  return (
+    <main className="pa pm-wide flex flex-col px-5 pb-10 pt-4">
+      <div className="flex w-full flex-col gap-5 lg:gap-6">
+        <MobileHeader />
+        <header className="flex flex-col gap-1">
+          <h1
+            className="pm-display text-[22px] leading-tight lg:text-[26px]"
+            style={{ color: 'var(--app-text)' }}
+          >
+            Dashboard
+          </h1>
+          <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
+            Pantau performa penjualan dan perkembangan bisnis Anda.
+          </p>
+        </header>
+
+        <Filters
+          search={search}
+          events={data?.eventOptions ?? []}
+          onChange={(patch) => setSearch(patch)}
+        />
+
+        {isError && !data ? (
+          <Panel>
+            <p className="text-sm" style={{ color: 'var(--app-text-soft)' }}>
+              Data analytics gagal dimuat.
+            </p>
+            <button
+              type="button"
+              className="app-btn-outline self-start"
+              onClick={() => refetch()}
+            >
+              Coba lagi
+            </button>
+          </Panel>
+        ) : data ? (
+          <div
+            className="flex flex-col gap-5 transition-opacity lg:gap-6"
+            style={{ opacity: isFetching ? 0.55 : 1 }}
+            aria-busy={isFetching}
+          >
+            <p
+              className="-mt-2 text-xs"
+              style={{ color: 'var(--app-text-mute)' }}
+            >
+              {formatRangeLabel(data.range)} · dibandingkan{' '}
+              {formatRangeLabel(data.previousRange)} · WIB
+            </p>
+
+            <KpiCards
+              current={data.current}
+              previous={data.previous}
+              comparisonLabel={data.comparisonLabel}
+            />
+
+            <Panel>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2
+                    className="pm-display text-base"
+                    style={{ color: 'var(--app-text)' }}
+                  >
+                    Sales Performance
+                  </h2>
+                  <p
+                    className="mt-0.5 text-xs"
+                    style={{ color: 'var(--app-text-soft)' }}
+                  >
+                    Revenue {GRANULARITY_LABELS[granularity].toLowerCase()} pada
+                    periode terpilih.
+                  </p>
+                </div>
+                {allowedGranularities(data.range).length > 1 && (
+                  <div
+                    className="pa-seg"
+                    role="group"
+                    aria-label="Agregasi grafik"
+                  >
+                    {allowedGranularities(data.range).map((g) => (
+                      <button
+                        key={g}
+                        type="button"
+                        aria-pressed={granularity === g}
+                        onClick={() => setSearch({ g })}
+                      >
+                        {GRANULARITY_LABELS[g]}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <PartnerAnalyticsChart
+                buckets={series}
+                granularity={granularity}
+                showPrevious={data.previous.netSales > 0}
+                comparisonLabel={data.comparisonLabel}
+              />
+            </Panel>
+
+            <EventPerformance rows={data.events} />
+
+            <div className="grid grid-cols-1 items-start gap-5 lg:gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,1fr)]">
+              <TopProducts
+                products={data.products}
+                totalRevenue={data.current.netSales}
+              />
+              <BusinessInsights insights={insights} />
+            </div>
+
+            <MetricDefinitions />
+          </div>
+        ) : null}
+      </div>
+    </main>
+  )
+}
+
+function Filters({
+  search,
+  events,
+  onChange,
+}: {
+  search: AnalyticsSearch
+  events: Array<{ id: string; name: string }>
+  onChange: (patch: Partial<AnalyticsSearch>) => void
+}) {
+  const preset = search.range ?? DEFAULT_PRESET
+  const today = todayIsoDateInAppTimeZone()
+  const [from, setFrom] = useState(search.from ?? '')
+  const [to, setTo] = useState(search.to ?? '')
+  useEffect(() => {
+    setFrom(search.from ?? '')
+    setTo(search.to ?? '')
+  }, [search.from, search.to])
+
+  const customValid = from !== '' && to !== '' && from <= to
+  const customDirty = from !== (search.from ?? '') || to !== (search.to ?? '')
+
+  return (
+    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
+      <label className="flex min-w-0 flex-col gap-1 sm:w-48">
+        <span
           className="text-xs font-medium"
           style={{ color: 'var(--app-text-soft)' }}
         >
-          {label}
-        </p>
-        <Icon size={16} style={{ color: 'var(--app-accent)' }} />
-      </div>
-      <p className="pm-display text-[30px] leading-none">{value}</p>
-    </div>
-  )
-}
+          Periode
+        </span>
+        <select
+          className="pa-select"
+          value={preset}
+          onChange={(e) => {
+            const next = e.target.value as AnalyticsPreset
+            if (next === 'custom') {
+              // Mulai dari 30 hari terakhir supaya tanggalnya langsung terisi.
+              const start = new Date(`${today}T00:00:00Z`)
+              start.setUTCDate(start.getUTCDate() - 29)
+              onChange({
+                range: next,
+                from: search.from ?? start.toISOString().slice(0, 10),
+                to: search.to ?? today,
+                g: undefined,
+              })
+            } else {
+              onChange({
+                range: next,
+                from: undefined,
+                to: undefined,
+                g: undefined,
+              })
+            }
+          }}
+        >
+          {ANALYTICS_PRESETS.map((p) => (
+            <option key={p} value={p}>
+              {p === 'custom' ? 'Custom date range' : PRESET_LABELS[p]}
+            </option>
+          ))}
+        </select>
+      </label>
 
-/** Kotak tanggal (hari + bulan singkat), seperti DateBadge di Figma. */
-function DateBadge({ date }: { date: string }) {
-  const d = new Date(`${date}T00:00:00`)
-  const day = d.getDate()
-  const month = d
-    .toLocaleDateString('id-ID', { month: 'short' })
-    .replace('.', '')
-    .toUpperCase()
-  return (
-    <div
-      className="flex h-14 w-[52px] shrink-0 flex-col items-center justify-center rounded-xl"
-      style={{ background: 'var(--app-accent-soft)', color: '#9c463b' }}
-    >
-      <p className="pm-display text-xl leading-none">{day}</p>
-      <p className="mt-1 text-[10px] font-bold leading-none">{month}</p>
-    </div>
-  )
-}
-
-function PartnerHomePage() {
-  const { data: partner } = useSuspenseQuery(currentPartnerQuery)
-  const { data: dashboard } = useSuspenseQuery(partnerDashboardQuery)
-  const { data: events } = useSuspenseQuery(partnerEventsQuery)
-  // Layout `/partner` sudah memastikan partner ada; ini cuma penyempit tipe.
-  if (!partner) return null
-
-  const today = todayIsoDateInAppTimeZone()
-  const upcoming = events
-    .map((event) => ({ event, status: partnerEventStatus(event, today) }))
-    .filter((item) => item.status !== 'selesai')
-    // Yang sedang berjalan di atas, lalu yang terdekat mulainya.
-    .sort(
-      (a, b) =>
-        Number(b.status === 'berjalan') - Number(a.status === 'berjalan') ||
-        a.event.eventDate.localeCompare(b.event.eventDate),
-    )
-
-  return (
-    <>
-      <main className="flex flex-col gap-[18px] px-5 pb-6 pt-2 lg:hidden">
-        <header className="flex items-center gap-3 pt-2">
-          <Link to="/partner/profil" aria-label="Profil" className="shrink-0">
-            <PartnerLogo
-              name={partner.name}
-              logoUrl={partner.logoUrl}
-              size={44}
-              shape="circle"
-              initials={partnerInitials(partner.name)}
-              className="pm-display"
-            />
-          </Link>
-          <div className="min-w-0 flex-1">
-            <p className="text-xs" style={{ color: 'var(--app-text-soft)' }}>
-              Halo,
-            </p>
-            <p className="pm-display truncate text-lg">{partner.name}</p>
-          </div>
-          <span
-            className="shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold"
-            style={{ background: 'var(--pm-tint)', color: 'var(--pm-gold)' }}
-          >
-            PARTNER
-          </span>
-          <PartnerNotificationBell />
-        </header>
-
-        <div className="flex flex-col gap-2.5">
-          <div className="flex gap-2.5">
-            <StatCard
-              label="Produk aktif"
-              value={dashboard.activeProducts}
-              icon={Package}
-            />
-            <StatCard
-              label="Event aktif"
-              value={upcoming.length}
-              icon={CalendarDays}
-            />
-          </div>
-          <div className="flex gap-2.5">
-            <StatCard
-              label="Jastiper bergabung"
-              value={dashboard.jastiperCount}
-              icon={Users}
-            />
-            <StatCard
-              label="Pesanan masuk"
-              value={dashboard.orderCount}
-              icon={ShoppingBag}
-            />
-          </div>
-        </div>
-
-        <div className="flex gap-2.5">
-          <Link
-            to="/partner/katalog/baru"
-            className="app-btn-outline flex-1 gap-2 no-underline"
-          >
-            <Plus size={18} />
-            Tambah produk
-          </Link>
-          <Link
-            to="/partner/event/baru"
-            className="app-btn-primary flex-1 gap-2 no-underline"
-          >
-            <Plus size={18} />
-            Buat event
-          </Link>
-        </div>
-
-        <div className="flex items-center justify-between">
-          <h2 className="pm-display text-[17px]">Event berjalan</h2>
-          <Link
-            to="/partner/event"
-            className="text-xs font-bold no-underline"
-            style={{ color: 'var(--app-accent)' }}
-          >
-            Lihat semua
-          </Link>
-        </div>
-        {upcoming.length === 0 ? (
-          <div
-            className="app-card p-4 text-sm"
-            style={{ color: 'var(--app-text-soft)' }}
-          >
-            Belum ada event aktif.
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2.5">
-            {upcoming.slice(0, 3).map(({ event }) => (
-              <Link
-                key={event.id}
-                to="/partner/event/$id"
-                params={{ id: event.id }}
-                className="app-card flex items-center gap-3 p-3 no-underline"
-                style={{ color: 'inherit' }}
-              >
-                <DateBadge date={event.eventDate} />
-                <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
-                  <p className="truncate text-sm font-bold">{event.name}</p>
-                  <p
-                    className="truncate text-xs"
-                    style={{ color: 'var(--app-text-soft)' }}
-                  >
-                    {event.isOnline ? 'Online' : 'Offline'} · {event.location}
-                  </p>
-                </div>
-                <span
-                  className="app-badge shrink-0"
-                  style={{
-                    background: 'var(--app-success-soft)',
-                    color: 'var(--app-success)',
-                  }}
-                >
-                  {event.participantCount} jastiper
-                </span>
-              </Link>
-            ))}
-          </div>
-        )}
-
-        <h2 className="pm-display text-[17px]">Jastiper terbaru</h2>
-        {dashboard.recentJoins.length === 0 ? (
-          <div
-            className="app-card p-4 text-sm"
-            style={{ color: 'var(--app-text-soft)' }}
-          >
-            Belum ada jastiper yang ikut event kamu.
-          </div>
-        ) : (
-          <div className="app-card flex flex-col divide-y p-1">
-            {dashboard.recentJoins.map((join, i) => (
-              <div key={i} className="flex flex-col px-3 py-2">
-                <p className="text-sm font-semibold">
-                  {join.brandName ?? 'Tanpa nama'}
-                </p>
-                <p
-                  className="text-xs"
-                  style={{ color: 'var(--app-text-soft)' }}
-                >
-                  Ikut {join.eventName} · {formatDate(join.joinedAt)}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="app-card p-4">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide">
-            Akun
-          </p>
-          <dl className="flex flex-col gap-1.5 text-sm">
-            <div className="flex justify-between gap-3">
-              <dt style={{ color: 'var(--app-text-soft)' }}>Email</dt>
-              <dd className="truncate font-medium">{partner.email}</dd>
-            </div>
-            <div className="flex justify-between gap-3">
-              <dt style={{ color: 'var(--app-text-soft)' }}>No. WhatsApp</dt>
-              <dd className="font-medium">
-                {partner.waNumber ? formatPhoneNumber(partner.waNumber) : '-'}
-              </dd>
-            </div>
-          </dl>
-        </div>
-      </main>
-      <PartnerHomeDesktop
-        partnerName={partner.name}
-        dashboard={dashboard}
-        upcoming={upcoming}
-      />
-    </>
-  )
-}
-
-type UpcomingItem = {
-  event: PartnerEventRow
-  status: PartnerEventStatus
-}
-
-function DesktopStatCard({
-  label,
-  value,
-  hint,
-  gain,
-  icon: Icon,
-}: {
-  label: string
-  value: number
-  hint: string
-  /** true = ada kenaikan (hijau), false = teks netral. */
-  gain: boolean
-  icon: LucideIcon
-}) {
-  return (
-    <div className="app-card flex flex-col gap-2 p-5">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-[13px]" style={{ color: 'var(--app-text-soft)' }}>
-          {label}
-        </p>
-        <Icon size={16} style={{ color: 'var(--app-accent)' }} />
-      </div>
-      <p className="pm-display text-[36px] leading-none">{value}</p>
-      <p
-        className="mt-1 text-xs"
-        style={{ color: gain ? 'var(--app-success)' : 'var(--app-text-mute)' }}
-      >
-        {hint}
-      </p>
-    </div>
-  )
-}
-
-/** Beranda layout desktop (>= lg) sesuai Figma "D2 Beranda Partner". */
-function PartnerHomeDesktop({
-  partnerName,
-  dashboard,
-  upcoming,
-}: {
-  partnerName: string
-  dashboard: PartnerDashboard
-  upcoming: Array<UpcomingItem>
-}) {
-  const comingCount = upcoming.filter((i) => i.status === 'mendatang').length
-  const productHint = gainHint(dashboard.productsThisMonth, 'bulan ini')
-  const jastiperHint = gainHint(dashboard.jastipersThisWeek, 'minggu ini')
-  const orderHint = gainHint(dashboard.ordersThisWeek, 'minggu ini')
-
-  return (
-    <main className="pm-wide hidden flex-col gap-6 lg:flex">
-      <header className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="pm-display text-[26px] leading-tight">Beranda</h1>
-          <p
-            className="mt-1 text-[13px]"
-            style={{ color: 'var(--app-text-soft)' }}
-          >
-            Ringkasan brand {partnerName}
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <Link
-            to="/partner/katalog/baru"
-            className="app-btn-outline gap-2 no-underline"
-            style={{ minHeight: 44, fontSize: 14 }}
-          >
-            <Plus size={16} />
-            Tambah produk
-          </Link>
-          <Link
-            to="/partner/event/baru"
-            className="app-btn-primary gap-2 no-underline"
-            style={{ minHeight: 44, fontSize: 14 }}
-          >
-            <Plus size={16} />
-            Buat event
-          </Link>
-        </div>
-      </header>
-
-      <div className="grid grid-cols-4 gap-4">
-        <DesktopStatCard
-          label="Produk aktif"
-          value={dashboard.activeProducts}
-          hint={productHint ?? 'Belum ada tambahan bulan ini'}
-          gain={productHint !== null}
-          icon={Package}
-        />
-        <DesktopStatCard
-          label="Event aktif"
-          value={upcoming.length}
-          hint={`${comingCount} mendatang`}
-          gain={comingCount > 0}
-          icon={CalendarDays}
-        />
-        <DesktopStatCard
-          label="Jastiper bergabung"
-          value={dashboard.jastiperCount}
-          hint={jastiperHint ?? 'Belum ada yang baru minggu ini'}
-          gain={jastiperHint !== null}
-          icon={Users}
-        />
-        <DesktopStatCard
-          label="Pesanan masuk"
-          value={dashboard.orderCount}
-          hint={orderHint ?? 'Belum ada yang baru minggu ini'}
-          gain={orderHint !== null}
-          icon={ShoppingBag}
-        />
-      </div>
-
-      <div className="grid grid-cols-[minmax(0,1fr)_340px] items-start gap-4">
-        <section className="app-card flex flex-col gap-3 p-6">
-          <div className="flex items-center justify-between">
-            <h2 className="pm-display text-base">Event berjalan</h2>
-            <Link
-              to="/partner/event"
-              className="text-xs font-semibold no-underline"
-              style={{ color: 'var(--app-accent)' }}
-            >
-              Lihat semua
-            </Link>
-          </div>
-          {upcoming.length === 0 ? (
-            <p
-              className="py-6 text-sm"
+      {preset === 'custom' && (
+        <form
+          className="flex flex-wrap items-end gap-2"
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (customValid) onChange({ from, to, g: undefined })
+          }}
+        >
+          <label className="flex flex-col gap-1">
+            <span
+              className="text-xs font-medium"
               style={{ color: 'var(--app-text-soft)' }}
             >
-              Belum ada event aktif.
-            </p>
-          ) : (
-            upcoming.slice(0, 5).map(({ event }) => (
-              <Link
-                key={event.id}
-                to="/partner/event/$id"
-                params={{ id: event.id }}
-                className="flex items-center gap-4 rounded-2xl border p-3.5 no-underline"
-                style={{
-                  color: 'inherit',
-                  borderColor: 'var(--app-border)',
-                  background: '#fffdf8',
-                }}
-              >
-                <DateBadge date={event.eventDate} />
-                <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
-                  <p className="truncate text-[15px] font-bold">{event.name}</p>
-                  <p
-                    className="truncate text-xs"
-                    style={{ color: 'var(--app-text-soft)' }}
-                  >
-                    {event.isOnline ? 'Online' : 'Offline'} · {event.location}
-                  </p>
-                </div>
-                <span
-                  className="app-badge shrink-0"
-                  style={{
-                    background: 'var(--app-success-soft)',
-                    color: 'var(--app-success)',
-                  }}
-                >
-                  {event.participantCount} jastiper
-                </span>
-              </Link>
-            ))
-          )}
-        </section>
-
-        <section className="app-card flex flex-col gap-3 p-6">
-          <h2 className="pm-display text-base">Jastiper terbaru</h2>
-          {dashboard.recentJoins.length === 0 ? (
-            <p
-              className="py-6 text-sm"
+              Dari
+            </span>
+            <input
+              type="date"
+              className="pa-select"
+              value={from}
+              max={to || today}
+              onChange={(e) => setFrom(e.target.value)}
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span
+              className="text-xs font-medium"
               style={{ color: 'var(--app-text-soft)' }}
             >
-              Belum ada jastiper yang ikut event kamu.
-            </p>
-          ) : (
-            dashboard.recentJoins.map((join, i) => {
-              const name = join.brandName ?? 'Tanpa nama'
-              return (
-                <div key={i} className="flex items-center gap-3">
-                  <PartnerLogo
-                    name={name}
-                    logoUrl={null}
-                    size={40}
-                    shape="circle"
-                    initials={partnerInitials(name)}
-                    className="pm-display text-[13px]"
-                  />
-                  <div className="flex min-w-0 flex-col">
-                    <p className="truncate text-sm font-bold">{name}</p>
-                    <p
-                      className="truncate text-[11px]"
-                      style={{ color: 'var(--app-text-soft)' }}
-                    >
-                      Ikut {join.eventName} · {relativeDayLabel(join.joinedAt)}
-                    </p>
-                  </div>
-                </div>
-              )
-            })
-          )}
-        </section>
-      </div>
-    </main>
+              Sampai
+            </span>
+            <input
+              type="date"
+              className="pa-select"
+              value={to}
+              min={from || undefined}
+              max={today}
+              onChange={(e) => setTo(e.target.value)}
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={!customValid || !customDirty}
+            className="pa-focus h-11 rounded-xl px-5 text-sm font-semibold text-[var(--app-on-solid)] disabled:opacity-40"
+            style={{ background: 'var(--app-accent)' }}
+          >
+            Terapkan
+          </button>
+        </form>
+      )}
+
+      <label className="flex min-w-0 flex-col gap-1 sm:w-64">
+        <span
+          className="text-xs font-medium"
+          style={{ color: 'var(--app-text-soft)' }}
+        >
+          Event
+        </span>
+        <select
+          className="pa-select"
+          value={search.event ?? ''}
+          onChange={(e) => onChange({ event: e.target.value || undefined })}
+        >
+          <option value="">All Events</option>
+          {events.map((ev) => (
+            <option key={ev.id} value={ev.id}>
+              {ev.name}
+            </option>
+          ))}
+        </select>
+      </label>
+    </div>
   )
 }

@@ -306,7 +306,7 @@ function AdminSettingsPage() {
                   type="button"
                   disabled={priceSaving}
                   onClick={handleSavePrice}
-                  className="shrink-0 rounded-xl px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                  className="shrink-0 rounded-xl px-3 py-2 text-xs font-semibold text-[var(--app-on-solid)] disabled:opacity-50"
                   style={{ background: 'var(--app-accent)' }}
                 >
                   {priceSaving ? 'Menyimpan...' : 'Simpan'}
@@ -457,7 +457,7 @@ function AdminFeeSection({ savedPercent }: { savedPercent: number }) {
               type="button"
               disabled={saving}
               onClick={handleSave}
-              className="shrink-0 rounded-xl px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+              className="shrink-0 rounded-xl px-3 py-2 text-xs font-semibold text-[var(--app-on-solid)] disabled:opacity-50"
               style={{ background: 'var(--app-accent)' }}
             >
               {saving ? 'Menyimpan...' : 'Simpan'}

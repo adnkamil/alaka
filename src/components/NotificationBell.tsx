@@ -28,7 +28,7 @@ export default function NotificationBell() {
       <Bell size={22} />
       {count > 0 && (
         <span
-          className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white"
+          className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold text-[var(--app-on-solid)]"
           style={{ background: 'var(--app-accent)' }}
         >
           {count > 9 ? '9+' : count}

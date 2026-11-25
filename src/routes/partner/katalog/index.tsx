@@ -119,7 +119,7 @@ function PartnerCatalogPage() {
   return (
     <>
       <main className="flex flex-col gap-3.5 px-5 pb-[150px] pt-4 lg:hidden">
-        <h1 className="pm-display text-[22px] leading-tight">Katalog Produk</h1>
+        <h1 className="pm-display text-[22px] leading-tight">Products</h1>
 
         <PartnerTableToolbar
           search={search}
@@ -286,7 +286,7 @@ function CatalogDesktop({
       <header className="flex items-start justify-between gap-4">
         <div>
           <h1 className="pm-display text-[26px] leading-tight">
-            Katalog Produk
+            Products
           </h1>
           <p
             className="mt-1 text-[13px]"

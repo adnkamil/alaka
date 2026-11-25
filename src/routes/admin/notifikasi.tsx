@@ -181,7 +181,7 @@ function AdminNotifikasiPage() {
           type="button"
           disabled={!canSubmit}
           onClick={() => setConfirmOpen(true)}
-          className="flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold text-white disabled:opacity-50"
+          className="flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold text-[var(--app-on-solid)] disabled:opacity-50"
           style={{ background: 'var(--app-accent)' }}
         >
           <Send size={16} /> Kirim ke semua jastiper

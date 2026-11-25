@@ -87,7 +87,7 @@ function PartnerCreditPage() {
                   Saldo
                 </p>
                 <p
-                  className="pm-num text-2xl font-bold"
+                  className="pm-num text-[26px] font-bold"
                   style={{ color: balance < 0 ? 'var(--app-danger)' : 'var(--app-text)' }}
                 >
                   {formatRupiah(balance)}

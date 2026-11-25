@@ -2,10 +2,10 @@ import { partnerStatusBadge } from '../lib/event-slot'
 import type { PartnerBadgeTone, SlotStatus } from '../lib/event-slot'
 
 const TONE_STYLE: Record<PartnerBadgeTone, { background: string; color: string }> = {
-  neutral: { background: '#efe5d8', color: '#7a6a58' },
-  info: { background: '#e0ecfb', color: '#2f5fb3' },
-  warn: { background: '#fdecd0', color: '#b26a0a' },
-  success: { background: '#dcebe1', color: '#3f7a55' },
+  neutral: { background: 'var(--pm-muted)', color: 'var(--app-text-soft)' },
+  info: { background: 'var(--app-info-soft)', color: 'var(--app-info)' },
+  warn: { background: 'var(--app-warning-soft)', color: 'var(--app-warning)' },
+  success: { background: 'var(--app-success-soft)', color: 'var(--app-success)' },
 }
 
 /** Badge status pesanan jastiper (Draft / Pengajuan / Pesanan dikembalikan / Disetujui). */

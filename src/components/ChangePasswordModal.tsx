@@ -181,7 +181,7 @@ export default function ChangePasswordModal({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="rounded-xl px-4 py-2 text-xs font-semibold text-white shadow-sm transition-opacity hover:opacity-90 disabled:opacity-50"
+              className="rounded-xl px-4 py-2 text-xs font-semibold text-[var(--app-on-solid)] shadow-sm transition-opacity hover:opacity-90 disabled:opacity-50"
               style={{ background: 'var(--app-accent)' }}
             >
               {isSubmitting ? 'Menyimpan...' : submitLabel}
