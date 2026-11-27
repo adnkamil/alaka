@@ -116,12 +116,22 @@ export const getCalendarEvent = createServerFn({ method: 'GET' })
         description: calendarEvents.description,
         bannerUpdatedAt: calendarEvents.bannerUpdatedAt,
         exhibitors: calendarEvents.exhibitors,
+        slotOpensAt: calendarEvents.slotOpensAt,
+        slotClosesAt: calendarEvents.slotClosesAt,
+        minPurchaseAmount: calendarEvents.minPurchaseAmount,
       })
       .from(calendarEvents)
       .where(eq(calendarEvents.id, data.id))
     const event = rows.at(0)
     if (!event) throw new Error('Event tidak ditemukan')
-    const { bannerUpdatedAt, endedAt, ...rest } = event
+    const {
+      bannerUpdatedAt,
+      endedAt,
+      slotOpensAt,
+      slotClosesAt,
+      minPurchaseAmount,
+      ...rest
+    } = event
     const [myEventId, showcase] = await Promise.all([
       findJoinedEventId(brandIdOf(user), event.id),
       // Null untuk event buatan admin; untuk event partner: produk yang dipilih partner + tautan katalog.
@@ -131,6 +141,11 @@ export const getCalendarEvent = createServerFn({ method: 'GET' })
       ...rest,
       myEventId,
       showcase,
+      // Minimal pembelian hanya berlaku di event beralur slot.
+      minPurchase:
+        slotOpensAt && slotClosesAt && minPurchaseAmount
+          ? Number(minPurchaseAmount)
+          : null,
       // Link event yang sudah diakhiri tetap bisa dibuka (mis. dari chat),
       // tapi halamannya menandai bahwa event sudah berakhir.
       isEnded: endedAt !== null,
@@ -162,4 +177,21 @@ export const joinCalendarEvent = createServerFn({ method: 'POST' })
       feeRuleId: data.feeRuleId ?? null,
     })
     return { eventId }
+  })
+
+/**
+ * Daftar booth event offline untuk fitur "Cari Booth" jastiper. Global seperti
+ * event kalender lainnya (cukup login). Array kosong = event ini belum punya
+ * data booth, dan tombol Cari Booth tidak ditampilkan.
+ */
+export const listCalendarEventBooths = createServerFn({ method: 'GET' })
+  .validator(z.object({ id: z.uuid() }))
+  .handler(async ({ data }) => {
+    await requireUser()
+
+    const rows = await db
+      .select({ booths: calendarEvents.booths })
+      .from(calendarEvents)
+      .where(eq(calendarEvents.id, data.id))
+    return rows.at(0)?.booths ?? []
   })

@@ -407,6 +407,20 @@
       "when": 1795408348081,
       "tag": "0057_notifikasi_partner",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1795769080163,
+      "tag": "0058_minimal_pembelian",
+      "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1795773004487,
+      "tag": "0059_event_booths",
+      "breakpoints": true
     }
   ]
 }

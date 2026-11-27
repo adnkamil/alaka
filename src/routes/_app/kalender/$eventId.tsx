@@ -6,7 +6,13 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { ArrowLeft, CalendarDays, MapPin, Store } from 'lucide-react'
+import {
+  ArrowLeft,
+  CalendarDays,
+  MapPin,
+  ShoppingBag,
+  Store,
+} from 'lucide-react'
 import {
   getCalendarEvent,
   joinCalendarEvent,
@@ -16,9 +22,11 @@ import { formatDateRange, isCalendarEventFinished } from '../../../lib/calendar'
 import { isCalendarEventJoinable } from '../../../lib/calendar-join'
 import { currentUserQuery } from '../../../lib/queries'
 import { todayIsoDateInAppTimeZone } from '../../../lib/timezone'
+import { formatRupiah } from '../../../lib/partner-product-rules'
 import { EventDescription } from '../../../components/EventDescription'
 import JoinEventSheet from '../../../components/JoinEventSheet'
 import PartnerShowcase from '../../../components/PartnerShowcase'
+import BoothSearchButton from '../../../components/BoothSearch'
 
 const calendarEventQuery = (id: string) =>
   queryOptions({
@@ -142,7 +150,20 @@ function CalendarEventDetailPage() {
             <MapPin size={16} className="mt-0.5 flex-shrink-0" />
             <span>{event.location}</span>
           </p>
+          {event.minPurchase !== null && (
+            <p
+              className="flex items-start gap-2 text-sm"
+              style={{ color: 'var(--app-text-soft)' }}
+            >
+              <ShoppingBag size={16} className="mt-0.5 flex-shrink-0" />
+              <span>Minimal pembelian {formatRupiah(event.minPurchase)}</span>
+            </p>
+          )}
         </div>
+
+        {!event.isOnline && (
+          <BoothSearchButton calendarEventId={event.id} className="mt-4" />
+        )}
 
         {event.description && (
           <section className="mt-6">

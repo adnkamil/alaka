@@ -21,6 +21,8 @@ import type {
 } from '../../../lib/partner-event-analytics'
 import type { Insight } from '../../../lib/partner-analytics-rules'
 import { formatRupiah } from '../../../lib/partner-product-rules'
+import { SUBMIT_BUCKET_LIMITS } from '../../../lib/min-purchase'
+import type { MinPurchaseStats } from '../../../lib/min-purchase'
 import { partnerEventQuery } from '../../../lib/queries'
 
 export const Route = createFileRoute('/partner/event/analisa/$id')({
@@ -238,7 +240,13 @@ function Bar({
 
 // ---------------------------------------------------------------------------
 
-function AnalyticsBody({ id, data }: { id: string; data: EventAnalytics }) {
+function AnalyticsBody({
+  id,
+  data,
+}: {
+  id: string
+  data: EventAnalytics & { minOrder: MinPurchaseStats | null }
+}) {
   const { a, fmt } = useAnalysisI18n()
   if (data.jastiper.joined === 0) {
     return (
@@ -311,6 +319,8 @@ function AnalyticsBody({ id, data }: { id: string; data: EventAnalytics }) {
 
       <PcsBreakdown data={data} />
 
+      {data.minOrder && <MinOrderCard stats={data.minOrder} />}
+
       <Timeline timeline={data.timeline} />
 
       <div className="grid grid-cols-1 items-start gap-5 lg:gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,1fr)]">
@@ -333,6 +343,77 @@ function AnalyticsBody({ id, data }: { id: string; data: EventAnalytics }) {
         <SizeCard sizes={data.sizes} />
       </div>
     </>
+  )
+}
+
+/** Bahan partner menilai apakah minimal pembeliannya terlalu tinggi atau rendah. */
+function MinOrderCard({ stats }: { stats: MinPurchaseStats }) {
+  const { a, fmt } = useAnalysisI18n()
+  const hasMin = stats.minPurchase !== null
+  const figures = [
+    { label: a.minOrderJoined, value: fmt(stats.joined) },
+    { label: a.minOrderSubmitted, value: fmt(stats.submitted) },
+    ...(hasMin
+      ? [
+          { label: a.minOrderStuck, value: fmt(stats.stuck) },
+          {
+            label: a.minOrderStuckAmount,
+            value: formatRupiah(stats.stuckAmount),
+          },
+          { label: a.minOrderStuckNear, value: fmt(stats.stuckNearMin) },
+        ]
+      : []),
+  ]
+  const limits = SUBMIT_BUCKET_LIMITS.map((v) => formatRupiah(v))
+  const bucketLabel = (i: number) =>
+    i === 0
+      ? a.minOrderBelow(limits[0])
+      : i === limits.length
+        ? a.minOrderAbove(limits[i - 1])
+        : a.minOrderRange(limits[i - 1], limits[i])
+  const largest = Math.max(...stats.buckets)
+
+  return (
+    <Panel>
+      <SectionHeader
+        title={a.minOrderTitle}
+        description={a.minOrderDesc(
+          stats.minPurchase === null ? null : formatRupiah(stats.minPurchase),
+        )}
+      />
+      <dl className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+        {figures.map((f) => (
+          <div key={f.label}>
+            <dt className="text-xs" style={soft}>
+              {f.label}
+            </dt>
+            <dd className="pa-num mt-0.5 text-base font-semibold">{f.value}</dd>
+          </div>
+        ))}
+      </dl>
+      <div className="flex flex-col gap-2 border-t pt-4" style={border}>
+        <h3 className="text-xs font-semibold">{a.minOrderBuckets}</h3>
+        {largest === 0 ? (
+          <p className="text-sm" style={soft}>
+            {a.minOrderBucketsEmpty}
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {stats.buckets.map((count, i) => (
+              <li key={i} className="flex flex-col gap-1">
+                <div className="flex justify-between gap-3 text-xs">
+                  <span style={soft}>{bucketLabel(i)}</span>
+                  <span className="pa-num font-semibold">
+                    {a.minOrderCount(count)}
+                  </span>
+                </div>
+                <Bar max={largest} value={count} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </Panel>
   )
 }
 

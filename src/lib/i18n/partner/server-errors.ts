@@ -62,6 +62,8 @@ const EXACT: Record<string, string> = {
   'Slot pemesanan belum dibuka oleh partner.':
     'The ordering slot has not been opened by the partner.',
   'Slot pemesanan sudah ditutup.': 'The ordering slot is already closed.',
+  'Slot sudah dibuka, jadi minimal pembelian tidak bisa diubah.':
+    'The slot has opened, so the minimum purchase cannot be changed.',
   'Event ini tidak terhubung ke event partner.':
     'This event is not linked to a partner event.',
 

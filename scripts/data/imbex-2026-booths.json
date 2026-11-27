@@ -1,0 +1,2782 @@
+[
+  {
+    "code": "M-A24",
+    "brand": "AIRLUV",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-A12",
+    "brand": "ANEX",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-D06",
+    "brand": "ANUGERAH BABY SHOP",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-A06",
+    "brand": "AQUASCALE",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-J03",
+    "brand": "BAA BAA SHEEPZ",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-A22",
+    "brand": "BABY HAPPY DIAPERS",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-D02",
+    "brand": "BABY JOY",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-A04",
+    "brand": "BABYBEE",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-A10",
+    "brand": "BABYELLE",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-A07",
+    "brand": "BANK NEGARA INDONESIA",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "FB15",
+    "brand": "BEST CULINARY",
+    "area": "F&B Tenant"
+  },
+  {
+    "code": "M-A08",
+    "brand": "BEYONDVIT",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "FB11",
+    "brand": "BIG BITE CUANKI",
+    "area": "F&B Tenant"
+  },
+  {
+    "code": "M-A06",
+    "brand": "BRUDER",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-D01",
+    "brand": "BUBBLE",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-A09",
+    "brand": "BUDS ORGANIC",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-D07",
+    "brand": "BUMBOO",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-G01",
+    "brand": "BUMBU BUNDA",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-A04",
+    "brand": "BUZYBEE",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-A06",
+    "brand": "CANAL TOYS",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-A18",
+    "brand": "CARROL BABY",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-J03",
+    "brand": "CITRON",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-A05",
+    "brand": "COTTONSEEDS",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-J04",
+    "brand": "CUSSONS BABY",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "FB16",
+    "brand": "DAPOER ABAH GEMBUL",
+    "area": "F&B Tenant"
+  },
+  {
+    "code": "M-D06",
+    "brand": "DIALOGUE BABY",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-A06",
+    "brand": "DOONA",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-J01",
+    "brand": "EASYWALKER",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-D08",
+    "brand": "ECOBABY",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-A24",
+    "brand": "EGG",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-D01",
+    "brand": "ERGOBABY",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-G03",
+    "brand": "FIERKA",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-J02",
+    "brand": "FLUFFY",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-J02",
+    "brand": "FLUFFY DENIM",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-A06",
+    "brand": "FRECKLES",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-A11",
+    "brand": "GENKI MOKO-MOKO",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-A08",
+    "brand": "GENTLY BABY",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-A08",
+    "brand": "GENTLY CARE",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-J05",
+    "brand": "GREENMOM",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-A16",
+    "brand": "HALOMAM",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-J03",
+    "brand": "HEGEN",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-G03",
+    "brand": "HIKARUSA",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "FB18",
+    "brand": "HIRO NIKUDON",
+    "area": "F&B Tenant"
+  },
+  {
+    "code": "M-A24",
+    "brand": "HYBRID",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-A06",
+    "brand": "JELLYPOP",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-A02",
+    "brand": "JOIE",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-A06",
+    "brand": "JUJUBE",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-A09",
+    "brand": "K.MOM",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-D10",
+    "brand": "KARINDO",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "FB19",
+    "brand": "KEDAI YOEPIX",
+    "area": "F&B Tenant"
+  },
+  {
+    "code": "M-A24",
+    "brand": "KIKKA BOO",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-A09",
+    "brand": "KIKUKO",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-D03",
+    "brand": "KODOMO BABY",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "FB21",
+    "brand": "KOPI KENANGAN",
+    "area": "F&B Tenant"
+  },
+  {
+    "code": "M-J06",
+    "brand": "KUMA KUMA",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "FB20",
+    "brand": "LE MINERAL",
+    "area": "F&B Tenant"
+  },
+  {
+    "code": "M-D03",
+    "brand": "MAMA LIME GREEN",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-A06",
+    "brand": "MELII BABY",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-J03",
+    "brand": "MINI MONKEY",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-J01",
+    "brand": "MINIMEIS",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-A05",
+    "brand": "MIZO",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-G06",
+    "brand": "MOMAMI",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-G05",
+    "brand": "MOMCOZY",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-D02",
+    "brand": "MOM'S BABY",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-J02",
+    "brand": "MON LOULOU",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-A01",
+    "brand": "MOOIMOM",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-A03",
+    "brand": "NUNA INDONESIA",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-J03",
+    "brand": "OBALL",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-A06",
+    "brand": "OKIEDOG",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-D08",
+    "brand": "OMILAND",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "FB13",
+    "brand": "OREN'SKITCHEN",
+    "area": "F&B Tenant"
+  },
+  {
+    "code": "M-A24",
+    "brand": "OYSTER",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-G06",
+    "brand": "PHILIPS AVENT",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-G02",
+    "brand": "PIGEON",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-A24",
+    "brand": "POLED",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "FB14",
+    "brand": "PONUT DONUT KENTANG",
+    "area": "F&B Tenant"
+  },
+  {
+    "code": "M-A04",
+    "brand": "PRECIOUS BEE",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-A11",
+    "brand": "PROMINA",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-D07",
+    "brand": "PUREBEE",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-A06",
+    "brand": "QUOKKA",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-A06",
+    "brand": "SCRUNCHEMS",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "FB12",
+    "brand": "SHAKE WAGYU",
+    "area": "F&B Tenant"
+  },
+  {
+    "code": "M-D02",
+    "brand": "SNOBBY BABY",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-D04",
+    "brand": "SOHONEY JR",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-A06",
+    "brand": "SQUAREPALS",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-D09",
+    "brand": "SUPERMOM",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-A09",
+    "brand": "SWISSE",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "FB17",
+    "brand": "TEBUBU",
+    "area": "F&B Tenant"
+  },
+  {
+    "code": "M-J01",
+    "brand": "TERNX",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-D01",
+    "brand": "THERALINE",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-D02",
+    "brand": "VEE & MEE",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-G06",
+    "brand": "YAMATOYA & PHANPY",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-A06",
+    "brand": "ZOKU",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "M-G04",
+    "brand": "ZWITSAL",
+    "area": "Main Lobby"
+  },
+  {
+    "code": "S-B36",
+    "brand": "ALAMII FOOD",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C24",
+    "brand": "ALFABETBOOKS",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B01",
+    "brand": "B.BOX",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C15",
+    "brand": "BABIESFIRST",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B19",
+    "brand": "BABY ROVEGA",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B20",
+    "brand": "BAMBI",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C31",
+    "brand": "BEELOFT BABY",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B25",
+    "brand": "BEEME",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C15",
+    "brand": "BERINGIN TOYS",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C06",
+    "brand": "BERRY C",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C29",
+    "brand": "BLI BLI",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C15",
+    "brand": "BLOKEES",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B35",
+    "brand": "BUMBEE COLLECTION",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C35b",
+    "brand": "CLAIRE'S BABY",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B01",
+    "brand": "CLOUD.B",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C15",
+    "brand": "COCO SMILE",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B29",
+    "brand": "CORDLIFE",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C02",
+    "brand": "COTTONS BABY DIAPERS",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C15",
+    "brand": "DELI GENIUS",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C34a",
+    "brand": "DODO BABY PRODUCTS",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C30",
+    "brand": "DOUILETT",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C30",
+    "brand": "DOUX DOLCE",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C21",
+    "brand": "DR TEAL'S",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B32",
+    "brand": "ECLIPSE HAMPERS",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B31",
+    "brand": "EDISON CHOPSTICKS",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C11",
+    "brand": "EGG-GO",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B01",
+    "brand": "EUFY",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C21",
+    "brand": "FARLIN",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C15",
+    "brand": "FAST PIONEER",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B12",
+    "brand": "FELANCY",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B01",
+    "brand": "FLUORA",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C17",
+    "brand": "FRIENDS OF SALLY",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C23",
+    "brand": "GEKOBEBE",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C21",
+    "brand": "GENGINGEL BABY",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B31",
+    "brand": "GOGO FIELD",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C15",
+    "brand": "GOODWAY",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B33",
+    "brand": "GRANDVILLE",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C10",
+    "brand": "HAMILTON",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C19",
+    "brand": "HAPPY PUMPKIN",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B06",
+    "brand": "HARLOWDAY",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B06",
+    "brand": "HARLOWKIDS",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C01",
+    "brand": "HAYAMI",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B35",
+    "brand": "HELLO SPOON",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C21",
+    "brand": "INTERLAC",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C15",
+    "brand": "IQ ANGEL",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C15",
+    "brand": "KAYOU",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C36b",
+    "brand": "KID AND KNIT",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B32",
+    "brand": "KIDDIE SPLASH",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C10",
+    "brand": "KISUBO",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B07",
+    "brand": "KURUMI & BRISH",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C21",
+    "brand": "LADERMA",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B13",
+    "brand": "LEKA",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B13",
+    "brand": "LEKAGO",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B05",
+    "brand": "LIBBY BABY",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B01",
+    "brand": "LILLA",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B01",
+    "brand": "LILLA BABY",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B14",
+    "brand": "LITLLEPALMERHAUS",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B01",
+    "brand": "LITTLE BIG FRIENDS",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C02",
+    "brand": "LITTLE CLAIRE",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C34b",
+    "brand": "LITTLE DIMPLE",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B20",
+    "brand": "LITTLE FAB",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B30",
+    "brand": "LITTLE GIANT",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C05",
+    "brand": "LITTLE SOSETE",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C09",
+    "brand": "LOLUNA",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C35a",
+    "brand": "LOVI DOVI",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C33",
+    "brand": "MAMA'S CHOICE",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B31",
+    "brand": "MARVEILA",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B31",
+    "brand": "MARVEILA YUM",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B01",
+    "brand": "MEDELA",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B16",
+    "brand": "MERRIES",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B01",
+    "brand": "MIDEER",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C21",
+    "brand": "MOLAGI",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B08",
+    "brand": "MOM UUNG",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B01",
+    "brand": "MOMABAE",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B22",
+    "brand": "MOOI HEARTMADE",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B26",
+    "brand": "MOTHERCARE",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C21",
+    "brand": "MOTHERLOVE",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C21",
+    "brand": "MUSTELA",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B24",
+    "brand": "NARY",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B18",
+    "brand": "NICE KIDS",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B24",
+    "brand": "NOVA",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B26",
+    "brand": "PHANPY",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C21",
+    "brand": "PHYSIOMER",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B03",
+    "brand": "PONPON",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C25",
+    "brand": "PURA THE PUREST",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C15",
+    "brand": "PURCOTTON",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C18",
+    "brand": "PURE",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B01",
+    "brand": "PURE PAW PAW",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C14",
+    "brand": "QUICK FRESH",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C15",
+    "brand": "RHINO",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C15",
+    "brand": "SAMUEL",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C13",
+    "brand": "SLEEPYSHEEP",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C36a",
+    "brand": "STEIN",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C27",
+    "brand": "SUGAR BABY",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B30",
+    "brand": "TAKAHI",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C15",
+    "brand": "TREEHOLE",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B01",
+    "brand": "UBMOM",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B13",
+    "brand": "VESKA",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-C12",
+    "brand": "WEARLUCA",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B10",
+    "brand": "WINTEKU",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B26",
+    "brand": "YAMATOYA",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B28",
+    "brand": "YUMMY BITES",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B28",
+    "brand": "YUMMY BITES KITCHEN",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B02",
+    "brand": "YUUKA FOOD",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "S-B34",
+    "brand": "ZUMA",
+    "area": "Assembly Hall"
+  },
+  {
+    "code": "P-E06",
+    "brand": "BETHSAIDA HOSPITAL",
+    "area": "Plenary Hall"
+  },
+  {
+    "code": "P-F08",
+    "brand": "CHERY HOUSE",
+    "area": "Plenary Hall"
+  },
+  {
+    "code": "P-F21",
+    "brand": "CUDDLEME",
+    "area": "Plenary Hall"
+  },
+  {
+    "code": "P-E01",
+    "brand": "DIALOGUE APPAREL",
+    "area": "Plenary Hall"
+  },
+  {
+    "code": "P-E21",
+    "brand": "GOLDENFIL",
+    "area": "Plenary Hall"
+  },
+  {
+    "code": "P-F21",
+    "brand": "GOSWIM",
+    "area": "Plenary Hall"
+  },
+  {
+    "code": "P-E22",
+    "brand": "HAULA TOYS",
+    "area": "Plenary Hall"
+  },
+  {
+    "code": "P-F22",
+    "brand": "HOGASAN",
+    "area": "Plenary Hall"
+  },
+  {
+    "code": "P-E04",
+    "brand": "KIIP KIIP INDONESIA",
+    "area": "Plenary Hall"
+  },
+  {
+    "code": "P-F02",
+    "brand": "KOOKA",
+    "area": "Plenary Hall"
+  },
+  {
+    "code": "P-F10",
+    "brand": "LEMONILO",
+    "area": "Plenary Hall"
+  },
+  {
+    "code": "P-F07",
+    "brand": "LITTLE EQUI",
+    "area": "Plenary Hall"
+  },
+  {
+    "code": "P-E24",
+    "brand": "MANDAYA HOSPITAL",
+    "area": "Plenary Hall"
+  },
+  {
+    "code": "P-F04",
+    "brand": "MEDISOFT",
+    "area": "Plenary Hall"
+  },
+  {
+    "code": "P-F03",
+    "brand": "NOLA SNACK",
+    "area": "Plenary Hall"
+  },
+  {
+    "code": "P-E23",
+    "brand": "PICKNIC ART STUDIO",
+    "area": "Plenary Hall"
+  },
+  {
+    "code": "P-F23",
+    "brand": "PURWACARAKA MUSIC STUDIO",
+    "area": "Plenary Hall"
+  },
+  {
+    "code": "P-F21",
+    "brand": "QUOKKA",
+    "area": "Plenary Hall"
+  },
+  {
+    "code": "P-E02",
+    "brand": "SAKUMINI",
+    "area": "Plenary Hall"
+  },
+  {
+    "code": "P-F09",
+    "brand": "SAORI SAUS YAKINIKU",
+    "area": "Plenary Hall"
+  },
+  {
+    "code": "P-E03",
+    "brand": "SQUILUMI",
+    "area": "Plenary Hall"
+  },
+  {
+    "code": "P-F24",
+    "brand": "TAKA BOOK STORE",
+    "area": "Plenary Hall"
+  },
+  {
+    "code": "P-F21",
+    "brand": "WEARME",
+    "area": "Plenary Hall"
+  },
+  {
+    "code": "P-E22",
+    "brand": "WISATA EDUKASI BISNIS HAULA",
+    "area": "Plenary Hall"
+  },
+  {
+    "code": "C-H23",
+    "brand": "ABKIDZ",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H10",
+    "brand": "AQUABABIES GLOBAL",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H10",
+    "brand": "AQUABABIES INDONESIA",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H10",
+    "brand": "AQUAKIDDIES INDONESIA",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H10",
+    "brand": "AQUAMUMMIES INDONESIA",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H10",
+    "brand": "ASCTA",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H32",
+    "brand": "BAGUS",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H32",
+    "brand": "BAGUS PIPI",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H09",
+    "brand": "BEAR",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H20",
+    "brand": "BEBIO",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-I13",
+    "brand": "BIGBUZZ",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-I15",
+    "brand": "BLACKMORES",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H02",
+    "brand": "BOONABOO",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H28",
+    "brand": "BURABI",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-I04",
+    "brand": "CALDANA",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H08",
+    "brand": "CASA BAMBINO",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H08",
+    "brand": "CASA BAMBINO ESSENTIALS",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-I03a",
+    "brand": "CIAKPO.ID",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H22",
+    "brand": "COSOCO KIDS",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-I01",
+    "brand": "CRYSTAL OF THE SEA",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-I17",
+    "brand": "DEBELLIN",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H30",
+    "brand": "DERMALLY",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H07",
+    "brand": "DOODLE EXCLUSIVE BABY CARE",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-I12",
+    "brand": "DOOGLEE",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-I19",
+    "brand": "EDUCATIONAL INSIGHTS",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H09",
+    "brand": "ELIPSE KIDS",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H09",
+    "brand": "EMILY",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-I11",
+    "brand": "EZZERA",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-I10",
+    "brand": "FAMILY BIKE",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H16",
+    "brand": "GEABABY",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-I06b",
+    "brand": "Grouu Baby Food",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-I19",
+    "brand": "HAND2MIND",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H26",
+    "brand": "HAPPY LITTLE SLEEPER",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H06",
+    "brand": "HARU",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-I04",
+    "brand": "HEEL - SOFT",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-I04",
+    "brand": "IMUTRO",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H09",
+    "brand": "INTI BABY",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H12",
+    "brand": "IQ BABY",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H06",
+    "brand": "IRIS",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-I17",
+    "brand": "KAAB",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H11",
+    "brand": "KAEGGIE",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-I04",
+    "brand": "KINDEREN",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H12",
+    "brand": "KIWY",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-I08",
+    "brand": "KONICARE",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H27",
+    "brand": "LADOR",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-I19",
+    "brand": "LEARNING RESOURCES",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-I12",
+    "brand": "LIFE OF GEMMA",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-I05",
+    "brand": "LILECO",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H25",
+    "brand": "LITOLI JR",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H29",
+    "brand": "LITTLE ALPHA",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H25",
+    "brand": "LITTLE NAOSY",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H09",
+    "brand": "LOLLALAND",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H12",
+    "brand": "LUUMI",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H09",
+    "brand": "MATCHSTICK MONKEY",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-I04",
+    "brand": "MEDIKON",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-I07",
+    "brand": "MICA SHOES",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H25",
+    "brand": "MISS BECCA",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-I09",
+    "brand": "MOMIKU",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H01",
+    "brand": "MONDE BOROMON",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H01",
+    "brand": "MONDE EGG ROLLS",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H06",
+    "brand": "MONEE",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-I06a",
+    "brand": "MORO",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H06",
+    "brand": "MOTHER'S CORN",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-I04",
+    "brand": "MUCOTUSSAN",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H28",
+    "brand": "NATURE LOVE MERE",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-I03a",
+    "brand": "NATURESTCO.ID",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-I18",
+    "brand": "NERTUR",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-I05",
+    "brand": "NINGRAT CLOTH DIAPER",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H01",
+    "brand": "NISSIN WAFFERS",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H09",
+    "brand": "NORGE",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-I19",
+    "brand": "NUMBERBLOCKS",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H03",
+    "brand": "OHBABYDAYS",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-I19",
+    "brand": "OMIEBOX",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H09",
+    "brand": "OONEW",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H16",
+    "brand": "ORYN",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-I16",
+    "brand": "PETIT BEARY",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H18",
+    "brand": "PHANPY",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H05",
+    "brand": "PMB TOYS",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H12",
+    "brand": "PORTER",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H16",
+    "brand": "PUTTI ATTI / BEBEPICK",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H19",
+    "brand": "RESEP ROEMAH",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H09",
+    "brand": "ROVCO",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H16",
+    "brand": "SANOSAN",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H25",
+    "brand": "SNOBBY APPAREL",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H24",
+    "brand": "SOKLIN SOFTENER FINE & COMFORT",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H06",
+    "brand": "SPECTRA",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H10",
+    "brand": "STA",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-I02",
+    "brand": "STEMCORD",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H09",
+    "brand": "SUCVENT",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H10",
+    "brand": "SWIM COACHES & TEACHERS AUSTRALIA",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-I03b",
+    "brand": "THE MUNCHING QUEEN",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H30",
+    "brand": "TNTN MOM'S",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-I12",
+    "brand": "TUUTUU",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-I12",
+    "brand": "VINETOKIDS",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H09",
+    "brand": "WE ARE MOTHER",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H18",
+    "brand": "YAMATOYA",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H27",
+    "brand": "YUKAZAN",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "C-H09",
+    "brand": "ZUUPERMUM",
+    "area": "Cendrawasih Hall"
+  },
+  {
+    "code": "A-L05",
+    "brand": "ABE FOOD",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M27",
+    "brand": "AVEENO BABY",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-K04",
+    "brand": "AYUMIE",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L15",
+    "brand": "BABY CAN READ",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M16",
+    "brand": "BABYSICAL",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-K06",
+    "brand": "BARCO",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M26",
+    "brand": "BEBE ROOSIE",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L29c",
+    "brand": "BEBISO",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L18",
+    "brand": "BELL & BO",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L25",
+    "brand": "BERRIES",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L17",
+    "brand": "BLOOME BABY",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M03",
+    "brand": "BUMIL",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L36",
+    "brand": "BYE BYE FEVER",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L36",
+    "brand": "CAP LANG",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L19",
+    "brand": "CERTIVE",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-K01",
+    "brand": "CESSA",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L01",
+    "brand": "COTTON MOM",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L09",
+    "brand": "CRYOCORD",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M25",
+    "brand": "DACCO",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M30",
+    "brand": "DALIN",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L36",
+    "brand": "DARLIE",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M34",
+    "brand": "DEE - DEE",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L36",
+    "brand": "DERMATIX",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L30",
+    "brand": "DIANDI",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L22",
+    "brand": "DR TEAL'S",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L19",
+    "brand": "DR. BAEK",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L34",
+    "brand": "DREVOO JEWELRY",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L36",
+    "brand": "ELEVIT",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L36",
+    "brand": "ENERVON",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L36",
+    "brand": "EXPERT BOOST",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L22",
+    "brand": "FARLIN",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M02",
+    "brand": "FLOU BY POKANA",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M20",
+    "brand": "FRISIAN FLAG",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L22",
+    "brand": "GENGINGEL BABY",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L29d",
+    "brand": "GROSMIMI",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L26",
+    "brand": "HABBIE",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M13",
+    "brand": "HERBANA",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L24",
+    "brand": "HOUSE OF MARSMELLOW",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M09",
+    "brand": "HUNGRY ALANA",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L13",
+    "brand": "IMBOOST",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-K05",
+    "brand": "INDOMILK KIDS",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L22",
+    "brand": "INTERLAC",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-K09",
+    "brand": "JIB INDONESIA",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L03",
+    "brand": "JOEY & ROO",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-K03",
+    "brand": "JOIE SIGNATURE",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L38",
+    "brand": "JOLLY FUN",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L30",
+    "brand": "KAGUYAPLAS",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-K10",
+    "brand": "KAZEL",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M29",
+    "brand": "KINGUJEANS",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L20",
+    "brand": "KKA KKONG",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M22",
+    "brand": "KOHANA",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L05",
+    "brand": "KOKOBI",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-K11",
+    "brand": "LACTACYD BABY",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M19",
+    "brand": "LADANG LIMA",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L22",
+    "brand": "LADERMA",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M35",
+    "brand": "LEVOIT",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M40",
+    "brand": "LOU BABY",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L24",
+    "brand": "MAISON ELMESA",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-K12",
+    "brand": "MAMACHI",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L03",
+    "brand": "MAMAWAY",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M36",
+    "brand": "MAMAYAYA",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L25",
+    "brand": "MAMYLOVE WIPES",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L38",
+    "brand": "MARSHMALLOW",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-K04a",
+    "brand": "MEMORY LIFE",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L32",
+    "brand": "MILKOW",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L28a",
+    "brand": "MILNA",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L24",
+    "brand": "MINGLE",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L21",
+    "brand": "MIRUGO",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L22",
+    "brand": "MOLAGI",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L19",
+    "brand": "MOLEBI",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M23",
+    "brand": "MOMAZ",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M33",
+    "brand": "MOMS RECIPE SILKY PUDDING",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L38",
+    "brand": "MONBENTO",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M07",
+    "brand": "MORINAGA",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L22",
+    "brand": "MOTHERLOVE",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L22",
+    "brand": "MUSTELA",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M33",
+    "brand": "MYVLA",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M28",
+    "brand": "NAOMICHAN",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M35",
+    "brand": "NOTALE",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L36",
+    "brand": "NOZA",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-K08",
+    "brand": "NUTRILON ROYAL",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M10",
+    "brand": "OMICA",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-K07",
+    "brand": "OMO! Healthy Snack",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M05",
+    "brand": "OMRON",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M38",
+    "brand": "PANAMA",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L22",
+    "brand": "PHYSIOMER",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M03",
+    "brand": "POIPOI",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M02",
+    "brand": "POKANA",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L19",
+    "brand": "POOCHY",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M24",
+    "brand": "POOKIO",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L07",
+    "brand": "PORTO",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L28b",
+    "brand": "PRENAGEN",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-K02",
+    "brand": "PURELA",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M29",
+    "brand": "QINTHAKIDS",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M01b",
+    "brand": "ROMA MARIE GOLD",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M32",
+    "brand": "S-26",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L36",
+    "brand": "SANGOBION",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M06",
+    "brand": "SCELTA BABY WEAR",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M01a",
+    "brand": "SCULPT",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L36",
+    "brand": "SENSODYNE",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M39",
+    "brand": "SHOFF",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M11",
+    "brand": "SLEEK BABY",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L25",
+    "brand": "SNAKE BRAND",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M18",
+    "brand": "SORELLA",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L29d",
+    "brand": "SQUISH-C",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L05",
+    "brand": "SUNNY BITES",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L11",
+    "brand": "SUPERCORN",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L27",
+    "brand": "TAKEDA CEGAH DBD",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L36",
+    "brand": "TOLAK ANGIN",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M30",
+    "brand": "UBRAS",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M22",
+    "brand": "VIAND BEVANDE",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L26",
+    "brand": "VITABUMIN",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L36",
+    "brand": "VIVA APOTIK",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M30",
+    "brand": "WETBRUSH",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-M33",
+    "brand": "WHIPKING",
+    "area": "Hall A"
+  },
+  {
+    "code": "A-L36",
+    "brand": "YOONA",
+    "area": "Hall A"
+  },
+  {
+    "code": "B-P01",
+    "brand": "ACE KID",
+    "area": "Hall B"
+  },
+  {
+    "code": "ED06",
+    "brand": "ALAM ATELIER SCHOOL",
+    "area": "Hall B"
+  },
+  {
+    "code": "BF06",
+    "brand": "ALKHASTORE",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-P09",
+    "brand": "ALOCLAIR PLUS",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-T08",
+    "brand": "ATARU",
+    "area": "Hall B"
+  },
+  {
+    "code": "ED02",
+    "brand": "AVI MIND",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-T07",
+    "brand": "AZKO",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-N06",
+    "brand": "BABY DOVE",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-N24",
+    "brand": "BANK NEGARA INDONESIA",
+    "area": "Hall B"
+  },
+  {
+    "code": "ED06",
+    "brand": "BAZGYM JAKARTA",
+    "area": "Hall B"
+  },
+  {
+    "code": "BF16",
+    "brand": "BEBE",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-P11",
+    "brand": "BELLAMY'S ORGANIC",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-N04",
+    "brand": "BFREE KIDS",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-N27",
+    "brand": "BIOSOOP",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-Q11",
+    "brand": "BRAWIJAYA HOSPITAL",
+    "area": "Hall B"
+  },
+  {
+    "code": "BF15",
+    "brand": "BRITZ COLLECTION",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-Q05",
+    "brand": "BUBBLY BUDS",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-Q07",
+    "brand": "CASA DE MAVEN",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-N02",
+    "brand": "CERADAN",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-Q16",
+    "brand": "CLENCY",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-O10",
+    "brand": "CUSCUS",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-T09",
+    "brand": "DENO",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-P13",
+    "brand": "DEX BABY",
+    "area": "Hall B"
+  },
+  {
+    "code": "BF11",
+    "brand": "EDEVA KIDSWEAR",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-N12",
+    "brand": "EDO FOOD",
+    "area": "Hall B"
+  },
+  {
+    "code": "ED14",
+    "brand": "ENGLISH 1",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-P09",
+    "brand": "ENTRAKID",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-O06",
+    "brand": "FRUTA GUMMY",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-N05",
+    "brand": "FUKU MOMO KIDS",
+    "area": "Hall B"
+  },
+  {
+    "code": "BF10",
+    "brand": "GHAISANI",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-P09",
+    "brand": "GLISODIN",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-T12",
+    "brand": "GRAMEDIA",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-N16",
+    "brand": "GRANDAIRY",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-Q01",
+    "brand": "GREATEL CARE",
+    "area": "Hall B"
+  },
+  {
+    "code": "BF05",
+    "brand": "GULALI BOOKS",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-O09",
+    "brand": "HAPIHOME",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-N13",
+    "brand": "HEAVEN LIGHTS KIDS",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-P09",
+    "brand": "HEVIT",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-P09",
+    "brand": "HEVIT KIDS",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-Q04",
+    "brand": "INFOBRAND",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-Q19",
+    "brand": "INTEX",
+    "area": "Hall B"
+  },
+  {
+    "code": "ED06",
+    "brand": "ISHINE",
+    "area": "Hall B"
+  },
+  {
+    "code": "ED06",
+    "brand": "ISMILE PRESCHOOL",
+    "area": "Hall B"
+  },
+  {
+    "code": "ED06",
+    "brand": "JIWA",
+    "area": "Hall B"
+  },
+  {
+    "code": "BF03",
+    "brand": "JOJO KIDS",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-N11",
+    "brand": "KALALE",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-Q09",
+    "brand": "KARIHOME",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-Q02",
+    "brand": "KELVIN KIDS",
+    "area": "Hall B"
+  },
+  {
+    "code": "ED09",
+    "brand": "KIPINÄ KIDS VILLA KEMANG",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-Q15",
+    "brand": "KLIKNCLEAN",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-P15",
+    "brand": "KUNTOEM",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-O16",
+    "brand": "LEE MINERALE",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-N15",
+    "brand": "LEE VIERRA",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-P09",
+    "brand": "LIKURMIN",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-T15",
+    "brand": "LION PARCEL",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-P09",
+    "brand": "LIPROLAC",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-Q16",
+    "brand": "LITTLE FRIENDS",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-N08",
+    "brand": "LITTLE WARREN",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-P19",
+    "brand": "LITTLETHINGSHECARE",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-P19",
+    "brand": "LITTLETHINGSHEWEAR",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-T03",
+    "brand": "MACKER'S",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-P01",
+    "brand": "MAKUKU",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-N10",
+    "brand": "MAMMARY BREASTMILK JEWELRY",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-N10",
+    "brand": "MAMMARY CARE ORGANIC",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-P14",
+    "brand": "MARIE REGAL",
+    "area": "Hall B"
+  },
+  {
+    "code": "BF02",
+    "brand": "MIMI KIDS",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-N01",
+    "brand": "MINI MAIIMI",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-P06",
+    "brand": "MINIMODA",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-N18",
+    "brand": "MINYAK KUTUS-KUTUS",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-N09",
+    "brand": "MIRTAKIDS",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-O11",
+    "brand": "MOELL",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-Q17",
+    "brand": "MOMMY TIME",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-Q06",
+    "brand": "MOMMYCLOPEDIA",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-Q10",
+    "brand": "MOM'S GIFT",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-S01",
+    "brand": "NATUR",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-O04",
+    "brand": "NORDIC NATURALS",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-P09",
+    "brand": "OSFIT",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-Q08",
+    "brand": "OXYGEN",
+    "area": "Hall B"
+  },
+  {
+    "code": "BF04",
+    "brand": "PAPINKA",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-P09",
+    "brand": "PEPTISOL",
+    "area": "Hall B"
+  },
+  {
+    "code": "ED01",
+    "brand": "PLAYFIELD GROUP",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-P09",
+    "brand": "PROVE D3",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-N03",
+    "brand": "READING BUDDY",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-P09",
+    "brand": "RILLUS",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-S10",
+    "brand": "ROANJANE",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-O01",
+    "brand": "SEASEE",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-N07",
+    "brand": "SORARA",
+    "area": "Hall B"
+  },
+  {
+    "code": "ED10",
+    "brand": "SPARKS ACADEMY",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-N02",
+    "brand": "STERIMAR",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-O03",
+    "brand": "SUGARBIBS",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-S11",
+    "brand": "TAMAN SAFARI",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-O12",
+    "brand": "TEMPO",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-P08",
+    "brand": "THE LAUGHING COW",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-T04",
+    "brand": "TOYS KINGDOM",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-O12",
+    "brand": "VINDA TISSUE",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-T03",
+    "brand": "WAKU-WAKU SANDALS",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-T14",
+    "brand": "WHITEHORSE GROUP",
+    "area": "Hall B"
+  },
+  {
+    "code": "BF01",
+    "brand": "WILD WILLOW LABEL",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-N16",
+    "brand": "YOSEO",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-Q20",
+    "brand": "YUPI",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-P05",
+    "brand": "ZOJIRUSHI",
+    "area": "Hall B"
+  },
+  {
+    "code": "B-U01",
+    "brand": "ELIPSE KIDS",
+    "area": "As-Is Zone"
+  },
+  {
+    "code": "B-U03",
+    "brand": "KISUBO",
+    "area": "As-Is Zone"
+  },
+  {
+    "code": "B-U02",
+    "brand": "LACTACYD",
+    "area": "As-Is Zone"
+  },
+  {
+    "code": "B-U01",
+    "brand": "LOLLALAND",
+    "area": "As-Is Zone"
+  },
+  {
+    "code": "B-U01",
+    "brand": "MATCHSTICK MONKEY",
+    "area": "As-Is Zone"
+  },
+  {
+    "code": "B-U01",
+    "brand": "ROVCO",
+    "area": "As-Is Zone"
+  },
+  {
+    "code": "B-U01",
+    "brand": "ZUUPERMUM",
+    "area": "As-Is Zone"
+  },
+  {
+    "code": "FB07",
+    "brand": "BOWLLE",
+    "area": "F&B Tenant"
+  },
+  {
+    "code": "FB09",
+    "brand": "CHEESE PARTY",
+    "area": "F&B Tenant"
+  },
+  {
+    "code": "FV04",
+    "brand": "CHIKYO",
+    "area": "F&B Tenant"
+  },
+  {
+    "code": "FB01",
+    "brand": "KOPI KENANGAN",
+    "area": "F&B Tenant"
+  },
+  {
+    "code": "FB05",
+    "brand": "LE MINERAL",
+    "area": "F&B Tenant"
+  },
+  {
+    "code": "FB10",
+    "brand": "MACS READY",
+    "area": "F&B Tenant"
+  },
+  {
+    "code": "FB08",
+    "brand": "RAJA RAWIT",
+    "area": "F&B Tenant"
+  },
+  {
+    "code": "FB03",
+    "brand": "SALUTOO",
+    "area": "F&B Tenant"
+  },
+  {
+    "code": "FB06",
+    "brand": "WARUNGNYAWAWAN",
+    "area": "F&B Tenant"
+  },
+  {
+    "code": "FB02",
+    "brand": "YOSHINOYA",
+    "area": "F&B Tenant"
+  },
+  {
+    "code": "FB22",
+    "brand": "YOSHINOYA",
+    "area": "F&B Tenant"
+  }
+]

@@ -44,6 +44,12 @@ export default function PartnerSlotSection({
   const antrean = [...waiting, ...drafts]
   const [opensAt, setOpensAt] = useState('')
   const [closesAt, setClosesAt] = useState('')
+  // Hanya digit; kosong = tanpa minimal.
+  const [minPurchase, setMinPurchase] = useState('')
+  // Dikunci menurut jam buka yang tersimpan, sama dengan pemeriksaan server.
+  const minLocked =
+    window?.opensAt != null && new Date(window.opensAt).getTime() <= Date.now()
+  const noSlot = opensAt === '' && closesAt === ''
   const t = usePartnerT()
   const s = t.eventDetail.slot
   const warnings = slotWindowWarnings({
@@ -61,6 +67,7 @@ export default function PartnerSlotSection({
     if (!window) return
     setOpensAt(window.opensAt ? toWibLocal(new Date(window.opensAt)) : '')
     setClosesAt(window.closesAt ? toWibLocal(new Date(window.closesAt)) : '')
+    setMinPurchase(window.minPurchase ? String(window.minPurchase) : '')
   }, [window])
 
   async function save(nextOpens: string, nextCloses: string) {
@@ -68,7 +75,12 @@ export default function PartnerSlotSection({
     setMessage(null)
     try {
       await setPartnerSlotWindow({
-        data: { calendarEventId, opensAt: nextOpens, closesAt: nextCloses },
+        data: {
+          calendarEventId,
+          opensAt: nextOpens,
+          closesAt: nextCloses,
+          minPurchase: Number(minPurchase) || null,
+        },
       })
       await queryClient.invalidateQueries({
         queryKey: ['partner-slot-window', calendarEventId],
@@ -123,6 +135,33 @@ export default function PartnerSlotSection({
             className="rounded-xl border px-3 py-2 text-sm font-normal"
             style={{ borderColor: 'var(--app-border)' }}
           />
+        </label>
+        <label className="flex flex-col gap-1 text-[13px] font-semibold">
+          {s.minPurchase}
+          <input
+            type="text"
+            inputMode="numeric"
+            value={
+              minPurchase === ''
+                ? ''
+                : Number(minPurchase).toLocaleString('id-ID')
+            }
+            onChange={(e) =>
+              setMinPurchase(
+                e.target.value.replace(/\D/g, '').replace(/^0+/, '').slice(0, 12),
+              )
+            }
+            placeholder={s.minPurchaseNone}
+            disabled={minLocked || noSlot}
+            className="rounded-xl border px-3 py-2 text-sm font-normal disabled:opacity-60"
+            style={{ borderColor: 'var(--app-border)' }}
+          />
+          <span
+            className="text-xs font-normal"
+            style={{ color: 'var(--app-text-soft)' }}
+          >
+            {minLocked ? s.minPurchaseLocked : s.minPurchaseHint}
+          </span>
         </label>
       </div>
       {warnings.map((w) => (

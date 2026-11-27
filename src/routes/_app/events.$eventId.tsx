@@ -62,6 +62,7 @@ import type { OrderItemView } from '../../components/OrderItemList'
 import { useEventInvoices } from '../../components/EventInvoicesSection'
 import EventSlotAction from '../../components/EventSlotAction'
 import EventSlotBanner from '../../components/EventSlotBanner'
+import BoothSearchButton from '../../components/BoothSearch'
 import {
   removeBundleComponent,
   updateBundleComponent,
@@ -1168,6 +1169,10 @@ function EventDetailPage() {
               <span>Lihat →</span>
             </button>
           )}
+          <BoothSearchButton
+            calendarEventId={event.calendarEventId}
+            className="mb-4"
+          />
         </>
       )}
 

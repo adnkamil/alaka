@@ -18,17 +18,23 @@ import type { OrderTx } from './order-status-queries'
 export async function loadSlotConfig(
   tx: OrderTx,
   calendarEventId: string | null,
-): Promise<SlotConfig | null> {
+): Promise<(SlotConfig & { minPurchase: number | null }) | null> {
   if (!calendarEventId) return null
   const rows = await tx
     .select({
       partnerId: calendarEvents.partnerId,
       opensAt: calendarEvents.slotOpensAt,
       closesAt: calendarEvents.slotClosesAt,
+      minPurchase: calendarEvents.minPurchaseAmount,
     })
     .from(calendarEvents)
     .where(eq(calendarEvents.id, calendarEventId))
-  return rows.at(0) ?? null
+  const row = rows.at(0)
+  if (!row) return null
+  return {
+    ...row,
+    minPurchase: row.minPurchase === null ? null : Number(row.minPurchase),
+  }
 }
 
 /**

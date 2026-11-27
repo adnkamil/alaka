@@ -6,6 +6,7 @@ import {
   validateSlotChange,
   validateSlotWindow,
 } from './event-slot'
+import { validateMinPurchaseChange } from './min-purchase'
 import { requirePartner } from './partner-auth'
 import { partnerOwnsEvent } from './partner-event-queries'
 
@@ -25,6 +26,7 @@ export const setPartnerSlotWindow = createServerFn({ method: 'POST' })
       calendarEventId: idSchema,
       opensAt: dateTimeLocal,
       closesAt: dateTimeLocal,
+      minPurchase: z.number().int().positive().max(999_999_999_999).nullable(),
     }),
   )
   .handler(async ({ data }) => {
@@ -50,6 +52,7 @@ export const setPartnerSlotWindow = createServerFn({ method: 'POST' })
         .select({
           opensAt: calendarEvents.slotOpensAt,
           closesAt: calendarEvents.slotClosesAt,
+          minPurchase: calendarEvents.minPurchaseAmount,
         })
         .from(calendarEvents)
         .where(eq(calendarEvents.id, data.calendarEventId))
@@ -69,11 +72,21 @@ export const setPartnerSlotWindow = createServerFn({ method: 'POST' })
       earliestSubmittedAt: firstSubmit?.at ?? null,
     })
     if (changeProblem) throw new Error(changeProblem)
+    const storedMin = current?.minPurchase ?? null
+    const minProblem = validateMinPurchaseChange({
+      current: storedMin === null ? null : Number(storedMin),
+      next: data.minPurchase,
+      storedOpensAt: current?.opensAt ?? null,
+      now: new Date(),
+    })
+    if (minProblem) throw new Error(minProblem)
     await db
       .update(calendarEvents)
       .set({
         slotOpensAt: opensAt,
         slotClosesAt: closesAt,
+        minPurchaseAmount:
+          data.minPurchase === null ? null : String(data.minPurchase),
         updatedAt: new Date(),
       })
       .where(
@@ -99,10 +112,16 @@ export const getPartnerSlotWindow = createServerFn({ method: 'GET' })
       .select({
         opensAt: calendarEvents.slotOpensAt,
         closesAt: calendarEvents.slotClosesAt,
+        minPurchase: calendarEvents.minPurchaseAmount,
       })
       .from(calendarEvents)
       .where(eq(calendarEvents.id, data.calendarEventId))
-    return rows.at(0) ?? { opensAt: null, closesAt: null }
+    const row = rows.at(0)
+    return {
+      opensAt: row?.opensAt ?? null,
+      closesAt: row?.closesAt ?? null,
+      minPurchase: row?.minPurchase ? Number(row.minPurchase) : null,
+    }
   })
 
 /** Antrean jastiper berurutan sesuai urutan submit, lengkap dengan statusnya. */

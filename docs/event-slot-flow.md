@@ -43,6 +43,18 @@ sendiri tidak berubah. Kode murninya di `src/lib/event-slot.ts`.
 6. Koreksi partner setelah dicek diizinkan; paket yang kembali kekurangan barang kembali
    ke keputusan jastiper.
 
+## Minimal pembelian
+
+- `calendar_event.min_purchase_amount` (null = tanpa minimal). Hanya berlaku di event beralur slot.
+- Bisa diubah hanya sebelum slot dibuka, diperiksa terhadap `slot_opens_at` yang tersimpan.
+- Berlaku untuk submit pertama tiap jastiper. Submit berikutnya bebas. Tanpa pengecualian per jastiper.
+- Total = pcs draft semua pesanan digabung, dipaketkan FIFO menurut aturan aktif partner,
+  sisanya harga satuan varian. Barang tanpa varian partner bernilai 0. Kode di `src/lib/min-purchase.ts`.
+- Jastiper mengirim lewat halaman Cek pesanan (`/events/$eventId/submit/cek`). Server membatalkan
+  submit kalau isi yang terkirim berbeda dari yang tampil, atau totalnya kurang.
+- `event_submissions.submitted_total` menyimpan total saat dikirim, untuk analisa partner.
+  Analisa hanya menampilkan angka agregat.
+
 ## Belum ada
 
 Notifikasi (fitur terpisah), membuka kembali pesanan yang sudah submit, scheduled function.

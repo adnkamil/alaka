@@ -139,6 +139,11 @@ const en = {
     closes: 'Slot closes (WIB)',
     closesAfterEvent:
       'The slot closes after the event ends. Make sure this is intended.',
+    minPurchase: 'Minimum purchase (Rp)',
+    minPurchaseNone: 'No minimum',
+    minPurchaseHint:
+      'Applies to each jastiper’s first submission, counted after bundle pricing. Locked once the slot opens.',
+    minPurchaseLocked: 'The slot has opened, so the minimum can no longer change.',
     save: 'Save slot',
     saved: 'Slot settings saved.',
     queue: 'Jastiper queue',
@@ -275,6 +280,11 @@ const id: typeof en = {
     closes: 'Slot ditutup (WIB)',
     closesAfterEvent:
       'Slot ditutup setelah event berakhir. Pastikan ini memang disengaja.',
+    minPurchase: 'Minimal pembelian (Rp)',
+    minPurchaseNone: 'Tanpa minimal',
+    minPurchaseHint:
+      'Berlaku untuk submit pertama tiap jastiper, dihitung setelah harga paket. Terkunci saat slot dibuka.',
+    minPurchaseLocked: 'Slot sudah dibuka, jadi minimal tidak bisa diubah.',
     save: 'Simpan slot',
     saved: 'Pengaturan slot disimpan.',
     queue: 'Antrean jastiper',

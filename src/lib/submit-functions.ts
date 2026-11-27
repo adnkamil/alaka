@@ -4,6 +4,14 @@ import { z } from 'zod'
 import { getSessionUser } from './auth'
 import { brandIdOf } from './brand'
 import { isSlotEnabled, slotPhase } from './event-slot'
+import {
+  DRAFT_CHANGED_MESSAGE,
+  computeDraftTotal,
+  draftFingerprint,
+  minPurchaseMessage,
+  minPurchaseShortfall,
+  sameFingerprint,
+} from './min-purchase'
 import { requirePartner } from './partner-auth'
 import { partnerOwnsEvent } from './partner-event-queries'
 
@@ -19,14 +27,25 @@ const decisionSchema = z.object({
   approvedQty: z.number().int().min(0),
 })
 
-/** Jastiper menekan Submit. Hanya barang draft yang dikirim. */
+/**
+ * Jastiper menekan Submit. Hanya barang draft yang dikirim. `expected` = sidik
+ * isi draft yang tampil di halaman cek; kalau yang terkirim berbeda, atau total
+ * submit pertama di bawah minimal pembelian, seluruh submit dibatalkan.
+ */
 export const submitOrdersBatch = createServerFn({ method: 'POST' })
-  .validator(z.object({ eventId: idSchema }))
+  .validator(
+    z.object({
+      eventId: idSchema,
+      expected: z.array(z.string().max(60)).max(20_000),
+    }),
+  )
   .handler(async ({ data }) => {
     const { db } = await import('../db')
-    const { events } = await import('../db/schema')
+    const { eventSubmissions, events } = await import('../db/schema')
     const { loadSlotConfig } = await import('./event-slot-queries')
     const { submitEventOrders } = await import('./submit-queries')
+    const { loadDraftSources } = await import('./min-purchase-queries')
+    const { loadActiveRules } = await import('./invoice-pooling-queries')
     const user = await getSessionUser()
     if (!user) throw new Error('Belum login')
 
@@ -52,7 +71,36 @@ export const submitOrdersBatch = createServerFn({ method: 'POST' })
           throw new Error('Slot pemesanan sudah ditutup.')
         }
       }
-      return submitEventOrders(tx, event.id, now)
+      const result = await submitEventOrders(tx, event.id, now)
+
+      // Diperiksa sesudah ditulis, atas baris yang benar-benar terkirim, supaya
+      // barang yang masuk bersamaan tidak lolos. Throw = rollback.
+      const sent =
+        (
+          await loadDraftSources(tx, { submissionId: result.submissionId })
+        ).get(event.id) ?? []
+      if (!sameFingerprint(draftFingerprint(sent), data.expected)) {
+        throw new Error(DRAFT_CHANGED_MESSAGE)
+      }
+      if (isSlotEnabled(config) && config?.partnerId) {
+        const { total } = computeDraftTotal(
+          sent,
+          await loadActiveRules(tx, config.partnerId),
+        )
+        const shortfall = minPurchaseShortfall({
+          total,
+          minPurchase: config.minPurchase,
+          isFirstSubmit: result.submitNo === 1,
+        })
+        if (shortfall > 0) {
+          throw new Error(minPurchaseMessage(total, config.minPurchase!))
+        }
+        await tx
+          .update(eventSubmissions)
+          .set({ submittedTotal: String(total) })
+          .where(eq(eventSubmissions.id, result.submissionId))
+      }
+      return result
     })
   })
 

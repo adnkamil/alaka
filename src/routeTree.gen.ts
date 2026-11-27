@@ -81,6 +81,7 @@ import { Route as PartnerEventProdukIdRouteImport } from './routes/partner/event
 import { Route as PartnerEventRekapIdRouteImport } from './routes/partner/event/rekap.$id'
 import { Route as PartnerEventUbahIdRouteImport } from './routes/partner/event/ubah.$id'
 import { Route as AppEventsEventIdSubmitSubmitNoRouteImport } from './routes/_app/events.$eventId_.submit.$submitNo'
+import { Route as AppEventsEventIdSubmitCekRouteImport } from './routes/_app/events.$eventId_.submit.cek'
 import { Route as PartnerEventJastiperIdBrandIdRouteImport } from './routes/partner/event/jastiper.$id.$brandId'
 
 const AppRoute = AppRouteImport.update({
@@ -448,6 +449,12 @@ const AppEventsEventIdSubmitSubmitNoRoute =
     path: '/events/$eventId/submit/$submitNo',
     getParentRoute: () => AppRoute,
   } as any)
+const AppEventsEventIdSubmitCekRoute =
+  AppEventsEventIdSubmitCekRouteImport.update({
+    id: '/events/$eventId_/submit/cek',
+    path: '/events/$eventId/submit/cek',
+    getParentRoute: () => AppRoute,
+  } as any)
 const PartnerEventJastiperIdBrandIdRoute =
   PartnerEventJastiperIdBrandIdRouteImport.update({
     id: '/event/jastiper/$id/$brandId',
@@ -527,6 +534,7 @@ export interface FileRoutesByFullPath {
   '/profil/fee-rules/': typeof AppProfilFeeRulesIndexRoute
   '/api/auth/google/': typeof ApiAuthGoogleIndexRoute
   '/events/$eventId/submit/$submitNo': typeof AppEventsEventIdSubmitSubmitNoRoute
+  '/events/$eventId/submit/cek': typeof AppEventsEventIdSubmitCekRoute
   '/partner/event/jastiper/$id/$brandId': typeof PartnerEventJastiperIdBrandIdRoute
 }
 export interface FileRoutesByTo {
@@ -599,6 +607,7 @@ export interface FileRoutesByTo {
   '/profil/fee-rules': typeof AppProfilFeeRulesIndexRoute
   '/api/auth/google': typeof ApiAuthGoogleIndexRoute
   '/events/$eventId/submit/$submitNo': typeof AppEventsEventIdSubmitSubmitNoRoute
+  '/events/$eventId/submit/cek': typeof AppEventsEventIdSubmitCekRoute
   '/partner/event/jastiper/$id/$brandId': typeof PartnerEventJastiperIdBrandIdRoute
 }
 export interface FileRoutesById {
@@ -675,6 +684,7 @@ export interface FileRoutesById {
   '/_app/profil/fee-rules/': typeof AppProfilFeeRulesIndexRoute
   '/api/auth/google/': typeof ApiAuthGoogleIndexRoute
   '/_app/events/$eventId_/submit/$submitNo': typeof AppEventsEventIdSubmitSubmitNoRoute
+  '/_app/events/$eventId_/submit/cek': typeof AppEventsEventIdSubmitCekRoute
   '/partner/event/jastiper/$id/$brandId': typeof PartnerEventJastiperIdBrandIdRoute
 }
 export interface FileRouteTypes {
@@ -751,6 +761,7 @@ export interface FileRouteTypes {
     | '/profil/fee-rules/'
     | '/api/auth/google/'
     | '/events/$eventId/submit/$submitNo'
+    | '/events/$eventId/submit/cek'
     | '/partner/event/jastiper/$id/$brandId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -823,6 +834,7 @@ export interface FileRouteTypes {
     | '/profil/fee-rules'
     | '/api/auth/google'
     | '/events/$eventId/submit/$submitNo'
+    | '/events/$eventId/submit/cek'
     | '/partner/event/jastiper/$id/$brandId'
   id:
     | '__root__'
@@ -898,6 +910,7 @@ export interface FileRouteTypes {
     | '/_app/profil/fee-rules/'
     | '/api/auth/google/'
     | '/_app/events/$eventId_/submit/$submitNo'
+    | '/_app/events/$eventId_/submit/cek'
     | '/partner/event/jastiper/$id/$brandId'
   fileRoutesById: FileRoutesById
 }
@@ -1432,6 +1445,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppEventsEventIdSubmitSubmitNoRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/events/$eventId_/submit/cek': {
+      id: '/_app/events/$eventId_/submit/cek'
+      path: '/events/$eventId/submit/cek'
+      fullPath: '/events/$eventId/submit/cek'
+      preLoaderRoute: typeof AppEventsEventIdSubmitCekRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/partner/event/jastiper/$id/$brandId': {
       id: '/partner/event/jastiper/$id/$brandId'
       path: '/event/jastiper/$id/$brandId'
@@ -1465,6 +1485,7 @@ interface AppRouteChildren {
   AppProfilCustomersIndexRoute: typeof AppProfilCustomersIndexRoute
   AppProfilFeeRulesIndexRoute: typeof AppProfilFeeRulesIndexRoute
   AppEventsEventIdSubmitSubmitNoRoute: typeof AppEventsEventIdSubmitSubmitNoRoute
+  AppEventsEventIdSubmitCekRoute: typeof AppEventsEventIdSubmitCekRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -1490,6 +1511,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppProfilCustomersIndexRoute: AppProfilCustomersIndexRoute,
   AppProfilFeeRulesIndexRoute: AppProfilFeeRulesIndexRoute,
   AppEventsEventIdSubmitSubmitNoRoute: AppEventsEventIdSubmitSubmitNoRoute,
+  AppEventsEventIdSubmitCekRoute: AppEventsEventIdSubmitCekRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
@@ -1598,10 +1620,11 @@ export const routeTree = rootRouteImport
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
+import type { startInstance } from './start.ts'
 declare module '@tanstack/react-start' {
   interface Register {
     ssr: true
     router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
   }
 }
