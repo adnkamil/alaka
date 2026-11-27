@@ -31,7 +31,7 @@ typography:
   headingFont: "Figtree Bold (700), H1 ExtraBold (800)"
   displayFont: "Fraunces (opsional, hanya aksen editorial — bukan default)"
   sizes:
-    h1: 40px          # mobile 32px
+    h1: 40px          # mobile 32px 
     h2: 32px          # mobile 26px
     h3: 20px
     body-md: 16px
