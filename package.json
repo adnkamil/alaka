@@ -23,6 +23,8 @@
     "db:seed-dummy": "tsx scripts/seed-dummy-data.ts",
     "db:seed-calendar": "tsx scripts/seed-calendar-events.ts",
     "db:seed-calendar:neon": "node --env-file=.env.neon.local node_modules/tsx/dist/cli.mjs scripts/seed-calendar-events.ts",
+    "db:seed-booths": "tsx scripts/seed-event-booths.ts",
+    "db:seed-booths:neon": "node --env-file=.env.neon.local node_modules/tsx/dist/cli.mjs scripts/seed-event-booths.ts",
     "storage:migrate-r2": "tsx scripts/migrate-storage-to-r2.ts",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",

@@ -26,6 +26,7 @@ import { formatRupiah } from '../../../lib/partner-product-rules'
 import { EventDescription } from '../../../components/EventDescription'
 import JoinEventSheet from '../../../components/JoinEventSheet'
 import PartnerShowcase from '../../../components/PartnerShowcase'
+import BoothSearchButton from '../../../components/BoothSearch'
 
 const calendarEventQuery = (id: string) =>
   queryOptions({
@@ -159,6 +160,10 @@ function CalendarEventDetailPage() {
             </p>
           )}
         </div>
+
+        {!event.isOnline && (
+          <BoothSearchButton calendarEventId={event.id} className="mt-4" />
+        )}
 
         {event.description && (
           <section className="mt-6">

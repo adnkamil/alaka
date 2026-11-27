@@ -19,6 +19,7 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core'
 import type { AnyPgColumn } from 'drizzle-orm/pg-core'
+import type { EventBooth } from '../lib/event-booth'
 import {
   PRO_DURATION_DAYS,
   PRO_PLAN_CODE,
@@ -1004,6 +1005,15 @@ export const calendarEvents = pgTable(
      */
     slotOpensAt: timestamp('slot_opens_at', { withTimezone: true }),
     slotClosesAt: timestamp('slot_closes_at', { withTimezone: true }),
+    /**
+     * Daftar booth event offline (kode booth, brand, area) untuk fitur
+     * "Cari Booth" jastiper. Kosong = tombolnya tidak muncul. Sementara diisi
+     * lewat `scripts/seed-event-booths.ts`.
+     */
+    booths: jsonb()
+      .$type<EventBooth[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
     /**
      * Minimal pembelian untuk submit pertama tiap jastiper, hanya berlaku di
      * event beralur slot. Null = tanpa minimal. Terkunci begitu slot dibuka.
