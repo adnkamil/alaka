@@ -255,6 +255,22 @@ const en = {
   unmetDesc: 'Most rejected pcs, a signal to add stock.',
   unmetEmpty: 'All orders were available. No pcs were rejected.',
   sizesTitle: 'Best-selling sizes',
+  minOrderTitle: 'Minimum purchase',
+  minOrderDesc: (min: string | null) =>
+    min
+      ? `Current minimum is ${min}. Draft figures reflect current orders.`
+      : 'This event has no minimum purchase.',
+  minOrderJoined: 'Jastipers joined',
+  minOrderSubmitted: 'Submitted',
+  minOrderStuck: 'Held below the minimum',
+  minOrderStuckAmount: 'Held draft value',
+  minOrderStuckNear: 'Held, at 80% of the minimum or more',
+  minOrderBuckets: 'First submission value',
+  minOrderBucketsEmpty: 'No submissions with a recorded value yet.',
+  minOrderBelow: (v: string) => `Below ${v}`,
+  minOrderRange: (from: string, to: string) => `${from} to under ${to}`,
+  minOrderAbove: (v: string) => `${v} and above`,
+  minOrderCount: (n: number) => `${n} jastipers`,
   sizesDesc: 'Pcs sold per size.',
   sizesEmpty: 'Products in this event do not use sizes yet.',
 }
@@ -476,6 +492,22 @@ const id: typeof en = {
   unmetDesc: 'Pcs ditolak terbanyak, sinyal untuk menambah stok.',
   unmetEmpty: 'Semua pesanan tersedia. Tidak ada pcs yang ditolak.',
   sizesTitle: 'Ukuran terlaris',
+  minOrderTitle: 'Minimal pembelian',
+  minOrderDesc: (min: string | null) =>
+    min
+      ? `Minimal saat ini ${min}. Angka draft mengikuti pesanan saat ini.`
+      : 'Event ini tanpa minimal pembelian.',
+  minOrderJoined: 'Jastiper ikut',
+  minOrderSubmitted: 'Sudah submit',
+  minOrderStuck: 'Tertahan di bawah minimal',
+  minOrderStuckAmount: 'Nilai draft tertahan',
+  minOrderStuckNear: 'Tertahan, sudah 80% minimal atau lebih',
+  minOrderBuckets: 'Nilai submit pertama',
+  minOrderBucketsEmpty: 'Belum ada submit yang tercatat nilainya.',
+  minOrderBelow: (v: string) => `Di bawah ${v}`,
+  minOrderRange: (from: string, to: string) => `${from} sampai di bawah ${to}`,
+  minOrderAbove: (v: string) => `${v} ke atas`,
+  minOrderCount: (n: number) => `${n} jastiper`,
   sizesDesc: 'Pcs terjual per ukuran.',
   sizesEmpty: 'Produk di event ini belum memakai ukuran.',
 }

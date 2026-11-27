@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { Link, createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft, Check, ChevronRight, Clock, Lock, Receipt, Send } from 'lucide-react'
-import ConfirmModal from '../../components/ui/ConfirmModal'
 import EventInvoicesSection, {
   useEventInvoices,
 } from '../../components/EventInvoicesSection'
@@ -10,7 +9,6 @@ import { useNow } from '../../lib/use-now'
 import { formatRemaining, formatWibDateTime } from '../../lib/event-slot'
 import { getEventSlotSummary } from '../../lib/event-slot-functions'
 import { formatInvoiceNumber } from '../../lib/invoice-rules'
-import { submitOrdersBatch } from '../../lib/submit-functions'
 
 export const Route = createFileRoute('/_app/events/$eventId_/status')({
   validateSearch: (search: Record<string, unknown>) => {
@@ -31,7 +29,6 @@ const TONE: Record<Tone, { background: string; color: string }> = {
 function EventStatusPage() {
   const { eventId } = Route.useParams()
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
   const now = useNow()
   const { data: summary, isLoading } = useQuery({
     queryKey: ['event-slot', eventId],
@@ -46,31 +43,10 @@ function EventStatusPage() {
     if (inv.status === 'dibatalkan') continue
     for (const no of inv.submitNos) invoiceBySubmitNo.set(no, inv.number)
   }
-  const [confirm, setConfirm] = useState(false)
   const { tab: initialTab } = Route.useSearch()
   const [tab, setTab] = useState<'status' | 'riwayat'>(initialTab === 'riwayat' ? 'riwayat' : 'status')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   const goBack = () => navigate({ to: '/events/$eventId', params: { eventId } })
-
-  async function submit() {
-    setBusy(true)
-    setError(null)
-    try {
-      await submitOrdersBatch({ data: { eventId } })
-      await queryClient.invalidateQueries({ queryKey: ['event-slot', eventId] })
-      setConfirm(false)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Gagal mengirim')
-      setConfirm(false)
-      // Submit yang timeout bisa saja sudah tersimpan di server. Muat ulang
-      // status supaya halaman menampilkan keadaan sebenarnya.
-      await queryClient.invalidateQueries({ queryKey: ['event-slot', eventId] })
-    } finally {
-      setBusy(false)
-    }
-  }
 
   if (isLoading || !summary) {
     return (
@@ -371,22 +347,15 @@ function EventStatusPage() {
                 ? `Ada ${summary.draftCount} barang baru yang belum dikirim. Kirim sebagai pengajuan berikutnya.`
                 : 'Setelah dikirim, pesanan terkunci sampai partner selesai mengecek.'}
             </p>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => setConfirm(true)}
-              className="app-btn-primary mt-3 flex w-full items-center justify-center gap-2 disabled:opacity-50"
+            <Link
+              to="/events/$eventId/submit/cek"
+              params={{ eventId }}
+              className="app-btn-primary mt-3 flex w-full items-center justify-center gap-2 no-underline"
             >
               <Send size={15} />
-              Submit sekarang
-            </button>
+              Cek pesanan
+            </Link>
           </section>
-        )}
-
-        {error && (
-          <p className="text-xs" style={{ color: 'var(--app-danger)' }}>
-            {error}
-          </p>
         )}
 
         <section className="app-card p-4">
@@ -430,16 +399,6 @@ function EventStatusPage() {
       </div>
       )}
 
-      <ConfirmModal
-        open={confirm}
-        title="Kirim pesanan ke partner?"
-        content="Setelah dikirim, semua pesanan di event ini terkunci dan tidak bisa diubah sampai partner selesai mengecek. Urutan kirim menentukan antrean pengecekan."
-        okText="Submit sekarang"
-        danger={false}
-        loading={busy}
-        onOk={submit}
-        onCancel={() => setConfirm(false)}
-      />
     </main>
   )
 }

@@ -407,6 +407,13 @@
       "when": 1795408348081,
       "tag": "0057_notifikasi_partner",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1795769080163,
+      "tag": "0058_minimal_pembelian",
+      "breakpoints": true
     }
   ]
 }

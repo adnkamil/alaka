@@ -1,6 +1,8 @@
 import { createServerFn } from '@tanstack/react-start'
 import { and, eq, inArray, ne } from 'drizzle-orm'
 import { z } from 'zod'
+import { buildMinPurchaseStats } from './min-purchase'
+import type { MinPurchaseStats } from './min-purchase'
 import { requirePartner } from './partner-auth'
 import { buildEventAnalytics } from './partner-event-analytics'
 import type { AnalyticsLine } from './partner-event-analytics'
@@ -219,7 +221,47 @@ export const getPartnerEventAnalytics = createServerFn({ method: 'GET' })
         ),
       )
 
-    return buildEventAnalytics({
+    // Minimal pembelian: angka agregat saja, partner tidak melihat draft per
+    // jastiper. Hanya untuk event beralur slot.
+    let minOrder: MinPurchaseStats | null = null
+    if (slotEnabled) {
+      const { loadDraftTotals } = await import('./min-purchase-queries')
+      const [config] = await db
+        .select({ minPurchase: calendarEvents.minPurchaseAmount })
+        .from(calendarEvents)
+        .where(eq(calendarEvents.id, data.calendarEventId))
+      const drafts = await db.transaction((tx) =>
+        loadDraftTotals(tx, partner.id, eventIds),
+      )
+      const firstSubmits = eventIds.length
+        ? await db
+            .select({
+              eventId: eventSubmissions.eventId,
+              total: eventSubmissions.submittedTotal,
+            })
+            .from(eventSubmissions)
+            .where(
+              and(
+                inArray(eventSubmissions.eventId, eventIds),
+                eq(eventSubmissions.submitNo, 1),
+              ),
+            )
+        : []
+      const firstByEvent = new Map(firstSubmits.map((s) => [s.eventId, s.total]))
+      minOrder = buildMinPurchaseStats({
+        minPurchase: config.minPurchase ? Number(config.minPurchase) : null,
+        jastiper: eventIds.map((id) => {
+          const total = firstByEvent.get(id)
+          return {
+            submitted: firstByEvent.has(id),
+            firstSubmitTotal: total ? Number(total) : null,
+            draftTotal: drafts.get(id)?.total ?? 0,
+          }
+        }),
+      })
+    }
+
+    const analytics = buildEventAnalytics({
       slotEnabled,
       jastiper: jastiperEvents.map((e) => ({
         eventId: e.id,
@@ -244,4 +286,5 @@ export const getPartnerEventAnalytics = createServerFn({ method: 'GET' })
         }),
       })),
     })
+    return { ...analytics, minOrder }
   })

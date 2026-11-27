@@ -597,6 +597,12 @@ export const eventSubmissions = pgTable(
      * Dikosongkan lagi saat partner selesai mengecek.
      */
     reopenedAt: timestamp('reopened_at', { withTimezone: true }),
+    /**
+     * Total estimasi saat submit ditekan (setelah dipaketkan menurut aturan
+     * partner saat itu), dipakai analitik minimal pembelian. Null = event tanpa
+     * partner, atau submit dibuat sebelum kolom ini ada.
+     */
+    submittedTotal: decimal('submitted_total', { precision: 14, scale: 2 }),
   },
   (table) => [
     uniqueIndex('event_submissions_event_no_unique').on(
@@ -999,6 +1005,14 @@ export const calendarEvents = pgTable(
     slotOpensAt: timestamp('slot_opens_at', { withTimezone: true }),
     slotClosesAt: timestamp('slot_closes_at', { withTimezone: true }),
     /**
+     * Minimal pembelian untuk submit pertama tiap jastiper, hanya berlaku di
+     * event beralur slot. Null = tanpa minimal. Terkunci begitu slot dibuka.
+     */
+    minPurchaseAmount: decimal('min_purchase_amount', {
+      precision: 14,
+      scale: 2,
+    }),
+    /**
      * Brand yang dipamerkan di event ini, berupa nama bebas (mis. brand skincare
      * yang ikut bazar) — BUKAN relasi ke tabel `brands` (itu brand jastiper).
      */
@@ -1028,6 +1042,10 @@ export const calendarEvents = pgTable(
   (table) => [
     index('calendar_event_date_idx').on(table.eventDate),
     index('calendar_event_partner_idx').on(table.partnerId),
+    check(
+      'calendar_event_min_purchase_pos',
+      sql`${table.minPurchaseAmount} > 0`,
+    ),
   ],
 )
 

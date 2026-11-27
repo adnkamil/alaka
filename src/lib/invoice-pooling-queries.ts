@@ -33,7 +33,7 @@ export type PooledInvoiceBilling = {
 }
 
 /** Aturan paket aktif partner, berurutan menurut posisi. */
-async function loadActiveRules(
+export async function loadActiveRules(
   tx: OrderTx,
   partnerId: string,
 ): Promise<Array<PoolRule>> {
